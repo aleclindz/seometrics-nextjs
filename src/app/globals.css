@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,11 +19,40 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+.font-inter {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Scrollbar styling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Button styling */
+.btn {
+  @apply inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg border transition-colors duration-200;
+}
+
+/* Dark mode compatibility */
+html.dark {
+  color-scheme: dark;
+}
+
+/* Custom utility classes */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  .sidebar-expanded {
+    /* Add any sidebar-specific styles here */
   }
 }
