@@ -1,28 +1,114 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { useAuth } from '@/contexts/auth';
+import { createClientComponentClient } from '@/lib/supabase';
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
-
-  // Mock data - replace with real data from your backend
-  const stats = {
+  const [stats, setStats] = useState({
     websites: 0,
     imageTags: 0,
     metaTags: 0
-  };
-
-  const websites: Array<{
+  });
+  const [websites, setWebsites] = useState<Array<{
     url: string;
     token: string;
     imageTags: number;
     metaTags: number;
-  }> = [
-    // Mock empty array - replace with real data
-  ];
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const { user } = useAuth();
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user) return;
+
+      try {
+        // Get user's profile from login_users table
+        const { data: userProfile } = await supabase
+          .from('login_users')
+          .select('token')
+          .eq('auth_user_id', user.id)
+          .single();
+
+        if (userProfile) {
+          // Fetch websites for this user
+          const { data: userWebsites } = await supabase
+            .from('websites')
+            .select('*')
+            .eq('user_token', userProfile.token);
+
+          if (userWebsites) {
+            const websiteData = userWebsites.map(site => ({
+              url: site.domain,
+              token: site.website_token,
+              imageTags: site.image_tags,
+              metaTags: site.meta_tags
+            }));
+
+            setWebsites(websiteData);
+            
+            // Calculate totals
+            const totalStats = websiteData.reduce(
+              (acc, site) => ({
+                websites: acc.websites + 1,
+                imageTags: acc.imageTags + site.imageTags,
+                metaTags: acc.metaTags + site.metaTags
+              }),
+              { websites: 0, imageTags: 0, metaTags: 0 }
+            );
+
+            setStats(totalStats);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [user, supabase]);
+
+  if (loading) {
+    return (
+      <div className="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+        <div className="flex h-screen overflow-hidden">
+          <Sidebar 
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            sidebarExpanded={sidebarExpanded}
+            setSidebarExpanded={setSidebarExpanded}
+          />
+          <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+            <Header 
+              sidebarOpen={sidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+            />
+            <main className="grow flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center animate-pulse mx-auto mb-4">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Loading your data...
+                </h2>
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">

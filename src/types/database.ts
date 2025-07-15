@@ -10,6 +10,7 @@ export interface Database {
           plan: number
           created_at: string
           updated_at: string
+          auth_user_id: string | null
         }
         Insert: {
           id?: number
@@ -18,6 +19,7 @@ export interface Database {
           plan?: number
           created_at?: string
           updated_at?: string
+          auth_user_id?: string | null
         }
         Update: {
           id?: number
@@ -26,6 +28,7 @@ export interface Database {
           plan?: number
           created_at?: string
           updated_at?: string
+          auth_user_id?: string | null
         }
       }
       websites: {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import ThemeToggle from './ThemeToggle';
+import { useAuth } from '@/contexts/auth';
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -11,12 +12,15 @@ interface HeaderProps {
 
 export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
-  // Mock user data - replace with real authentication
-  const user = {
-    email: 'user@example.com',
-    plan: 0 // 0 = free, 1 = paid
+  const handleSignOut = async () => {
+    await signOut();
+    setUserMenuOpen(false);
   };
+
+  // For now, assume all users are free tier (can be expanded later)
+  const userPlan = 0; // 0 = free, 1 = paid
 
   return (
     <header className="sticky top-0 before:absolute before:inset-0 before:backdrop-blur-md before:bg-white/90 dark:before:bg-gray-800/90 lg:before:bg-gray-100/90 dark:lg:before:bg-gray-900/90 before:-z-10 max-lg:shadow-sm z-30">
@@ -37,7 +41,7 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
           <div className="flex items-center space-x-3">
 
             {/* Upgrade button for free users */}
-            {user.plan === 0 && (
+            {userPlan === 0 && (
               <a 
                 href="/plans" 
                 className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white inline-flex items-center"
@@ -73,7 +77,7 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
                 />
                 <div className="flex items-center truncate">
                   <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">
-                    {user.email}
+                    {user?.email}
                   </span>
                   <svg className="w-3 h-3 shrink-0 ml-1 fill-current text-gray-400 dark:text-gray-500" viewBox="0 0 12 12">
                     <path d="M5.9 11.4L.5 6l1.4-1.4 4 4 4-4L11.3 6z" />
@@ -85,18 +89,17 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
               {userMenuOpen && (
                 <div className="origin-top-right z-10 absolute top-full right-0 min-w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1">
                   <div className="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
-                    <div className="font-medium text-gray-800 dark:text-gray-100">{user.email}</div>
+                    <div className="font-medium text-gray-800 dark:text-gray-100">{user?.email}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 italic">User</div>
                   </div>
                   <ul>
                     <li>
-                      <a 
-                        className="font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3" 
-                        href="/logout"
-                        onClick={() => setUserMenuOpen(false)}
+                      <button 
+                        className="w-full text-left font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3" 
+                        onClick={handleSignOut}
                       >
                         Sign Out
-                      </a>
+                      </button>
                     </li>
                   </ul>
                 </div>
