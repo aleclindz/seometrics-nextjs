@@ -38,8 +38,8 @@ export interface Database {
           user_token: string
           domain: string
           language: string
-          enable_meta_tags: number
-          enable_image_tags: number
+          enable_meta_tags: boolean
+          enable_image_tags: boolean
           meta_tags: number
           image_tags: number
           created_at: string
@@ -47,12 +47,12 @@ export interface Database {
         }
         Insert: {
           id?: number
-          website_token: string
+          website_token?: string
           user_token: string
           domain: string
           language?: string
-          enable_meta_tags?: number
-          enable_image_tags?: number
+          enable_meta_tags?: boolean
+          enable_image_tags?: boolean
           meta_tags?: number
           image_tags?: number
           created_at?: string
@@ -64,8 +64,8 @@ export interface Database {
           user_token?: string
           domain?: string
           language?: string
-          enable_meta_tags?: number
-          enable_image_tags?: number
+          enable_meta_tags?: boolean
+          enable_image_tags?: boolean
           meta_tags?: number
           image_tags?: number
           created_at?: string
@@ -79,8 +79,8 @@ export interface Database {
           url: string
           meta_title: string | null
           meta_description: string | null
-          processed: number
-          timestamp: string
+          processed: boolean
+          created_at: string
         }
         Insert: {
           id?: number
@@ -88,8 +88,8 @@ export interface Database {
           url: string
           meta_title?: string | null
           meta_description?: string | null
-          processed?: number
-          timestamp?: string
+          processed?: boolean
+          created_at?: string
         }
         Update: {
           id?: number
@@ -97,8 +97,8 @@ export interface Database {
           url?: string
           meta_title?: string | null
           meta_description?: string | null
-          processed?: number
-          timestamp?: string
+          processed?: boolean
+          created_at?: string
         }
       }
       images: {
@@ -107,24 +107,24 @@ export interface Database {
           website_token: string
           url: string
           alt_tag: string | null
-          processed: number
-          timestamp: string
+          processed: boolean
+          created_at: string
         }
         Insert: {
           id?: number
           website_token: string
           url: string
           alt_tag?: string | null
-          processed?: number
-          timestamp?: string
+          processed?: boolean
+          created_at?: string
         }
         Update: {
           id?: number
           website_token?: string
           url?: string
           alt_tag?: string | null
-          processed?: number
-          timestamp?: string
+          processed?: boolean
+          created_at?: string
         }
       }
       articles: {
