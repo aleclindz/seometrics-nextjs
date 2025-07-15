@@ -11,15 +11,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user profile
-    const { data: userProfile, error: userError } = await supabase
+    // Get user profile, create if doesn't exist
+    let { data: userProfile, error: userError } = await supabase
       .from('login_users')
       .select('token')
       .eq('auth_user_id', user.id)
       .single();
 
     if (userError || !userProfile) {
-      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+      // Try to create the user profile if it doesn't exist
+      const { data: newProfile, error: createError } = await supabase
+        .from('login_users')
+        .insert({
+          email: user.email || '',
+          auth_user_id: user.id,
+          token: crypto.randomUUID()
+        })
+        .select('token')
+        .single();
+
+      if (createError || !newProfile) {
+        console.error('Failed to create user profile:', createError);
+        return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 });
+      }
+
+      userProfile = newProfile;
     }
 
     // Get user's websites
@@ -63,15 +79,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid domain format' }, { status: 400 });
     }
 
-    // Get user profile
-    const { data: userProfile, error: userError } = await supabase
+    // Get user profile, create if doesn't exist
+    let { data: userProfile, error: userError } = await supabase
       .from('login_users')
       .select('token')
       .eq('auth_user_id', user.id)
       .single();
 
     if (userError || !userProfile) {
-      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+      // Try to create the user profile if it doesn't exist
+      const { data: newProfile, error: createError } = await supabase
+        .from('login_users')
+        .insert({
+          email: user.email || '',
+          auth_user_id: user.id,
+          token: crypto.randomUUID()
+        })
+        .select('token')
+        .single();
+
+      if (createError || !newProfile) {
+        console.error('Failed to create user profile:', createError);
+        return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 });
+      }
+
+      userProfile = newProfile;
     }
 
     // Check if domain already exists for this user

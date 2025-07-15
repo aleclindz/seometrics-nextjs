@@ -30,12 +30,32 @@ export default function Dashboard() {
       if (!user) return;
 
       try {
-        // Get user's profile from login_users table
-        const { data: userProfile } = await supabase
+        // Get user's profile from login_users table, create if doesn't exist
+        let { data: userProfile, error: userError } = await supabase
           .from('login_users')
           .select('token')
           .eq('auth_user_id', user.id)
           .single();
+
+        if (userError || !userProfile) {
+          // Try to create the user profile if it doesn't exist
+          const { data: newProfile, error: createError } = await supabase
+            .from('login_users')
+            .insert({
+              email: user.email || '',
+              auth_user_id: user.id,
+              token: crypto.randomUUID()
+            })
+            .select('token')
+            .single();
+
+          if (createError || !newProfile) {
+            console.error('Failed to create user profile:', createError);
+            return;
+          }
+
+          userProfile = newProfile;
+        }
 
         if (userProfile) {
           // Fetch websites for this user
