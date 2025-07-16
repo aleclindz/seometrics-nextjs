@@ -61,9 +61,14 @@ export async function POST(request: NextRequest) {
   const supabase = createServerSupabaseClient();
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    console.log('POST /api/websites - Starting request');
+    console.log('Request headers:', Object.fromEntries(request.headers.entries()));
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('Auth result:', { user: user?.id, email: user?.email, authError });
     
     if (!user) {
+      console.log('No user found, returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
