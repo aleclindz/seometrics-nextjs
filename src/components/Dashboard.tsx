@@ -292,14 +292,14 @@ export default function Dashboard() {
                                 <td className="p-2">
                                   <div className="text-center">
                                     <button 
-                                      onClick={() => {
+                                      onClick={(event) => {
                                         const snippet = `<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/smart.js"></script>
 <script>
 const idv = '${website.token}';
 </script>`;
                                         navigator.clipboard.writeText(snippet);
                                         // Show a temporary success message
-                                        const button = event.target;
+                                        const button = event.target as HTMLButtonElement;
                                         const originalText = button.textContent;
                                         button.textContent = 'Copied!';
                                         setTimeout(() => {
