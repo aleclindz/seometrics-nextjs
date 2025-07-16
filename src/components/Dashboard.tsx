@@ -66,7 +66,7 @@ export default function Dashboard() {
           
           // Calculate totals
           const totalStats = websiteData.reduce(
-            (acc, site) => ({
+            (acc: { websites: number; imageTags: number; metaTags: number }, site: { imageTags: number; metaTags: number }) => ({
               websites: acc.websites + 1,
               imageTags: acc.imageTags + site.imageTags,
               metaTags: acc.metaTags + site.metaTags

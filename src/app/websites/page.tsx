@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
@@ -29,11 +29,7 @@ export default function Websites() {
   const router = useRouter();
   const supabase = createClientComponentClient();
 
-  useEffect(() => {
-    fetchWebsites();
-  }, []);
-
-  const fetchWebsites = async () => {
+  const fetchWebsites = useCallback(async () => {
     try {
       // Get session for authorization
       const { data: { session } } = await supabase.auth.getSession();
@@ -65,7 +61,11 @@ export default function Websites() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchWebsites();
+  }, [fetchWebsites]);
 
   if (loading) {
     return (
