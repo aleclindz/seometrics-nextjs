@@ -58,13 +58,15 @@ export default function Dashboard() {
         const data = await response.json();
         
         if (data.websites) {
+          console.log('Raw website data:', data.websites);
           const websiteData = data.websites.map((site: any) => ({
-            url: site.domain,
+            url: site.domain || site.url,
             token: site.website_token,
-            imageTags: site.image_tags,
-            metaTags: site.meta_tags
+            imageTags: site.image_tags || 0,
+            metaTags: site.meta_tags || 0
           }));
 
+          console.log('Mapped website data:', websiteData);
           setWebsites(websiteData);
           
           // Calculate totals
@@ -222,9 +224,15 @@ export default function Dashboard() {
                             <th className="p-2">
                               <div className="font-semibold text-center">Meta Tags</div>
                             </th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
+                            <th className="p-2">
+                              <div className="font-semibold text-center">Alt Tags</div>
+                            </th>
+                            <th className="p-2">
+                              <div className="font-semibold text-center">Meta Tags</div>
+                            </th>
+                            <th className="p-2">
+                              <div className="font-semibold text-center">Integration</div>
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="text-sm font-medium divide-y divide-gray-100 dark:divide-gray-700/60">

@@ -205,11 +205,15 @@ serve(async (req) => {
         )
       }
 
+      // Generate a unique website token
+      const websiteToken = crypto.randomUUID()
+      
       // Create website
       const { data: website, error: insertError } = await supabase
         .from('websites')
         .insert({
           user_token: userProfile.token,
+          website_token: websiteToken,
           domain,
           language: language || 'english',
           enable_meta_tags: enableMetaTags ?? true,
