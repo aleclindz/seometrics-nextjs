@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import SnippetModal from './SnippetModal';
 import { useAuth } from '@/contexts/auth';
 import { createClientComponentClient } from '@/lib/supabase';
 import { generateToken } from '@/lib/utils';
@@ -22,6 +23,8 @@ export default function Dashboard() {
     metaTags: number;
   }>>([]);
   const [loading, setLoading] = useState(true);
+  const [snippetModalOpen, setSnippetModalOpen] = useState(false);
+  const [selectedWebsite, setSelectedWebsite] = useState<{url: string; token: string} | null>(null);
   
   const { user } = useAuth();
   const supabase = createClientComponentClient();
@@ -292,23 +295,13 @@ export default function Dashboard() {
                                 <td className="p-2">
                                   <div className="text-center">
                                     <button 
-                                      onClick={(event) => {
-                                        const snippet = `<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/smart.js"></script>
-<script>
-const idv = '${website.token}';
-</script>`;
-                                        navigator.clipboard.writeText(snippet);
-                                        // Show a temporary success message
-                                        const button = event.target as HTMLButtonElement;
-                                        const originalText = button.textContent;
-                                        button.textContent = 'Copied!';
-                                        setTimeout(() => {
-                                          button.textContent = originalText;
-                                        }, 2000);
+                                      onClick={() => {
+                                        setSelectedWebsite({ url: website.url, token: website.token });
+                                        setSnippetModalOpen(true);
                                       }}
                                       className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
                                     >
-                                      Copy Code
+                                      Snippet
                                     </button>
                                   </div>
                                 </td>
@@ -326,6 +319,19 @@ const idv = '${website.token}';
           </main>
         </div>
       </div>
+      
+      {/* Snippet Modal */}
+      {selectedWebsite && (
+        <SnippetModal
+          isOpen={snippetModalOpen}
+          onClose={() => {
+            setSnippetModalOpen(false);
+            setSelectedWebsite(null);
+          }}
+          websiteToken={selectedWebsite.token}
+          websiteUrl={selectedWebsite.url}
+        />
+      )}
     </div>
   );
 }

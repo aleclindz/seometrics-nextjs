@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
+import SnippetModal from '@/components/SnippetModal';
 import { useAuth } from '@/contexts/auth';
 import { createClientComponentClient } from '@/lib/supabase';
 
@@ -25,6 +26,7 @@ export default function WebsiteIntegrationPage() {
   const [website, setWebsite] = useState<WebsiteData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [snippetModalOpen, setSnippetModalOpen] = useState(false);
   
   const { user } = useAuth();
   const supabase = createClientComponentClient();
@@ -275,24 +277,13 @@ const idv = '${website.website_token}';
                   </div>
                   <div className="flex justify-between items-center">
                     <button
-                      onClick={copyToClipboard}
+                      onClick={() => setSnippetModalOpen(true)}
                       className="btn bg-violet-600 hover:bg-violet-700 text-white"
                     >
-                      {copied ? (
-                        <>
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                          Copy Code
-                        </>
-                      )}
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                      View Integration Code
                     </button>
                     <div className="flex space-x-2">
                       <a
@@ -359,6 +350,14 @@ const idv = '${website.website_token}';
           </main>
         </div>
       </div>
+      
+      {/* Snippet Modal */}
+      <SnippetModal
+        isOpen={snippetModalOpen}
+        onClose={() => setSnippetModalOpen(false)}
+        websiteToken={website?.website_token || ''}
+        websiteUrl={website?.url || ''}
+      />
     </div>
   );
 }
