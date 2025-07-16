@@ -3,7 +3,8 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
-    const API_BASE_URL = 'https://jplhifgfzfxihdnvofkt.supabase.co/functions/v1';
+    const API_BASE_URL = 'https://kfbuflsjbkncehtmykhj.supabase.co/functions/v1';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmYnVmbHNqYmtuY2VodG15a2hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwOTEyNjMsImV4cCI6MjA2NzY2NzI2M30.KLL2E7h36GTQdJszVUcjToBnQZtRruFfm0TYjkBaAJg';
     
     // Check if idv (website token) is defined
     if (typeof idv === 'undefined') {
@@ -27,7 +28,8 @@ async function processMetaTags() {
         const response = await fetch(`${API_BASE_URL}/generate-meta-tags`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ANON_KEY}`
             },
             body: JSON.stringify({
                 url: currentUrl,
@@ -85,7 +87,8 @@ async function processImages() {
         const response = await fetch(`${API_BASE_URL}/generate-image-alt`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ANON_KEY}`
             },
             body: JSON.stringify({
                 id: idv,
