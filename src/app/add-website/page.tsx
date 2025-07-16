@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import { createClientComponentClient } from '@/lib/supabase';
 
 const languages = [
   { code: 'english', name: 'English' },
@@ -54,6 +55,7 @@ export default function AddWebsite() {
   const [error, setError] = useState('');
 
   const router = useRouter();
+  const supabase = createClientComponentClient();
 
   const validateDomain = (domain: string) => {
     const domainPattern = /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/;
@@ -73,10 +75,20 @@ export default function AddWebsite() {
         return;
       }
 
-      // Call API to create website
-      const response = await fetch('/api/websites', {
+      // Get session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError('Please log in to add a website');
+        setLoading(false);
+        return;
+      }
+
+      // Call Edge Function to create website
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/websites`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

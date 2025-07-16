@@ -31,62 +31,50 @@ export default function Dashboard() {
       if (!user) return;
 
       try {
-        // Get user's profile from login_users table, create if doesn't exist
-        let { data: userProfile, error: userError } = await supabase
-          .from('login_users')
-          .select('token')
-          .eq('auth_user_id', user.id)
-          .single();
-
-        if (userError || !userProfile) {
-          // Try to create the user profile if it doesn't exist
-          const { data: newProfile, error: createError } = await supabase
-            .from('login_users')
-            .insert({
-              email: user.email || '',
-              auth_user_id: user.id,
-              token: generateToken()
-            })
-            .select('token')
-            .single();
-
-          if (createError || !newProfile) {
-            console.error('Failed to create user profile:', createError);
-            return;
-          }
-
-          userProfile = newProfile;
+        // Get session for authorization
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          console.error('No session found');
+          return;
         }
 
-        if (userProfile) {
-          // Fetch websites for this user
-          const { data: userWebsites } = await supabase
-            .from('websites')
-            .select('*')
-            .eq('user_token', userProfile.token);
+        // Call Edge Function to get websites
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/websites`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-          if (userWebsites) {
-            const websiteData = userWebsites.map(site => ({
-              url: site.domain,
-              token: site.website_token,
-              imageTags: site.image_tags,
-              metaTags: site.meta_tags
-            }));
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-            setWebsites(websiteData);
-            
-            // Calculate totals
-            const totalStats = websiteData.reduce(
-              (acc, site) => ({
-                websites: acc.websites + 1,
-                imageTags: acc.imageTags + site.imageTags,
-                metaTags: acc.metaTags + site.metaTags
-              }),
-              { websites: 0, imageTags: 0, metaTags: 0 }
-            );
+        const data = await response.json();
+        
+        if (data.websites) {
+          const websiteData = data.websites.map((site: any) => ({
+            url: site.domain,
+            token: site.website_token,
+            imageTags: site.image_tags,
+            metaTags: site.meta_tags
+          }));
 
-            setStats(totalStats);
-          }
+          setWebsites(websiteData);
+          
+          // Calculate totals
+          const totalStats = websiteData.reduce(
+            (acc, site) => ({
+              websites: acc.websites + 1,
+              imageTags: acc.imageTags + site.imageTags,
+              metaTags: acc.metaTags + site.metaTags
+            }),
+            { websites: 0, imageTags: 0, metaTags: 0 }
+          );
+
+          setStats(totalStats);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);

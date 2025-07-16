@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import { createClientComponentClient } from '@/lib/supabase';
 
 interface Website {
   id: number;
@@ -26,6 +27,7 @@ export default function Websites() {
   const [error, setError] = useState('');
 
   const router = useRouter();
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     fetchWebsites();
@@ -33,7 +35,23 @@ export default function Websites() {
 
   const fetchWebsites = async () => {
     try {
-      const response = await fetch('/api/websites');
+      // Get session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError('Please log in to view websites');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/websites`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
       const data = await response.json();
 
       if (!response.ok) {
