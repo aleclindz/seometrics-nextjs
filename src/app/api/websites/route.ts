@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { generateToken } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   const supabase = createServerSupabaseClient();
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
         .insert({
           email: user.email || '',
           auth_user_id: user.id,
-          token: crypto.randomUUID()
+          token: generateToken()
         })
         .select('token')
         .single();
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
         .insert({
           email: user.email || '',
           auth_user_id: user.id,
-          token: crypto.randomUUID()
+          token: generateToken()
         })
         .select('token')
         .single();

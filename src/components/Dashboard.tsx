@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import { useAuth } from '@/contexts/auth';
 import { createClientComponentClient } from '@/lib/supabase';
+import { generateToken } from '@/lib/utils';
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -44,7 +45,7 @@ export default function Dashboard() {
             .insert({
               email: user.email || '',
               auth_user_id: user.id,
-              token: crypto.randomUUID()
+              token: generateToken()
             })
             .select('token')
             .single();
