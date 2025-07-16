@@ -54,6 +54,10 @@ serve(async (req) => {
 })
 
 async function handleSmartJsRequest(websiteToken: string, images: string[], supabase: any) {
+  console.log(`[ALT-TAGS] Processing request for website token: ${websiteToken}`)
+  console.log(`[ALT-TAGS] Number of images to process: ${images.length}`)
+  console.log(`[ALT-TAGS] Images: ${JSON.stringify(images)}`)
+
   // Verify website token exists
   const { data: website, error: websiteError } = await supabase
     .from('websites')
@@ -62,40 +66,60 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
     .single()
 
   if (websiteError || !website) {
+    console.error(`[ALT-TAGS] Website not found for token: ${websiteToken}`, websiteError)
     return new Response(
-      JSON.stringify({ error: 'Invalid website token' }),
+      JSON.stringify({ error: 'Invalid website token', details: websiteError }),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 
+  console.log(`[ALT-TAGS] Found website: ${website.domain}, image_tags_enabled: ${website.enable_image_tags}`)
+
   // Only process if image tags are enabled
   if (!website.enable_image_tags) {
+    console.log(`[ALT-TAGS] Image tags disabled for website: ${website.domain}`)
     return new Response(
-      JSON.stringify({}),
+      JSON.stringify({ message: 'Image tags disabled for this website' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 
   const altTags: Record<string, string> = {}
+  let processedCount = 0
+  let generatedCount = 0
+  let existingCount = 0
+  let errorCount = 0
 
   // Process each image
   for (const imageUrl of images) {
     try {
+      console.log(`[ALT-TAGS] Processing image: ${imageUrl}`)
+      
       // Check if alt-tag already exists
-      const { data: existingTag } = await supabase
+      const { data: existingTag, error: selectError } = await supabase
         .from('alt_tags')
         .select('alt_text')
         .eq('website_token', websiteToken)
         .eq('image_url', imageUrl)
         .single()
 
+      if (selectError && selectError.code !== 'PGRST116') {
+        console.error(`[ALT-TAGS] Error checking existing tag for ${imageUrl}:`, selectError)
+      }
+
       if (existingTag) {
+        console.log(`[ALT-TAGS] Found existing alt-tag for ${imageUrl}: ${existingTag.alt_text}`)
         altTags[imageUrl] = existingTag.alt_text
+        existingCount++
+        processedCount++
         continue
       }
 
+      console.log(`[ALT-TAGS] Generating new alt-tag for ${imageUrl}`)
+      
       // Generate alt-tag using AI
       const generatedAltText = await generateAltText(imageUrl, website.language || 'en')
+      console.log(`[ALT-TAGS] Generated alt-tag for ${imageUrl}: ${generatedAltText}`)
       
       // Store in database
       const { error: insertError } = await supabase
@@ -107,23 +131,38 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
         })
 
       if (insertError) {
-        console.error('Error inserting alt-tag:', insertError)
+        console.error(`[ALT-TAGS] Error inserting alt-tag for ${imageUrl}:`, insertError)
         altTags[imageUrl] = 'Image' // fallback
+        errorCount++
       } else {
+        console.log(`[ALT-TAGS] Successfully stored alt-tag for ${imageUrl}`)
         altTags[imageUrl] = generatedAltText
+        generatedCount++
       }
 
+      processedCount++
+
     } catch (error) {
-      console.error('Error processing image:', imageUrl, error)
+      console.error(`[ALT-TAGS] Error processing image ${imageUrl}:`, error)
       altTags[imageUrl] = 'Image' // fallback
+      errorCount++
+      processedCount++
     }
   }
 
+  console.log(`[ALT-TAGS] Processing complete. Processed: ${processedCount}, Generated: ${generatedCount}, Existing: ${existingCount}, Errors: ${errorCount}`)
+
   // Update website image tags count
-  const { data: totalTags } = await supabase
+  const { data: totalTags, error: countError } = await supabase
     .from('alt_tags')
     .select('id')
     .eq('website_token', websiteToken)
+
+  if (countError) {
+    console.error(`[ALT-TAGS] Error counting total tags:`, countError)
+  } else {
+    console.log(`[ALT-TAGS] Total alt-tags for website: ${totalTags?.length || 0}`)
+  }
 
   const { error: updateError } = await supabase
     .from('websites')
@@ -133,7 +172,9 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
     .eq('website_token', websiteToken)
 
   if (updateError) {
-    console.error('Error updating website image tags count:', updateError)
+    console.error(`[ALT-TAGS] Error updating website image tags count:`, updateError)
+  } else {
+    console.log(`[ALT-TAGS] Updated website image tags count to: ${totalTags?.length || 0}`)
   }
 
   return new Response(
@@ -190,9 +231,13 @@ async function handleSingleImageRequest(imageUrl: string, language: string) {
 
 async function generateAltText(imageUrl: string, language: string): Promise<string> {
   try {
+    console.log(`[ALT-TAGS] Generating alt text for ${imageUrl} in ${language}`)
+    
     const openai = new OpenAI({
       apiKey: Deno.env.get('OPENAI_API_KEY')!,
     })
+
+    console.log(`[ALT-TAGS] Sending request to OpenAI for image analysis`)
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -217,15 +262,18 @@ async function generateAltText(imageUrl: string, language: string): Promise<stri
     })
 
     const altText = response.choices[0].message.content?.trim() || ''
+    console.log(`[ALT-TAGS] OpenAI generated alt text: "${altText}" (${altText.length} chars)`)
 
     // Validate character limit
     if (altText.length > 125) {
-      return altText.substring(0, 122) + '...'
+      const truncated = altText.substring(0, 122) + '...'
+      console.log(`[ALT-TAGS] Truncated alt text to: "${truncated}"`)
+      return truncated
     }
 
     return altText
   } catch (error) {
-    console.error('Error generating alt text:', error)
+    console.error(`[ALT-TAGS] Error generating alt text for ${imageUrl}:`, error)
     
     // Generate basic alt text from filename as fallback
     const filename = imageUrl.split('/').pop() || ''
@@ -235,6 +283,9 @@ async function generateAltText(imageUrl: string, language: string): Promise<stri
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .toLowerCase()
 
-    return cleanName ? `Image of ${cleanName}` : 'Image'
+    const fallbackAlt = cleanName ? `Image of ${cleanName}` : 'Image'
+    console.log(`[ALT-TAGS] Using fallback alt text: "${fallbackAlt}"`)
+    
+    return fallbackAlt
   }
 }
