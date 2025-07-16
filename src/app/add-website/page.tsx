@@ -110,7 +110,7 @@ export default function AddWebsite() {
       }
 
       // Show success state with the website token
-      setWebsiteToken(data.website_token);
+      setWebsiteToken(data.website.website_token);
       setSuccess(true);
       setLoading(false);
     } catch (err) {
