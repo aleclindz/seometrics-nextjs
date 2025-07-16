@@ -72,7 +72,7 @@ const idv = '${websiteToken}';
                   <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Copy the JavaScript code below</li>
-                      <li>Paste it into your website's HTML</li>
+                      <li>Paste it into your website&apos;s HTML</li>
                       <li>Place it just before the closing <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">&lt;/body&gt;</code> tag</li>
                       <li>Save and publish your website</li>
                     </ol>
