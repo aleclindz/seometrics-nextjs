@@ -8,8 +8,11 @@ const corsHeaders = {
 }
 
 interface MetaTagsRequest {
-  content: string
-  language: string
+  content?: string
+  language?: string
+  // Smart.js format
+  url?: string
+  id?: string
 }
 
 serve(async (req) => {
@@ -19,12 +22,167 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize OpenAI
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const requestData: MetaTagsRequest = await req.json()
+
+    // Handle smart.js format
+    if (requestData.url && requestData.id) {
+      return await handleSmartJsRequest(requestData.url, requestData.id, supabase)
+    }
+
+    // Handle direct content format (legacy)
+    if (requestData.content && requestData.language) {
+      return await handleDirectContentRequest(requestData.content, requestData.language)
+    }
+
+    return new Response(
+      JSON.stringify({ error: 'Invalid request format' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error) {
+    console.error('Error in generate-meta-tags function:', error)
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+})
+
+async function handleSmartJsRequest(pageUrl: string, websiteToken: string, supabase: any) {
+  // Verify website token exists
+  const { data: website, error: websiteError } = await supabase
+    .from('websites')
+    .select('*')
+    .eq('website_token', websiteToken)
+    .single()
+
+  if (websiteError || !website) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid website token' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // Only process if meta tags are enabled
+  if (!website.enable_meta_tags) {
+    return new Response(
+      JSON.stringify({ title: '', description: '' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  try {
+    // Check if meta tags already exist for this page
+    const { data: existingTags } = await supabase
+      .from('meta_tags')
+      .select('*')
+      .eq('website_token', websiteToken)
+      .eq('page_url', pageUrl)
+      .single()
+
+    if (existingTags) {
+      return new Response(
+        JSON.stringify({ 
+          title: existingTags.meta_title || '', 
+          description: existingTags.meta_description || '' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Fetch page content
+    const pageContent = await fetchPageContent(pageUrl)
+    
+    // Generate meta tags using AI
+    const { title, description } = await generateMetaTags(pageContent, website.language || 'en')
+    
+    // Store in database
+    const { error: insertError } = await supabase
+      .from('meta_tags')
+      .upsert({
+        website_token: websiteToken,
+        page_url: pageUrl,
+        meta_title: title,
+        meta_description: description,
+      })
+
+    if (insertError) {
+      console.error('Error inserting meta tags:', insertError)
+    }
+
+    // Update website meta tags count
+    const { data: totalTags } = await supabase
+      .from('meta_tags')
+      .select('id')
+      .eq('website_token', websiteToken)
+
+    await supabase
+      .from('websites')
+      .update({ 
+        meta_tags: totalTags?.length || 0
+      })
+      .eq('website_token', websiteToken)
+
+    return new Response(
+      JSON.stringify({ title, description }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error) {
+    console.error('Error processing meta tags:', error)
+    return new Response(
+      JSON.stringify({ title: '', description: '' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+}
+
+async function handleDirectContentRequest(content: string, language: string) {
+  const { title, description } = await generateMetaTags(content, language)
+
+  return new Response(
+    JSON.stringify({ 
+      success: true,
+      meta_title: title,
+      meta_description: description
+    }),
+    {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    },
+  )
+}
+
+async function fetchPageContent(url: string): Promise<string> {
+  try {
+    const response = await fetch(url)
+    const html = await response.text()
+    
+    // Extract text content from HTML
+    const textContent = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    return textContent.substring(0, 1000)
+  } catch (error) {
+    console.error('Error fetching page content:', error)
+    return ''
+  }
+}
+
+async function generateMetaTags(content: string, language: string): Promise<{title: string, description: string}> {
+  try {
     const openai = new OpenAI({
       apiKey: Deno.env.get('OPENAI_API_KEY')!,
     })
-
-    const { content, language }: MetaTagsRequest = await req.json()
 
     // Clean and truncate content
     const cleanContent = content.replace(/<[^>]*>/g, '').substring(0, 1000)
@@ -56,40 +214,22 @@ Description: [meta description]`
     const titleMatch = output.match(/Title:\s*(.+)$/m)
     const descMatch = output.match(/Description:\s*(.+)$/m)
 
-    const metaTitle = titleMatch?.[1]?.trim() || ''
-    const metaDescription = descMatch?.[1]?.trim() || ''
+    let metaTitle = titleMatch?.[1]?.trim() || ''
+    let metaDescription = descMatch?.[1]?.trim() || ''
 
-    // Validate character limits
+    // Validate and trim character limits
     if (metaTitle.length > 60) {
-      throw new Error(`Meta title too long: ${metaTitle.length} characters (max 60)`)
+      metaTitle = metaTitle.substring(0, 57) + '...'
     }
     
     if (metaDescription.length > 155) {
-      throw new Error(`Meta description too long: ${metaDescription.length} characters (max 155)`)
+      metaDescription = metaDescription.substring(0, 152) + '...'
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        meta_title: metaTitle,
-        meta_description: metaDescription,
-        raw_response: output
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
-    )
+    return { title: metaTitle, description: metaDescription }
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ 
-        error: error.message 
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      },
-    )
+    console.error('Error generating meta tags:', error)
+    return { title: '', description: '' }
   }
-})
+}

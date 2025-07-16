@@ -53,6 +53,8 @@ export default function AddWebsite() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [websiteToken, setWebsiteToken] = useState('');
 
   const router = useRouter();
   const supabase = createClientComponentClient();
@@ -107,8 +109,10 @@ export default function AddWebsite() {
         return;
       }
 
-      // Redirect to dashboard
-      router.push('/');
+      // Show success state with the website token
+      setWebsiteToken(data.website_token);
+      setSuccess(true);
+      setLoading(false);
     } catch (err) {
       setError('An unexpected error occurred');
       setLoading(false);
@@ -135,16 +139,62 @@ export default function AddWebsite() {
             <main className="grow">
               <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
                 
-                <div className="mb-8">
-                  <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Add Website</h1>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Add a new website to start generating AI-powered SEO content
-                  </p>
-                </div>
+                {success ? (
+                  <div>
+                    <div className="mb-8">
+                      <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Add Code to Website</h1>
+                      <p className="text-gray-600 dark:text-gray-400 mt-2">
+                        Copy the JavaScript tag below and paste it at the bottom of your website code above the closing <strong>&lt;/body&gt;</strong> tag.
+                      </p>
+                    </div>
 
-                <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
-                  <div className="px-6 py-8">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+                      <div className="px-6 py-8">
+                        <div className="mb-6">
+                          <textarea
+                            className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-mono"
+                            rows={4}
+                            readOnly
+                            value={`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/smart.js"></script>
+<script>
+const idv = '${websiteToken}';
+</script>`}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/smart.js"></script>\n<script>\nconst idv = '${websiteToken}';\n</script>`);
+                            }}
+                            className="btn bg-violet-600 hover:bg-violet-700 text-white"
+                          >
+                            Copy Code
+                          </button>
+                          <a
+                            href="/"
+                            className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                              <path d="M5 12l5 5l10 -10" />
+                            </svg>
+                            Done
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="mb-8">
+                      <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Add Website</h1>
+                      <p className="text-gray-600 dark:text-gray-400 mt-2">
+                        Add a new website to start generating AI-powered SEO content
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+                      <div className="px-6 py-8">
+                        <form onSubmit={handleSubmit} className="space-y-6">
                       
                       {error && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
@@ -267,9 +317,11 @@ export default function AddWebsite() {
                           )}
                         </button>
                       </div>
-                    </form>
+                        </form>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </main>
           </div>
