@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [snippetModalOpen, setSnippetModalOpen] = useState(false);
   const [selectedWebsite, setSelectedWebsite] = useState<{url: string; token: string} | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   
   const { user } = useAuth();
   const supabase = createClientComponentClient();
@@ -91,6 +92,61 @@ export default function Dashboard() {
     fetchUserData();
   }, [user, supabase]);
 
+  const deleteWebsite = async (token: string, url: string) => {
+    if (!user) return;
+    
+    const confirmed = window.confirm(`Are you sure you want to delete ${url}? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeleteLoading(token);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        alert('Please log in to delete websites');
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/websites`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ website_token: token }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Refresh the websites list
+      const updatedWebsites = websites.filter(w => w.token !== token);
+      setWebsites(updatedWebsites);
+      
+      // Update stats
+      const totalStats = updatedWebsites.reduce(
+        (acc: { websites: number; imageTags: number; metaTags: number }, site: { imageTags: number; metaTags: number }) => ({
+          websites: acc.websites + 1,
+          imageTags: acc.imageTags + site.imageTags,
+          metaTags: acc.metaTags + site.metaTags
+        }),
+        { websites: 0, imageTags: 0, metaTags: 0 }
+      );
+      setStats(totalStats);
+
+    } catch (error) {
+      console.error('Error deleting website:', error);
+      alert('Failed to delete website. Please try again.');
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
@@ -151,6 +207,17 @@ export default function Dashboard() {
               <div className="sm:flex sm:justify-between sm:items-center mb-8">
                 <div className="mb-4 sm:mb-0">
                   <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Dashboard</h1>
+                </div>
+                <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
+                  <a
+                    href="/add-website"
+                    className="btn bg-violet-600 hover:bg-violet-700 text-white"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Website
+                  </a>
                 </div>
               </div>
 
@@ -233,12 +300,15 @@ export default function Dashboard() {
                             <th className="p-2">
                               <div className="font-semibold text-center">Integration</div>
                             </th>
+                            <th className="p-2">
+                              <div className="font-semibold text-center">Actions</div>
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="text-sm font-medium divide-y divide-gray-100 dark:divide-gray-700/60">
                           {websites.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="p-4 text-center">
+                              <td colSpan={8} className="p-4 text-center">
                                 <a 
                                   href="/add-website" 
                                   className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white inline-flex items-center"
@@ -310,6 +380,32 @@ export default function Dashboard() {
                                       className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
                                     >
                                       Snippet
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center">
+                                    <button 
+                                      onClick={() => deleteWebsite(website.token, website.url)}
+                                      disabled={deleteLoading === website.token}
+                                      className="btn bg-red-600 hover:bg-red-700 text-white text-sm disabled:opacity-50"
+                                    >
+                                      {deleteLoading === website.token ? (
+                                        <>
+                                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                          </svg>
+                                          Deleting...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                          </svg>
+                                          Delete
+                                        </>
+                                      )}
                                     </button>
                                   </div>
                                 </td>

@@ -244,6 +244,67 @@ serve(async (req) => {
       )
     }
 
+    if (req.method === 'DELETE') {
+      // Delete website
+      const { website_token }: { website_token: string } = await req.json()
+
+      // Validate website token
+      if (!website_token || typeof website_token !== 'string') {
+        return new Response(
+          JSON.stringify({ error: 'Website token is required' }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      // Get user profile
+      let { data: userProfile, error: userError } = await supabase
+        .from('login_users')
+        .select('token')
+        .eq('auth_user_id', user.id)
+        .single()
+
+      if (userError || !userProfile) {
+        return new Response(
+          JSON.stringify({ error: 'User profile not found' }),
+          { 
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      // Verify website belongs to user and delete
+      const { data: website, error: deleteError } = await supabase
+        .from('websites')
+        .delete()
+        .eq('website_token', website_token)
+        .eq('user_token', userProfile.token)
+        .select()
+        .single()
+
+      if (deleteError) {
+        console.error('Error deleting website:', deleteError)
+        return new Response(
+          JSON.stringify({ error: 'Failed to delete website or website not found' }),
+          { 
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ message: 'Website deleted successfully', website }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
       { 
