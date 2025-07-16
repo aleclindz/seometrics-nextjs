@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '@/contexts/auth';
 
@@ -68,13 +67,11 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 aria-expanded={userMenuOpen}
               >
-                <Image 
-                  className="w-8 h-8 rounded-full" 
-                  src="/images/user-avatar-32.png" 
-                  width={32} 
-                  height={32} 
-                  alt="User" 
-                />
+                <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                </div>
                 <div className="flex items-center truncate">
                   <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">
                     {user?.email}

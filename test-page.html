@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO Metrics Test Page</title>
+</head>
+<body>
+    <h1>SEO Metrics Test Page</h1>
+    
+    <p>This is a test page to verify that the SEO Metrics system is working properly.</p>
+    
+    <h2>Images to Test Alt-Tag Generation</h2>
+    
+    <img src="https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=Test+Image+1" alt="">
+    <img src="https://via.placeholder.com/400x300/2196F3/FFFFFF?text=Test+Image+2" alt="">
+    <img src="https://via.placeholder.com/200x200/FF9800/FFFFFF?text=Test+Image+3" alt="">
+    
+    <h2>Content for Meta-Tag Generation</h2>
+    
+    <p>This page contains sample content about web development and SEO optimization. The SEO Metrics system should automatically generate meta titles and descriptions based on this content.</p>
+    
+    <p>Key topics covered on this page include:</p>
+    <ul>
+        <li>Automated SEO optimization</li>
+        <li>AI-powered alt-tag generation</li>
+        <li>Meta-tag automation</li>
+        <li>Website accessibility improvements</li>
+    </ul>
+    
+    <p>The smart.js script should scan this page and automatically generate appropriate meta tags and alt-text for the images above.</p>
+    
+    <!-- SEO Metrics JavaScript - Replace 'YOUR_WEBSITE_TOKEN' with actual token -->
+    <script src="https://seometrics-nextjs.vercel.app/smart.js"></script>
+    <script>
+        // NOTE: Replace 'YOUR_WEBSITE_TOKEN' with the actual token from your website
+        const idv = 'YOUR_WEBSITE_TOKEN';
+        
+        // Add some debugging to see what happens
+        console.log('SEO Metrics: Test page loaded with token:', idv);
+        
+        // Wait a bit then check if alt tags were added
+        setTimeout(function() {
+            const images = document.querySelectorAll('img');
+            console.log('SEO Metrics: Checking alt tags after 5 seconds...');
+            images.forEach((img, index) => {
+                console.log(`Image ${index + 1}: ${img.src} -> Alt: "${img.alt}"`);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>

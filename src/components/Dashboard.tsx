@@ -221,12 +221,13 @@ export default function Dashboard() {
                             </th>
                             <th></th>
                             <th></th>
+                            <th></th>
                           </tr>
                         </thead>
                         <tbody className="text-sm font-medium divide-y divide-gray-100 dark:divide-gray-700/60">
                           {websites.length === 0 ? (
                             <tr>
-                              <td colSpan={6} className="p-4 text-center">
+                              <td colSpan={7} className="p-4 text-center">
                                 <a 
                                   href="/add-website" 
                                   className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white inline-flex items-center"
@@ -243,7 +244,14 @@ export default function Dashboard() {
                             websites.map((website, index) => (
                               <tr key={index}>
                                 <td className="p-2">
-                                  <div className="text-center">{website.url}</div>
+                                  <div className="text-center">
+                                    <a 
+                                      href={`/website/${website.token}`}
+                                      className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
+                                    >
+                                      {website.url}
+                                    </a>
+                                  </div>
                                 </td>
                                 <td className="p-2">
                                   <div className="text-center text-green-500">
@@ -279,6 +287,29 @@ export default function Dashboard() {
                                     >
                                       View Meta-tags
                                     </a>
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center">
+                                    <button 
+                                      onClick={() => {
+                                        const snippet = `<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/smart.js"></script>
+<script>
+const idv = '${website.token}';
+</script>`;
+                                        navigator.clipboard.writeText(snippet);
+                                        // Show a temporary success message
+                                        const button = event.target;
+                                        const originalText = button.textContent;
+                                        button.textContent = 'Copied!';
+                                        setTimeout(() => {
+                                          button.textContent = originalText;
+                                        }, 2000);
+                                      }}
+                                      className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
+                                    >
+                                      Copy Code
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
