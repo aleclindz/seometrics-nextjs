@@ -129,7 +129,7 @@ export default function SocialProof() {
 
               {/* Content */}
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                "{testimonial.content}"
+                &ldquo;{testimonial.content}&rdquo;
               </p>
 
               {/* Metrics */}

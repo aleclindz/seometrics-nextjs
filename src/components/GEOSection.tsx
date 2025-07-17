@@ -201,10 +201,10 @@ export default function GEOSection() {
         <div className="text-center">
           <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-2xl p-8 md:p-12 text-white">
             <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              Don't get left behind in the AI revolution
+              Don&apos;t get left behind in the AI revolution
             </h3>
             <p className="text-xl text-violet-100 mb-8 max-w-2xl mx-auto">
-              While your competitors focus on yesterday's SEO, you'll be dominating tomorrow's AI-powered search landscape.
+              While your competitors focus on yesterday&apos;s SEO, you&apos;ll be dominating tomorrow&apos;s AI-powered search landscape.
             </p>
             <a
               href="/login"

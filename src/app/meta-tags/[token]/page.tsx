@@ -171,6 +171,17 @@ export default function MetaTagsPage() {
               {/* Page header */}
               <div className="sm:flex sm:justify-between sm:items-center mb-8">
                 <div className="mb-4 sm:mb-0">
+                  <div className="flex items-center mb-2">
+                    <a
+                      href="/"
+                      className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors mr-4"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Back to Dashboard
+                    </a>
+                  </div>
                   <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
                     Meta Tags - {website?.domain}
                   </h1>
