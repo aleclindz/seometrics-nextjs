@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[SEO-METRICS] Smart.js initializing...');
     console.log('[SEO-METRICS] API Base URL:', API_BASE_URL);
     console.log('[SEO-METRICS] Website token (idv):', idv);
+    console.log('[SEO-METRICS] Current page URL:', window.location.href);
+    console.log('[SEO-METRICS] User agent:', navigator.userAgent);
+    console.log('[SEO-METRICS] Page title:', document.title);
 
     // Process meta tags
     processMetaTags();
@@ -71,13 +74,22 @@ async function processMetaTags() {
             console.log('[SEO-METRICS] No meta tags to update - empty response');
         }
 
-        console.log('SEO Metrics: Meta tags processed successfully', {
+        console.log('[SEO-METRICS] Meta tags processed successfully', {
             title: metaData.title,
-            description: metaData.description
+            description: metaData.description,
+            pageUrl: currentUrl,
+            websiteToken: idv
         });
 
     } catch (error) {
         console.error('[SEO-METRICS] Error processing meta tags:', error);
+        console.error('[SEO-METRICS] Meta tags error details:', {
+            error: error.message,
+            stack: error.stack,
+            pageUrl: currentUrl,
+            websiteToken: idv,
+            apiUrl: `${API_BASE_URL}/generate-meta-tags`
+        });
     }
 }
 
@@ -159,9 +171,22 @@ async function processImages() {
             });
 
         console.log(`[SEO-METRICS] Updated ${updatedCount} out of ${imageUrls.length} images with alt tags`);
+        console.log('[SEO-METRICS] Image processing completed', {
+            totalImages: images.length,
+            processedImages: imageUrls.length,
+            updatedImages: updatedCount,
+            websiteToken: idv
+        });
 
     } catch (error) {
         console.error('[SEO-METRICS] Error processing images:', error);
+        console.error('[SEO-METRICS] Image processing error details:', {
+            error: error.message,
+            stack: error.stack,
+            totalImages: document.getElementsByTagName('img').length,
+            websiteToken: idv,
+            apiUrl: `${API_BASE_URL}/generate-image-alt`
+        });
     }
 }
 

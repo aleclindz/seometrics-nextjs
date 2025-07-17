@@ -40,3 +40,7 @@ next-env.d.ts
 html/
 html.zip
 __MACOSX/
+
+# admin tool - don't deploy to production
+admin-tool/
+admin-tool.zip

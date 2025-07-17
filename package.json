@@ -7,11 +7,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "audit-db": "node scripts/audit-database.js",
+    "init-seometrics": "node scripts/init-seometrics-website.js",
+    "admin-tool": "cd admin-tool && npm install && npm start",
+    "admin-setup": "cd admin-tool && npm install"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^17.2.0",
     "next": "^14.2.0",
     "openai": "^4.56.0",
     "react": "^18.3.0",

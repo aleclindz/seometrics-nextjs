@@ -22,30 +22,38 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[META-TAGS] Function called with method:', req.method)
+    console.log('[META-TAGS] Request headers:', Object.fromEntries(req.headers.entries()))
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     const requestData: MetaTagsRequest = await req.json()
+    console.log('[META-TAGS] Request data:', requestData)
 
     // Handle smart.js format
     if (requestData.url && requestData.id) {
+      console.log('[META-TAGS] Processing smart.js request for URL:', requestData.url, 'ID:', requestData.id)
       return await handleSmartJsRequest(requestData.url, requestData.id, supabase)
     }
 
     // Handle direct content format (legacy)
     if (requestData.content && requestData.language) {
+      console.log('[META-TAGS] Processing direct content request, language:', requestData.language)
       return await handleDirectContentRequest(requestData.content, requestData.language)
     }
 
+    console.log('[META-TAGS] Invalid request format - missing required fields')
     return new Response(
       JSON.stringify({ error: 'Invalid request format' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('Error in generate-meta-tags function:', error)
+    console.error('[META-TAGS] Error in generate-meta-tags function:', error)
+    console.error('[META-TAGS] Error stack:', error.stack)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
