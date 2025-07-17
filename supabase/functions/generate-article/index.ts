@@ -18,6 +18,8 @@ interface ArticleRequest {
   keytakes: boolean
   bold: boolean
   blockquotes: boolean
+  userToken: string
+  siteId?: number
 }
 
 serve(async (req) => {
@@ -38,7 +40,28 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { topic, language, tone, searchkeyword, faqs, youtube, tables, keytakes, bold, blockquotes }: ArticleRequest = await req.json()
+    const { topic, language, tone, searchkeyword, faqs, youtube, tables, keytakes, bold, blockquotes, userToken, siteId }: ArticleRequest = await req.json()
+
+    // Validate required fields
+    if (!topic || !userToken) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: topic, userToken' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
+
+    // Check quota before generating article
+    const quotaCheck = await checkQuota(supabase, userToken, siteId)
+    if (!quotaCheck.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Quota exceeded',
+          message: `You have reached your monthly limit of ${quotaCheck.limit} articles. Current usage: ${quotaCheck.currentUsage}`,
+          quota: quotaCheck
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+      )
+    }
 
     // Generate article outline
     const outlinePrompt = `Write 6-8 subheadings for an article about: "${topic}". Use ${language} language.`
@@ -138,11 +161,55 @@ serve(async (req) => {
       article = `<h3>Key Takeaways</h3><ul>${formattedTakeaways}</ul><br>` + article
     }
 
+    // Calculate article metrics
+    const wordCount = article.replace(/<[^>]*>/g, '').split(/\s+/).length
+    const readabilityScore = calculateReadabilityScore(article)
+
+    // Save article to database
+    const { data: savedArticle, error: saveError } = await supabase
+      .from('articles')
+      .insert({
+        user_token: userToken,
+        title: topic,
+        content: article,
+        language: language,
+        settings: {
+          tone,
+          searchkeyword,
+          faqs,
+          youtube,
+          tables,
+          keytakes,
+          bold,
+          blockquotes
+        },
+        site_id: siteId,
+        word_count: wordCount,
+        readability_score: readabilityScore,
+        status: 'generated'
+      })
+      .select()
+      .single()
+
+    if (saveError) {
+      console.error('Error saving article:', saveError)
+      // Continue without failing - article is still generated
+    }
+
+    // Track usage after successful generation
+    await trackUsage(supabase, userToken, 'article', siteId)
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         article,
-        outline 
+        outline,
+        metrics: {
+          wordCount,
+          readabilityScore
+        },
+        quota: await checkQuota(supabase, userToken, siteId),
+        articleId: savedArticle?.id
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -162,3 +229,111 @@ serve(async (req) => {
     )
   }
 })
+
+// Helper function to check quota
+async function checkQuota(supabase: any, userToken: string, siteId?: number) {
+  try {
+    // Get user plan
+    const { data: userPlan, error: planError } = await supabase
+      .from('user_plans')
+      .select('*')
+      .eq('user_token', userToken)
+      .single()
+
+    if (planError || !userPlan) {
+      return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: 'starter' }
+    }
+
+    // Check if subscription is active
+    if (userPlan.status !== 'active') {
+      return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: userPlan.tier }
+    }
+
+    // Get current usage for this month
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    const { data: usage } = await supabase
+      .from('usage_tracking')
+      .select('count')
+      .eq('user_token', userToken)
+      .eq('resource_type', 'article')
+      .eq('month_year', currentMonth)
+
+    const currentUsage = usage?.reduce((sum: number, item: any) => sum + item.count, 0) || 0
+    const limit = userPlan.posts_allowed
+    const allowed = limit === -1 || currentUsage < limit
+    const remaining = limit === -1 ? Infinity : Math.max(0, limit - currentUsage)
+
+    return {
+      allowed,
+      currentUsage,
+      limit,
+      remaining,
+      tier: userPlan.tier
+    }
+  } catch (error) {
+    console.error('Error checking quota:', error)
+    return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: 'starter' }
+  }
+}
+
+// Helper function to track usage
+async function trackUsage(supabase: any, userToken: string, resourceType: string, siteId?: number) {
+  try {
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    
+    // Check if record exists
+    const { data: existing } = await supabase
+      .from('usage_tracking')
+      .select('id, count')
+      .eq('user_token', userToken)
+      .eq('resource_type', resourceType)
+      .eq('month_year', currentMonth)
+      .maybeSingle()
+
+    if (existing) {
+      // Update existing record
+      await supabase
+        .from('usage_tracking')
+        .update({ count: existing.count + 1 })
+        .eq('id', existing.id)
+    } else {
+      // Create new record
+      await supabase
+        .from('usage_tracking')
+        .insert({
+          user_token: userToken,
+          site_id: siteId || null,
+          resource_type: resourceType,
+          month_year: currentMonth,
+          count: 1
+        })
+    }
+  } catch (error) {
+    console.error('Error tracking usage:', error)
+  }
+}
+
+// Helper function to calculate readability score (simplified)
+function calculateReadabilityScore(text: string): number {
+  // Remove HTML tags
+  const plainText = text.replace(/<[^>]*>/g, '')
+  
+  // Count sentences (rough estimate)
+  const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 0).length
+  
+  // Count words
+  const words = plainText.split(/\s+/).filter(w => w.length > 0).length
+  
+  // Count syllables (rough estimate)
+  const syllables = plainText.toLowerCase().split(/\s+/).reduce((count, word) => {
+    return count + Math.max(1, word.replace(/[^aeiou]/g, '').length)
+  }, 0)
+  
+  // Flesch Reading Ease formula
+  if (sentences === 0 || words === 0) return 0
+  
+  const score = 206.835 - (1.015 * (words / sentences)) - (84.6 * (syllables / words))
+  
+  // Convert to grade level (approximate)
+  return Math.max(1, Math.min(20, Math.round((100 - score) / 5)))
+}

@@ -10,6 +10,7 @@
     "lint": "next lint",
     "audit-db": "node scripts/audit-database.js",
     "init-seometrics": "node scripts/init-seometrics-website.js",
+    "setup-stripe": "node scripts/setup-stripe-products.js",
     "admin-tool": "cd admin-tool && npm install && npm start",
     "admin-setup": "cd admin-tool && npm install"
   },
@@ -20,7 +21,8 @@
     "next": "^14.2.0",
     "openai": "^4.56.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
