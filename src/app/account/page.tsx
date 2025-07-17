@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import SubscriptionManager from '@/components/SubscriptionManager';
+import UsageDashboard from '@/components/UsageDashboard';
 
 export default function Account() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -113,26 +115,14 @@ export default function Account() {
                     </div>
                   </div>
 
-                  {/* Plan Information */}
-                  <div className="col-span-full bg-white dark:bg-gray-800 shadow-sm rounded-xl">
-                    <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
-                      <h2 className="font-semibold text-gray-800 dark:text-gray-100">Plan & Billing</h2>
-                    </header>
-                    <div className="p-5">
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                          Free Plan
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          You&apos;re currently on the free plan with basic features
-                        </p>
-                      </div>
-                    </div>
+                  {/* Usage Dashboard */}
+                  <div className="col-span-full">
+                    <UsageDashboard />
+                  </div>
+
+                  {/* Subscription Management */}
+                  <div className="col-span-full">
+                    <SubscriptionManager />
                   </div>
 
                 </div>

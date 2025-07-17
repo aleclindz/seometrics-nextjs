@@ -5,7 +5,7 @@ import { createClientComponentClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 
 type AuthContextType = {
-  user: User | null
+  user: (User & { token?: string }) | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (email: string, password: string) => Promise<{ error: any }>
@@ -15,22 +15,47 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<(User & { token?: string }) | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
+
+  const fetchUserToken = async (authUser: User) => {
+    try {
+      const { data: dbUser } = await supabase
+        .from('login_users')
+        .select('token')
+        .eq('email', authUser.email)
+        .single()
+      
+      return { ...authUser, token: dbUser?.token }
+    } catch (error) {
+      console.error('Error fetching user token:', error)
+      return authUser
+    }
+  }
 
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+      if (session?.user) {
+        const userWithToken = await fetchUserToken(session.user)
+        setUser(userWithToken)
+      } else {
+        setUser(null)
+      }
       setLoading(false)
     }
 
     getSession()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null)
+      async (event, session) => {
+        if (session?.user) {
+          const userWithToken = await fetchUserToken(session.user)
+          setUser(userWithToken)
+        } else {
+          setUser(null)
+        }
         setLoading(false)
       }
     )

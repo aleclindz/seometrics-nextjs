@@ -11,6 +11,9 @@
     "audit-db": "node scripts/audit-database.js",
     "init-seometrics": "node scripts/init-seometrics-website.js",
     "setup-stripe": "node scripts/setup-stripe-products.js",
+    "run-migration": "node scripts/run-migration.js",
+    "setup-subscription-db": "node scripts/create-subscription-tables.js",
+    "test-webhook": "node scripts/test-webhook.js",
     "admin-tool": "cd admin-tool && npm install && npm start",
     "admin-setup": "cd admin-tool && npm install"
   },

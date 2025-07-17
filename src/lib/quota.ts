@@ -119,11 +119,23 @@ export async function incrementUsage(
       });
 
     if (error) {
-      // If upsert fails, try to update existing record
+      // If upsert fails, get the existing record and update it
+      const { data: existingRecord, error: fetchError } = await supabase
+        .from('usage_tracking')
+        .select('count')
+        .eq('user_token', userToken)
+        .eq('resource_type', resourceType)
+        .eq('month_year', currentMonth)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
       const { error: updateError } = await supabase
         .from('usage_tracking')
         .update({
-          count: supabase.raw('count + ?', [amount]),
+          count: existingRecord.count + amount,
         })
         .eq('user_token', userToken)
         .eq('resource_type', resourceType)

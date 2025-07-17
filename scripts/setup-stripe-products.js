@@ -1,5 +1,5 @@
 const Stripe = require('stripe');
-require('dotenv').config({ path: '../.env.local' });
+require('dotenv').config({ path: './.env.local' });
 
 // Initialize Stripe with secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -142,9 +142,14 @@ async function listExistingProducts() {
 
 async function main() {
   // Check if Stripe key is configured
+  console.log('🔍 Checking environment variables...');
+  console.log('STRIPE_SECRET_KEY present:', !!process.env.STRIPE_SECRET_KEY);
+  console.log('STRIPE_SECRET_KEY starts with:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 7) : 'undefined');
+  
   if (!process.env.STRIPE_SECRET_KEY) {
     console.error('❌ STRIPE_SECRET_KEY not found in environment variables');
     console.log('Please add your Stripe secret key to .env.local');
+    console.log('Available env vars:', Object.keys(process.env).filter(k => k.includes('STRIPE')));
     process.exit(1);
   }
 
