@@ -5,7 +5,17 @@
 const API_BASE_URL = 'https://kfbuflsjbkncehtmykhj.supabase.co/functions/v1';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmYnVmbHNqYmtuY2VodG15a2hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIwOTEyNjMsImV4cCI6MjA2NzY2NzI2M30.KLL2E7h36GTQdJszVUcjToBnQZtRruFfm0TYjkBaAJg';
 
-document.addEventListener('DOMContentLoaded', function() {
+// Prevent double-execution
+let seoMetricsInitialized = false;
+
+// Initialize SEO Metrics - handles multiple loading states
+function initializeSEOMetrics() {
+    // Prevent double-execution
+    if (seoMetricsInitialized) {
+        console.log('[SEO-METRICS] Already initialized, skipping...');
+        return;
+    }
+
     // Check if idv (website token) is defined
     if (typeof idv === 'undefined') {
         console.error('SEO Metrics: Website token (idv) is not defined');
@@ -18,13 +28,36 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[SEO-METRICS] Current page URL:', window.location.href);
     console.log('[SEO-METRICS] User agent:', navigator.userAgent);
     console.log('[SEO-METRICS] Page title:', document.title);
+    console.log('[SEO-METRICS] Document ready state:', document.readyState);
+
+    // Mark as initialized
+    seoMetricsInitialized = true;
 
     // Process meta tags
     processMetaTags();
     
     // Process images
     processImages();
-});
+}
+
+// Handle multiple loading scenarios
+if (document.readyState === 'loading') {
+    // DOM is still loading, wait for DOMContentLoaded
+    console.log('[SEO-METRICS] DOM still loading, waiting for DOMContentLoaded...');
+    document.addEventListener('DOMContentLoaded', initializeSEOMetrics);
+    
+    // Fallback timeout in case DOMContentLoaded never fires
+    setTimeout(function() {
+        if (!seoMetricsInitialized) {
+            console.log('[SEO-METRICS] Fallback timeout triggered, initializing...');
+            initializeSEOMetrics();
+        }
+    }, 5000); // 5 second fallback
+} else {
+    // DOM is already loaded (interactive or complete)
+    console.log('[SEO-METRICS] DOM already loaded, initializing immediately...');
+    initializeSEOMetrics();
+}
 
 async function processMetaTags() {
     try {
