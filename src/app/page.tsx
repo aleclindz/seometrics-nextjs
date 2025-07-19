@@ -8,8 +8,11 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 export default function Home() {
   const { user, loading } = useAuth();
 
+  console.log('[HOME DEBUG] Render state - loading:', loading, 'user:', user ? 'exists' : 'null');
+
   // Show loading state while checking authentication
   if (loading) {
+    console.log('[HOME DEBUG] Showing loading state');
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -21,6 +24,9 @@ export default function Home() {
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Loading...
           </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            Checking authentication status...
+          </p>
         </div>
       </div>
     );
@@ -28,6 +34,7 @@ export default function Home() {
 
   // Show dashboard for authenticated users
   if (user) {
+    console.log('[HOME DEBUG] Showing dashboard for authenticated user');
     return (
       <ProtectedRoute>
         <Dashboard />
@@ -36,5 +43,6 @@ export default function Home() {
   }
 
   // Show landing page for visitors
+  console.log('[HOME DEBUG] Showing landing page for unauthenticated user');
   return <LandingPage />;
 }

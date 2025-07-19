@@ -42,7 +42,7 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
             {/* Upgrade button for free users */}
             {userPlan === 0 && (
               <a 
-                href="/plans" 
+                href="/account" 
                 className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white inline-flex items-center"
                 style={{ backgroundColor: '#7e6ced' }}
               >
