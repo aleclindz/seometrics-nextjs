@@ -289,3 +289,58 @@ interface PublishAdapter {
 ```
 
 This plan provides a clear roadmap for implementing the subscription system and enhanced article generation features while maintaining the existing SEO tag functionality.
+
+## 📊 System Architecture Documentation
+
+**IMPORTANT:** The comprehensive system architecture is maintained in `/architecture-diagram.md`. This Mermaid diagram shows all components, data flows, and integrations.
+
+### Architecture Maintenance Rules
+
+**CRITICAL: Mermaid Syntax Rules**
+- **Node IDs**: Use only alphanumeric characters and underscores (A-Z, a-z, 0-9, _)
+- **NO special characters** in node IDs: `/`, `-`, `.`, `(`, `)`, `[`, `]`, etc.
+- **Labels**: Put actual names (with special chars) in square brackets after the ID
+- **Example**: `API_ROUTE["api/subscription/create"]` NOT `API_ROUTE[api/subscription/create]`
+- **Routes**: Use clean IDs like `SUB_CREATE` with labels like `["/api/subscription/create-checkout-session"]`
+
+**When making major changes, UPDATE the architecture diagram:**
+
+1. **New Components Added:**
+   - Add new nodes to the appropriate subgraph
+   - Connect with proper relationships
+   - Update component details section
+
+2. **Database Schema Changes:**
+   - Update table nodes in database subgraph
+   - Add/remove relationships as needed
+   - Update schema documentation
+
+3. **New API Routes/Edge Functions:**
+   - Add to appropriate API subgraph
+   - Connect to relevant database tables
+   - Document functionality
+
+4. **External Service Integration:**
+   - Add new service nodes
+   - Connect data flows
+   - Update integration details
+
+5. **Deployment Changes:**
+   - Update deployment subgraph
+   - Modify infrastructure components
+   - Document new environment requirements
+
+**Always update both:**
+- The Mermaid diagram itself
+- The component details section below it
+- Any relevant data flow descriptions
+
+**Key Changes to Always Document:**
+- New database tables or major schema changes
+- New API endpoints or Edge Functions
+- External service integrations (Stripe, OpenAI, etc.)
+- Authentication/authorization changes
+- Major UI/UX component additions
+- Deployment or infrastructure modifications
+
+The architecture diagram serves as the single source of truth for system design and should be kept current with all development activities.

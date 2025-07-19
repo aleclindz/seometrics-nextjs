@@ -23,10 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (loading) {
-        console.log('[AUTH DEBUG] Failsafe timeout triggered - forcing loading to false')
+        console.log('[AUTH DEBUG] Failsafe timeout triggered after 15s - forcing loading to false')
         setLoading(false)
       }
-    }, 10000) // 10 second timeout
+    }, 15000) // 15 second timeout
 
     return () => clearTimeout(timeout)
   }, [loading])
@@ -34,16 +34,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUserToken = async (authUser: User) => {
     try {
       console.log('[AUTH DEBUG] Fetching token for user:', authUser.email)
-      const { data: dbUser } = await supabase
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Token fetch timeout')), 5000) // 5 second timeout
+      })
+      
+      const fetchPromise = supabase
         .from('login_users')
         .select('token')
         .eq('email', authUser.email)
         .single()
       
+      const { data: dbUser, error } = await Promise.race([fetchPromise, timeoutPromise]) as any
+      
+      if (error) {
+        console.error('[AUTH DEBUG] Database error fetching token:', error)
+        // Return user without token if DB fetch fails
+        console.log('[AUTH DEBUG] Continuing without token due to error')
+        return authUser
+      }
+      
       console.log('[AUTH DEBUG] Token fetch result:', dbUser?.token ? 'Found' : 'Not found')
       return { ...authUser, token: dbUser?.token }
     } catch (error) {
       console.error('[AUTH DEBUG] Error fetching user token:', error)
+      console.log('[AUTH DEBUG] Continuing without token due to timeout/error')
+      // Return user without token - they're still authenticated
       return authUser
     }
   }
@@ -88,18 +105,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         try {
           if (session?.user) {
+            console.log('[AUTH DEBUG] Setting loading to true for token fetch')
+            setLoading(true)
+            
             const userWithToken = await fetchUserToken(session.user)
             setUser(userWithToken)
-            console.log('[AUTH DEBUG] User updated from auth state change')
+            console.log('[AUTH DEBUG] User updated from auth state change with token:', (userWithToken as any).token ? 'yes' : 'no')
           } else {
             setUser(null)
             console.log('[AUTH DEBUG] User cleared from auth state change')
           }
+          
           setLoading(false)
           console.log('[AUTH DEBUG] Loading set to false from auth state change')
         } catch (error) {
           console.error('[AUTH DEBUG] Error in auth state change handler:', error)
-          setUser(null)
+          // Still set the user if we have session, just without token
+          if (session?.user) {
+            setUser(session.user)
+            console.log('[AUTH DEBUG] Set user without token due to error')
+          } else {
+            setUser(null)
+          }
           setLoading(false)
         }
       }
