@@ -42,15 +42,33 @@ export default function CMSConnections() {
       setLoading(true);
       setError(null);
       
+      console.log('[CMS CONNECTIONS UI] Fetching connections for user:', user?.token);
+      
       const response = await fetch(`/api/cms/connections?userToken=${user?.token}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch CMS connections');
+        // Try to get the error message from the response
+        let errorMessage = 'Failed to fetch CMS connections';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error('[CMS CONNECTIONS UI] API error:', errorData);
+        } catch (parseError) {
+          console.error('[CMS CONNECTIONS UI] Failed to parse error response:', parseError);
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
+      console.log('[CMS CONNECTIONS UI] Received data:', data);
+      
+      if (data.message) {
+        console.log('[CMS CONNECTIONS UI] API message:', data.message);
+      }
+      
       setConnections(data.connections || []);
     } catch (err) {
+      console.error('[CMS CONNECTIONS UI] Fetch error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);

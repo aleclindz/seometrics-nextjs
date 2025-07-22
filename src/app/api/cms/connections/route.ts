@@ -20,12 +20,39 @@ export async function GET(request: NextRequest) {
 
     console.log('[CMS CONNECTIONS] Fetching connections for user:', userToken);
 
-    // Check if cms_connections table exists first
+    // Try to get CMS connections with robust error handling
     let connections = [];
-    let error = null;
     
     try {
-      // Get CMS connections with website domain
+      // First, try a simple query to check if table exists
+      const tableCheck = await supabase
+        .from('cms_connections')
+        .select('count')
+        .limit(1);
+      
+      if (tableCheck.error) {
+        console.error('[CMS CONNECTIONS] Table check error:', tableCheck.error);
+        
+        // Handle specific database errors
+        if (tableCheck.error.code === '42P01' || 
+            tableCheck.error.message?.includes('relation') || 
+            tableCheck.error.message?.includes('does not exist')) {
+          console.log('[CMS CONNECTIONS] Table does not exist, returning empty state');
+          return NextResponse.json({
+            success: true,
+            connections: [],
+            message: 'CMS connections feature not yet available - database migration required'
+          });
+        }
+        
+        // Other database errors
+        return NextResponse.json(
+          { error: `Database error: ${tableCheck.error.message}` },
+          { status: 500 }
+        );
+      }
+      
+      // Table exists, now get the actual connections
       const result = await supabase
         .from('cms_connections')
         .select(`
@@ -35,32 +62,32 @@ export async function GET(request: NextRequest) {
         .eq('user_token', userToken)
         .order('created_at', { ascending: false });
       
-      connections = result.data || [];
-      error = result.error;
-    } catch (tableError) {
-      console.error('[CMS CONNECTIONS] Table access error (migrations may not be run):', tableError);
-      // Return empty array if table doesn't exist yet
-      return NextResponse.json({
-        success: true,
-        connections: [],
-        message: 'CMS connections table not initialized yet'
-      });
-    }
-
-    if (error) {
-      console.error('[CMS CONNECTIONS] Database error:', error);
+      if (result.error) {
+        console.error('[CMS CONNECTIONS] Query error:', result.error);
+        return NextResponse.json(
+          { error: `Failed to fetch connections: ${result.error.message}` },
+          { status: 500 }
+        );
+      }
       
-      // Handle specific error cases
-      if (error.code === '42P01') { // Table doesn't exist
+      connections = result.data || [];
+      
+    } catch (tableError: any) {
+      console.error('[CMS CONNECTIONS] Unexpected error:', tableError);
+      
+      // Check if it's a table/relation error
+      if (tableError.message?.includes('relation') || 
+          tableError.message?.includes('does not exist') ||
+          tableError.code === '42P01') {
         return NextResponse.json({
           success: true,
           connections: [],
-          message: 'CMS connections feature not yet set up'
+          message: 'CMS connections not yet set up - migrations pending'
         });
       }
       
       return NextResponse.json(
-        { error: 'Failed to fetch connections' },
+        { error: `Unexpected error: ${tableError.message || 'Unknown error'}` },
         { status: 500 }
       );
     }
