@@ -35,7 +35,7 @@ export default function CMSConnections() {
     if (user?.token) {
       fetchConnections();
     }
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchConnections = async () => {
     try {

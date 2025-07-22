@@ -68,7 +68,7 @@ export default function CMSConnectionWizard({ onComplete, onCancel }: CMSConnect
 
   useEffect(() => {
     fetchUserWebsites();
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchUserWebsites = async () => {
     try {

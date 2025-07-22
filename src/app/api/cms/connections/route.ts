@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         .eq('user_token', userToken)
         .order('created_at', { ascending: false });
       
-      connections = result.data;
+      connections = result.data || [];
       error = result.error;
     } catch (tableError) {
       console.error('[CMS CONNECTIONS] Table access error (migrations may not be run):', tableError);
