@@ -20,18 +20,45 @@ export async function GET(request: NextRequest) {
 
     console.log('[CMS CONNECTIONS] Fetching connections for user:', userToken);
 
-    // Get CMS connections with website domain
-    const { data: connections, error } = await supabase
-      .from('cms_connections')
-      .select(`
-        *,
-        websites!inner(domain)
-      `)
-      .eq('user_token', userToken)
-      .order('created_at', { ascending: false });
+    // Check if cms_connections table exists first
+    let connections = [];
+    let error = null;
+    
+    try {
+      // Get CMS connections with website domain
+      const result = await supabase
+        .from('cms_connections')
+        .select(`
+          *,
+          websites!inner(domain)
+        `)
+        .eq('user_token', userToken)
+        .order('created_at', { ascending: false });
+      
+      connections = result.data;
+      error = result.error;
+    } catch (tableError) {
+      console.error('[CMS CONNECTIONS] Table access error (migrations may not be run):', tableError);
+      // Return empty array if table doesn't exist yet
+      return NextResponse.json({
+        success: true,
+        connections: [],
+        message: 'CMS connections table not initialized yet'
+      });
+    }
 
     if (error) {
       console.error('[CMS CONNECTIONS] Database error:', error);
+      
+      // Handle specific error cases
+      if (error.code === '42P01') { // Table doesn't exist
+        return NextResponse.json({
+          success: true,
+          connections: [],
+          message: 'CMS connections feature not yet set up'
+        });
+      }
+      
       return NextResponse.json(
         { error: 'Failed to fetch connections' },
         { status: 500 }

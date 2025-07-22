@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import FeatureGate from '@/components/FeatureGate';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
-import CMSConnectionForm from '@/components/CMSConnectionForm';
+import CMSConnectionWizard from '@/components/CMSConnectionWizard';
 import CMSConnectionsList from '@/components/CMSConnectionsList';
 
 interface CMSConnection {
@@ -105,14 +105,14 @@ export default function CMSConnections() {
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                      Add Connection
+                      Connect CMS
                     </button>
                   </div>
 
                   {showForm && (
                     <div className="mb-8">
-                      <CMSConnectionForm
-                        onSuccess={handleConnectionAdded}
+                      <CMSConnectionWizard
+                        onComplete={handleConnectionAdded}
                         onCancel={() => setShowForm(false)}
                       />
                     </div>
@@ -164,7 +164,7 @@ export default function CMSConnections() {
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                           </svg>
-                          Add Your First Connection
+                          Get Started
                         </button>
                       </div>
                     </div>
