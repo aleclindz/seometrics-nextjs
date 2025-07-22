@@ -176,6 +176,34 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
                 </Link>
               </li>
 
+              {/* CMS Connections */}
+              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
+                isActive('/cms-connections') 
+                  ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}>
+                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/cms-connections">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center min-w-0">
+                      <svg className={`shrink-0 fill-current transition-colors ${
+                        isActive('/cms-connections') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
+                      }`} width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2H2ZM1 4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4Z"></path>
+                        <path d="M14 4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1h7a1 1 0 0 0 1-1V4h2Z"></path>
+                      </svg>
+                      <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
+                        CMS Connections
+                      </span>
+                    </div>
+                    {!hasFeature('articleGeneration') && (
+                      <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
+                        <UpgradeBadge feature="CMS Integration" plan="starter" size="sm" />
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              </li>
+
               {/* Account */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
                 isActive('/account') 
