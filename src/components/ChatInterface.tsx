@@ -198,10 +198,10 @@ export default function ChatInterface({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={isLoading}
-            rows={1}
+            rows={2}
             className="w-full px-4 py-3 pr-12 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none disabled:opacity-50"
             style={{ 
-              minHeight: '48px',
+              minHeight: '64px',
               maxHeight: '120px',
               height: 'auto'
             }}
@@ -214,7 +214,7 @@ export default function ChatInterface({
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:hover:bg-violet-600 text-white rounded-lg flex items-center justify-center transition-colors"
+            className="absolute right-2 bottom-2 w-8 h-8 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:hover:bg-violet-600 text-white rounded-lg flex items-center justify-center transition-colors"
           >
             {isLoading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

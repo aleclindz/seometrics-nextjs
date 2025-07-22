@@ -55,13 +55,13 @@ export function useFeatures() {
   };
 
   const getFeatureAccess = (): FeatureAccess => {
-    if (!userPlan) {
-      // Default to free tier if no plan
+    if (!userPlan || loading) {
+      // Don't show any restrictions while loading to prevent badge flash
       return {
         altTags: true,
         metaTags: true,
-        articleGeneration: false,
-        keywordsTool: false,
+        articleGeneration: true, // Allow while loading to prevent badge flash
+        keywordsTool: true, // Allow while loading to prevent badge flash
         seoDebug: false,
         analytics: false,
         prioritySupport: false,
