@@ -34,65 +34,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUserToken = async (authUser: User) => {
     try {
       console.log('[AUTH DEBUG] Fetching token for user:', authUser.email, 'ID:', authUser.id)
-      console.log('[AUTH DEBUG] Using auth_user_id query method (NOT email)')
       
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Token fetch timeout')), 5000) // 5 second timeout
-      })
-      
-      // Query by auth_user_id instead of email to work with RLS policies
-      console.log('[AUTH DEBUG] Querying login_users by auth_user_id:', authUser.id)
-      const fetchPromise = supabase
-        .from('login_users')
-        .select('token')
-        .eq('auth_user_id', authUser.id)
-        .single()
-      
-      const { data: dbUser, error } = await Promise.race([fetchPromise, timeoutPromise]) as any
-      
-      if (error) {
-        console.error('[AUTH DEBUG] Database error fetching token:', error)
-        console.error('[AUTH DEBUG] Full error object:', JSON.stringify(error, null, 2))
-        
-        // If user doesn't exist, they might be a new user - check if trigger failed
-        if (error.code === 'PGRST116') { // No rows returned
-          console.log('[AUTH DEBUG] User not found in login_users, might be new user')
-          console.log('[AUTH DEBUG] Attempting to create user record manually')
-          // Try to create the user record manually
-          try {
-            const newToken = crypto.randomUUID()
-            console.log('[AUTH DEBUG] Generated new token:', newToken)
-            const { data: newUser, error: insertError } = await supabase
-              .from('login_users')
-              .insert({
-                email: authUser.email,
-                auth_user_id: authUser.id,
-                token: newToken
-              })
-              .select('token')
-              .single()
-              
-            if (insertError) {
-              console.error('[AUTH DEBUG] Failed to create user record:', insertError)
-              return authUser
-            }
-            
-            console.log('[AUTH DEBUG] Created new user record with token')
-            return { ...authUser, token: newUser.token }
-          } catch (createError) {
-            console.error('[AUTH DEBUG] Error creating user record:', createError)
-            return authUser
-          }
+      // First try direct database query (should work with proper RLS)
+      console.log('[AUTH DEBUG] Trying direct database query first...')
+      try {
+        const { data: dbUser, error } = await supabase
+          .from('login_users')
+          .select('token')
+          .eq('auth_user_id', authUser.id)
+          .single()
+
+        if (!error && dbUser?.token) {
+          console.log('[AUTH DEBUG] Direct query successful!')
+          return { ...authUser, token: dbUser.token }
         }
         
-        // Return user without token if DB fetch fails
-        console.log('[AUTH DEBUG] Continuing without token due to error')
-        return authUser
+        console.log('[AUTH DEBUG] Direct query failed or no token:', error)
+      } catch (directError) {
+        console.log('[AUTH DEBUG] Direct query exception:', directError)
+      }
+
+      // Fallback: Use API endpoint with service role
+      console.log('[AUTH DEBUG] Trying API endpoint fallback...')
+      const response = await fetch(`/api/auth/get-token?authUserId=${authUser.id}`)
+      
+      if (response.ok) {
+        const apiResult = await response.json()
+        console.log('[AUTH DEBUG] API endpoint successful!')
+        return { ...authUser, token: apiResult.token }
       }
       
-      console.log('[AUTH DEBUG] Token fetch result:', dbUser?.token ? 'Found' : 'Not found')
-      return { ...authUser, token: dbUser?.token }
+      console.log('[AUTH DEBUG] API endpoint also failed, status:', response.status)
+      const errorText = await response.text()
+      console.log('[AUTH DEBUG] API error response:', errorText)
+      
+      // Both methods failed - return user without token
+      console.log('[AUTH DEBUG] Both direct query and API endpoint failed')
+      return authUser
     } catch (error) {
       console.error('[AUTH DEBUG] Error fetching user token:', error)
       console.log('[AUTH DEBUG] Continuing without token due to timeout/error')
