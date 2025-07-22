@@ -69,7 +69,16 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get current usage
+    // Get actual website count from websites table
+    console.log('[SUBSCRIPTION API] Querying websites for userToken:', userToken);
+    const { data: websites, error: websitesError } = await supabase
+      .from('websites')
+      .select('id')
+      .eq('user_token', userToken);
+    
+    console.log('[SUBSCRIPTION API] websites query result:', { count: websites?.length || 0, error: websitesError });
+
+    // Get current monthly usage from usage_tracking table
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
     console.log('[SUBSCRIPTION API] Querying usage_tracking for userToken:', userToken, 'month:', currentMonth);
     const { data: usage, error: usageError } = await supabase
@@ -80,7 +89,7 @@ export async function GET(request: NextRequest) {
     
     console.log('[SUBSCRIPTION API] usage_tracking query result:', { usage, usageError });
 
-    // Calculate usage by resource type
+    // Calculate monthly usage by resource type (articles generated this month)
     const usageByType = usage?.reduce((acc, item) => {
       acc[item.resource_type] = (acc[item.resource_type] || 0) + item.count;
       return acc;
@@ -99,8 +108,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       plan: userPlan,
       usage: {
-        sites: usageByType.site || 0,
-        articles: usageByType.article || 0,
+        sites: websites?.length || 0, // Actual count of connected websites
+        articles: usageByType.article || 0, // Monthly article generation count
         month: currentMonth,
       },
       subscription: stripeSubscription ? {
