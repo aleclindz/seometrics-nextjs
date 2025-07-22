@@ -251,11 +251,13 @@ graph TB
 5. Tags served via API endpoints
 
 ## Security Features
-- Row Level Security (RLS) on all tables
-- User token-based access control
+- Row Level Security (RLS) on all tables including subscription tables
+- User token-based access control with auth.uid() validation
+- Service role policies for Stripe webhooks and Edge Functions
 - Stripe webhook signature verification
 - Environment variable protection
 - CORS headers on Edge Functions
+- Auto-creation of default user plans for new accounts
 
 ## Monitoring & Analytics
 - Usage tracking for quota management

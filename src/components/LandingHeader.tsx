@@ -47,7 +47,7 @@ export default function LandingHeader() {
               Sign In
             </Link>
             <Link
-              href="/login"
+              href="/login?mode=signup"
               className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
               Get Started
@@ -95,7 +95,7 @@ export default function LandingHeader() {
                   Sign In
                 </Link>
                 <Link
-                  href="/login"
+                  href="/login?mode=signup"
                   className="block bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium text-center transition-colors"
                 >
                   Get Started

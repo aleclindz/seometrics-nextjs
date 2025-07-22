@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useFeatures } from '@/hooks/useFeatures';
+import UpgradeBadge from './UpgradeBadge';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -14,6 +16,7 @@ interface SidebarProps {
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, setSidebarExpanded }: SidebarProps) {
   const pathname = usePathname();
+  const { features, hasFeature } = useFeatures();
   
   const isActive = (path: string) => {
     if (path === '/') {
@@ -125,16 +128,23 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}>
                 <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/article-writer">
-                  <div className="flex items-center">
-                    <svg className={`shrink-0 fill-current transition-colors ${
-                      isActive('/article-writer') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
-                    }`} width="16" height="16" viewBox="0 0 16 16">
-                      <path d="M13.95.879a3 3 0 0 0-4.243 0L1.293 9.293a1 1 0 0 0-.274.51l-1 5a1 1 0 0 0 1.177 1.177l5-1a1 1 0 0 0 .511-.273l8.414-8.414a3 3 0 0 0 0-4.242L13.95.879ZM11.12 2.293a1 1 0 0 1 1.414 0l1.172 1.172a1 1 0 0 1 0 1.414l-8.2 8.2-3.232.646.646-3.232 8.2-8.2Z"></path>
-                      <path d="M10 14a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2h-5Z"></path>
-                    </svg>
-                    <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
-                      Article Writer
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center min-w-0">
+                      <svg className={`shrink-0 fill-current transition-colors ${
+                        isActive('/article-writer') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
+                      }`} width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M13.95.879a3 3 0 0 0-4.243 0L1.293 9.293a1 1 0 0 0-.274.51l-1 5a1 1 0 0 0 1.177 1.177l5-1a1 1 0 0 0 .511-.273l8.414-8.414a3 3 0 0 0 0-4.242L13.95.879ZM11.12 2.293a1 1 0 0 1 1.414 0l1.172 1.172a1 1 0 0 1 0 1.414l-8.2 8.2-3.232.646.646-3.232 8.2-8.2Z"></path>
+                        <path d="M10 14a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2h-5Z"></path>
+                      </svg>
+                      <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
+                        Article Writer
+                      </span>
+                    </div>
+                    {!hasFeature('articleGeneration') && (
+                      <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
+                        <UpgradeBadge feature="Article Writer" plan="starter" size="sm" />
+                      </div>
+                    )}
                   </div>
                 </Link>
               </li>
@@ -146,15 +156,22 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}>
                 <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/keywords">
-                  <div className="flex items-center">
-                    <svg className={`shrink-0 fill-current transition-colors ${
-                      isActive('/keywords') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
-                    }`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                      <path d="M9 6.855A3.502 3.502 0 0 0 8 0a3.5 3.5 0 0 0-1 6.855v1.656L5.534 9.65a3.5 3.5 0 1 0 1.229 1.578L8 10.267l1.238.962a3.5 3.5 0 1 0 1.229-1.578L9 8.511V6.855ZM6.5 3.5a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Zm4.803 8.095c.005-.005.01-.01.013-.016l.012-.016a1.5 1.5 0 1 1-.025.032ZM3.5 11c.474 0 .897.22 1.171.563l.013.016.013.017A1.5 1.5 0 1 1 3.5 11Z"></path>
-                    </svg>
-                    <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
-                      Keyword Research
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center min-w-0">
+                      <svg className={`shrink-0 fill-current transition-colors ${
+                        isActive('/keywords') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
+                      }`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M9 6.855A3.502 3.502 0 0 0 8 0a3.5 3.5 0 0 0-1 6.855v1.656L5.534 9.65a3.5 3.5 0 1 0 1.229 1.578L8 10.267l1.238.962a3.5 3.5 0 1 0 1.229-1.578L9 8.511V6.855ZM6.5 3.5a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Zm4.803 8.095c.005-.005.01-.01.013-.016l.012-.016a1.5 1.5 0 1 1-.025.032ZM3.5 11c.474 0 .897.22 1.171.563l.013.016.013.017A1.5 1.5 0 1 1 3.5 11Z"></path>
+                      </svg>
+                      <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
+                        Keyword Research
+                      </span>
+                    </div>
+                    {!hasFeature('keywordsTool') && (
+                      <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
+                        <UpgradeBadge feature="Keywords Tool" plan="starter" size="sm" />
+                      </div>
+                    )}
                   </div>
                 </Link>
               </li>

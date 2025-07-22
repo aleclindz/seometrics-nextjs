@@ -33,23 +33,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserToken = async (authUser: User) => {
     try {
-      console.log('[AUTH DEBUG] Fetching token for user:', authUser.email)
+      console.log('[AUTH DEBUG] Fetching token for user:', authUser.email, 'ID:', authUser.id)
       
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Token fetch timeout')), 5000) // 5 second timeout
       })
       
+      // Query by auth_user_id instead of email to work with RLS policies
       const fetchPromise = supabase
         .from('login_users')
         .select('token')
-        .eq('email', authUser.email)
+        .eq('auth_user_id', authUser.id)
         .single()
       
       const { data: dbUser, error } = await Promise.race([fetchPromise, timeoutPromise]) as any
       
       if (error) {
         console.error('[AUTH DEBUG] Database error fetching token:', error)
+        
+        // If user doesn't exist, they might be a new user - check if trigger failed
+        if (error.code === 'PGRST116') { // No rows returned
+          console.log('[AUTH DEBUG] User not found in login_users, might be new user')
+          // Try to create the user record manually
+          try {
+            const { data: newUser, error: insertError } = await supabase
+              .from('login_users')
+              .insert({
+                email: authUser.email,
+                auth_user_id: authUser.id,
+                token: crypto.randomUUID()
+              })
+              .select('token')
+              .single()
+              
+            if (insertError) {
+              console.error('[AUTH DEBUG] Failed to create user record:', insertError)
+              return authUser
+            }
+            
+            console.log('[AUTH DEBUG] Created new user record with token')
+            return { ...authUser, token: newUser.token }
+          } catch (createError) {
+            console.error('[AUTH DEBUG] Error creating user record:', createError)
+            return authUser
+          }
+        }
+        
         // Return user without token if DB fetch fails
         console.log('[AUTH DEBUG] Continuing without token due to error')
         return authUser

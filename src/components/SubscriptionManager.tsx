@@ -35,13 +35,25 @@ interface SubscriptionData {
 }
 
 const SUBSCRIPTION_TIERS = {
+  free: {
+    name: 'Free Plan',
+    price: 0,
+    features: [
+      '1 connected site',
+      'Free alt-tags generation',
+      'Free meta-tags generation',
+      'Community support'
+    ]
+  },
   starter: {
     name: 'Starter Plan',
     price: 49,
     features: [
       '2 connected sites',
       '4 articles per site per month',
-      'Basic SEO optimization',
+      'Advanced SEO optimization',
+      'Article generation',
+      'Keywords tool',
       'Email support'
     ]
   },
@@ -51,9 +63,10 @@ const SUBSCRIPTION_TIERS = {
     features: [
       '5 connected sites',
       '10 articles per site per month',
-      'Advanced SEO optimization',
+      'All Starter features',
       'Priority support',
-      'Analytics dashboard'
+      'Analytics dashboard',
+      'SEO debugging tools'
     ]
   },
   enterprise: {
@@ -62,7 +75,7 @@ const SUBSCRIPTION_TIERS = {
     features: [
       'Unlimited connected sites',
       'Unlimited articles',
-      'Premium SEO features',
+      'All Pro features',
       'Dedicated account manager',
       'Custom integrations',
       'SLA guarantee'
@@ -80,6 +93,10 @@ export default function SubscriptionManager() {
   useEffect(() => {
     if (user?.token) {
       fetchSubscriptionData();
+    } else if (user && !user.token) {
+      // User is authenticated but token is missing - show error
+      setError('Authentication token not found. Please refresh the page.');
+      setLoading(false);
     }
   }, [user]);
 
@@ -88,13 +105,18 @@ export default function SubscriptionManager() {
       setLoading(true);
       setError(null);
       
+      console.log('[SUBSCRIPTION MANAGER] Fetching subscription data for user token:', user?.token);
       const response = await fetch(`/api/subscription/manage?userToken=${user?.token}`);
+      console.log('[SUBSCRIPTION MANAGER] Response status:', response.status);
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[SUBSCRIPTION MANAGER] Response error:', errorText);
         throw new Error('Failed to fetch subscription data');
       }
       
       const data = await response.json();
+      console.log('[SUBSCRIPTION MANAGER] Response data:', data);
       setSubscriptionData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -279,12 +301,12 @@ export default function SubscriptionManager() {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                 {currentTier.name}
               </h3>
-              {currentTier.price && (
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  ${currentTier.price}
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {currentTier.price === 0 ? 'Free' : currentTier.price ? `$${currentTier.price}` : 'Custom'}
+                {(currentTier.price && currentTier.price > 0) && (
                   <span className="text-sm font-normal text-gray-600 dark:text-gray-400">/month</span>
-                </p>
-              )}
+                )}
+              </p>
             </div>
             <div className={`px-3 py-1 rounded-full text-sm font-medium ${
               plan.status === 'active' 
@@ -333,13 +355,55 @@ export default function SubscriptionManager() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {plan.tier !== 'enterprise' && (
+            {plan.tier === 'free' && (
+              <>
+                <button
+                  onClick={() => handleUpgrade('starter')}
+                  disabled={actionLoading}
+                  className="btn bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
+                >
+                  {actionLoading ? 'Loading...' : 'Upgrade to Starter'}
+                </button>
+                <button
+                  onClick={() => handleUpgrade('pro')}
+                  disabled={actionLoading}
+                  className="btn bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                >
+                  {actionLoading ? 'Loading...' : 'Upgrade to Pro'}
+                </button>
+                <button
+                  onClick={() => window.open('https://calendly.com/alec-baxter/15min', '_blank')}
+                  className="btn bg-gray-900 hover:bg-gray-800 text-white"
+                >
+                  Enterprise - Book Call
+                </button>
+              </>
+            )}
+            
+            {plan.tier === 'starter' && (
+              <>
+                <button
+                  onClick={() => handleUpgrade('pro')}
+                  disabled={actionLoading}
+                  className="btn bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                >
+                  {actionLoading ? 'Loading...' : 'Upgrade to Pro'}
+                </button>
+                <button
+                  onClick={() => window.open('https://calendly.com/alec-baxter/15min', '_blank')}
+                  className="btn bg-gray-900 hover:bg-gray-800 text-white"
+                >
+                  Enterprise - Book Call
+                </button>
+              </>
+            )}
+            
+            {plan.tier === 'pro' && (
               <button
-                onClick={() => handleUpgrade(plan.tier === 'starter' ? 'pro' : 'enterprise')}
-                disabled={actionLoading}
-                className="btn bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                onClick={() => window.open('https://calendly.com/alec-baxter/15min', '_blank')}
+                className="btn bg-gray-900 hover:bg-gray-800 text-white"
               >
-                {actionLoading ? 'Loading...' : `Upgrade to ${plan.tier === 'starter' ? 'Pro' : 'Enterprise'}`}
+                Enterprise - Book Call
               </button>
             )}
 
@@ -377,7 +441,7 @@ export default function SubscriptionManager() {
       </div>
 
       {/* Available Plans */}
-      {plan.tier === 'starter' && (
+      {plan.tier === 'free' && (
         <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
           <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
             <h2 className="font-semibold text-gray-800 dark:text-gray-100">Available Plans</h2>
@@ -393,12 +457,12 @@ export default function SubscriptionManager() {
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                         {tier.name}
                       </h3>
-                      {tier.price && (
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-                          ${tier.price}
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                        {tier.price === 0 ? 'Free' : tier.price ? `$${tier.price}` : 'Custom'}
+                        {(tier.price && tier.price > 0) && (
                           <span className="text-sm font-normal text-gray-600 dark:text-gray-400">/month</span>
-                        </p>
-                      )}
+                        )}
+                      </p>
                     </div>
                     
                     <ul className="space-y-2 mb-6">
@@ -413,15 +477,21 @@ export default function SubscriptionManager() {
                     </ul>
                     
                     <button
-                      onClick={() => handleUpgrade(key)}
-                      disabled={actionLoading}
+                      onClick={() => key === 'enterprise' 
+                        ? window.open('https://calendly.com/alec-baxter/15min', '_blank')
+                        : handleUpgrade(key)
+                      }
+                      disabled={actionLoading && key !== 'enterprise'}
                       className={`w-full btn ${
-                        key === 'pro' 
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                          : 'bg-purple-600 hover:bg-purple-700 text-white'
+                        key === 'enterprise' 
+                          ? 'bg-gray-900 hover:bg-gray-800 text-white'
+                          : key === 'pro' 
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                            : 'bg-violet-600 hover:bg-violet-700 text-white'
                       } disabled:opacity-50`}
                     >
-                      {actionLoading ? 'Loading...' : key === 'enterprise' ? 'Contact Sales' : 'Upgrade Now'}
+                      {actionLoading && key !== 'enterprise' ? 'Loading...' : 
+                       key === 'enterprise' ? 'Book Call' : 'Upgrade Now'}
                     </button>
                   </div>
                 );

@@ -24,6 +24,10 @@ export default function UsageDashboard() {
   useEffect(() => {
     if (user?.token) {
       fetchUsageStats();
+    } else if (user && !user.token) {
+      // User is authenticated but token is missing - show error
+      setError('Authentication token not found. Please refresh the page.');
+      setLoading(false);
     }
   }, [user]);
 
@@ -32,13 +36,18 @@ export default function UsageDashboard() {
       setLoading(true);
       setError(null);
       
+      console.log('[USAGE DASHBOARD] Fetching usage stats for user token:', user?.token);
       const response = await fetch(`/api/subscription/manage?userToken=${user?.token}`);
+      console.log('[USAGE DASHBOARD] Response status:', response.status);
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[USAGE DASHBOARD] Response error:', errorText);
         throw new Error('Failed to fetch usage data');
       }
       
       const data = await response.json();
+      console.log('[USAGE DASHBOARD] Response data:', data);
       setUsage({
         currentMonth: data.usage.month,
         sites: data.usage.sites,

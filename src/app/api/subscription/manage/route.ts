@@ -16,7 +16,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userToken = searchParams.get('userToken');
 
+    console.log('[SUBSCRIPTION API] GET request received with userToken:', userToken);
+
     if (!userToken) {
+      console.log('[SUBSCRIPTION API] Missing userToken parameter');
       return NextResponse.json(
         { error: 'Missing userToken parameter' },
         { status: 400 }
@@ -24,26 +27,58 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user plan from database
-    const { data: userPlan, error } = await supabase
+    console.log('[SUBSCRIPTION API] Querying user_plans for userToken:', userToken);
+    let { data: userPlan, error } = await supabase
       .from('user_plans')
       .select('*')
       .eq('user_token', userToken)
       .single();
+    
+    console.log('[SUBSCRIPTION API] user_plans query result:', { userPlan, error });
 
-    if (error || !userPlan) {
+    // If user plan doesn't exist, create a default starter plan
+    if (error && error.code === 'PGRST116') { // No rows returned
+      console.log('Creating default starter plan for user:', userToken)
+      
+      const { data: newPlan, error: insertError } = await supabase
+        .from('user_plans')
+        .insert({
+          user_token: userToken,
+          tier: 'free',
+          sites_allowed: 1,
+          posts_allowed: 0,
+          status: 'active'
+        })
+        .select('*')
+        .single()
+        
+      if (insertError) {
+        console.error('Error creating user plan:', insertError)
+        return NextResponse.json(
+          { error: 'Failed to create user plan' },
+          { status: 500 }
+        )
+      }
+      
+      userPlan = newPlan
+    } else if (error) {
+      console.error('Error fetching user plan:', error)
       return NextResponse.json(
         { error: 'User plan not found' },
         { status: 404 }
-      );
+      )
     }
 
     // Get current usage
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
-    const { data: usage } = await supabase
+    console.log('[SUBSCRIPTION API] Querying usage_tracking for userToken:', userToken, 'month:', currentMonth);
+    const { data: usage, error: usageError } = await supabase
       .from('usage_tracking')
       .select('resource_type, count')
       .eq('user_token', userToken)
       .eq('month_year', currentMonth);
+    
+    console.log('[SUBSCRIPTION API] usage_tracking query result:', { usage, usageError });
 
     // Calculate usage by resource type
     const usageByType = usage?.reduce((acc, item) => {
@@ -98,17 +133,43 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user plan
-    const { data: userPlan, error } = await supabase
+    let { data: userPlan, error } = await supabase
       .from('user_plans')
       .select('*')
       .eq('user_token', userToken)
       .single();
 
-    if (error || !userPlan) {
+    // If user plan doesn't exist, create a default starter plan
+    if (error && error.code === 'PGRST116') { // No rows returned
+      console.log('Creating default starter plan for user:', userToken)
+      
+      const { data: newPlan, error: insertError } = await supabase
+        .from('user_plans')
+        .insert({
+          user_token: userToken,
+          tier: 'free',
+          sites_allowed: 1,
+          posts_allowed: 0,
+          status: 'active'
+        })
+        .select('*')
+        .single()
+        
+      if (insertError) {
+        console.error('Error creating user plan:', insertError)
+        return NextResponse.json(
+          { error: 'Failed to create user plan' },
+          { status: 500 }
+        )
+      }
+      
+      userPlan = newPlan
+    } else if (error) {
+      console.error('Error fetching user plan:', error)
       return NextResponse.json(
         { error: 'User plan not found' },
         { status: 404 }
-      );
+      )
     }
 
     switch (action) {
