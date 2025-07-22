@@ -1,6 +1,18 @@
-You are a skilled full-stack developer who has responsibility for building a working app. You index on keeping things simple and functional and not overcomplicated. Scalability can be solved later. You take the direction of instructions and make sure that the changes that you make work in a complete way - you do not make piecemeal edits that break the app. You challenge the instructions given to you if they are not best practice or do not make sense. You make quality-of-life improvements without being asked. When asked to implement functionality, you make the UI clean and functional and stylish unless specific instructions was given.
+You are a skilled full-stack developer building SEOMetrics.ai - a comprehensive SEO and AEO tool to help users grow their website traffic and visibility.
 
-The purpose of this app that you are working on is a useful SEO and AEO tool to help users grow their website traffic and visibility.
+**CORE PRINCIPLES:**
+- Keep things simple and functional, not overcomplicated
+- Make complete changes that don't break the app
+- Challenge instructions if they're not best practice
+- Make quality-of-life improvements proactively
+- Create clean, functional, and stylish UI by default
+
+**PRIORITY #1: TASK LIST TRACKING**
+Always maintain the feature implementation status below. When working on features:
+1. Mark tasks as `[IN PROGRESS]` when starting
+2. Mark as `[COMPLETED]` when fully implemented and tested
+3. Add new discovered tasks as `[TODO]`
+4. Reference task status when planning work
 
 ## ESLint and Deployment Guidelines
 
@@ -44,303 +56,125 @@ The purpose of this app that you are working on is a useful SEO and AEO tool to 
 
 **Remember:** ESLint errors will cause deployment failures on Vercel. Always prioritize fixing these issues immediately. 
 
-# SEOMetrics.ai Feature Development Plan
+# 🎯 SEOMETRICS.AI IMPLEMENTATION STATUS
 
-## 🎯 Current Focus: Subscription & Access Control + Article Generation
+## 📋 FEATURE IMPLEMENTATION TRACKER
 
-### Phase 1: Subscription & Access Control (HIGH PRIORITY)
+### PHASE 1: SUBSCRIPTION & ACCESS CONTROL
+#### Stripe Integration & Billing
+- [COMPLETED] Create Stripe products for 3 tiers (Starter/Pro/Enterprise) 
+- [COMPLETED] Stripe checkout session creation (`/api/subscription/create-checkout-session`)
+- [COMPLETED] Stripe webhook handling (`/api/subscription/webhook`)
+- [COMPLETED] Subscription management API (`/api/subscription/manage`)
+- [COMPLETED] Database schema: `user_plans` table with RLS policies
+- [COMPLETED] Database schema: `usage_tracking` table with RLS policies
+- [COMPLETED] Subscription management UI component (`SubscriptionManager`)
+- [TODO] Fix auth token fetching issue (causing loading spinners)
+- [TODO] Test complete Stripe payment flow end-to-end
 
-#### 1.1 Stripe Integration Setup
-**Goal:** Create 3-tier subscription system with proper billing
+#### Quota System & Feature Gates
+- [COMPLETED] Usage dashboard component (`UsageDashboard`)
+- [COMPLETED] Feature access hook (`useFeatures`)
+- [COMPLETED] Feature gate component (`FeatureGate`)
+- [COMPLETED] Upgrade badge component (`UpgradeBadge`)
+- [TODO] Implement quota enforcement in article generation
+- [TODO] Add quota checks in edge functions
+- [TODO] Usage tracking for article/site creation
 
-**Subscription Tiers:**
-- **Starter** ($49/month): 2 connected sites, 4 articles/site/month
-- **Pro** ($139/month): 5 connected sites, 10 articles/site/month  
-- **Enterprise** (custom): Unlimited sites & articles
+### PHASE 2: ARTICLE GENERATION PIPELINE
+#### Core Article Generation
+- [COMPLETED] Basic article generation functionality
+- [COMPLETED] Article database schema with enhanced fields
+- [COMPLETED] Article versions tracking table
+- [TODO] Quality gate system (word count, readability, EEAT)
+- [TODO] Article management system (draft/published status)
+- [TODO] Article editing and versioning UI
 
-**Tasks:**
-- [ ] Create Stripe products for 3 tiers
-- [ ] Set up webhook handling for subscription events
-- [ ] Create `user_plans` table schema
-- [ ] Build subscription management UI in Settings
+#### SEO Enhancement Features  
+- [TODO] Internal linking suggestions
+- [TODO] Schema.org Article markup generation
+- [TODO] Meta title/description optimization
+- [TODO] BreadcrumbList schema
+- [TODO] Author information blocks
 
-#### 1.2 Quota System Implementation
-**Goal:** Enforce usage limits based on subscription tier
+### PHASE 3: CMS PUBLISHING INTEGRATION
+#### WordPress Integration
+- [TODO] WordPress OAuth2/App Password authentication
+- [TODO] WordPress REST API adapter
+- [TODO] Category and tag assignment
+- [TODO] Draft/publish status sync
+- [TODO] CMS sites management database schema
 
-**Components:**
-- `hasQuota(userId, siteId)` guard function
-- Usage tracking for article generation
-- Quota checks in Edge Functions
-- Usage dashboard for users
+#### Webflow Integration
+- [TODO] Webflow OAuth2 authentication
+- [TODO] Webflow CMS API adapter
+- [TODO] Collection management
+- [TODO] Item publishing workflow
 
-**Database Schema Updates:**
-```sql
--- New user_plans table
-CREATE TABLE user_plans (
-  id SERIAL PRIMARY KEY,
-  user_token VARCHAR(255) REFERENCES login_users(token),
-  tier VARCHAR(50) NOT NULL, -- 'starter', 'pro', 'enterprise'
-  sites_allowed INTEGER DEFAULT 2,
-  posts_allowed INTEGER DEFAULT 4,
-  stripe_customer_id VARCHAR(255),
-  stripe_subscription_id VARCHAR(255),
-  status VARCHAR(50) DEFAULT 'active',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+### PHASE 4: ADDITIONAL FEATURES
+#### Performance Monitoring
+- [TODO] Google Search Console OAuth integration
+- [TODO] Daily performance data sync
+- [TODO] Low-performer identification
+- [TODO] Rewrite suggestions dashboard
 
--- Usage tracking table
-CREATE TABLE usage_tracking (
-  id SERIAL PRIMARY KEY,
-  user_token VARCHAR(255) REFERENCES login_users(token),
-  site_id INTEGER,
-  resource_type VARCHAR(50), -- 'article', 'site'
-  month_year VARCHAR(7), -- '2025-01'
-  count INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+#### Lead Generation
+- [TODO] Free site audit tool (`/seo-audit` page)
+- [TODO] Lighthouse API integration
+- [TODO] Content gap analysis
+- [TODO] PDF/HTML report generation
 
-### Phase 2: Enhanced Article Generation Pipeline (HIGH PRIORITY)
+#### Enhanced Onboarding
+- [TODO] Step-by-step onboarding wizard
+- [TODO] CMS connection setup flow
+- [TODO] First article generation tutorial
+- [TODO] Welcome call booking integration
 
-#### 2.1 Quality Gate System
-**Goal:** Ensure high-quality content generation with automated checks
+## 🔧 CURRENT INFRASTRUCTURE STATUS
 
-**Quality Checks:**
-- ≥ 400 unique words minimum
-- Readability score ≤ Grade 9 (Hemingway)
-- Plagiarism detection < 5%
-- EEAT checklist validation
+### Database (Supabase PostgreSQL)
+- [COMPLETED] Core authentication tables with RLS
+- [COMPLETED] Website management tables
+- [COMPLETED] Article storage and metadata
+- [COMPLETED] SEO tags generation tables
+- [COMPLETED] Subscription system tables (`user_plans`, `usage_tracking`)
+- [COMPLETED] Article versioning tables
 
-**Implementation:**
-- Quality gate before publishing
-- Auto-save as draft if quality checks fail
-- User notification system for failed checks
+### API Routes (Next.js)
+- [COMPLETED] Authentication endpoints
+- [COMPLETED] Website management endpoints
+- [COMPLETED] Article generation endpoints
+- [COMPLETED] SEO tag generation endpoints
+- [COMPLETED] Subscription management endpoints (`/api/subscription/*`)
+- [TODO] Article publishing endpoints
+- [TODO] CMS integration endpoints
+- [TODO] Analytics/reporting endpoints
 
-#### 2.2 Article Management System
-**Goal:** Comprehensive article lifecycle management
+### Frontend Components (Next.js + TypeScript)
+- [COMPLETED] Authentication system with Supabase
+- [COMPLETED] Dashboard and navigation
+- [COMPLETED] Website management UI
+- [COMPLETED] Article generation interface
+- [COMPLETED] SEO tag generation tools
+- [COMPLETED] Subscription management interface
+- [COMPLETED] Usage dashboard and feature gates
+- [TODO] Article management interface
+- [TODO] CMS connection interface
+- [TODO] Analytics dashboard
 
-**Enhanced Database Schema:**
-```sql
--- Update articles table
-ALTER TABLE articles 
-ADD COLUMN site_id INTEGER REFERENCES websites(id),
-ADD COLUMN slug VARCHAR(255),
-ADD COLUMN status VARCHAR(50) DEFAULT 'draft', -- 'draft', 'published', 'needs_review'
-ADD COLUMN cms_id VARCHAR(255), -- External CMS ID
-ADD COLUMN eeat_score INTEGER DEFAULT 0,
-ADD COLUMN metrics_json JSONB DEFAULT '{}',
-ADD COLUMN word_count INTEGER DEFAULT 0,
-ADD COLUMN readability_score DECIMAL(3,1);
+### External Integrations
+- [COMPLETED] Supabase (Database, Auth, Storage)
+- [COMPLETED] Stripe (Payments, Subscriptions)  
+- [COMPLETED] OpenAI (Content Generation)
+- [TODO] WordPress REST API
+- [TODO] Webflow CMS API
+- [TODO] Google Search Console API
+- [TODO] Lighthouse API
 
--- Article versions table
-CREATE TABLE article_versions (
-  id SERIAL PRIMARY KEY,
-  article_id INTEGER REFERENCES articles(id),
-  version_number INTEGER,
-  content TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+## 🚨 IMMEDIATE PRIORITIES
+1. **Fix auth token issue** preventing subscription data loading
+2. **Test complete Stripe payment flow** end-to-end
+3. **Implement quota enforcement** in article generation
+4. **Build article management interface** for editing/publishing
 
-#### 2.3 SEO Enhancement Features
-**Goal:** Optimize articles for search engines
-
-**Features:**
-- Internal linking suggestions
-- Schema.org Article markup
-- BreadcrumbList schema
-- Author information blocks
-- Meta title/description optimization
-
-### Phase 3: CMS Publishing Integration (MEDIUM PRIORITY)
-
-#### 3.1 WordPress Adapter
-**Goal:** Direct publishing to WordPress sites
-
-**Features:**
-- OAuth2 / App Password authentication
-- WordPress REST API integration
-- Draft/publish status management
-- Category and tag assignment
-
-**Database Schema:**
-```sql
--- Sites table for CMS connections
-CREATE TABLE sites (
-  id SERIAL PRIMARY KEY,
-  user_token VARCHAR(255) REFERENCES login_users(token),
-  name VARCHAR(255) NOT NULL,
-  domain VARCHAR(255) NOT NULL,
-  cms_type VARCHAR(50) NOT NULL, -- 'wordpress', 'webflow'
-  auth_json JSONB DEFAULT '{}',
-  default_status VARCHAR(50) DEFAULT 'draft',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-#### 3.2 Webflow Adapter
-**Goal:** Direct publishing to Webflow CMS
-
-**Features:**
-- OAuth2 authentication
-- Webflow CMS API integration
-- Collection management
-- Item publishing workflow
-
-### Phase 4: Additional Features (LOWER PRIORITY)
-
-#### 4.1 Search Console Integration
-**Goal:** Performance monitoring and optimization suggestions
-
-**Features:**
-- Google Search Console OAuth
-- Daily performance data sync
-- Low-performer identification
-- Rewrite suggestions dashboard
-
-#### 4.2 Free Site Audit Tool
-**Goal:** Lead generation through value-first approach
-
-**Features:**
-- Public audit page (`/seo-audit`)
-- Lighthouse API integration
-- Content gap analysis
-- PDF/HTML report generation
-
-#### 4.3 Enhanced Onboarding
-**Goal:** Smooth user experience from signup to first article
-
-**Features:**
-- Step-by-step wizard
-- CMS connection setup
-- First article generation
-- Welcome call integration (Calendly)
-
-## 🛠️ Technical Implementation
-
-### Current Infrastructure (Supabase-based)
-- **Authentication:** Supabase Auth with JWT
-- **Database:** PostgreSQL with existing tables
-- **Storage:** Supabase Storage for article versions
-- **Edge Functions:** Serverless article generation
-- **Frontend:** Next.js 14 with TypeScript
-
-### New Components Required
-- **Subscription Management:** Stripe integration
-- **Quota System:** Usage tracking and limits
-- **Quality Gates:** Content validation pipeline
-- **CMS Adapters:** WordPress and Webflow publishing
-- **Dashboard:** Usage analytics and management
-
-## 📝 Development Notes
-
-### TypeScript Interfaces
-```typescript
-interface Site {
-  id: number;
-  userId: string;
-  name: string;
-  domain: string;
-  cmsType: 'wordpress' | 'webflow';
-  authData: Record<string, any>;
-  defaultStatus: 'draft' | 'published';
-}
-
-interface Article {
-  id: number;
-  siteId: number;
-  title: string;
-  content: string;
-  slug: string;
-  status: 'draft' | 'published' | 'needs_review';
-  cmsId?: string;
-  eeatScore: number;
-  metrics: ArticleMetrics;
-  wordCount: number;
-  readabilityScore: number;
-}
-
-interface PublishAdapter {
-  authenticate(credentials: any): Promise<boolean>;
-  publish(article: Article): Promise<string>; // Returns CMS ID
-  updateStatus(cmsId: string, status: string): Promise<boolean>;
-}
-```
-
-### API Routes Structure
-```
-/api/subscription/
-  - create-checkout-session
-  - webhook
-  - manage-subscription
-  
-/api/articles/
-  - generate
-  - publish
-  - rollback
-  - quality-check
-  
-/api/sites/
-  - connect
-  - disconnect
-  - test-connection
-```
-
-This plan provides a clear roadmap for implementing the subscription system and enhanced article generation features while maintaining the existing SEO tag functionality.
-
-## 📊 System Architecture Documentation
-
-**IMPORTANT:** The comprehensive system architecture is maintained in `/architecture-diagram.md`. This Mermaid diagram shows all components, data flows, and integrations.
-
-### Architecture Maintenance Rules
-
-**CRITICAL: Mermaid Syntax Rules**
-- **Node IDs**: Use only alphanumeric characters and underscores (A-Z, a-z, 0-9, _)
-- **NO special characters** in node IDs: `/`, `-`, `.`, `(`, `)`, `[`, `]`, etc.
-- **Labels**: Put actual names (with special chars) in square brackets after the ID
-- **Example**: `API_ROUTE["api/subscription/create"]` NOT `API_ROUTE[api/subscription/create]`
-- **Routes**: Use clean IDs like `SUB_CREATE` with labels like `["/api/subscription/create-checkout-session"]`
-
-**When making major changes, UPDATE the architecture diagram:**
-
-1. **New Components Added:**
-   - Add new nodes to the appropriate subgraph
-   - Connect with proper relationships
-   - Update component details section
-
-2. **Database Schema Changes:**
-   - Update table nodes in database subgraph
-   - Add/remove relationships as needed
-   - Update schema documentation
-
-3. **New API Routes/Edge Functions:**
-   - Add to appropriate API subgraph
-   - Connect to relevant database tables
-   - Document functionality
-
-4. **External Service Integration:**
-   - Add new service nodes
-   - Connect data flows
-   - Update integration details
-
-5. **Deployment Changes:**
-   - Update deployment subgraph
-   - Modify infrastructure components
-   - Document new environment requirements
-
-**Always update both:**
-- The Mermaid diagram itself
-- The component details section below it
-- Any relevant data flow descriptions
-
-**Key Changes to Always Document:**
-- New database tables or major schema changes
-- New API endpoints or Edge Functions
-- External service integrations (Stripe, OpenAI, etc.)
-- Authentication/authorization changes
-- Major UI/UX component additions
-- Deployment or infrastructure modifications
-
-The architecture diagram serves as the single source of truth for system design and should be kept current with all development activities.
+**See `/ARCHITECTURE.md` for complete system architecture documentation.**
