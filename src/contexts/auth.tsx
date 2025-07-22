@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUserToken = async (authUser: User) => {
     try {
       console.log('[AUTH DEBUG] Fetching token for user:', authUser.email, 'ID:', authUser.id)
+      console.log('[AUTH DEBUG] Using auth_user_id query method (NOT email)')
       
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       
       // Query by auth_user_id instead of email to work with RLS policies
+      console.log('[AUTH DEBUG] Querying login_users by auth_user_id:', authUser.id)
       const fetchPromise = supabase
         .from('login_users')
         .select('token')
@@ -51,18 +53,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) {
         console.error('[AUTH DEBUG] Database error fetching token:', error)
+        console.error('[AUTH DEBUG] Full error object:', JSON.stringify(error, null, 2))
         
         // If user doesn't exist, they might be a new user - check if trigger failed
         if (error.code === 'PGRST116') { // No rows returned
           console.log('[AUTH DEBUG] User not found in login_users, might be new user')
+          console.log('[AUTH DEBUG] Attempting to create user record manually')
           // Try to create the user record manually
           try {
+            const newToken = crypto.randomUUID()
+            console.log('[AUTH DEBUG] Generated new token:', newToken)
             const { data: newUser, error: insertError } = await supabase
               .from('login_users')
               .insert({
                 email: authUser.email,
                 auth_user_id: authUser.id,
-                token: crypto.randomUUID()
+                token: newToken
               })
               .select('token')
               .single()
