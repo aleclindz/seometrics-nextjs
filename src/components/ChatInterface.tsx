@@ -38,13 +38,21 @@ export default function ChatInterface({
   };
 
   useEffect(() => {
-    scrollToBottom();
+    // Only auto-scroll if the user is near the bottom to avoid interrupting reading
+    const messagesContainer = messagesEndRef.current?.parentElement;
+    if (messagesContainer) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      if (isNearBottom) {
+        scrollToBottom();
+      }
+    }
   }, [messages]);
 
   function getWelcomeMessage(context: string): string {
     switch (context) {
       case 'cms-setup':
-        return "Hi! I'm here to help you set up your CMS connection. I can answer questions about:\n\n• Finding your Strapi API token\n• Content type identifiers\n• Troubleshooting connection issues\n• Best practices for article publishing\n\nWhat would you like to know?";
+        return "👋 **Welcome to the SEOMetrics CMS Setup Assistant!**\n\nI'm here to help you connect your Strapi CMS for automated article publishing.\n\n**Quick Start Questions:**\n• \"Where can I find my Strapi base URL?\"\n• \"How do I get my API token?\"\n• \"What content type should I use?\"\n• \"Help me troubleshoot connection issues\"\n\n**What I can help with:**\n✅ Strapi configuration and setup\n✅ API token creation and permissions\n✅ Content type structure recommendations\n✅ Connection troubleshooting\n✅ Publishing workflow explanations\n\nJust ask me anything about setting up your CMS! 🚀";
       default:
         return "Hello! I'm your AI assistant. How can I help you today?";
     }
@@ -87,24 +95,44 @@ export default function ChatInterface({
     const lowerInput = input.toLowerCase();
     
     if (context === 'cms-setup') {
+      // Base URL questions
+      if (lowerInput.includes('base url') || lowerInput.includes('strapi url') || lowerInput.includes('where') && (lowerInput.includes('url') || lowerInput.includes('strapi'))) {
+        return "**Finding your Strapi Base URL:**\n\nYour Strapi base URL is where your Strapi admin panel is hosted. Common examples:\n\n• **Local development**: `http://localhost:1337`\n• **Heroku**: `https://your-app-name.herokuapp.com`\n• **Vercel/Netlify**: `https://your-strapi-deploy.vercel.app`\n• **DigitalOcean**: `https://your-droplet-ip:1337`\n• **Custom domain**: `https://cms.yourdomain.com`\n\n**How to find it:**\n1. Check where you can access your Strapi admin panel\n2. Copy the URL up to the domain (don&apos;t include `/admin`)\n3. Make sure it starts with `https://` for production\n\n**For SEOMetrics.ai specifically**, if you&apos;re setting up Strapi for your website, you&apos;ll need to deploy Strapi somewhere first and use that URL.";
+      }
+
+      // API Token questions
       if (lowerInput.includes('api token') || lowerInput.includes('token')) {
-        return "To get your Strapi API token:\n\n1. Log into your Strapi admin panel\n2. Go to Settings → API Tokens\n3. Click 'Create new API Token'\n4. Choose 'Full Access' type\n5. Copy the generated token\n\nMake sure to save it somewhere safe - you won&apos;t be able to see it again!";
+        return "**Getting your Strapi API Token:**\n\n**Step-by-step:**\n1. Open your Strapi admin panel\n2. Go to Settings → API Tokens (in the left sidebar)\n3. Click 'Create new API Token'\n4. **Important settings:**\n   - Name: 'SEOMetrics Integration'\n   - Description: 'For automated article publishing'\n   - Token duration: 'Unlimited' (recommended)\n   - Token type: 'Full Access'\n\n5. Click 'Save' and copy the token immediately\n6. Store it securely - you won&apos;t see it again!\n\n**Security tip:** The token gives full access to your Strapi, so keep it secret.";
       }
       
-      if (lowerInput.includes('content type') || lowerInput.includes('api::')) {
-        return "Content type identifiers in Strapi follow this format:\n\n`api::[collection-name]::[collection-name]`\n\nFor example:\n• `api::article::article` for articles\n• `api::blog-post::blog-post` for blog posts\n• `api::news::news` for news\n\nYou can find the exact identifier in your Strapi admin under Content-Type Builder.";
+      // Content Type questions
+      if (lowerInput.includes('content type') || lowerInput.includes('api::') || lowerInput.includes('article type')) {
+        return "**Strapi Content Type Identifiers:**\n\nContent types follow this format: `api::[singular-name]::[singular-name]`\n\n**Common examples:**\n• `api::article::article` - for articles\n• `api::blog-post::blog-post` - for blog posts  \n• `api::post::post` - for posts\n• `api::news::news` - for news items\n\n**How to find yours:**\n1. In Strapi admin, go to Content-Type Builder\n2. Look at your collection types\n3. The API ID shown there is what you need\n4. Add `api::` prefix and `::` + the same name as suffix\n\n**For SEOMetrics:** We recommend creating an 'article' content type with fields for title, content, slug, and meta description.";
       }
       
-      if (lowerInput.includes('connection') || lowerInput.includes('test')) {
-        return "Common connection issues:\n\n• **URL format**: Make sure to include https:// and remove trailing slashes\n• **CORS**: Your Strapi must allow requests from this domain\n• **Token permissions**: Ensure your API token has read/write access\n• **Content type**: Verify the identifier matches exactly\n\nThe test will check connectivity, authentication, and write permissions.";
+      // Connection/Testing questions
+      if (lowerInput.includes('connection') || lowerInput.includes('test') || lowerInput.includes('not working') || lowerInput.includes('error')) {
+        return "**Common CMS Connection Issues:**\n\n**1. URL Problems:**\n• Use `https://` for production (not `http://`)\n• Remove trailing slashes: `https://cms.com` not `https://cms.com/`\n• Don&apos;t include `/admin` in the base URL\n\n**2. CORS Issues:**\n• Your Strapi must allow requests from `seometrics.ai`\n• Check Strapi&apos;s `config/middlewares.js` CORS settings\n\n**3. API Token Issues:**\n• Ensure token type is 'Full Access'\n• Token must not be expired\n• Copy token exactly (no extra spaces)\n\n**4. Content Type Issues:**\n• Verify the exact content type identifier\n• Make sure the content type exists and is published\n\n**Our test checks:** connectivity, authentication, read/write permissions, and content type access.";
       }
       
-      if (lowerInput.includes('publish') || lowerInput.includes('article')) {
-        return "When publishing articles, SEOMetrics will:\n\n• Create entries in your specified content type\n• Include SEO-optimized titles and descriptions\n• Add internal linking suggestions\n• Generate featured images (if enabled)\n• Respect your content structure\n\nArticles are initially saved as drafts for review.";
+      // Publishing workflow questions  
+      if (lowerInput.includes('publish') || lowerInput.includes('article') || lowerInput.includes('content') || lowerInput.includes('workflow')) {
+        return "**SEOMetrics Publishing Workflow:**\n\n**What happens when we publish:**\n1. **Content Generation**: GPT-4 creates SEO-optimized articles\n2. **Quality Checks**: We verify word count, readability, and SEO score\n3. **Image Generation**: DALL-E creates relevant featured images\n4. **Internal Linking**: We suggest relevant internal links\n5. **Strapi Publishing**: Content is sent to your CMS\n\n**Article Structure:**\n• SEO-optimized title and meta description\n• Structured content with proper headings\n• Keyword optimization\n• Internal and external links\n• Featured image and alt text\n\n**Publication Status:**\n• Articles are initially saved as 'draft' for your review\n• You can publish them manually in Strapi\n• Future versions will support auto-publishing";
+      }
+
+      // SEOMetrics specific questions
+      if (lowerInput.includes('seometrics') || lowerInput.includes('this site') || lowerInput.includes('your website')) {
+        return "**About SEOMetrics.ai CMS Integration:**\n\n**What we do:**\n• Generate high-quality, SEO-optimized articles for your website\n• Automatically publish to your Strapi CMS\n• Create internal linking strategies\n• Generate featured images with DALL-E\n• Track content performance\n\n**Requirements for your Strapi:**\n• Article content type with fields: title, content, slug, metaDescription\n• API token with full access\n• CORS configured to allow seometrics.ai\n• Published content type (not just draft)\n\n**Supported CMS:** Currently Strapi v4+, with WordPress and Webflow coming soon.";
+      }
+
+      // Setup help
+      if (lowerInput.includes('help') || lowerInput.includes('start') || lowerInput.includes('setup') || lowerInput.includes('how')) {
+        return "**CMS Setup Help for SEOMetrics:**\n\n**Quick Start Checklist:**\n✓ Deploy Strapi somewhere (Heroku, DigitalOcean, etc.)\n✓ Create an 'article' content type with title, content, slug fields\n✓ Generate a Full Access API token\n✓ Configure CORS to allow seometrics.ai\n✓ Test the connection here\n\n**Need specific help with:**\n• \"Where is my base URL?\" - Finding your Strapi URL\n• \"How to get API token?\" - Step-by-step token creation\n• \"Content type setup\" - Creating the right structure\n• \"Connection failing\" - Troubleshooting issues\n\n**Don&apos;t have Strapi yet?** You&apos;ll need to set it up first. Check the Strapi documentation for deployment guides.";
       }
     }
     
-    return "I understand you&apos;re asking about: " + input + "\n\nI'm a specialized assistant for CMS setup. Could you ask something more specific about:\n\n• API tokens and authentication\n• Content types and structure\n• Connection troubleshooting\n• Article publishing workflow";
+    // Fallback with more helpful suggestions
+    return "I&apos;m your **CMS Setup Specialist** for SEOMetrics.ai! 🚀\n\nI can help you with:\n\n**Common Questions:**\n• \"Where can I find my Strapi base URL?\"\n• \"How do I get my API token?\"\n• \"What content type should I use?\"\n• \"Why is my connection failing?\"\n• \"How does publishing work?\"\n\n**Ask me anything about:**\n• Strapi setup and configuration\n• API tokens and authentication  \n• Content type structure\n• Connection troubleshooting\n• SEOMetrics publishing workflow\n\nWhat would you like to know?";
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

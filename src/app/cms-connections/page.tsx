@@ -127,16 +127,14 @@ export default function CMSConnections() {
                     </button>
                   </div>
 
-                  {showForm && (
+                  {showForm ? (
                     <div className="mb-8">
                       <CMSConnectionWizard
                         onComplete={handleConnectionAdded}
                         onCancel={() => setShowForm(false)}
                       />
                     </div>
-                  )}
-
-                  {loading ? (
+                  ) : loading ? (
                     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
                       <div className="p-8 text-center">
                         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
