@@ -31,6 +31,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timeout)
   }, [loading])
 
+  // Prevent auth context from getting stuck on page navigation
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && loading) {
+        console.log('[AUTH DEBUG] Page became visible while loading - checking auth state')
+        // Small delay to let any pending auth operations complete
+        setTimeout(() => {
+          if (loading) {
+            console.log('[AUTH DEBUG] Still loading after visibility change - forcing refresh')
+            setLoading(false)
+          }
+        }, 1000)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [loading])
+
   const fetchUserToken = async (authUser: User) => {
     try {
       console.log('[AUTH DEBUG] Fetching token for user:', authUser.email, 'ID:', authUser.id)
@@ -117,12 +136,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('[AUTH DEBUG] Auth state change:', event, session ? 'session exists' : 'no session')
         
+        // Prevent race conditions by checking if we're already processing
+        if (event === 'SIGNED_IN' && user && (user as any).token) {
+          console.log('[AUTH DEBUG] User already authenticated with token - skipping')
+          return
+        }
+        
         try {
           if (session?.user) {
             console.log('[AUTH DEBUG] Setting loading to true for token fetch')
             setLoading(true)
             
-            const userWithToken = await fetchUserToken(session.user)
+            // Add timeout to prevent hanging
+            const tokenPromise = fetchUserToken(session.user)
+            const timeoutPromise = new Promise<User>((resolve) => {
+              setTimeout(() => {
+                console.log('[AUTH DEBUG] Token fetch timeout in auth state change')
+                resolve(session.user)
+              }, 5000)
+            })
+            
+            const userWithToken = await Promise.race([tokenPromise, timeoutPromise])
             setUser(userWithToken)
             console.log('[AUTH DEBUG] User updated from auth state change with token:', (userWithToken as any).token ? 'yes' : 'no')
           } else {
