@@ -99,25 +99,65 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
     console.log('[STRAPI TEST] Token length:', apiToken.length);
     console.log('[STRAPI TEST] Token preview:', apiToken.substring(0, 10) + '...');
     
-    // Try different endpoints to test authentication
-    let healthResponse;
-    let testUrl;
+    // Try to discover working content type endpoints instead of hardcoded ones
+    const contentTypePatterns = [
+      contentType, // User provided (e.g., api::blog-post::blog-post)
+      'api/blog-posts', // Common REST endpoint
+      'api/articles', // Common alternative
+      'api/posts', // Simple posts
+      'api/blog-post', // Singular form
+      'api/article', // Singular article
+      'api/news', // News content
+      'api/content' // Generic content
+    ];
     
-    // First try the content type endpoint directly
-    testUrl = `${cleanUrl}/${contentType}?pagination[limit]=1`;
-    console.log('[STRAPI TEST] Trying content type endpoint:', testUrl);
-    healthResponse = await fetch(testUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    let healthResponse: Response | null = null;
+    let testUrl: string = '';
+    let workingEndpoint = null;
     
-    // If that fails, try users/me
-    if (!healthResponse.ok && healthResponse.status === 404) {
+    console.log('[STRAPI TEST] Testing multiple content type patterns...');
+    
+    // Try each pattern until we find one that works
+    for (const pattern of contentTypePatterns) {
+      testUrl = `${cleanUrl}/${pattern}`;
+      if (!pattern.startsWith('api/')) {
+        testUrl = `${cleanUrl}/api/${pattern}`;
+      }
+      
+      console.log('[STRAPI TEST] Trying endpoint:', testUrl);
+      
+      try {
+        healthResponse = await fetch(testUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (healthResponse.ok) {
+          workingEndpoint = pattern;
+          console.log('[STRAPI TEST] Found working endpoint:', testUrl);
+          break;
+        } else if (healthResponse.status === 401) {
+          console.log('[STRAPI TEST] Authentication failed for:', testUrl);
+          // Don't break on 401 - token might be wrong, but let's try other endpoints
+        } else if (healthResponse.status === 404) {
+          console.log('[STRAPI TEST] Endpoint not found:', testUrl);
+          // Continue to next pattern
+        } else {
+          console.log('[STRAPI TEST] Unexpected status for:', testUrl, healthResponse.status);
+        }
+      } catch (error) {
+        console.log('[STRAPI TEST] Network error for:', testUrl, error);
+        continue;
+      }
+    }
+    
+    // If no content type worked, fall back to users/me as last resort
+    if (!workingEndpoint) {
       testUrl = `${cleanUrl}/api/users/me`;
-      console.log('[STRAPI TEST] Content type not found, trying users/me:', testUrl);
+      console.log('[STRAPI TEST] No content endpoints worked, trying users/me as fallback:', testUrl);
       healthResponse = await fetch(testUrl, {
         method: 'GET',
         headers: {
@@ -127,18 +167,30 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
       });
     }
 
-    if (!healthResponse.ok) {
+    if (!healthResponse || !healthResponse.ok) {
+      if (!healthResponse) {
+        return {
+          success: false,
+          message: 'Could not connect to any Strapi endpoints. Please check your base URL and network connection.',
+          details: { 
+            error: 'No response received',
+            testedEndpoints: contentTypePatterns
+          }
+        };
+      }
+      
       const errorText = await healthResponse.text();
-      console.log('[STRAPI TEST] Health check failed:', healthResponse.status, errorText);
+      console.log('[STRAPI TEST] All endpoints failed. Last attempt status:', healthResponse.status, errorText);
       
       if (healthResponse.status === 401) {
         return {
           success: false,
-          message: 'Authentication failed. Please check:\n\n1. API token is correct and copied exactly\n2. Token type is "Full Access" (not Read Only)\n3. Token is not expired\n4. Your Strapi version supports bearer token authentication\n\nTry recreating the API token in Strapi admin.',
+          message: 'Authentication failed for all tested endpoints. Please check:\n\n1. API token is correct and copied exactly\n2. Token type is "Full Access" (not Read Only)\n3. Token is not expired\n4. Your Strapi version supports bearer token authentication\n\nTry recreating the API token in Strapi admin.',
           details: { 
             status: 401, 
             error: 'Unauthorized',
-            url: testUrl,
+            testedEndpoints: contentTypePatterns,
+            lastUrl: testUrl,
             tokenLength: apiToken.length,
             response: errorText
           }
@@ -146,26 +198,34 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
       } else if (healthResponse.status === 404) {
         return {
           success: false,
-          message: 'Strapi instance not found. Please check your base URL.',
-          details: { status: 404, error: 'Not Found' }
+          message: `No content types found. Your Strapi might not have any of these common content types:\n\n${contentTypePatterns.join(', ')}\n\nPlease check your Strapi Content-Type Builder for available content types.`,
+          details: { 
+            status: 404, 
+            error: 'No content types found',
+            testedEndpoints: contentTypePatterns
+          }
         };
       } else {
         return {
           success: false,
-          message: `Connection failed with status ${healthResponse.status}`,
-          details: { status: healthResponse.status, error: errorText }
+          message: `Connection failed with status ${healthResponse.status}. Tested ${contentTypePatterns.length} different content type patterns.`,
+          details: { 
+            status: healthResponse.status, 
+            error: errorText,
+            testedEndpoints: contentTypePatterns
+          }
         };
       }
     }
 
     const responseData = await healthResponse.json();
-    console.log('[STRAPI TEST] Authentication successful!');
+    console.log(`[STRAPI TEST] Authentication successful using endpoint: ${testUrl}`);
     
     // Check if we got content type data or user data
     let userData: any = {};
     let contentData = null;
     
-    if (testUrl.includes(contentType)) {
+    if (workingEndpoint && !testUrl.includes('/api/users/me')) {
       console.log('[STRAPI TEST] Content type access successful, found items:', responseData.data?.length || 0);
       contentData = responseData;
       // For content type endpoint, we don't get user info
@@ -241,22 +301,28 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
       if (writeTestResponse.status === 403) {
         return {
           success: true, // Connection works, but limited permissions
-          message: 'Connection successful, but write permissions are limited. You may only be able to read content.',
+          message: workingEndpoint ? 
+            `Connection successful, but write permissions are limited. You may only be able to read content.\n\nDiscovered working endpoint: ${workingEndpoint}` :
+            'Connection successful, but write permissions are limited. You may only be able to read content.',
           details: { 
             readAccess: true, 
             writeAccess: false, 
-            contentType, 
+            contentType: workingEndpoint || contentType,
+            discoveredEndpoint: workingEndpoint,
             userEmail: userData.email || userData.username 
           }
         };
       } else {
         return {
           success: true, // Basic connection works
-          message: 'Connection successful, but there may be issues with content creation. Please verify your content type structure.',
+          message: workingEndpoint ? 
+            `Connection successful, but there may be issues with content creation. Please verify your content type structure.\n\nDiscovered working endpoint: ${workingEndpoint}` :
+            'Connection successful, but there may be issues with content creation. Please verify your content type structure.',
           details: { 
             readAccess: true, 
             writeAccess: false, 
-            contentType,
+            contentType: workingEndpoint || contentType,
+            discoveredEndpoint: workingEndpoint,
             writeError: errorText,
             userEmail: userData.email || userData.username 
           }
@@ -284,11 +350,14 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
 
     return {
       success: true,
-      message: 'Connection successful! Full read and write access confirmed.',
+      message: workingEndpoint ? 
+        `Connection successful! Full read and write access confirmed.\n\nDiscovered working endpoint: ${workingEndpoint}` :
+        'Connection successful! Full read and write access confirmed.',
       details: { 
         readAccess: true, 
         writeAccess: true, 
-        contentType,
+        contentType: workingEndpoint || contentType,
+        discoveredEndpoint: workingEndpoint,
         userEmail: userData.email || userData.username,
         testEntryCreated: true
       }
