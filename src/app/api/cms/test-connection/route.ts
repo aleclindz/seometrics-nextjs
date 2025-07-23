@@ -162,7 +162,7 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
     console.log('[STRAPI TEST] Authentication successful!');
     
     // Check if we got content type data or user data
-    let userData = {};
+    let userData: any = {};
     let contentData = null;
     
     if (testUrl.includes(contentType)) {
