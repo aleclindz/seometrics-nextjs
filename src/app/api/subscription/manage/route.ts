@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
         .from('user_plans')
         .insert({
           user_token: userToken,
-          tier: 'free',
-          sites_allowed: 1,
-          posts_allowed: 0,
+          tier: 'starter',
+          sites_allowed: 2,
+          posts_allowed: 8,
           status: 'active'
         })
         .select('*')
@@ -156,9 +156,9 @@ export async function POST(request: NextRequest) {
         .from('user_plans')
         .insert({
           user_token: userToken,
-          tier: 'free',
-          sites_allowed: 1,
-          posts_allowed: 0,
+          tier: 'starter',
+          sites_allowed: 2,
+          posts_allowed: 8,
           status: 'active'
         })
         .select('*')

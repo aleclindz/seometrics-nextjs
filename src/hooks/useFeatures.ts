@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
+import { getPlanConfig } from '@/lib/plans';
 
 interface UserPlan {
   tier: string;

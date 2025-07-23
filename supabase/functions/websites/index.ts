@@ -205,6 +205,86 @@ serve(async (req) => {
         )
       }
 
+      // Check user's plan and website limits
+      const { data: userPlan, error: planError } = await supabase
+        .from('user_plans')
+        .select('tier, sites_allowed, status')
+        .eq('user_token', userProfile.token)
+        .eq('status', 'active')
+        .single()
+
+      if (planError || !userPlan) {
+        console.log('No active plan found, creating default free plan for user:', userProfile.token)
+        
+        // Create default free plan
+        const { error: createPlanError } = await supabase
+          .from('user_plans')
+          .insert({
+            user_token: userProfile.token,
+            tier: 'free',
+            sites_allowed: 1,
+            posts_allowed: 0,
+            status: 'active'
+          })
+        
+        if (createPlanError) {
+          console.error('Error creating default plan:', createPlanError)
+          return new Response(
+            JSON.stringify({ error: 'Unable to verify subscription plan' }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+        
+        // Set plan to free for limit checking
+        userPlan.tier = 'free'
+        userPlan.sites_allowed = 1
+      }
+
+      // Count existing websites
+      const { data: websites, error: countError } = await supabase
+        .from('websites')
+        .select('id')
+        .eq('user_token', userProfile.token)
+
+      if (countError) {
+        console.error('Error counting websites:', countError)
+        return new Response(
+          JSON.stringify({ error: 'Unable to verify website count' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      const currentWebsiteCount = websites?.length || 0
+      const maxAllowed = userPlan.sites_allowed
+
+      // Check if user has reached their limit
+      if (maxAllowed !== -1 && currentWebsiteCount >= maxAllowed) {
+        const upgradeMessage = userPlan.tier === 'free' 
+          ? 'Upgrade to Starter plan ($49/month) to add more websites'
+          : userPlan.tier === 'starter'
+          ? 'Upgrade to Pro plan ($139/month) to add more websites'
+          : 'Contact support to increase your website limit'
+
+        return new Response(
+          JSON.stringify({ 
+            error: `You have reached your website limit (${maxAllowed} ${maxAllowed === 1 ? 'site' : 'sites'}). ${upgradeMessage}`,
+            currentCount: currentWebsiteCount,
+            maxAllowed: maxAllowed,
+            userPlan: userPlan.tier
+          }),
+          { 
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
       // Generate a unique website token
       const websiteToken = crypto.randomUUID()
       

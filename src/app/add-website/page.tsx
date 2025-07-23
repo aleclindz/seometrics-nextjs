@@ -104,7 +104,12 @@ export default function AddWebsite() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Failed to add website');
+        // Handle limit exceeded errors with upgrade suggestions
+        if (response.status === 403 && data.currentCount && data.maxAllowed) {
+          setError(`${data.error}\n\nCurrent websites: ${data.currentCount}/${data.maxAllowed}\nPlan: ${data.userPlan || 'Unknown'}`);
+        } else {
+          setError(data.error || 'Failed to add website');
+        }
         setLoading(false);
         return;
       }
