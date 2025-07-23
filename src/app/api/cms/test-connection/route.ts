@@ -72,8 +72,32 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
   const cleanUrl = baseUrl.replace(/\/$/, '');
   
   try {
+    // Test 0: Basic reachability test (no auth required)
+    console.log('[STRAPI TEST] Testing basic reachability...');
+    try {
+      const pingResponse = await fetch(`${cleanUrl}/_health`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      console.log('[STRAPI TEST] Health endpoint status:', pingResponse.status);
+    } catch (pingError) {
+      console.log('[STRAPI TEST] Health endpoint failed, trying main URL...');
+      try {
+        const mainResponse = await fetch(cleanUrl, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('[STRAPI TEST] Main URL status:', mainResponse.status);
+      } catch (mainError) {
+        console.log('[STRAPI TEST] Main URL also failed:', mainError);
+      }
+    }
+
     // Test 1: Check if Strapi instance is accessible
     console.log('[STRAPI TEST] Testing basic connectivity...');
+    console.log('[STRAPI TEST] URL:', `${cleanUrl}/api/users/me`);
+    console.log('[STRAPI TEST] Token length:', apiToken.length);
+    console.log('[STRAPI TEST] Token preview:', apiToken.substring(0, 10) + '...');
     
     const healthResponse = await fetch(`${cleanUrl}/api/users/me`, {
       method: 'GET',
@@ -90,8 +114,14 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
       if (healthResponse.status === 401) {
         return {
           success: false,
-          message: 'Authentication failed. Please check your API token.',
-          details: { status: 401, error: 'Unauthorized' }
+          message: 'Authentication failed. Please check:\n\n1. API token is correct and copied exactly\n2. Token type is "Full Access" (not Read Only)\n3. Token is not expired\n4. Your Strapi version supports bearer token authentication\n\nTry recreating the API token in Strapi admin.',
+          details: { 
+            status: 401, 
+            error: 'Unauthorized',
+            url: `${cleanUrl}/api/users/me`,
+            tokenLength: apiToken.length,
+            response: errorText
+          }
         };
       } else if (healthResponse.status === 404) {
         return {
