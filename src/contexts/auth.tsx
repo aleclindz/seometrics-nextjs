@@ -134,27 +134,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('[AUTH DEBUG] Auth state change:', event, session ? 'session exists' : 'no session')
         
-        // Prevent unnecessary processing on token refresh events
-        if (event === 'TOKEN_REFRESHED' && user && (user as any).token) {
-          console.log('[AUTH DEBUG] Token refreshed - user already authenticated, skipping')
+        // COMPLETELY IGNORE most auth state changes to prevent tab switching issues
+        // Only process SIGNED_OUT events and initial session setup
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[AUTH DEBUG] Token refreshed - ignoring to prevent tab switching issues')
           return
         }
         
-        // Prevent race conditions by checking if we're already processing
-        if (event === 'SIGNED_IN' && user && (user as any).token) {
-          console.log('[AUTH DEBUG] User already authenticated with token - skipping')
+        if (event === 'SIGNED_IN' && user) {
+          console.log('[AUTH DEBUG] SIGNED_IN event - ignoring to prevent tab switching issues')
           return
         }
         
-        // Skip processing if we're just getting the same session again
-        if (session?.user?.id === user?.id && (user as any).token && !loading) {
-          console.log('[AUTH DEBUG] Same user session with token, skipping reprocessing')
-          return
-        }
-        
-        // Also skip if we're getting repeated SIGNED_IN events for the same user
-        if (event === 'SIGNED_IN' && session?.user?.id === user?.id && user) {
-          console.log('[AUTH DEBUG] Repeated SIGNED_IN for same user, skipping')
+        // Only process SIGNED_OUT and initial setup
+        if (event !== 'SIGNED_OUT' && event !== 'INITIAL_SESSION') {
+          console.log('[AUTH DEBUG] Ignoring auth event to prevent focus-related reloading:', event)
           return
         }
         
@@ -166,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         try {
           if (session?.user) {
-            console.log('[AUTH DEBUG] Setting loading to true for token fetch')
+            console.log('[AUTH DEBUG] Processing auth event:', event)
             setIsProcessingAuth(true)
             setLoading(true)
             
@@ -176,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setTimeout(() => {
                 console.log('[AUTH DEBUG] Token fetch timeout in auth state change')
                 resolve(session.user)
-              }, 2000) // Reduced from 5 seconds
+              }, 2000)
             })
             
             const userWithToken = await Promise.race([tokenPromise, timeoutPromise])
