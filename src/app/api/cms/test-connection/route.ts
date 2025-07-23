@@ -99,13 +99,33 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
     console.log('[STRAPI TEST] Token length:', apiToken.length);
     console.log('[STRAPI TEST] Token preview:', apiToken.substring(0, 10) + '...');
     
-    const healthResponse = await fetch(`${cleanUrl}/api/users/me`, {
+    // Try different endpoints to test authentication
+    let healthResponse;
+    let testUrl;
+    
+    // First try the content type endpoint directly
+    testUrl = `${cleanUrl}/${contentType}?pagination[limit]=1`;
+    console.log('[STRAPI TEST] Trying content type endpoint:', testUrl);
+    healthResponse = await fetch(testUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
       },
     });
+    
+    // If that fails, try users/me
+    if (!healthResponse.ok && healthResponse.status === 404) {
+      testUrl = `${cleanUrl}/api/users/me`;
+      console.log('[STRAPI TEST] Content type not found, trying users/me:', testUrl);
+      healthResponse = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    }
 
     if (!healthResponse.ok) {
       const errorText = await healthResponse.text();
@@ -118,7 +138,7 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
           details: { 
             status: 401, 
             error: 'Unauthorized',
-            url: `${cleanUrl}/api/users/me`,
+            url: testUrl,
             tokenLength: apiToken.length,
             response: errorText
           }
@@ -138,47 +158,61 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
       }
     }
 
-    const userData = await healthResponse.json();
-    console.log('[STRAPI TEST] Basic connectivity successful, user:', userData.email || userData.username);
-
-    // Test 2: Check if the content type exists and we can access it
-    console.log('[STRAPI TEST] Testing content type access...');
+    const responseData = await healthResponse.json();
+    console.log('[STRAPI TEST] Authentication successful!');
     
-    const contentTypeResponse = await fetch(`${cleanUrl}/${contentType}?pagination[limit]=1`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!contentTypeResponse.ok) {
-      const errorText = await contentTypeResponse.text();
-      console.log('[STRAPI TEST] Content type test failed:', contentTypeResponse.status, errorText);
+    // Check if we got content type data or user data
+    let userData = {};
+    let contentData = null;
+    
+    if (testUrl.includes(contentType)) {
+      console.log('[STRAPI TEST] Content type access successful, found items:', responseData.data?.length || 0);
+      contentData = responseData;
+      // For content type endpoint, we don't get user info
+      userData = { email: 'API Token User' };
+    } else {
+      console.log('[STRAPI TEST] Basic connectivity successful, user:', responseData.email || responseData.username);
+      userData = responseData;
       
-      if (contentTypeResponse.status === 403) {
-        return {
-          success: false,
-          message: `Access denied to content type '${contentType}'. Please check your API token permissions.`,
-          details: { status: 403, contentType, error: 'Forbidden' }
-        };
-      } else if (contentTypeResponse.status === 404) {
-        return {
-          success: false,
-          message: `Content type '${contentType}' not found. Please check the content type identifier.`,
-          details: { status: 404, contentType, error: 'Content type not found' }
-        };
-      } else {
-        return {
-          success: false,
-          message: `Content type test failed with status ${contentTypeResponse.status}`,
-          details: { status: contentTypeResponse.status, contentType, error: errorText }
-        };
-      }
-    }
+      // Now test content type separately since we used users/me
+      console.log('[STRAPI TEST] Testing content type access...');
+      
+      const contentTypeResponse = await fetch(`${cleanUrl}/${contentType}?pagination[limit]=1`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const contentData = await contentTypeResponse.json();
-    console.log('[STRAPI TEST] Content type access successful, found items:', contentData.data?.length || 0);
+      if (!contentTypeResponse.ok) {
+        const errorText = await contentTypeResponse.text();
+        console.log('[STRAPI TEST] Content type test failed:', contentTypeResponse.status, errorText);
+        
+        if (contentTypeResponse.status === 403) {
+          return {
+            success: false,
+            message: `Access denied to content type '${contentType}'. Please check your API token permissions.`,
+            details: { status: 403, contentType, error: 'Forbidden' }
+          };
+        } else if (contentTypeResponse.status === 404) {
+          return {
+            success: false,
+            message: `Content type '${contentType}' not found. Please check the content type identifier.`,
+            details: { status: 404, contentType, error: 'Content type not found' }
+          };
+        } else {
+          return {
+            success: false,
+            message: `Content type test failed with status ${contentTypeResponse.status}`,
+            details: { status: contentTypeResponse.status, contentType, error: errorText }
+          };
+        }
+      }
+
+      contentData = await contentTypeResponse.json();
+      console.log('[STRAPI TEST] Content type access successful, found items:', contentData.data?.length || 0);
+    }
 
     // Test 3: Try to create a test entry (dry run)
     console.log('[STRAPI TEST] Testing write permissions...');
