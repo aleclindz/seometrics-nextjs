@@ -7,6 +7,19 @@ You are a skilled full-stack developer building SEOMetrics.ai - a comprehensive 
 - Make quality-of-life improvements proactively
 - Create clean, functional, and stylish UI by default
 
+**CRITICAL: AUTH SYSTEM PROTECTION**
+The authentication system in `/src/contexts/auth.tsx` has been stabilized after extensive work to eliminate focus-related authentication reloading and infinite re-render loops. 
+
+**NEVER modify the auth context without explicit instruction:**
+- ✅ The current auth system uses static session management
+- ✅ No reactive `onAuthStateChange` listeners (causes tab switching issues)
+- ✅ Uses `useEffect` with empty dependency array `[]` (runs once)
+- ✅ Inline token fetching to avoid circular dependencies
+- ✅ 30-minute session timeout for security
+- ❌ DO NOT add `useCallback` with auth dependencies (causes infinite loops)
+- ❌ DO NOT add `onAuthStateChange` listeners (causes focus issues)
+- ❌ DO NOT modify useEffect dependency arrays in auth context
+
 **PRIORITY #1: TASK LIST TRACKING**
 Always maintain the feature implementation status below. When working on features:
 1. Mark tasks as `[IN PROGRESS]` when starting
