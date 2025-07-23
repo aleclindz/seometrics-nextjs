@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { createClientComponentClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 
@@ -10,6 +10,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
+  validateSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -17,23 +18,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<(User & { token?: string }) | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isProcessingAuth, setIsProcessingAuth] = useState(false) // Prevent simultaneous auth operations
+  const [sessionTimeout, setSessionTimeout] = useState<NodeJS.Timeout | null>(null)
   const supabase = createClientComponentClient()
 
-  // Failsafe timeout to prevent infinite loading
-  useEffect(() => {
+  // Session timeout management (30 minutes)
+  const resetSessionTimeout = useCallback(() => {
+    if (sessionTimeout) {
+      clearTimeout(sessionTimeout)
+    }
+    
     const timeout = setTimeout(() => {
-      if (loading) {
-        console.log('[AUTH DEBUG] Failsafe timeout triggered after 15s - forcing loading to false')
-        setLoading(false)
+      console.log('[AUTH] Session timeout - automatically signing out')
+      // Don't call signOut directly to avoid dependency issues
+      setUser(null)
+      supabase.auth.signOut()
+    }, 30 * 60 * 1000) // 30 minutes
+    
+    setSessionTimeout(timeout)
+  }, [sessionTimeout, supabase.auth])
+
+  // Clear session timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (sessionTimeout) {
+        clearTimeout(sessionTimeout)
       }
-    }, 15000) // 15 second timeout
-
-    return () => clearTimeout(timeout)
-  }, [loading])
+    }
+  }, [sessionTimeout])
 
 
-  const fetchUserToken = async (authUser: User) => {
+  const fetchUserToken = useCallback(async (authUser: User) => {
     try {
       console.log('[AUTH DEBUG] Fetching token for user:', authUser.email, 'ID:', authUser.id)
       
@@ -94,117 +108,103 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Return user without token - they're still authenticated
       return authUser
     }
-  }
+  }, [supabase])
 
+  // Static session validation - no reactive auth state changes
+  const validateSession = useCallback(async () => {
+    try {
+      console.log('[AUTH] Validating session...')
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error('[AUTH] Session error:', error)
+        setUser(null)
+        return
+      }
+
+      if (session?.user) {
+        console.log('[AUTH] Valid session found, fetching token...')
+        const userWithToken = await fetchUserToken(session.user)
+        setUser(userWithToken)
+        resetSessionTimeout() // Reset the 30-minute timeout
+        console.log('[AUTH] User validated with token')
+      } else {
+        console.log('[AUTH] No valid session found')
+        setUser(null)
+      }
+    } catch (error) {
+      console.error('[AUTH] Unexpected error in validateSession:', error)
+      setUser(null)
+    }
+  }, [fetchUserToken, resetSessionTimeout, supabase.auth])
+
+  // Initial session check on mount - no reactive listeners
   useEffect(() => {
-    console.log('[AUTH DEBUG] AuthProvider useEffect starting')
-    const getSession = async () => {
+    console.log('[AUTH] Initial session check starting')
+    const getInitialSession = async () => {
       try {
-        console.log('[AUTH DEBUG] Getting initial session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('[AUTH DEBUG] Session error:', error)
+          console.error('[AUTH] Initial session error:', error)
           setUser(null)
           setLoading(false)
           return
         }
 
         if (session?.user) {
-          console.log('[AUTH DEBUG] Session found, fetching token...')
+          console.log('[AUTH] Initial session found, fetching token...')
           const userWithToken = await fetchUserToken(session.user)
           setUser(userWithToken)
-          console.log('[AUTH DEBUG] User set with token')
+          resetSessionTimeout() // Start the 30-minute timeout
+          console.log('[AUTH] Initial user set with token')
         } else {
-          console.log('[AUTH DEBUG] No session found')
+          console.log('[AUTH] No initial session found')
           setUser(null)
         }
         setLoading(false)
-        console.log('[AUTH DEBUG] Loading set to false')
       } catch (error) {
-        console.error('[AUTH DEBUG] Unexpected error in getSession:', error)
+        console.error('[AUTH] Unexpected error in initial session check:', error)
         setUser(null)
         setLoading(false)
       }
     }
 
-    getSession()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[AUTH DEBUG] Auth state change:', event, session ? 'session exists' : 'no session')
-        
-        // Only ignore token refresh events and duplicate SIGNED_IN events to prevent tab switching issues
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('[AUTH DEBUG] Token refreshed - ignoring to prevent tab switching issues')
-          return
-        }
-        
-        // Only ignore SIGNED_IN if we already have a user with token (prevents duplicate processing)
-        if (event === 'SIGNED_IN' && user && (user as any).token) {
-          console.log('[AUTH DEBUG] SIGNED_IN event ignored - user already authenticated with token')
-          return
-        }
-        
-        // Prevent simultaneous auth operations
-        if (isProcessingAuth) {
-          console.log('[AUTH DEBUG] Auth operation already in progress, skipping')
-          return
-        }
-        
-        try {
-          if (session?.user) {
-            console.log('[AUTH DEBUG] Processing auth event:', event)
-            setIsProcessingAuth(true)
-            setLoading(true)
-            
-            // Add timeout to prevent hanging - reduced to 2 seconds
-            const tokenPromise = fetchUserToken(session.user)
-            const timeoutPromise = new Promise<User>((resolve) => {
-              setTimeout(() => {
-                console.log('[AUTH DEBUG] Token fetch timeout in auth state change')
-                resolve(session.user)
-              }, 2000)
-            })
-            
-            const userWithToken = await Promise.race([tokenPromise, timeoutPromise])
-            setUser(userWithToken)
-            console.log('[AUTH DEBUG] User updated from auth state change with token:', (userWithToken as any).token ? 'yes' : 'no')
-          } else {
-            setUser(null)
-            console.log('[AUTH DEBUG] User cleared from auth state change')
-          }
-          
-          setLoading(false)
-          setIsProcessingAuth(false)
-          console.log('[AUTH DEBUG] Loading set to false from auth state change')
-        } catch (error) {
-          console.error('[AUTH DEBUG] Error in auth state change handler:', error)
-          // Still set the user if we have session, just without token
-          if (session?.user) {
-            setUser(session.user)
-            console.log('[AUTH DEBUG] Set user without token due to error')
-          } else {
-            setUser(null)
-          }
-          setLoading(false)
-          setIsProcessingAuth(false)
-        }
-      }
-    )
+    getInitialSession()
+    
+    // Set up periodic session validation (every 25 minutes to stay ahead of 30-minute timeout)
+    const periodicCheck = setInterval(() => {
+      console.log('[AUTH] Periodic session validation check')
+      validateSession()
+    }, 25 * 60 * 1000) // 25 minutes
 
     return () => {
-      console.log('[AUTH DEBUG] Cleaning up auth subscription')
-      subscription.unsubscribe()
+      clearInterval(periodicCheck)
     }
-  }, [supabase])
+  }, [fetchUserToken, resetSessionTimeout, supabase.auth, validateSession])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return { error }
+    try {
+      setLoading(true)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      
+      if (!error && data.user) {
+        // Immediately fetch user token and update state
+        const userWithToken = await fetchUserToken(data.user)
+        setUser(userWithToken)
+        resetSessionTimeout() // Start session timeout
+        console.log('[AUTH] Sign in successful')
+      }
+      
+      setLoading(false)
+      return { error }
+    } catch (err) {
+      setLoading(false)
+      return { error: err }
+    }
   }
 
   const signUp = async (email: string, password: string) => {
@@ -216,11 +216,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      // Clear session timeout
+      if (sessionTimeout) {
+        clearTimeout(sessionTimeout)
+        setSessionTimeout(null)
+      }
+      
+      // Clear user state immediately
+      setUser(null)
+      
+      // Sign out from Supabase
+      await supabase.auth.signOut()
+      console.log('[AUTH] Sign out successful')
+    } catch (error) {
+      console.error('[AUTH] Sign out error:', error)
+      // Still clear user state even if signOut fails
+      setUser(null)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, validateSession }}>
       {children}
     </AuthContext.Provider>
   )
