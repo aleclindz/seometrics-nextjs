@@ -11,11 +11,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const createClientComponentClient = () => 
   createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {
-      // Disable automatic token refresh to prevent tab switching issues
-      autoRefreshToken: false, // DISABLED - we'll handle session expiry manually
+      // Keep auto refresh but we'll ignore the events to prevent tab switching issues
+      autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false, // Disable URL session detection to prevent router issues
-      flowType: 'pkce', // Use PKCE flow for better security without refresh tokens
+      flowType: 'pkce', // Use PKCE flow for better security
     }
   })
 

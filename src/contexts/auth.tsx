@@ -134,21 +134,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('[AUTH DEBUG] Auth state change:', event, session ? 'session exists' : 'no session')
         
-        // COMPLETELY IGNORE most auth state changes to prevent tab switching issues
-        // Only process SIGNED_OUT events and initial session setup
+        // Only ignore token refresh events and duplicate SIGNED_IN events to prevent tab switching issues
         if (event === 'TOKEN_REFRESHED') {
           console.log('[AUTH DEBUG] Token refreshed - ignoring to prevent tab switching issues')
           return
         }
         
-        if (event === 'SIGNED_IN' && user) {
-          console.log('[AUTH DEBUG] SIGNED_IN event - ignoring to prevent tab switching issues')
-          return
-        }
-        
-        // Only process SIGNED_OUT and initial setup
-        if (event !== 'SIGNED_OUT' && event !== 'INITIAL_SESSION') {
-          console.log('[AUTH DEBUG] Ignoring auth event to prevent focus-related reloading:', event)
+        // Only ignore SIGNED_IN if we already have a user with token (prevents duplicate processing)
+        if (event === 'SIGNED_IN' && user && (user as any).token) {
+          console.log('[AUTH DEBUG] SIGNED_IN event ignored - user already authenticated with token')
           return
         }
         
