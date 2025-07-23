@@ -33,6 +33,37 @@ export default function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Simple markdown formatter for chat messages
+  function formatMarkdown(text: string): string {
+    return text
+      // Bold text **text** -> <strong>text</strong>
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Inline code `text` -> <code>text</code>
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-200 dark:bg-gray-600 px-1 rounded text-xs">$1</code>')
+      // Convert bullet points • to proper list items
+      .replace(/^• (.*$)/gm, '<li>$1</li>')
+      // Wrap consecutive list items in <ul>
+      .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc list-inside space-y-1 my-2">$&</ul>')
+      // Convert numbered lists
+      .replace(/^(\d+\.) (.*$)/gm, '<li>$2</li>')
+      .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
+        // Only wrap in ol if it doesn't already have ul tags
+        if (match.includes('<ul')) return match;
+        return `<ol class="list-decimal list-inside space-y-1 my-2">${match}</ol>`;
+      })
+      // Convert line breaks to proper spacing
+      .replace(/\n\n/g, '</p><p class="mt-2">')
+      .replace(/^/, '<p>')
+      .replace(/$/, '</p>')
+      // Clean up empty paragraphs
+      .replace(/<p><\/p>/g, '')
+      // Fix nested list formatting
+      .replace(/<\/p><ul/g, '</p><ul')
+      .replace(/<\/ul><p>/g, '</ul><p>')
+      .replace(/<\/p><ol/g, '</p><ol')
+      .replace(/<\/ol><p>/g, '</ol><p>');
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -177,8 +208,17 @@ export default function ChatInterface({
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none'
               }`}
             >
-              <div className="text-sm whitespace-pre-wrap">
-                {message.content}
+              <div className="text-sm">
+                {message.type === 'user' ? (
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                ) : (
+                  <div 
+                    className="prose prose-sm max-w-none dark:prose-invert prose-violet [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1 [&>h1]:my-1 [&>h2]:my-1 [&>h3]:my-1 [&>h4]:my-1"
+                    dangerouslySetInnerHTML={{ 
+                      __html: formatMarkdown(message.content)
+                    }}
+                  />
+                )}
               </div>
               <div
                 className={`text-xs mt-1 ${
