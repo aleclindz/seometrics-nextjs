@@ -56,19 +56,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AUTH DEBUG] Direct query exception:', directError)
       }
 
-      // Fallback: Use API endpoint with service role
+      // Fallback: Use API endpoint with service role (with timeout)
       console.log('[AUTH DEBUG] Trying API endpoint fallback...')
-      const response = await fetch(`/api/auth/get-token?authUserId=${authUser.id}`)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 1500) // 1.5 second timeout
       
-      if (response.ok) {
-        const apiResult = await response.json()
-        console.log('[AUTH DEBUG] API endpoint successful!')
-        return { ...authUser, token: apiResult.token }
+      try {
+        const response = await fetch(`/api/auth/get-token?authUserId=${authUser.id}`, {
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+        
+        if (response.ok) {
+          const apiResult = await response.json()
+          console.log('[AUTH DEBUG] API endpoint successful!')
+          return { ...authUser, token: apiResult.token }
+        } else {
+          console.log('[AUTH DEBUG] API endpoint failed, status:', response.status)
+          const errorText = await response.text()
+          console.log('[AUTH DEBUG] API error response:', errorText)
+        }
+      } catch (error: any) {
+        clearTimeout(timeoutId)
+        if (error.name === 'AbortError') {
+          console.log('[AUTH DEBUG] API endpoint timeout after 1.5s')
+        } else {
+          console.log('[AUTH DEBUG] API endpoint error:', error)
+        }
       }
-      
-      console.log('[AUTH DEBUG] API endpoint also failed, status:', response.status)
-      const errorText = await response.text()
-      console.log('[AUTH DEBUG] API error response:', errorText)
       
       // Both methods failed - return user without token
       console.log('[AUTH DEBUG] Both direct query and API endpoint failed')
@@ -132,8 +147,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         // Skip processing if we're just getting the same session again
-        if (session?.user?.id === user?.id && (user as any).token) {
-          console.log('[AUTH DEBUG] Same user session, skipping reprocessing')
+        if (session?.user?.id === user?.id && (user as any).token && !loading) {
+          console.log('[AUTH DEBUG] Same user session with token, skipping reprocessing')
+          return
+        }
+        
+        // Also skip if we're getting repeated SIGNED_IN events for the same user
+        if (event === 'SIGNED_IN' && session?.user?.id === user?.id && user) {
+          console.log('[AUTH DEBUG] Repeated SIGNED_IN for same user, skipping')
           return
         }
         
@@ -149,13 +170,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsProcessingAuth(true)
             setLoading(true)
             
-            // Add timeout to prevent hanging
+            // Add timeout to prevent hanging - reduced to 2 seconds
             const tokenPromise = fetchUserToken(session.user)
             const timeoutPromise = new Promise<User>((resolve) => {
               setTimeout(() => {
                 console.log('[AUTH DEBUG] Token fetch timeout in auth state change')
                 resolve(session.user)
-              }, 5000)
+              }, 2000) // Reduced from 5 seconds
             })
             
             const userWithToken = await Promise.race([tokenPromise, timeoutPromise])
