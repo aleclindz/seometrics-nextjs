@@ -31,24 +31,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timeout)
   }, [loading])
 
-  // Prevent auth context from getting stuck on page navigation
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && loading) {
-        console.log('[AUTH DEBUG] Page became visible while loading - checking auth state')
-        // Small delay to let any pending auth operations complete
-        setTimeout(() => {
-          if (loading) {
-            console.log('[AUTH DEBUG] Still loading after visibility change - forcing refresh')
-            setLoading(false)
-          }
-        }, 1000)
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [loading])
 
   const fetchUserToken = async (authUser: User) => {
     try {
