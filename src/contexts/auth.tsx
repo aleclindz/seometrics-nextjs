@@ -17,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<(User & { token?: string }) | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false) // Prevent simultaneous auth operations
   const supabase = createClientComponentClient()
 
   // Failsafe timeout to prevent infinite loading
@@ -118,15 +119,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('[AUTH DEBUG] Auth state change:', event, session ? 'session exists' : 'no session')
         
+        // Prevent unnecessary processing on token refresh events
+        if (event === 'TOKEN_REFRESHED' && user && (user as any).token) {
+          console.log('[AUTH DEBUG] Token refreshed - user already authenticated, skipping')
+          return
+        }
+        
         // Prevent race conditions by checking if we're already processing
         if (event === 'SIGNED_IN' && user && (user as any).token) {
           console.log('[AUTH DEBUG] User already authenticated with token - skipping')
           return
         }
         
+        // Skip processing if we're just getting the same session again
+        if (session?.user?.id === user?.id && (user as any).token) {
+          console.log('[AUTH DEBUG] Same user session, skipping reprocessing')
+          return
+        }
+        
+        // Prevent simultaneous auth operations
+        if (isProcessingAuth) {
+          console.log('[AUTH DEBUG] Auth operation already in progress, skipping')
+          return
+        }
+        
         try {
           if (session?.user) {
             console.log('[AUTH DEBUG] Setting loading to true for token fetch')
+            setIsProcessingAuth(true)
             setLoading(true)
             
             // Add timeout to prevent hanging
@@ -147,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           
           setLoading(false)
+          setIsProcessingAuth(false)
           console.log('[AUTH DEBUG] Loading set to false from auth state change')
         } catch (error) {
           console.error('[AUTH DEBUG] Error in auth state change handler:', error)
@@ -158,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null)
           }
           setLoading(false)
+          setIsProcessingAuth(false)
         }
       }
     )

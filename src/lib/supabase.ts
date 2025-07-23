@@ -9,7 +9,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const createClientComponentClient = () => 
-  createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      // Reduce automatic token refresh frequency to prevent tab switching issues
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false, // Disable URL session detection to prevent router issues
+    }
+  })
 
 // Legacy export for backward compatibility
 export const supabase = createClientComponentClient()
