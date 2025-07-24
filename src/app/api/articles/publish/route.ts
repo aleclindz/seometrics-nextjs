@@ -230,11 +230,11 @@ export async function POST(request: NextRequest) {
     } catch (publishError) {
       console.error('[PUBLISH EDGE] Publication failed:', publishError);
 
-      // Update status to failed
+      // Update status to publishing_failed
       await supabase
         .from('article_queue')
         .update({
-          status: 'failed',
+          status: 'publishing_failed',
           error_message: publishError instanceof Error ? publishError.message : 'Publication failed',
           retry_count: (article.retry_count || 0) + 1,
           updated_at: new Date().toISOString()

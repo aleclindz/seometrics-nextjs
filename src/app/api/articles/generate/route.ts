@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('article_queue')
           .update({
-            status: 'failed',
+            status: 'generation_failed',
             error_message: `Quota exceeded: You have reached your monthly limit of ${quotaCheck.limit} articles. Current usage: ${quotaCheck.currentUsage}`,
             updated_at: new Date().toISOString()
           })
@@ -195,11 +195,11 @@ export async function POST(request: NextRequest) {
     } catch (generationError) {
       console.error('[GENERATE EDGE] Generation failed:', generationError);
 
-      // Update status to failed
+      // Update status to generation_failed
       await supabase
         .from('article_queue')
         .update({
-          status: 'failed',
+          status: 'generation_failed',
           error_message: generationError instanceof Error ? generationError.message : 'Generation failed',
           updated_at: new Date().toISOString()
         })

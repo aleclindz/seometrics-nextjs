@@ -61,6 +61,9 @@ export default function ArticleWriter() {
   const [creatingArticle, setCreatingArticle] = useState(false);
   const [generatingArticle, setGeneratingArticle] = useState<number | null>(null);
   const [publishingArticle, setPublishingArticle] = useState<number | null>(null);
+  
+  // Filter state
+  const [selectedWebsiteFilter, setSelectedWebsiteFilter] = useState<string>('all');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -291,32 +294,51 @@ export default function ArticleWriter() {
 
   // Helper function to determine what type of retry is needed
   const getRetryContext = (article: any) => {
-    if (article.status !== 'failed') return null;
-    
-    // If no content exists, it failed during generation
-    if (!article.article_content) {
+    // Use granular status values for precise retry context
+    if (article.status === 'generation_failed') {
       return 'generation';
     }
     
-    // If content exists but has publishing-related error, it failed during publishing
-    if (article.error_message && 
-        (article.error_message.includes('publish') || 
-         article.error_message.includes('CMS') ||
-         article.error_message.includes('HTTP 405') ||
-         article.error_message.includes('Method Not Allowed'))) {
+    if (article.status === 'publishing_failed') {
       return 'publishing';
     }
     
-    // If content exists but error is generation-related, it failed during generation
-    if (article.error_message && 
-        (article.error_message.includes('generate') || 
-         article.error_message.includes('OpenAI') ||
-         article.error_message.includes('content'))) {
-      return 'generation';
+    // Legacy support: fallback to heuristic for existing 'failed' status
+    if (article.status === 'failed') {
+      // If no content exists, it failed during generation
+      if (!article.article_content) {
+        return 'generation';
+      }
+      
+      // If content exists but has publishing-related error, it failed during publishing
+      if (article.error_message) {
+        const errorLower = article.error_message.toLowerCase();
+        if (errorLower.includes('publish') || 
+            errorLower.includes('cms') ||
+            errorLower.includes('http 405') ||
+            errorLower.includes('method not allowed') ||
+            errorLower.includes('strapi') ||
+            errorLower.includes('endpoint')) {
+          return 'publishing';
+        }
+      }
+      
+      // If content exists but error is generation-related, it failed during generation
+      if (article.error_message) {
+        const errorLower = article.error_message.toLowerCase();
+        if (errorLower.includes('generate') || 
+            errorLower.includes('openai') ||
+            errorLower.includes('timeout') ||
+            errorLower.includes('function_invocation_timeout')) {
+          return 'generation';
+        }
+      }
+      
+      // Default: if content exists, assume publishing failure; otherwise generation failure
+      return article.article_content ? 'publishing' : 'generation';
     }
     
-    // Default: if content exists, assume publishing failure; otherwise generation failure
-    return article.article_content ? 'publishing' : 'generation';
+    return null;
   };
 
   const getStatusColor = (status: string) => {
@@ -327,6 +349,8 @@ export default function ArticleWriter() {
       case 'publishing': return 'text-purple-600 bg-purple-100 dark:bg-purple-900/30';
       case 'published': return 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30';
       case 'failed': return 'text-red-600 bg-red-100 dark:bg-red-900/30';
+      case 'generation_failed': return 'text-red-600 bg-red-100 dark:bg-red-900/30';
+      case 'publishing_failed': return 'text-orange-600 bg-orange-100 dark:bg-orange-900/30';
       default: return 'text-gray-600 bg-gray-100 dark:bg-gray-900/30';
     }
   };
@@ -339,11 +363,18 @@ export default function ArticleWriter() {
       case 'publishing': return 'Publishing...';
       case 'published': return 'Published';
       case 'failed': return 'Failed';
+      case 'generation_failed': return 'Generation Failed';
+      case 'publishing_failed': return 'Publishing Failed';
       default: return status;
     }
   };
 
   const hasCMSConnections = cmsConnections.length > 0;
+
+  // Filter articles by selected website
+  const filteredArticles = selectedWebsiteFilter === 'all' 
+    ? articles 
+    : articles.filter(article => article.website_id?.toString() === selectedWebsiteFilter);
 
   return (
     <ProtectedRoute>
@@ -538,9 +569,26 @@ export default function ArticleWriter() {
                       {/* Articles List */}
                       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
                         <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60">
-                          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            Your Articles
-                          </h2>
+                          <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              Your Articles
+                            </h2>
+                            <div className="flex items-center space-x-2">
+                              <label className="text-sm text-gray-600 dark:text-gray-400">Filter by website:</label>
+                              <select
+                                value={selectedWebsiteFilter}
+                                onChange={(e) => setSelectedWebsiteFilter(e.target.value)}
+                                className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                              >
+                                <option value="all">All Websites</option>
+                                {websites.map((website) => (
+                                  <option key={website.id} value={website.id.toString()}>
+                                    {website.domain}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
                         </div>
 
                         {loading ? (
@@ -550,18 +598,21 @@ export default function ArticleWriter() {
                               Loading articles...
                             </div>
                           </div>
-                        ) : articles.length === 0 ? (
+                        ) : filteredArticles.length === 0 ? (
                           <div className="px-6 py-12 text-center">
                             <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             <p className="text-gray-500 dark:text-gray-400">
-                              No articles yet. Create your first article to get started!
+                              {selectedWebsiteFilter === 'all' 
+                                ? 'No articles yet. Create your first article to get started!'
+                                : `No articles found for ${websites.find(w => w.id.toString() === selectedWebsiteFilter)?.domain || 'selected website'}.`
+                              }
                             </p>
                           </div>
                         ) : (
                           <div className="divide-y divide-gray-100 dark:divide-gray-700/60">
-                            {articles.map((article) => (
+                            {filteredArticles.map((article) => (
                               <div key={article.id} className="px-6 py-4">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
@@ -637,7 +688,7 @@ export default function ArticleWriter() {
                                         )}
                                       </button>
                                     )}
-                                    {article.status === 'failed' && getRetryContext(article) === 'generation' && (
+                                    {(article.status === 'failed' || article.status === 'generation_failed') && getRetryContext(article) === 'generation' && (
                                       <button
                                         onClick={() => handleRetryGeneration(article.id)}
                                         disabled={generatingArticle === article.id}
@@ -679,7 +730,7 @@ export default function ArticleWriter() {
                                         )}
                                       </button>
                                     )}
-                                    {article.status === 'failed' && getRetryContext(article) === 'publishing' && article.cms_connections && (
+                                    {(article.status === 'failed' || article.status === 'publishing_failed') && getRetryContext(article) === 'publishing' && article.cms_connections && (
                                       <button
                                         onClick={() => handleRetryPublishing(article.id)}
                                         disabled={publishingArticle === article.id}
