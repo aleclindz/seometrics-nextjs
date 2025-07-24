@@ -293,21 +293,32 @@ async function publishToStrapi({
   
   // Convert contentType to endpoint URL
   let endpoint = contentType;
-  if (contentType.startsWith('api::') && contentType.includes('::')) {
-    // Convert api::article::article to api/articles
-    const parts = contentType.split('::');
-    if (parts.length === 3) {
-      const singularName = parts[1];
-      const pluralName = singularName.endsWith('y') 
-        ? singularName.slice(0, -1) + 'ies'
-        : singularName + 's';
-      endpoint = `api/${pluralName}`;
-    }
-  }
   
-  // If not already in correct format, assume it's ready to use
-  if (!endpoint.startsWith('api/')) {
+  console.log('[STRAPI PUBLISH] Original content type:', contentType);
+  
+  if (contentType.startsWith('api::') && contentType.includes('::')) {
+    // Convert api::blog-post::blog-post to api/blog-posts
+    const parts = contentType.split('::');
+    console.log('[STRAPI PUBLISH] Content type parts:', parts);
+    
+    if (parts.length === 3) {
+      const singularName = parts[1]; // blog-post
+      // Handle pluralization for hyphenated words
+      let pluralName;
+      if (singularName.endsWith('y') && !singularName.endsWith('ay') && !singularName.endsWith('ey') && !singularName.endsWith('oy') && !singularName.endsWith('uy')) {
+        pluralName = singularName.slice(0, -1) + 'ies';
+      } else if (singularName.endsWith('s') || singularName.endsWith('sh') || singularName.endsWith('ch') || singularName.endsWith('x') || singularName.endsWith('z')) {
+        pluralName = singularName + 'es';
+      } else {
+        pluralName = singularName + 's';
+      }
+      endpoint = `api/${pluralName}`;
+      console.log('[STRAPI PUBLISH] Converted to endpoint:', endpoint);
+    }
+  } else if (!endpoint.startsWith('api/')) {
+    // If not already in correct format, assume it's ready to use
     endpoint = `api/${endpoint}`;
+    console.log('[STRAPI PUBLISH] Added api/ prefix:', endpoint);
   }
 
   const url = `${cleanUrl}/${endpoint}`;
