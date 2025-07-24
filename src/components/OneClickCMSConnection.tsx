@@ -17,6 +17,7 @@ const CMS_PROVIDERS = [
     icon: '🔷',
     requiresSiteUrl: true,
     placeholder: 'https://yoursite.com',
+    isOAuth: true,
   },
   {
     type: 'webflow' as CMSType,
@@ -24,6 +25,7 @@ const CMS_PROVIDERS = [
     description: 'Connect your Webflow CMS',
     icon: '🌊',
     requiresSiteUrl: false,
+    isOAuth: true,
   },
   {
     type: 'shopify' as CMSType,
@@ -32,6 +34,16 @@ const CMS_PROVIDERS = [
     icon: '🛍️',
     requiresSiteUrl: true,
     placeholder: 'your-store.myshopify.com',
+    isOAuth: true,
+  },
+  {
+    type: 'strapi' as CMSType,
+    name: 'Strapi',
+    description: 'Connect your Strapi CMS with API token',
+    icon: '📄',
+    requiresSiteUrl: true,
+    placeholder: 'https://your-strapi.com',
+    isOAuth: false,
   },
 ];
 
@@ -43,6 +55,13 @@ export default function OneClickCMSConnection({ onConnectionComplete, className 
   const [connectingType, setConnectingType] = useState<CMSType | null>(null);
   const [siteUrl, setSiteUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  // Strapi-specific fields
+  const [strapiConfig, setStrapiConfig] = useState({
+    apiToken: '',
+    contentType: 'api::blog-post.blog-post',
+    connectionName: ''
+  });
 
   useEffect(() => {
     if (user?.token) {
@@ -84,16 +103,56 @@ export default function OneClickCMSConnection({ onConnectionComplete, className 
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/cms/connections?userId=${user.token}`);
-      const data = await response.json();
+      
+      // Fetch both new modular connections and legacy connections
+      const [newConnectionsResponse, legacyConnectionsResponse] = await Promise.all([
+        fetch(`/api/cms/connections?userId=${user.token}`).catch(() => null),
+        fetch(`/api/cms/connections?userToken=${user.token}`).catch(() => null)
+      ]);
 
-      if (data.success) {
-        setConnections(data.connections || []);
-        setSupportedProviders(data.supportedProviders || []);
-      } else {
-        setError(data.error || 'Failed to fetch connections');
+      let allConnections: CMSConnection[] = [];
+      let supportedProviders: CMSType[] = ['wordpress', 'webflow', 'shopify', 'strapi'];
+
+      // Process new modular connections
+      if (newConnectionsResponse?.ok) {
+        const newData = await newConnectionsResponse.json();
+        if (newData.success && newData.connections) {
+          allConnections = [...allConnections, ...newData.connections];
+        }
+        if (newData.supportedProviders) {
+          supportedProviders = newData.supportedProviders;
+        }
       }
+
+      // Process legacy connections 
+      if (legacyConnectionsResponse?.ok) {
+        const legacyData = await legacyConnectionsResponse.json();
+        if (legacyData.success && legacyData.connections) {
+          // Convert legacy format to new format for UI consistency
+          const convertedLegacy = legacyData.connections.map((conn: any) => ({
+            id: conn.id.toString(),
+            userId: user.token,
+            type: conn.cms_type,
+            name: conn.connection_name,
+            isActive: conn.status === 'active',
+            createdAt: new Date(conn.created_at),
+            updatedAt: new Date(conn.updated_at || conn.created_at),
+            // Legacy connections don't have full credential structure
+            credentials: {
+              type: conn.cms_type,
+              accessToken: conn.api_token || '',
+              siteUrl: conn.base_url
+            }
+          }));
+          allConnections = [...allConnections, ...convertedLegacy];
+        }
+      }
+
+      setConnections(allConnections);
+      setSupportedProviders(supportedProviders);
+      
     } catch (err) {
+      console.error('Error fetching connections:', err);
       setError('Failed to load CMS connections');
     } finally {
       setLoading(false);
@@ -109,11 +168,16 @@ export default function OneClickCMSConnection({ onConnectionComplete, className 
       return;
     }
 
+    // Handle Strapi separately (manual setup)
+    if (type === 'strapi') {
+      return handleStrapiConnect();
+    }
+
     try {
       setConnectingType(type);
       setError(null);
 
-      // Start OAuth flow
+      // Start OAuth flow for WordPress, Webflow, Shopify
       const response = await fetch('/api/cms/oauth/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,6 +220,56 @@ export default function OneClickCMSConnection({ onConnectionComplete, className 
       }
     } catch (err) {
       setError('Failed to start connection process');
+      setConnectingType(null);
+    }
+  };
+
+  const handleStrapiConnect = async () => {
+    if (!siteUrl.trim() || !strapiConfig.apiToken.trim() || !strapiConfig.connectionName.trim()) {
+      setError('Please fill in all required fields for Strapi connection');
+      return;
+    }
+
+    try {
+      setConnectingType('strapi');
+      setError(null);
+
+      // Create legacy Strapi connection (compatible with existing system)
+      const response = await fetch('/api/cms/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: user?.token,
+          connection_name: strapiConfig.connectionName,
+          cms_type: 'strapi',
+          base_url: siteUrl.trim(),
+          api_token: strapiConfig.apiToken,
+          content_type: strapiConfig.contentType,
+          website_id: 1 // Default website - could be made configurable
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Reset form
+        setSiteUrl('');
+        setStrapiConfig({
+          apiToken: '',
+          contentType: 'api::blog-post.blog-post',
+          connectionName: ''
+        });
+        
+        // Refresh connections
+        fetchConnections();
+        onConnectionComplete?.(data.connection);
+        setError(null);
+      } else {
+        setError(data.error || 'Failed to create Strapi connection');
+      }
+    } catch (err) {
+      setError('Failed to create Strapi connection');
+    } finally {
       setConnectingType(null);
     }
   };
@@ -292,6 +406,35 @@ export default function OneClickCMSConnection({ onConnectionComplete, className 
                 </div>
               )}
 
+              {provider.type === 'strapi' && (
+                <div className="space-y-3 mb-3">
+                  <input
+                    type="text"
+                    placeholder="Connection Name"
+                    value={strapiConfig.connectionName}
+                    onChange={(e) => setStrapiConfig(prev => ({ ...prev, connectionName: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    disabled={connectingType === provider.type}
+                  />
+                  <input
+                    type="password"
+                    placeholder="API Token"
+                    value={strapiConfig.apiToken}
+                    onChange={(e) => setStrapiConfig(prev => ({ ...prev, apiToken: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    disabled={connectingType === provider.type}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Content Type (e.g., api::blog-post.blog-post)"
+                    value={strapiConfig.contentType}
+                    onChange={(e) => setStrapiConfig(prev => ({ ...prev, contentType: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    disabled={connectingType === provider.type}
+                  />
+                </div>
+              )}
+
               <button
                 onClick={() => handleConnect(provider.type, provider)}
                 disabled={connectingType !== null}
@@ -303,7 +446,7 @@ export default function OneClickCMSConnection({ onConnectionComplete, className 
                     Connecting...
                   </span>
                 ) : (
-                  `Connect ${provider.name}`
+                  provider.isOAuth ? `Connect ${provider.name}` : `Setup ${provider.name}`
                 )}
               </button>
             </div>

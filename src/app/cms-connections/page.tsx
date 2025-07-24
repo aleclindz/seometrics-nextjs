@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import FeatureGate from '@/components/FeatureGate';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
-import CMSConnectionWizard from '@/components/CMSConnectionWizard';
+import OneClickCMSConnection from '@/components/OneClickCMSConnection';
 import CMSConnectionsList from '@/components/CMSConnectionsList';
 
 interface CMSConnection {
@@ -75,7 +75,8 @@ export default function CMSConnections() {
     }
   };
 
-  const handleConnectionAdded = () => {
+  const handleConnectionAdded = (connection?: any) => {
+    console.log('[CMS CONNECTIONS] New connection added:', connection);
     setShowForm(false);
     fetchConnections();
   };
@@ -129,10 +130,18 @@ export default function CMSConnections() {
 
                   {showForm ? (
                     <div className="mb-8">
-                      <CMSConnectionWizard
-                        onComplete={handleConnectionAdded}
-                        onCancel={() => setShowForm(false)}
+                      <OneClickCMSConnection
+                        onConnectionComplete={handleConnectionAdded}
+                        className=""
                       />
+                      <div className="mt-4 text-center">
+                        <button
+                          onClick={() => setShowForm(false)}
+                          className="text-gray-500 hover:text-gray-700 text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   ) : loading ? (
                     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
