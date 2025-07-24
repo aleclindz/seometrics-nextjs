@@ -100,8 +100,9 @@ export async function POST(request: NextRequest) {
       let cmsArticleId: string;
       
       // Check if this is a new CMS connection (modular system)
-      if (article.cms_connection_id) {
-        // Use new modular CMS system
+      // Skip CMS Manager for Strapi since it's not implemented there yet
+      if (article.cms_connection_id && article.cms_connections?.cms_type !== 'strapi') {
+        // Use new modular CMS system for WordPress, Webflow, Shopify
         try {
           const connection = await cmsManager.getConnection(article.cms_connection_id, userToken);
           
@@ -296,13 +297,22 @@ async function publishToStrapi({
   
   console.log('[STRAPI PUBLISH] Original content type:', contentType);
   
-  if (contentType.startsWith('api::') && contentType.includes('::')) {
-    // Convert api::blog-post::blog-post to api/blog-posts
+  if (contentType.startsWith('api::')) {
+    // Handle formats like api::blog-post.blog-post or api::blog-post::blog-post
     const parts = contentType.split('::');
     console.log('[STRAPI PUBLISH] Content type parts:', parts);
     
-    if (parts.length === 3) {
-      const singularName = parts[1]; // blog-post
+    if (parts.length >= 2) {
+      // Get the content type name - could be "blog-post.blog-post" or just "blog-post"
+      let singularName = parts[1];
+      
+      // If it contains a dot, take the first part (e.g., "blog-post.blog-post" -> "blog-post")
+      if (singularName.includes('.')) {
+        singularName = singularName.split('.')[0];
+      }
+      
+      console.log('[STRAPI PUBLISH] Singular name extracted:', singularName);
+      
       // Handle pluralization for hyphenated words
       let pluralName;
       if (singularName.endsWith('y') && !singularName.endsWith('ay') && !singularName.endsWith('ey') && !singularName.endsWith('oy') && !singularName.endsWith('uy')) {
