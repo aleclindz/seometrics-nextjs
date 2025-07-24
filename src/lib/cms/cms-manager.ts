@@ -142,8 +142,8 @@ export class CMSManager {
       .from('cms_connections')
       .select('*')
       .eq('id', connectionId)
-      .eq('user_id', userId)
-      .eq('is_active', true)
+      .eq('user_token', userId)
+      .eq('status', 'active')
       .single();
 
     if (error || !data) {
@@ -304,7 +304,7 @@ export class CMSManager {
     await this.supabase
       .from('cms_connections')
       .update({ 
-        is_active: false,
+        status: 'inactive',
         updated_at: new Date().toISOString(),
       })
       .eq('id', connectionId);
@@ -322,12 +322,16 @@ export class CMSManager {
 
   private dbRecordToConnection(record: any): CMSConnection {
     return {
-      id: record.id,
-      userId: record.user_id,
-      type: record.type,
-      name: record.name,
-      credentials: record.credentials,
-      isActive: record.is_active,
+      id: record.id.toString(),
+      userId: record.user_token,
+      type: record.cms_type as CMSType,
+      name: record.connection_name,
+      credentials: {
+        type: record.cms_type,
+        accessToken: record.api_token,
+        siteUrl: record.base_url
+      },
+      isActive: record.status === 'active',
       lastSyncAt: record.last_sync_at ? new Date(record.last_sync_at) : undefined,
       createdAt: new Date(record.created_at),
       updatedAt: new Date(record.updated_at),
