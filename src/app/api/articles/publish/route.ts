@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { CMSManager } from '@/lib/cms/cms-manager';
 
 // Edge Runtime configuration
 export const runtime = 'edge';
@@ -8,6 +9,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const cmsManager = new CMSManager();
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,7 +99,58 @@ export async function POST(request: NextRequest) {
     try {
       let cmsArticleId: string;
       
-      if (article.cms_connections.cms_type === 'strapi') {
+      // Check if this is a new CMS connection (modular system)
+      if (article.cms_connection_id) {
+        // Use new modular CMS system
+        const connection = await cmsManager.getConnection(article.cms_connection_id, userToken);
+        
+        if (!connection) {
+          throw new Error('CMS connection not found or no longer valid');
+        }
+
+        const provider = cmsManager.getProvider(connection.type);
+        
+        // Prepare article data
+        const articleData = {
+          title: article.title,
+          content: article.article_content,
+          slug: article.slug,
+          excerpt: article.meta_description || '',
+          meta: {
+            title: article.meta_title || article.title,
+            description: article.meta_description || '',
+          },
+        };
+
+        // Publish using the modular system
+        const publishedArticle = await provider.publishArticle(
+          connection.credentials, 
+          articleData, 
+          {
+            status: publishDraft ? 'draft' : 'published',
+            blogId: article.target_blog_id || undefined,
+            collectionId: article.target_blog_id || undefined,
+          }
+        );
+
+        cmsArticleId = publishedArticle.id;
+        
+        // Store the published article in cms_articles table for tracking
+        await supabase
+          .from('cms_articles')
+          .insert({
+            connection_id: connection.id,
+            article_queue_id: articleId,
+            external_id: publishedArticle.id,
+            title: publishedArticle.title,
+            slug: publishedArticle.slug,
+            status: publishedArticle.status,
+            published_at: publishedArticle.publishedAt?.toISOString(),
+            sync_status: 'synced',
+          });
+          
+      } else if (article.cms_connections?.cms_type === 'strapi') {
+        // Legacy Strapi support
         cmsArticleId = await publishToStrapi({
           baseUrl: article.cms_connections.base_url,
           apiToken: article.cms_connections.api_token,
@@ -109,7 +163,7 @@ export async function POST(request: NextRequest) {
           publishDraft
         });
       } else {
-        throw new Error(`CMS type '${article.cms_connections.cms_type}' not supported yet`);
+        throw new Error('No valid CMS connection found. Please connect a CMS platform first.');
       }
 
       const publishTime = Math.round((Date.now() - publishStartTime) / 1000);
