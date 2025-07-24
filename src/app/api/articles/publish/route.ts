@@ -102,52 +102,74 @@ export async function POST(request: NextRequest) {
       // Check if this is a new CMS connection (modular system)
       if (article.cms_connection_id) {
         // Use new modular CMS system
-        const connection = await cmsManager.getConnection(article.cms_connection_id, userToken);
-        
-        if (!connection) {
-          throw new Error('CMS connection not found or no longer valid');
-        }
-
-        const provider = cmsManager.getProvider(connection.type);
-        
-        // Prepare article data
-        const articleData = {
-          title: article.title,
-          content: article.article_content,
-          slug: article.slug,
-          excerpt: article.meta_description || '',
-          meta: {
-            title: article.meta_title || article.title,
-            description: article.meta_description || '',
-          },
-        };
-
-        // Publish using the modular system
-        const publishedArticle = await provider.publishArticle(
-          connection.credentials, 
-          articleData, 
-          {
-            status: publishDraft ? 'draft' : 'published',
-            blogId: article.target_blog_id || undefined,
-            collectionId: article.target_blog_id || undefined,
+        try {
+          const connection = await cmsManager.getConnection(article.cms_connection_id, userToken);
+          
+          if (!connection) {
+            console.log('[PUBLISH EDGE] New CMS connection not found, falling back to legacy system');
+            throw new Error('CMS connection not found in new system');
           }
-        );
 
-        cmsArticleId = publishedArticle.id;
+          const provider = cmsManager.getProvider(connection.type);
         
-        // Store the published article in cms_articles table for tracking
-        await supabase
-          .from('cms_articles')
-          .insert({
-            connection_id: connection.id,
-            article_queue_id: articleId,
-            external_id: publishedArticle.id,
-            title: publishedArticle.title,
-            slug: publishedArticle.slug,
-            status: publishedArticle.status,
-            published_at: publishedArticle.publishedAt?.toISOString(),
-            sync_status: 'synced',
-          });
+          // Prepare article data
+          const articleData = {
+            title: article.title,
+            content: article.article_content,
+            slug: article.slug,
+            excerpt: article.meta_description || '',
+            meta: {
+              title: article.meta_title || article.title,
+              description: article.meta_description || '',
+            },
+          };
+
+          // Publish using the modular system
+          const publishedArticle = await provider.publishArticle(
+            connection.credentials, 
+            articleData, 
+            {
+              status: publishDraft ? 'draft' : 'published',
+              blogId: article.target_blog_id || undefined,
+              collectionId: article.target_blog_id || undefined,
+            }
+          );
+
+          cmsArticleId = publishedArticle.id;
+          
+          // Store the published article in cms_articles table for tracking
+          await supabase
+            .from('cms_articles')
+            .insert({
+              connection_id: connection.id,
+              article_queue_id: articleId,
+              external_id: publishedArticle.id,
+              title: publishedArticle.title,
+              slug: publishedArticle.slug,
+              status: publishedArticle.status,
+              published_at: publishedArticle.publishedAt?.toISOString(),
+              sync_status: 'synced',
+            });
+            
+        } catch (newCMSError) {
+          console.log('[PUBLISH EDGE] New CMS system failed, trying legacy system:', newCMSError);
+          // Fall back to legacy system if new system fails
+          if (article.cms_connections?.cms_type === 'strapi') {
+            cmsArticleId = await publishToStrapi({
+              baseUrl: article.cms_connections.base_url,
+              apiToken: article.cms_connections.api_token,
+              contentType: article.cms_connections.content_type,
+              title: article.title,
+              content: article.article_content,
+              slug: article.slug,
+              metaTitle: article.meta_title,
+              metaDescription: article.meta_description,
+              publishDraft
+            });
+          } else {
+            throw newCMSError;
+          }
+        }
           
       } else if (article.cms_connections?.cms_type === 'strapi') {
         // Legacy Strapi support
@@ -291,6 +313,8 @@ async function publishToStrapi({
   const url = `${cleanUrl}/${endpoint}`;
   
   console.log('[STRAPI PUBLISH] Publishing to:', url);
+  console.log('[STRAPI PUBLISH] Content type:', contentType);
+  console.log('[STRAPI PUBLISH] Endpoint:', endpoint);
 
   // Prepare the article data according to Strapi v4 format
   const articleData = {
@@ -304,6 +328,8 @@ async function publishToStrapi({
     }
   };
 
+  console.log('[STRAPI PUBLISH] Article data:', JSON.stringify(articleData, null, 2));
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -316,13 +342,20 @@ async function publishToStrapi({
   if (!response.ok) {
     const errorText = await response.text();
     console.error('[STRAPI PUBLISH] Error response:', response.status, errorText);
+    console.error('[STRAPI PUBLISH] Request URL:', url);
+    console.error('[STRAPI PUBLISH] Request headers:', {
+      'Authorization': `Bearer ${apiToken ? apiToken.substring(0, 10) + '...' : 'missing'}`,
+      'Content-Type': 'application/json'
+    });
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please check your API token.');
     } else if (response.status === 404) {
-      throw new Error(`Content type endpoint not found: ${endpoint}`);
+      throw new Error(`Content type endpoint not found: ${endpoint}. Check if the content type exists in Strapi.`);
     } else if (response.status === 400) {
       throw new Error(`Invalid data format: ${errorText}`);
+    } else if (response.status === 405) {
+      throw new Error(`Method not allowed for endpoint: ${endpoint}. The Strapi endpoint may not support POST requests or the content type may be incorrect.`);
     } else {
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }

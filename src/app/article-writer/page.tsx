@@ -217,6 +217,108 @@ export default function ArticleWriter() {
     }
   };
 
+  // Contextual retry functions
+  const handleRetryGeneration = async (articleId: number) => {
+    if (!user?.token) return;
+
+    try {
+      setGeneratingArticle(articleId);
+      
+      const article = articles.find(a => a.id === articleId);
+      console.log('[RETRY GENERATION] Retrying article generation for:', articleId);
+      
+      const response = await fetch('/api/articles/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: user.token,
+          articleId,
+          targetKeywords: article?.target_keywords || [],
+          contentLength: 'medium',
+          tone: 'professional',
+          isRetry: true
+        })
+      });
+
+      if (response.ok) {
+        console.log('[RETRY GENERATION] Article generation retry successful');
+        fetchData();
+        setError(null); // Clear any previous errors
+      } else {
+        const errorData = await response.json();
+        setError(`Generation retry failed: ${errorData.error || 'Failed to generate content'}`);
+      }
+    } catch (err) {
+      setError('Failed to retry article generation');
+    } finally {
+      setGeneratingArticle(null);
+    }
+  };
+
+  const handleRetryPublishing = async (articleId: number) => {
+    if (!user?.token) return;
+
+    try {
+      setPublishingArticle(articleId);
+      
+      console.log('[RETRY PUBLISHING] Retrying article publishing for:', articleId);
+      
+      const response = await fetch('/api/articles/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: user.token,
+          articleId,
+          publishDraft: true,
+          isRetry: true
+        })
+      });
+
+      if (response.ok) {
+        console.log('[RETRY PUBLISHING] Article publishing retry successful');
+        fetchData();
+        setError(null); // Clear any previous errors
+      } else {
+        const errorData = await response.json();
+        setError(`Publishing retry failed: ${errorData.error || 'Failed to publish article'}`);
+      }
+    } catch (err) {
+      setError('Failed to retry article publishing');
+    } finally {
+      setPublishingArticle(null);
+    }
+  };
+
+  // Helper function to determine what type of retry is needed
+  const getRetryContext = (article: any) => {
+    if (article.status !== 'failed') return null;
+    
+    // If no content exists, it failed during generation
+    if (!article.article_content) {
+      return 'generation';
+    }
+    
+    // If content exists but has publishing-related error, it failed during publishing
+    if (article.error_message && 
+        (article.error_message.includes('publish') || 
+         article.error_message.includes('CMS') ||
+         article.error_message.includes('HTTP 405') ||
+         article.error_message.includes('Method Not Allowed'))) {
+      return 'publishing';
+    }
+    
+    // If content exists but error is generation-related, it failed during generation
+    if (article.error_message && 
+        (article.error_message.includes('generate') || 
+         article.error_message.includes('OpenAI') ||
+         article.error_message.includes('content'))) {
+      return 'generation';
+    }
+    
+    // Default: if content exists, assume publishing failure; otherwise generation failure
+    return article.article_content ? 'publishing' : 'generation';
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30';
@@ -535,9 +637,9 @@ export default function ArticleWriter() {
                                         )}
                                       </button>
                                     )}
-                                    {article.status === 'failed' && (
+                                    {article.status === 'failed' && getRetryContext(article) === 'generation' && (
                                       <button
-                                        onClick={() => handleGenerateContent(article.id)}
+                                        onClick={() => handleRetryGeneration(article.id)}
                                         disabled={generatingArticle === article.id}
                                         className="inline-flex items-center px-3 py-1 text-sm bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg transition-colors"
                                       >
@@ -577,9 +679,9 @@ export default function ArticleWriter() {
                                         )}
                                       </button>
                                     )}
-                                    {(article.status === 'failed' && article.article_content) && article.cms_connections && (
+                                    {article.status === 'failed' && getRetryContext(article) === 'publishing' && article.cms_connections && (
                                       <button
-                                        onClick={() => handlePublishArticle(article.id)}
+                                        onClick={() => handleRetryPublishing(article.id)}
                                         disabled={publishingArticle === article.id}
                                         className="inline-flex items-center px-3 py-1 text-sm bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition-colors"
                                       >
@@ -593,7 +695,7 @@ export default function ArticleWriter() {
                                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                             </svg>
-                                            Retry Publish
+                                            Retry Publishing
                                           </>
                                         )}
                                       </button>

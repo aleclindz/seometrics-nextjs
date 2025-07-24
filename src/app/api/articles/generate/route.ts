@@ -100,8 +100,8 @@ export async function POST(request: NextRequest) {
     const generationStartTime = Date.now();
 
     try {
-      // Generate article content using GPT-4
-      const articleContent = await generateArticleContent({
+      // Generate comprehensive article content with all SEO metadata
+      const generationResult = await generateComprehensiveArticle({
         title: article.title,
         keywords: targetKeywords,
         websiteDomain: article.websites?.domain,
@@ -111,18 +111,21 @@ export async function POST(request: NextRequest) {
       });
 
       // Calculate metrics
-      const wordCount = articleContent.split(/\s+/).length;
-      const qualityScore = calculateQualityScore(articleContent, targetKeywords);
-      const readabilityScore = calculateReadabilityScore(articleContent);
-      const seoScore = calculateSeoScore(articleContent, targetKeywords, article.title);
+      const wordCount = generationResult.content.split(/\s+/).length;
+      const qualityScore = calculateQualityScore(generationResult.content, targetKeywords);
+      const readabilityScore = calculateReadabilityScore(generationResult.content);
+      const seoScore = calculateSeoScore(generationResult.content, targetKeywords, article.title);
 
       const generationTime = Math.round((Date.now() - generationStartTime) / 1000);
 
-      // Update article with generated content
+      // Update article with generated content and SEO metadata
       const { error: updateError } = await supabase
         .from('article_queue')
         .update({
-          article_content: articleContent,
+          article_content: generationResult.content,
+          meta_title: generationResult.metaTitle,
+          meta_description: generationResult.metaDescription,
+          content_outline: generationResult.contentOutline,
           word_count: wordCount,
           quality_score: qualityScore,
           readability_score: readabilityScore,
@@ -149,7 +152,12 @@ export async function POST(request: NextRequest) {
             wordCount,
             qualityScore,
             readabilityScore,
-            seoScore
+            seoScore,
+            hasMetaTitle: !!generationResult.metaTitle,
+            hasMetaDescription: !!generationResult.metaDescription,
+            hasContentOutline: !!generationResult.contentOutline,
+            metaTitleLength: generationResult.metaTitle?.length || 0,
+            metaDescriptionLength: generationResult.metaDescription?.length || 0
           }
         });
 
@@ -174,7 +182,7 @@ export async function POST(request: NextRequest) {
         success: true,
         article: {
           id: articleId,
-          content: articleContent,
+          content: generationResult.content,
           word_count: wordCount,
           quality_score: qualityScore,
           readability_score: readabilityScore,
@@ -224,7 +232,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Real OpenAI GPT-4 content generation
-async function generateArticleContent({
+async function generateComprehensiveArticle({
   title,
   keywords,
   websiteDomain,
@@ -245,9 +253,9 @@ async function generateArticleContent({
     throw new Error('OpenAI API key not configured');
   }
 
-  console.log('[GENERATE EDGE] Generating real AI content for:', title);
+  console.log('[GENERATE EDGE] Generating comprehensive article with SEO metadata for:', title);
 
-  // Single comprehensive prompt to avoid multiple API calls and timeouts
+  // Single comprehensive prompt to generate all required content and metadata
   let stylePrompt = '';
   switch (tone) {
     case 'casual':
@@ -263,21 +271,34 @@ async function generateArticleContent({
 
   const wordTarget = contentLength === 'short' ? 800 : contentLength === 'long' ? 2000 : 1200;
   
-  const comprehensivePrompt = `Write a complete, SEO-optimized article of approximately ${wordTarget} words about: "${title}".
+  const comprehensivePrompt = `Create a complete SEO article package for: "${title}"
 
   TARGET KEYWORDS: ${keywords.join(', ')}
   WEBSITE: ${websiteDomain || 'general business'}
   TONE: ${stylePrompt}
-  
-  ARTICLE STRUCTURE - Include ALL of these sections:
+  WORD COUNT: Approximately ${wordTarget} words
 
+  RESPOND WITH THIS EXACT JSON FORMAT:
+  {
+    "metaTitle": "SEO-optimized title (50-60 characters, include primary keyword)",
+    "metaDescription": "Compelling meta description (150-160 characters, include primary keyword and call-to-action)",
+    "contentOutline": {
+      "introduction": "Brief intro summary",
+      "mainSections": ["Section 1 title", "Section 2 title", "Section 3 title", "etc"],
+      "conclusion": "Brief conclusion summary",
+      "faq": ["FAQ question 1", "FAQ question 2", "etc"]
+    },
+    "content": "FULL ARTICLE CONTENT HERE"
+  }
+
+  ARTICLE CONTENT REQUIREMENTS:
   1. KEY TAKEAWAYS (5-7 bullet points with <ul><li> tags)
   2. INTRODUCTION (engaging hook with primary keyword)
   3. MAIN CONTENT (6-8 sections with <h2> headings, include target keywords naturally)
   4. FAQ SECTION (5 questions with <h3> and detailed <p> answers)
   5. CONCLUSION (compelling call-to-action)
 
-  REQUIREMENTS:
+  CONTENT SPECIFICATIONS:
   - ${stylePrompt}
   - Include target keywords naturally (1-2% density)
   - Use HTML formatting: <h2> for main sections, <h3> for subsections, <strong> for emphasis
@@ -288,7 +309,24 @@ async function generateArticleContent({
   - FAQ questions should address common user concerns with long-tail keywords
   - Key takeaways should be specific and actionable
 
-  Create a complete, valuable article that ranks well in search engines and provides genuine value to readers.`;
+  META TITLE REQUIREMENTS:
+  - 50-60 characters total
+  - Include primary keyword: "${keywords[0]}"
+  - Compelling and click-worthy
+  - Different from main article title
+
+  META DESCRIPTION REQUIREMENTS:
+  - 150-160 characters total
+  - Include primary keyword: "${keywords[0]}"
+  - Include a call-to-action
+  - Summarize the article's value proposition
+
+  CONTENT OUTLINE REQUIREMENTS:
+  - Extract main section headings from the article
+  - Include 5 FAQ questions that will be answered
+  - Brief summaries for intro and conclusion
+
+  Return ONLY the JSON response, no additional text.`;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -301,12 +339,12 @@ async function generateArticleContent({
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert SEO content writer who creates complete, high-converting articles that rank well in search engines. Always include all requested sections in the specified order.' 
+          content: 'You are an expert SEO content writer and strategist. You create comprehensive article packages with optimized metadata. Always respond with valid JSON in the exact format requested.' 
         },
         { role: 'user', content: comprehensivePrompt }
       ],
       temperature: 0.1,
-      max_tokens: 4000
+      max_tokens: 4500
     })
   });
 
@@ -315,9 +353,40 @@ async function generateArticleContent({
   }
 
   const data = await response.json();
-  const article = data.choices[0].message.content || '';
+  const aiResponse = data.choices[0].message.content || '';
   
-  return article;
+  try {
+    // Parse the JSON response
+    const parsedResult = JSON.parse(aiResponse);
+    
+    return {
+      content: parsedResult.content,
+      metaTitle: parsedResult.metaTitle,
+      metaDescription: parsedResult.metaDescription,
+      contentOutline: parsedResult.contentOutline
+    };
+  } catch (parseError) {
+    console.error('[GENERATE EDGE] Failed to parse AI response as JSON:', parseError);
+    console.error('[GENERATE EDGE] AI Response:', aiResponse);
+    
+    // Fallback: Extract content and generate basic metadata
+    const content = aiResponse;
+    const metaTitle = title.length <= 60 ? title : title.substring(0, 57) + '...';
+    const metaDescription = `Learn about ${keywords[0]} in this comprehensive guide. Discover actionable insights and best practices.`;
+    const contentOutline = {
+      introduction: "Introduction to the topic",
+      mainSections: ["Main Content Section 1", "Main Content Section 2", "Main Content Section 3"],
+      conclusion: "Conclusion and next steps",
+      faq: ["Common question 1", "Common question 2", "Common question 3"]
+    };
+    
+    return {
+      content,
+      metaTitle,
+      metaDescription,
+      contentOutline
+    };
+  }
 }
 
 // Simple quality scoring algorithm
