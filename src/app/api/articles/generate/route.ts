@@ -247,49 +247,7 @@ async function generateArticleContent({
 
   console.log('[GENERATE EDGE] Generating real AI content for:', title);
 
-  // Step 1: Generate article outline
-  const outlinePrompt = `Write 6-8 compelling subheadings for an SEO-optimized article about: "${title}".
-  
-  Target keywords: ${keywords.join(', ')}
-  Website: ${websiteDomain || 'general business'}
-  Content style: ${tone}
-  
-  Create subheadings that:
-  - Include target keywords naturally
-  - Follow logical progression
-  - Are engaging and informative
-  - Work well for SEO
-  
-  Format as a numbered list.`;
-
-  const outlineResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert SEO content writer who creates high-converting, search-optimized articles.' 
-        },
-        { role: 'user', content: outlinePrompt }
-      ],
-      temperature: 0.3,
-      max_tokens: 500
-    })
-  });
-
-  if (!outlineResponse.ok) {
-    throw new Error(`OpenAI API error: ${outlineResponse.status}`);
-  }
-
-  const outlineData = await outlineResponse.json();
-  const outline = outlineData.choices[0].message.content;
-
-  // Step 2: Generate full article content
+  // Single comprehensive prompt to avoid multiple API calls and timeouts
   let stylePrompt = '';
   switch (tone) {
     case 'casual':
@@ -305,31 +263,34 @@ async function generateArticleContent({
 
   const wordTarget = contentLength === 'short' ? 800 : contentLength === 'long' ? 2000 : 1200;
   
-  const articlePrompt = `Write a comprehensive, SEO-optimized article of approximately ${wordTarget} words based on the following outline.
+  const comprehensivePrompt = `Write a complete, SEO-optimized article of approximately ${wordTarget} words about: "${title}".
 
-  Title: ${title}
-  Target Keywords: ${keywords.join(', ')}
-  Website Context: ${websiteDomain ? `This is for ${websiteDomain}` : 'General business context'}
-  ${websiteDescription ? `Website Description: ${websiteDescription}` : ''}
+  TARGET KEYWORDS: ${keywords.join(', ')}
+  WEBSITE: ${websiteDomain || 'general business'}
+  TONE: ${stylePrompt}
   
-  Writing Guidelines:
+  ARTICLE STRUCTURE - Include ALL of these sections:
+
+  1. KEY TAKEAWAYS (5-7 bullet points with <ul><li> tags)
+  2. INTRODUCTION (engaging hook with primary keyword)
+  3. MAIN CONTENT (6-8 sections with <h2> headings, include target keywords naturally)
+  4. FAQ SECTION (5 questions with <h3> and detailed <p> answers)
+  5. CONCLUSION (compelling call-to-action)
+
+  REQUIREMENTS:
   - ${stylePrompt}
-  - Write 2-3 detailed paragraphs for each section
   - Include target keywords naturally (1-2% density)
-  - Use varied sentence structures and engaging language
-  - Include actionable insights and practical tips
-  - Add relevant examples and case studies where appropriate
-  - Optimize for search engines while maintaining readability
   - Use HTML formatting: <h2> for main sections, <h3> for subsections, <strong> for emphasis
   - Include bullet points with <ul><li> tags where helpful
-  - End with a compelling conclusion and call-to-action
-  
-  Article Outline:
-  ${outline}
+  - Write 2-3 detailed paragraphs for each main section
+  - Include actionable insights and practical examples
+  - End with compelling conclusion mentioning ${websiteDomain || 'the topic'}
+  - FAQ questions should address common user concerns with long-tail keywords
+  - Key takeaways should be specific and actionable
 
-  Create content that provides real value to readers while being optimized for search engines.`;
+  Create a complete, valuable article that ranks well in search engines and provides genuine value to readers.`;
 
-  const articleResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openaiApiKey}`,
@@ -340,100 +301,22 @@ async function generateArticleContent({
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert SEO content writer who creates detailed, engaging, high-converting articles that rank well in search engines.' 
+          content: 'You are an expert SEO content writer who creates complete, high-converting articles that rank well in search engines. Always include all requested sections in the specified order.' 
         },
-        { role: 'user', content: articlePrompt }
+        { role: 'user', content: comprehensivePrompt }
       ],
       temperature: 0.1,
       max_tokens: 4000
     })
   });
 
-  if (!articleResponse.ok) {
-    throw new Error(`OpenAI API error: ${articleResponse.status}`);
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.status}`);
   }
 
-  const articleData = await articleResponse.json();
-  let article = articleData.choices[0].message.content || '';
-
-  // Step 3: Add FAQ section for better SEO
-  const faqPrompt = `Create 5 frequently asked questions about "${title}" that would be valuable for readers and SEO.
-
-  Target Keywords: ${keywords.join(', ')}
+  const data = await response.json();
+  const article = data.choices[0].message.content || '';
   
-  Format each FAQ as:
-  <h3>Question here?</h3>
-  <p>Detailed, helpful answer here.</p>
-  
-  Make questions that:
-  - Address common user concerns
-  - Include long-tail keywords
-  - Provide genuine value
-  - Are specific to the topic`;
-
-  const faqResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You create helpful FAQ sections that improve user experience and SEO.' 
-        },
-        { role: 'user', content: faqPrompt }
-      ],
-      temperature: 0.2,
-      max_tokens: 1000
-    })
-  });
-
-  if (faqResponse.ok) {
-    const faqData = await faqResponse.json();
-    const faqs = faqData.choices[0].message.content;
-    article += `\n\n<h2>Frequently Asked Questions</h2>\n${faqs}`;
-  }
-
-  // Step 4: Add key takeaways section
-  const takeawaysPrompt = `Create 5-7 key takeaways for the article about "${title}".
-
-  Make them:
-  - Actionable and specific
-  - Easy to remember
-  - Include target keywords: ${keywords.join(', ')}
-  - Provide genuine value
-  
-  Format as HTML bullet points with <ul><li> tags.`;
-
-  const takeawaysResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You create concise, actionable key takeaways that summarize article value.' 
-        },
-        { role: 'user', content: takeawaysPrompt }
-      ],
-      temperature: 0.1,
-      max_tokens: 500
-    })
-  });
-
-  if (takeawaysResponse.ok) {
-    const takeawaysData = await takeawaysResponse.json();
-    const takeaways = takeawaysData.choices[0].message.content;
-    article = `<h2>Key Takeaways</h2>\n${takeaways}\n\n` + article;
-  }
-
   return article;
 }
 

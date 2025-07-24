@@ -21,6 +21,9 @@ interface Article {
   readability_score?: number;
   target_keywords?: string[];
   website_id: number;
+  error_message?: string;
+  retry_count?: number;
+  article_content?: string;
   websites?: {
     domain: string;
   };
@@ -495,6 +498,17 @@ export default function ArticleWriter() {
                                         )}
                                       </div>
                                     )}
+                                    {article.status === 'failed' && article.error_message && (
+                                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-600 dark:text-red-400">
+                                        <div className="font-medium mb-1">Error Details:</div>
+                                        <div>{article.error_message}</div>
+                                        {article.retry_count && article.retry_count > 0 && (
+                                          <div className="mt-1 text-red-500 dark:text-red-400">
+                                            Retry attempts: {article.retry_count}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="flex items-center space-x-3 ml-4">
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(article.status)}`}>
@@ -521,6 +535,27 @@ export default function ArticleWriter() {
                                         )}
                                       </button>
                                     )}
+                                    {article.status === 'failed' && (
+                                      <button
+                                        onClick={() => handleGenerateContent(article.id)}
+                                        disabled={generatingArticle === article.id}
+                                        className="inline-flex items-center px-3 py-1 text-sm bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+                                      >
+                                        {generatingArticle === article.id ? (
+                                          <>
+                                            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin mr-1"></div>
+                                            Retrying...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            Retry Generation
+                                          </>
+                                        )}
+                                      </button>
+                                    )}
                                     {article.status === 'generated' && article.cms_connections && (
                                       <button
                                         onClick={() => handlePublishArticle(article.id)}
@@ -538,6 +573,27 @@ export default function ArticleWriter() {
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l1.5-1.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             Publish
+                                          </>
+                                        )}
+                                      </button>
+                                    )}
+                                    {(article.status === 'failed' && article.article_content) && article.cms_connections && (
+                                      <button
+                                        onClick={() => handlePublishArticle(article.id)}
+                                        disabled={publishingArticle === article.id}
+                                        className="inline-flex items-center px-3 py-1 text-sm bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+                                      >
+                                        {publishingArticle === article.id ? (
+                                          <>
+                                            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin mr-1"></div>
+                                            Retrying...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            Retry Publish
                                           </>
                                         )}
                                       </button>
