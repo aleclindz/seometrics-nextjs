@@ -48,6 +48,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check quota before starting generation
+    const quotaCheck = await checkQuota(supabase, userToken, article.websites?.id);
+    if (!quotaCheck.allowed) {
+      await supabase
+        .from('article_queue')
+        .update({
+          status: 'failed',
+          error_message: `Quota exceeded: You have reached your monthly limit of ${quotaCheck.limit} articles. Current usage: ${quotaCheck.currentUsage}`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', articleId);
+
+      return NextResponse.json({
+        error: 'Quota exceeded',
+        message: `You have reached your monthly limit of ${quotaCheck.limit} articles. Current usage: ${quotaCheck.currentUsage}`,
+        quota: quotaCheck
+      }, { status: 429 });
+    }
+
     // Update status to generating
     await supabase
       .from('article_queue')
@@ -128,6 +147,9 @@ export async function POST(request: NextRequest) {
           }
         });
 
+      // Track usage after successful generation
+      await trackUsage(supabase, userToken, 'article', article.websites?.id);
+
       console.log('[GENERATE API] Article generated successfully:', articleId);
 
       return NextResponse.json({
@@ -140,7 +162,8 @@ export async function POST(request: NextRequest) {
           readability_score: readabilityScore,
           seo_score: seoScore,
           generation_time: generationTime
-        }
+        },
+        quota: await checkQuota(supabase, userToken, article.websites?.id)
       });
 
     } catch (generationError) {
@@ -182,7 +205,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Mock GPT-4 content generation (replace with actual OpenAI API call)
+// Real OpenAI GPT-4 content generation
 async function generateArticleContent({
   title,
   keywords,
@@ -198,121 +221,202 @@ async function generateArticleContent({
   contentLength: string;
   tone: string;
 }) {
-  // This is a mock implementation. In production, you would call OpenAI API here
-  console.log('[GENERATE API] Generating content for:', title);
+  const openaiApiKey = process.env.OPENAI_API_KEY;
   
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  if (!openaiApiKey) {
+    throw new Error('OpenAI API key not configured');
+  }
 
-  const wordTarget = contentLength === 'short' ? 500 : contentLength === 'long' ? 1500 : 1000;
-  const keywordText = keywords.length > 0 ? keywords.join(', ') : 'your topic';
+  console.log('[GENERATE API] Generating real AI content for:', title);
 
-  return `# ${title}
+  // Step 1: Generate article outline
+  const outlinePrompt = `Write 6-8 compelling subheadings for an SEO-optimized article about: "${title}".
+  
+  Target keywords: ${keywords.join(', ')}
+  Website: ${websiteDomain || 'general business'}
+  Content style: ${tone}
+  
+  Create subheadings that:
+  - Include target keywords naturally
+  - Follow logical progression
+  - Are engaging and informative
+  - Work well for SEO
+  
+  Format as a numbered list.`;
 
-## Introduction
+  const outlineResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are an expert SEO content writer who creates high-converting, search-optimized articles.' 
+        },
+        { role: 'user', content: outlinePrompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 500
+    })
+  });
 
-In today&apos;s digital landscape, understanding ${keywordText} has become crucial for businesses and individuals alike. This comprehensive guide will explore the key aspects of ${keywords[0] || 'this topic'}, providing you with actionable insights and practical strategies.
+  if (!outlineResponse.ok) {
+    throw new Error(`OpenAI API error: ${outlineResponse.status}`);
+  }
 
-## Understanding ${keywords[0] || 'The Basics'}
+  const outlineData = await outlineResponse.json();
+  const outline = outlineData.choices[0].message.content;
 
-When it comes to ${keywordText}, there are several fundamental principles that form the foundation of success. Let&apos;s dive deep into these core concepts and explore how they can be applied effectively.
+  // Step 2: Generate full article content
+  let stylePrompt = '';
+  switch (tone) {
+    case 'casual':
+      stylePrompt = 'Use a conversational, friendly tone with personal examples and relatable language.';
+      break;
+    case 'technical':
+      stylePrompt = 'Use precise, technical language with detailed explanations and industry-specific terminology.';
+      break;
+    case 'professional':
+    default:
+      stylePrompt = 'Use a professional, authoritative tone that builds trust and demonstrates expertise.';
+  }
 
-### Key Components
+  const wordTarget = contentLength === 'short' ? 800 : contentLength === 'long' ? 2000 : 1200;
+  
+  const articlePrompt = `Write a comprehensive, SEO-optimized article of approximately ${wordTarget} words based on the following outline.
 
-1. **Strategic Planning**: Every successful ${keywords[0] || 'initiative'} begins with proper planning and goal setting.
-2. **Implementation**: Putting theory into practice with proven methodologies.
-3. **Optimization**: Continuous improvement based on data and results.
-4. **Measurement**: Tracking progress and ROI to ensure success.
+  Title: ${title}
+  Target Keywords: ${keywords.join(', ')}
+  Website Context: ${websiteDomain ? `This is for ${websiteDomain}` : 'General business context'}
+  ${websiteDescription ? `Website Description: ${websiteDescription}` : ''}
+  
+  Writing Guidelines:
+  - ${stylePrompt}
+  - Write 2-3 detailed paragraphs for each section
+  - Include target keywords naturally (1-2% density)
+  - Use varied sentence structures and engaging language
+  - Include actionable insights and practical tips
+  - Add relevant examples and case studies where appropriate
+  - Optimize for search engines while maintaining readability
+  - Use HTML formatting: <h2> for main sections, <h3> for subsections, <strong> for emphasis
+  - Include bullet points with <ul><li> tags where helpful
+  - End with a compelling conclusion and call-to-action
+  
+  Article Outline:
+  ${outline}
 
-## Best Practices for ${keywords[0] || 'Success'}
+  Create content that provides real value to readers while being optimized for search engines.`;
 
-Here are the proven strategies that top performers use to excel in ${keywordText}:
+  const articleResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are an expert SEO content writer who creates detailed, engaging, high-converting articles that rank well in search engines.' 
+        },
+        { role: 'user', content: articlePrompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 4000
+    })
+  });
 
-### 1. Data-Driven Approach
-Making decisions based on solid data rather than assumptions is crucial. This involves collecting relevant metrics, analyzing trends, and adapting strategies accordingly.
+  if (!articleResponse.ok) {
+    throw new Error(`OpenAI API error: ${articleResponse.status}`);
+  }
 
-### 2. User-Centered Focus
-Always prioritize the end user experience. Understanding your audience&apos;s needs, preferences, and pain points will guide better decision-making.
+  const articleData = await articleResponse.json();
+  let article = articleData.choices[0].message.content || '';
 
-### 3. Continuous Learning
-The landscape is constantly evolving. Staying updated with the latest trends, tools, and techniques ensures you remain competitive.
+  // Step 3: Add FAQ section for better SEO
+  const faqPrompt = `Create 5 frequently asked questions about "${title}" that would be valuable for readers and SEO.
 
-## Common Mistakes to Avoid
+  Target Keywords: ${keywords.join(', ')}
+  
+  Format each FAQ as:
+  <h3>Question here?</h3>
+  <p>Detailed, helpful answer here.</p>
+  
+  Make questions that:
+  - Address common user concerns
+  - Include long-tail keywords
+  - Provide genuine value
+  - Are specific to the topic`;
 
-Even experienced professionals can fall into these traps:
+  const faqResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You create helpful FAQ sections that improve user experience and SEO.' 
+        },
+        { role: 'user', content: faqPrompt }
+      ],
+      temperature: 0.2,
+      max_tokens: 1000
+    })
+  });
 
-- **Neglecting mobile optimization**: With mobile-first indexing, this is no longer optional
-- **Ignoring analytics**: Data provides valuable insights that can&apos;t be ignored
-- **Focusing only on short-term gains**: Sustainable growth requires long-term thinking
-- **Underestimating the importance of quality content**: Content remains king in digital marketing
+  if (faqResponse.ok) {
+    const faqData = await faqResponse.json();
+    const faqs = faqData.choices[0].message.content;
+    article += `\n\n<h2>Frequently Asked Questions</h2>\n${faqs}`;
+  }
 
-## Advanced Strategies
+  // Step 4: Add key takeaways section
+  const takeawaysPrompt = `Create 5-7 key takeaways for the article about "${title}".
 
-For those ready to take their ${keywords[0] || 'efforts'} to the next level:
+  Make them:
+  - Actionable and specific
+  - Easy to remember
+  - Include target keywords: ${keywords.join(', ')}
+  - Provide genuine value
+  
+  Format as HTML bullet points with <ul><li> tags.`;
 
-### Automation and AI Integration
-Leveraging artificial intelligence and automation tools can significantly improve efficiency and results. Consider implementing:
+  const takeawaysResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You create concise, actionable key takeaways that summarize article value.' 
+        },
+        { role: 'user', content: takeawaysPrompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 500
+    })
+  });
 
-- Automated reporting systems
-- AI-powered content optimization
-- Predictive analytics for better forecasting
-- Chatbots for improved customer service
+  if (takeawaysResponse.ok) {
+    const takeawaysData = await takeawaysResponse.json();
+    const takeaways = takeawaysData.choices[0].message.content;
+    article = `<h2>Key Takeaways</h2>\n${takeaways}\n\n` + article;
+  }
 
-### Personalization at Scale
-Creating personalized experiences for your audience while managing resources effectively requires:
-
-- Segmentation strategies
-- Dynamic content delivery
-- Behavioral targeting
-- A/B testing for optimization
-
-## Implementation Guide
-
-Ready to put these insights into action? Follow this step-by-step guide:
-
-1. **Assessment**: Evaluate your current situation and identify gaps
-2. **Strategy Development**: Create a comprehensive plan based on your findings
-3. **Resource Allocation**: Determine budget, timeline, and team requirements
-4. **Execution**: Implement your strategy systematically
-5. **Monitoring**: Track progress and adjust as needed
-6. **Optimization**: Continuously refine your approach based on results
-
-## Measuring Success
-
-Key performance indicators (KPIs) to track:
-
-- **Engagement Metrics**: Time on page, bounce rate, social shares
-- **Conversion Metrics**: Lead generation, sales, ROI
-- **Technical Metrics**: Page load speed, mobile responsiveness
-- **SEO Metrics**: Organic traffic, keyword rankings, backlinks
-
-## Future Trends and Considerations
-
-The landscape of ${keywordText} continues to evolve. Stay ahead by preparing for:
-
-- Increased focus on user privacy and data protection
-- Growing importance of voice search optimization
-- Enhanced role of artificial intelligence in decision-making
-- Greater emphasis on sustainable and ethical practices
-
-## Conclusion
-
-Mastering ${keywordText} requires a combination of strategic thinking, practical implementation, and continuous optimization. By following the best practices outlined in this guide and avoiding common pitfalls, you&apos;ll be well-positioned for success.
-
-Remember that success in ${keywords[0] || 'this field'} doesn&apos;t happen overnight. It requires patience, persistence, and a commitment to continuous learning and improvement.
-
-## Ready to Get Started?
-
-If you&apos;re looking to implement these strategies for your business, consider partnering with experts who can help you navigate the complexities and achieve your goals more efficiently.
-
-**Key takeaways:**
-- Start with a solid foundation of understanding
-- Focus on user experience and data-driven decisions
-- Avoid common mistakes that can derail your progress
-- Implement advanced strategies when you&apos;re ready
-- Continuously measure and optimize your approach
-
-Take action today and start implementing these strategies to see real results in your ${keywords[0] || 'efforts'}.`;
+  return article;
 }
 
 // Simple quality scoring algorithm
@@ -377,4 +481,87 @@ function calculateSeoScore(content: string, keywords: string[], title: string): 
   if (content.includes('- **') || content.includes('1. **')) score += 0.5;
   
   return Math.min(10, Math.max(1, score));
+}
+
+// Helper function to check quota
+async function checkQuota(supabase: any, userToken: string, siteId?: number) {
+  try {
+    // Get user plan
+    const { data: userPlan, error: planError } = await supabase
+      .from('user_plans')
+      .select('*')
+      .eq('user_token', userToken)
+      .single();
+
+    if (planError || !userPlan) {
+      return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: 'starter' };
+    }
+
+    // Check if subscription is active
+    if (userPlan.status !== 'active') {
+      return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: userPlan.tier };
+    }
+
+    // Get current usage for this month
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const { data: usage } = await supabase
+      .from('usage_tracking')
+      .select('count')
+      .eq('user_token', userToken)
+      .eq('resource_type', 'article')
+      .eq('month_year', currentMonth);
+
+    const currentUsage = usage?.reduce((sum: number, item: any) => sum + item.count, 0) || 0;
+    const limit = userPlan.posts_allowed;
+    const allowed = limit === -1 || currentUsage < limit;
+    const remaining = limit === -1 ? Infinity : Math.max(0, limit - currentUsage);
+
+    return {
+      allowed,
+      currentUsage,
+      limit,
+      remaining,
+      tier: userPlan.tier
+    };
+  } catch (error) {
+    console.error('Error checking quota:', error);
+    return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: 'starter' };
+  }
+}
+
+// Helper function to track usage
+async function trackUsage(supabase: any, userToken: string, resourceType: string, siteId?: number) {
+  try {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    // Check if record exists
+    const { data: existing } = await supabase
+      .from('usage_tracking')
+      .select('id, count')
+      .eq('user_token', userToken)
+      .eq('resource_type', resourceType)
+      .eq('month_year', currentMonth)
+      .maybeSingle();
+
+    if (existing) {
+      // Update existing record
+      await supabase
+        .from('usage_tracking')
+        .update({ count: existing.count + 1 })
+        .eq('id', existing.id);
+    } else {
+      // Create new record
+      await supabase
+        .from('usage_tracking')
+        .insert({
+          user_token: userToken,
+          site_id: siteId || null,
+          resource_type: resourceType,
+          month_year: currentMonth,
+          count: 1
+        });
+    }
+  } catch (error) {
+    console.error('Error tracking usage:', error);
+  }
 }
