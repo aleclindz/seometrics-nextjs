@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+
+// Edge Runtime configuration
+export const runtime = 'edge';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,13 +19,13 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!userToken || !articleId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: userToken, articleId' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: userToken, articleId' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[PUBLISH API] Starting publication for article:', articleId);
+    console.log('[PUBLISH EDGE] Starting publication for article:', articleId);
 
     // Get the article and CMS connection
     const { data: article, error: fetchError } = await supabase
@@ -45,23 +48,23 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (fetchError || !article) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
+      return new Response(
+        JSON.stringify({ error: 'Article not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!article.article_content) {
-      return NextResponse.json(
-        { error: 'Article content not generated yet' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'Article content not generated yet' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!article.cms_connections) {
-      return NextResponse.json(
-        { error: 'No CMS connection found for this article' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'No CMS connection found for this article' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -140,16 +143,16 @@ export async function POST(request: NextRequest) {
           }
         });
 
-      console.log('[PUBLISH API] Article published successfully:', articleId, 'CMS ID:', cmsArticleId);
+      console.log('[PUBLISH EDGE] Article published successfully:', articleId, 'CMS ID:', cmsArticleId);
 
-      return NextResponse.json({
+      return new Response(JSON.stringify({
         success: true,
         cmsArticleId,
         publishedAt: new Date().toISOString()
-      });
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
     } catch (publishError) {
-      console.error('[PUBLISH API] Publication failed:', publishError);
+      console.error('[PUBLISH EDGE] Publication failed:', publishError);
 
       // Update status to failed
       await supabase
@@ -173,17 +176,17 @@ export async function POST(request: NextRequest) {
           error_details: publishError instanceof Error ? publishError.message : 'Unknown error'
         });
 
-      return NextResponse.json(
-        { error: 'Article publication failed', details: publishError instanceof Error ? publishError.message : 'Unknown error' },
-        { status: 500 }
-      );
+      return new Response(JSON.stringify({
+        error: 'Article publication failed', 
+        details: publishError instanceof Error ? publishError.message : 'Unknown error'
+      }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 
   } catch (error) {
-    console.error('[PUBLISH API] Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    console.error('[PUBLISH EDGE] Unexpected error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+
+// Edge Runtime configuration
+export const runtime = 'edge';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,13 +22,13 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!userToken || !articleId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: userToken, articleId' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: userToken, articleId' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[GENERATE API] Starting generation for article:', articleId);
+    console.log('[GENERATE EDGE] Starting generation for article:', articleId);
 
     // Get the article from queue
     const { data: article, error: fetchError } = await supabase
@@ -41,9 +44,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (fetchError || !article) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
+      return new Response(
+        JSON.stringify({ error: 'Article not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -60,14 +63,14 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', articleId);
 
-        return NextResponse.json({
+        return new Response(JSON.stringify({
           error: 'Quota exceeded',
           message: `You have reached your monthly limit of ${quotaCheck.limit} articles. Current usage: ${quotaCheck.currentUsage}`,
           quota: quotaCheck
-        }, { status: 429 });
+        }), { status: 429, headers: { 'Content-Type': 'application/json' } });
       }
     } catch (quotaError) {
-      console.log('[GENERATE API] Quota check failed (likely missing tables), continuing without quota check:', quotaError);
+      console.log('[GENERATE EDGE] Quota check failed (likely missing tables), continuing without quota check:', quotaError);
     }
 
     // Update status to generating
@@ -154,20 +157,20 @@ export async function POST(request: NextRequest) {
       try {
         await trackUsage(supabase, userToken, 'article', article.websites?.id);
       } catch (trackingError) {
-        console.log('[GENERATE API] Usage tracking failed (likely missing tables):', trackingError);
+        console.log('[GENERATE EDGE] Usage tracking failed (likely missing tables):', trackingError);
       }
 
-      console.log('[GENERATE API] Article generated successfully:', articleId);
+      console.log('[GENERATE EDGE] Article generated successfully:', articleId);
 
       // Get quota info for response (optional)
       let quotaInfo = null;
       try {
         quotaInfo = await checkQuota(supabase, userToken, article.websites?.id);
       } catch (quotaError) {
-        console.log('[GENERATE API] Quota check for response failed:', quotaError);
+        console.log('[GENERATE EDGE] Quota check for response failed:', quotaError);
       }
 
-      return NextResponse.json({
+      return new Response(JSON.stringify({
         success: true,
         article: {
           id: articleId,
@@ -179,10 +182,10 @@ export async function POST(request: NextRequest) {
           generation_time: generationTime
         },
         ...(quotaInfo && { quota: quotaInfo })
-      });
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
     } catch (generationError) {
-      console.error('[GENERATE API] Generation failed:', generationError);
+      console.error('[GENERATE EDGE] Generation failed:', generationError);
 
       // Update status to failed
       await supabase
@@ -205,17 +208,17 @@ export async function POST(request: NextRequest) {
           error_details: generationError instanceof Error ? generationError.message : 'Unknown error'
         });
 
-      return NextResponse.json(
-        { error: 'Article generation failed' },
-        { status: 500 }
+      return new Response(
+        JSON.stringify({ error: 'Article generation failed' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
   } catch (error) {
-    console.error('[GENERATE API] Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    console.error('[GENERATE EDGE] Unexpected error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
@@ -242,7 +245,7 @@ async function generateArticleContent({
     throw new Error('OpenAI API key not configured');
   }
 
-  console.log('[GENERATE API] Generating real AI content for:', title);
+  console.log('[GENERATE EDGE] Generating real AI content for:', title);
 
   // Step 1: Generate article outline
   const outlinePrompt = `Write 6-8 compelling subheadings for an SEO-optimized article about: "${title}".
