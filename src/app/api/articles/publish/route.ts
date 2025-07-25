@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CMSManager } from '@/lib/cms/cms-manager';
 
-// Edge Runtime configuration
-export const runtime = 'edge';
+// Use Node.js runtime for longer timeout support (needed for CMS API calls)
+export const runtime = 'nodejs';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
