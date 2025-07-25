@@ -14,6 +14,7 @@ interface CMSConnection {
   website_domain?: string;
   last_sync_at?: string;
   error_message?: string;
+  api_token?: string;
 }
 
 interface CMSConnectionsListProps {
@@ -26,6 +27,14 @@ export default function CMSConnectionsList({ connections, onConnectionDeleted, o
   const { user } = useAuth();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [testingId, setTestingId] = useState<number | null>(null);
+  const [editingConnection, setEditingConnection] = useState<CMSConnection | null>(null);
+  const [editForm, setEditForm] = useState({
+    connection_name: '',
+    base_url: '',
+    api_token: '',
+    content_type: ''
+  });
+  const [updating, setUpdating] = useState(false);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -154,6 +163,64 @@ export default function CMSConnectionsList({ connections, onConnectionDeleted, o
     return new Date(dateString).toLocaleString();
   };
 
+  const openEditModal = (connection: CMSConnection) => {
+    setEditingConnection(connection);
+    setEditForm({
+      connection_name: connection.connection_name,
+      base_url: connection.base_url,
+      api_token: '', // Don't pre-fill the API token for security
+      content_type: connection.content_type
+    });
+  };
+
+  const closeEditModal = () => {
+    setEditingConnection(null);
+    setEditForm({
+      connection_name: '',
+      base_url: '',
+      api_token: '',
+      content_type: ''
+    });
+  };
+
+  const updateConnection = async () => {
+    if (!editingConnection || !user?.token) return;
+
+    try {
+      setUpdating(true);
+      
+      const response = await fetch(`/api/cms/connections/${editingConnection.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userToken: user.token,
+          connection_name: editForm.connection_name,
+          base_url: editForm.base_url,
+          api_token: editForm.api_token, // Only update if provided
+          content_type: editForm.content_type
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update connection');
+      }
+
+      const data = await response.json();
+      console.log('Connection updated successfully:', data);
+      
+      closeEditModal();
+      onConnectionUpdated();
+    } catch (err) {
+      console.error('Error updating connection:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update connection. Please try again.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
       <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
@@ -229,6 +296,16 @@ export default function CMSConnectionsList({ connections, onConnectionDeleted, o
                 </button>
 
                 <button
+                  onClick={() => openEditModal(connection)}
+                  className="btn-sm border-blue-200 dark:border-blue-600 hover:border-blue-300 dark:hover:border-blue-500 text-blue-600 dark:text-blue-400"
+                  title="Edit connection"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+
+                <button
                   onClick={() => deleteConnection(connection.id)}
                   disabled={deletingId === connection.id}
                   className="btn-sm border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 text-red-600 dark:text-red-400 disabled:opacity-50"
@@ -247,6 +324,103 @@ export default function CMSConnectionsList({ connections, onConnectionDeleted, o
           </div>
         ))}
       </div>
+
+      {/* Edit Modal */}
+      {editingConnection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Edit CMS Connection
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Update your {editingConnection.cms_type} connection settings
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Connection Name
+                </label>
+                <input
+                  type="text"
+                  value={editForm.connection_name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, connection_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="My CMS Connection"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Base URL
+                </label>
+                <input
+                  type="url"
+                  value={editForm.base_url}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, base_url: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="https://your-cms.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  API Token
+                </label>
+                <input
+                  type="password"
+                  value={editForm.api_token}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, api_token: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Leave empty to keep current token"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Only enter a new token if you want to update it
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Content Type
+                </label>
+                <input
+                  type="text"
+                  value={editForm.content_type}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, content_type: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="api::blog-post.blog-post"
+                />
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex justify-end space-x-3">
+              <button
+                onClick={closeEditModal}
+                disabled={updating}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateConnection}
+                disabled={updating || !editForm.connection_name || !editForm.base_url}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center"
+              >
+                {updating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  'Update Connection'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
