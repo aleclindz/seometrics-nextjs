@@ -191,14 +191,22 @@ export async function POST(request: NextRequest) {
 
       const publishTime = Math.round((Date.now() - publishStartTime) / 1000);
 
-      // Update article with CMS ID and published status
+      // Generate Strapi admin deep-link URL
+      const strapiAdminUrl = generateStrapiAdminUrl(
+        article.cms_connections.base_url,
+        contentType,
+        cmsArticleId
+      );
+
+      // Update article with CMS ID, published status, and admin URL
       const { error: updateError } = await supabase
         .from('article_queue')
         .update({
           cms_article_id: cmsArticleId,
           status: 'published',
           published_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          cms_admin_url: strapiAdminUrl
         })
         .eq('id', articleId);
 
@@ -337,14 +345,21 @@ async function publishToStrapi({
   console.log('[STRAPI PUBLISH] Content type:', contentType);
   console.log('[STRAPI PUBLISH] Endpoint:', endpoint);
 
-  // Prepare the article data according to Strapi v4 format
+  // Get schema information for better formatting
+  const schemaInfo = await getContentTypeSchema(article.cms_connection_id, contentType);
+  
+  // Prepare the article data according to Strapi v4 format with enhanced formatting
+  const formattedContent = formatContentForPublication(content, schemaInfo);
+  
   const articleData = {
     data: {
       title,
-      content: content, // Send content as-is (HTML string) instead of rich text format
-      slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      content: formattedContent,
+      slug: slug || generateOptimizedSlug(title),
       ...(metaTitle && { metaTitle }),
       ...(metaDescription && { metaDescription }),
+      // Add excerpt if schema supports it
+      ...(schemaInfo?.hasExcerpt && { excerpt: generateExcerpt(content) }),
       publishedAt: publishDraft ? null : new Date().toISOString() // null = draft, date = published
     }
   };
@@ -468,4 +483,111 @@ function formatContentForStrapi(content: string): any {
   }
   
   return blocks;
+}
+
+async function getContentTypeSchema(connectionId: string, contentType: string) {
+  try {
+    const { data: schema } = await supabase
+      .from('cms_content_schemas')
+      .select('fields_config')
+      .eq('connection_id', connectionId)
+      .eq('content_type_name', contentType)
+      .single();
+    
+    return schema?.fields_config || null;
+  } catch (error) {
+    console.log('[STRAPI PUBLISH] Could not fetch schema info:', error);
+    return null;
+  }
+}
+
+function formatContentForPublication(content: string, schemaInfo: any): string {
+  // Enhanced HTML formatting for better article presentation
+  let formattedContent = content;
+  
+  // Ensure proper paragraph spacing
+  formattedContent = formattedContent.replace(/\n\n+/g, '</p>\n\n<p>');
+  
+  // Wrap content in paragraph tags if not already wrapped
+  if (!formattedContent.trim().startsWith('<')) {
+    formattedContent = `<p>${formattedContent}</p>`;
+  }
+  
+  // Fix heading formatting - ensure proper HTML structure
+  formattedContent = formattedContent.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  formattedContent = formattedContent.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  formattedContent = formattedContent.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  formattedContent = formattedContent.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  
+  // Fix list formatting
+  formattedContent = formattedContent.replace(/^\* (.+)$/gm, '<li>$1</li>');
+  formattedContent = formattedContent.replace(/^- (.+)$/gm, '<li>$1</li>');
+  
+  // Wrap orphaned list items in ul tags
+  formattedContent = formattedContent.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+  
+  // Fix bold and italic formatting
+  formattedContent = formattedContent.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  formattedContent = formattedContent.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+  // Add line breaks where needed
+  formattedContent = formattedContent.replace(/\n/g, '<br>\n');
+  
+  // Clean up double paragraph tags and breaks
+  formattedContent = formattedContent.replace(/<\/p><br>\n\n<p>/g, '</p>\n\n<p>');
+  formattedContent = formattedContent.replace(/<br>\n<h/g, '\n<h');
+  formattedContent = formattedContent.replace(/<\/h([1-6])><br>/g, '</h$1>');
+  
+  return formattedContent;
+}
+
+function generateOptimizedSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+    .substring(0, 60); // Limit length
+}
+
+function generateExcerpt(content: string, maxLength: number = 160): string {
+  // Strip HTML tags
+  const textContent = content.replace(/<[^>]*>/g, '');
+  
+  // Get first paragraph or first 160 characters
+  const firstParagraph = textContent.split('\n\n')[0];
+  const excerpt = firstParagraph.length > maxLength 
+    ? firstParagraph.substring(0, maxLength - 3) + '...'
+    : firstParagraph;
+    
+  return excerpt.trim();
+}
+
+function generateStrapiAdminUrl(baseUrl: string, contentType: string, documentId: string): string {
+  // Generate Strapi admin deep-link URL for editing the published article
+  const cleanUrl = baseUrl.replace(/\/$/, '');
+  
+  // Convert api::content-type::content-type to admin URL format
+  let adminPath = contentType;
+  
+  if (contentType.startsWith('api::')) {
+    // Handle formats like api::blog-post::blog-post
+    const parts = contentType.split('::');
+    if (parts.length >= 2) {
+      const singularName = parts[1];
+      // Convert to plural for admin URL
+      let pluralName;
+      if (singularName.endsWith('y') && !['ay', 'ey', 'oy', 'uy'].some(suffix => singularName.endsWith(suffix))) {
+        pluralName = singularName.slice(0, -1) + 'ies';
+      } else if (['s', 'sh', 'ch', 'x', 'z'].some(suffix => singularName.endsWith(suffix))) {
+        pluralName = singularName + 'es';
+      } else {
+        pluralName = singularName + 's';
+      }
+      adminPath = `content-manager/collection-types/api::${singularName}.${singularName}/${documentId}`;
+    }
+  }
+  
+  return `${cleanUrl}/admin/content-manager/collection-types/${contentType}/${documentId}`;
 }

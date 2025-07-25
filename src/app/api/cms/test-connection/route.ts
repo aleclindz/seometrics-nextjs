@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     // If we have a connection_id, update the status in the database
     if (connection_id && userToken) {
-      await updateConnectionStatus(connection_id, userToken, testResult.success, testResult.message);
+      await updateConnectionStatus(connection_id, userToken, testResult.success, testResult.message, testResult.details?.schemas);
     }
 
     if (testResult.success) {
@@ -118,6 +118,42 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
       } catch (mainError) {
         console.log('[STRAPI TEST] Main URL also failed:', mainError);
       }
+    }
+
+    // Test 0.5: Try to fetch content type schemas for better publishing
+    console.log('[STRAPI TEST] Attempting to fetch content type schemas...');
+    let discoveredSchemas = null;
+    try {
+      const schemaResponse = await fetch(`${cleanUrl}/api/content-type-builder/content-types`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (schemaResponse.ok) {
+        discoveredSchemas = await schemaResponse.json();
+        console.log('[STRAPI TEST] Successfully fetched schemas:', Object.keys(discoveredSchemas?.data || {}));
+      } else {
+        console.log('[STRAPI TEST] Schema discovery failed:', schemaResponse.status);
+        // Try alternative admin endpoint
+        const altSchemaResponse = await fetch(`${cleanUrl}/admin/content-type-builder/content-types`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (altSchemaResponse.ok) {
+          discoveredSchemas = await altSchemaResponse.json();
+          console.log('[STRAPI TEST] Successfully fetched schemas via admin endpoint');
+        }
+      }
+    } catch (schemaError) {
+      console.log('[STRAPI TEST] Schema discovery error:', schemaError);
+      // Not critical for basic connection test, continue
     }
 
     // Test 1: Check if Strapi instance is accessible
@@ -336,7 +372,8 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
             writeAccess: false, 
             contentType: workingEndpoint || contentType,
             discoveredEndpoint: workingEndpoint,
-            userEmail: userData.email || userData.username 
+            userEmail: userData.email || userData.username,
+            schemas: discoveredSchemas
           }
         };
       } else {
@@ -351,7 +388,8 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
             contentType: workingEndpoint || contentType,
             discoveredEndpoint: workingEndpoint,
             writeError: errorText,
-            userEmail: userData.email || userData.username 
+            userEmail: userData.email || userData.username,
+            schemas: discoveredSchemas
           }
         };
       }
@@ -386,7 +424,8 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
         contentType: workingEndpoint || contentType,
         discoveredEndpoint: workingEndpoint,
         userEmail: userData.email || userData.username,
-        testEntryCreated: true
+        testEntryCreated: true,
+        schemas: discoveredSchemas // Include schema data for storage
       }
     };
 
@@ -409,7 +448,7 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
   }
 }
 
-async function updateConnectionStatus(connectionId: number, userToken: string, success: boolean, message: string) {
+async function updateConnectionStatus(connectionId: number, userToken: string, success: boolean, message: string, schemas?: any) {
   try {
     const updateData = {
       status: success ? 'active' : 'error',
@@ -425,7 +464,81 @@ async function updateConnectionStatus(connectionId: number, userToken: string, s
       .eq('user_token', userToken);
 
     console.log('[CMS TEST] Updated connection status:', connectionId, success ? 'active' : 'error');
+
+    // Store discovered schemas if available
+    if (schemas && success) {
+      await storeContentSchemas(connectionId, schemas);
+    }
   } catch (error) {
     console.error('[CMS TEST] Error updating connection status:', error);
+  }
+}
+
+async function storeContentSchemas(connectionId: number, schemas: any) {
+  try {
+    console.log('[CMS TEST] Storing content schemas for connection:', connectionId);
+    
+    if (!schemas || !schemas.data) {
+      console.log('[CMS TEST] No schema data to store');
+      return;
+    }
+
+    const schemaEntries = Object.entries(schemas.data).map(([contentTypeName, schemaData]: [string, any]) => {
+      // Process the schema to extract useful field information
+      const fieldsConfig = processSchemaFields(schemaData);
+      
+      return {
+        connection_id: connectionId,
+        content_type_name: contentTypeName,
+        schema_data: schemaData,
+        fields_config: fieldsConfig,
+        is_primary: contentTypeName.includes('blog') || contentTypeName.includes('article'), // Smart default
+        last_discovered_at: new Date().toISOString()
+      };
+    });
+
+    // Upsert schemas (update if exists, insert if new)
+    for (const entry of schemaEntries) {
+      await supabase
+        .from('cms_content_schemas')
+        .upsert(entry, {
+          onConflict: 'connection_id,content_type_name'
+        });
+    }
+
+    console.log('[CMS TEST] Stored', schemaEntries.length, 'content schemas');
+  } catch (error) {
+    console.error('[CMS TEST] Error storing content schemas:', error);
+  }
+}
+
+function processSchemaFields(schemaData: any) {
+  try {
+    const fields = schemaData?.schema?.attributes || {};
+    const processedFields: any = {};
+
+    Object.entries(fields).forEach(([fieldName, fieldDef]: [string, any]) => {
+      processedFields[fieldName] = {
+        type: fieldDef.type,
+        required: fieldDef.required || false,
+        unique: fieldDef.unique || false,
+        multiple: fieldDef.multiple || false,
+        // Add more field properties as needed
+        component: fieldDef.component,
+        target: fieldDef.target,
+        relation: fieldDef.relation
+      };
+    });
+
+    return {
+      attributes: processedFields,
+      hasRichText: Object.values(fields).some((field: any) => field.type === 'richtext'),
+      hasMedia: Object.values(fields).some((field: any) => field.type === 'media'),
+      hasRelations: Object.values(fields).some((field: any) => field.type === 'relation'),
+      fieldCount: Object.keys(fields).length
+    };
+  } catch (error) {
+    console.error('[CMS TEST] Error processing schema fields:', error);
+    return { attributes: {}, hasRichText: false, hasMedia: false, hasRelations: false, fieldCount: 0 };
   }
 }

@@ -730,6 +730,19 @@ export default function ArticleWriter() {
                                         )}
                                       </button>
                                     )}
+                                    {article.status === 'published' && article.cms_admin_url && (
+                                      <a
+                                        href={article.cms_admin_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                                      >
+                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        Edit in Strapi
+                                      </a>
+                                    )}
                                     {(article.status === 'failed' || article.status === 'publishing_failed') && getRetryContext(article) === 'publishing' && article.cms_connections && (
                                       <button
                                         onClick={() => handleRetryPublishing(article.id)}
