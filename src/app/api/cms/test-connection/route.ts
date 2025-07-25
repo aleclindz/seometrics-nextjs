@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
+    let {
       cms_type,
       base_url,
       api_token,
@@ -18,7 +18,34 @@ export async function POST(request: NextRequest) {
       userToken
     } = body;
 
-    if (!cms_type || !base_url || !api_token) {
+    let actualApiToken = api_token;
+
+    // If no api_token is provided but we have connection_id, fetch the token from database
+    if (!api_token && connection_id && userToken) {
+      console.log('[CMS TEST] Fetching API token from database for connection:', connection_id);
+      
+      const { data: connection, error: fetchError } = await supabase
+        .from('cms_connections')
+        .select('api_token, cms_type, base_url, content_type')
+        .eq('id', connection_id)
+        .eq('user_token', userToken)
+        .single();
+
+      if (fetchError || !connection) {
+        return NextResponse.json(
+          { error: 'Connection not found or access denied' },
+          { status: 404 }
+        );
+      }
+
+      actualApiToken = connection.api_token;
+      // Also update the other fields from database if not provided
+      if (!cms_type) cms_type = connection.cms_type;
+      if (!base_url) base_url = connection.base_url;
+      if (!content_type) content_type = connection.content_type;
+    }
+
+    if (!cms_type || !base_url || !actualApiToken) {
       return NextResponse.json(
         { error: 'Missing required fields: cms_type, base_url, api_token' },
         { status: 400 }
@@ -30,7 +57,7 @@ export async function POST(request: NextRequest) {
     let testResult = { success: false, message: '', details: {} };
 
     if (cms_type === 'strapi') {
-      testResult = await testStrapiConnection(base_url, api_token, content_type);
+      testResult = await testStrapiConnection(base_url, actualApiToken, content_type);
     } else {
       return NextResponse.json(
         { error: `CMS type '${cms_type}' is not yet supported` },

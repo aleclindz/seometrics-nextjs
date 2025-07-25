@@ -102,9 +102,9 @@ export default function CMSConnectionsList({ connections, onConnectionDeleted, o
         body: JSON.stringify({
           cms_type: connection.cms_type,
           base_url: connection.base_url,
-          api_token: '***', // Don't send the actual token in logs
-          content_type: connection.content_type,
+          // We need to fetch the actual token for testing
           connection_id: connection.id,
+          content_type: connection.content_type,
           userToken: user?.token,
         }),
       });
