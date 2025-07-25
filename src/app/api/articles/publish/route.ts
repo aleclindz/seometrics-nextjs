@@ -341,7 +341,7 @@ async function publishToStrapi({
   const articleData = {
     data: {
       title,
-      content: formatContentForStrapi(content),
+      content: content, // Send content as-is (HTML string) instead of rich text format
       slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       ...(metaTitle && { metaTitle }),
       ...(metaDescription && { metaDescription }),
