@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Edge Runtime configuration
-export const runtime = 'edge';
+// Use Node.js runtime for longer timeout support (needed for OpenAI API calls)
+export const runtime = 'nodejs';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -335,7 +335,7 @@ async function generateComprehensiveArticle({
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini', // Faster and cheaper than gpt-4
       messages: [
         { 
           role: 'system', 
@@ -345,7 +345,8 @@ async function generateComprehensiveArticle({
       ],
       temperature: 0.1,
       max_tokens: 4500
-    })
+    }),
+    signal: AbortSignal.timeout(45000) // 45-second timeout
   });
 
   if (!response.ok) {
