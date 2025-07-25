@@ -24,6 +24,7 @@ interface Article {
   error_message?: string;
   retry_count?: number;
   article_content?: string;
+  cms_admin_url?: string;
   websites?: {
     domain: string;
   };

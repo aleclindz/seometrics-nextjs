@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import SnippetModal from './SnippetModal';
+import OnboardingFlow from './OnboardingFlow';
 import { useAuth } from '@/contexts/auth';
 import { createClientComponentClient } from '@/lib/supabase';
 import { generateToken } from '@/lib/utils';
@@ -220,6 +221,13 @@ export default function Dashboard() {
                   </a>
                 </div>
               </div>
+
+              {/* Onboarding Flow for new users */}
+              {websites.length === 0 && (
+                <div className="mb-8">
+                  <OnboardingFlow />
+                </div>
+              )}
 
               {/* Stats cards */}
               <div className="grid grid-cols-12 gap-6">

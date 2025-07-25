@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     // If we have a connection_id, update the status in the database
     if (connection_id && userToken) {
-      await updateConnectionStatus(connection_id, userToken, testResult.success, testResult.message, testResult.details?.schemas);
+      await updateConnectionStatus(connection_id, userToken, testResult.success, testResult.message, (testResult.details as any)?.schemas);
     }
 
     if (testResult.success) {

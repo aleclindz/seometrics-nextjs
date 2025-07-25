@@ -165,7 +165,8 @@ export async function POST(request: NextRequest) {
               slug: article.slug,
               metaTitle: article.meta_title,
               metaDescription: article.meta_description,
-              publishDraft
+              publishDraft,
+              cmsConnectionId: article.cms_connection_id
             });
           } else {
             throw newCMSError;
@@ -183,7 +184,8 @@ export async function POST(request: NextRequest) {
           slug: article.slug,
           metaTitle: article.meta_title,
           metaDescription: article.meta_description,
-          publishDraft
+          publishDraft,
+          cmsConnectionId: article.cms_connection_id
         });
       } else {
         throw new Error('No valid CMS connection found. Please connect a CMS platform first.');
@@ -194,7 +196,7 @@ export async function POST(request: NextRequest) {
       // Generate Strapi admin deep-link URL
       const strapiAdminUrl = generateStrapiAdminUrl(
         article.cms_connections.base_url,
-        contentType,
+        article.cms_connections.content_type,
         cmsArticleId
       );
 
@@ -285,7 +287,8 @@ async function publishToStrapi({
   slug,
   metaTitle,
   metaDescription,
-  publishDraft
+  publishDraft,
+  cmsConnectionId
 }: {
   baseUrl: string;
   apiToken: string;
@@ -296,6 +299,7 @@ async function publishToStrapi({
   metaTitle?: string;
   metaDescription?: string;
   publishDraft: boolean;
+  cmsConnectionId: number;
 }): Promise<string> {
   
   const cleanUrl = baseUrl.replace(/\/$/, '');
@@ -346,7 +350,7 @@ async function publishToStrapi({
   console.log('[STRAPI PUBLISH] Endpoint:', endpoint);
 
   // Get schema information for better formatting
-  const schemaInfo = await getContentTypeSchema(article.cms_connection_id, contentType);
+  const schemaInfo = await getContentTypeSchema(cmsConnectionId.toString(), contentType);
   
   // Prepare the article data according to Strapi v4 format with enhanced formatting
   const formattedContent = formatContentForPublication(content, schemaInfo);
@@ -524,7 +528,7 @@ function formatContentForPublication(content: string, schemaInfo: any): string {
   formattedContent = formattedContent.replace(/^- (.+)$/gm, '<li>$1</li>');
   
   // Wrap orphaned list items in ul tags
-  formattedContent = formattedContent.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+  formattedContent = formattedContent.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
   
   // Fix bold and italic formatting
   formattedContent = formattedContent.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
