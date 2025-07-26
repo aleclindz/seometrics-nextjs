@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import GSCConnection from '@/components/GSCConnection';
 
 export default function Autopilot() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [gscConnected, setGscConnected] = useState(false);
+  const [trackingInstalled, setTrackingInstalled] = useState(false);
 
   return (
     <ProtectedRoute>
@@ -52,45 +55,7 @@ export default function Autopilot() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 
                 {/* Google Search Console Integration */}
-                <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          Google Search Console
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Connect for automated performance monitoring
-                        </p>
-                      </div>
-                    </div>
-                    <div className="w-3 h-3 bg-red-500 rounded-full" title="Not connected"></div>
-                  </div>
-                  
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                      <span className="w-4 h-4 mr-2">📊</span>
-                      Daily performance monitoring
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                      <span className="w-4 h-4 mr-2">🔍</span>
-                      Core Web Vitals tracking
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                      <span className="w-4 h-4 mr-2">⚡</span>
-                      Automated issue detection
-                    </div>
-                  </div>
-                  
-                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                    Connect Google Search Console
-                  </button>
-                </div>
+                <GSCConnection onConnectionChange={setGscConnected} />
 
                 {/* Smart.js Tracking Script */}
                 <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-6">
@@ -144,8 +109,21 @@ export default function Autopilot() {
                     Autopilot Status
                   </h2>
                   <div className="flex items-center">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-                    <span className="text-sm text-gray-500">Waiting for setup</span>
+                    <div className={`w-2 h-2 rounded-full mr-2 ${
+                      gscConnected && trackingInstalled 
+                        ? 'bg-green-500' 
+                        : gscConnected || trackingInstalled 
+                        ? 'bg-yellow-500' 
+                        : 'bg-gray-400'
+                    }`}></div>
+                    <span className="text-sm text-gray-500">
+                      {gscConnected && trackingInstalled 
+                        ? 'Autopilot Active' 
+                        : gscConnected || trackingInstalled 
+                        ? 'Partial Setup' 
+                        : 'Waiting for setup'
+                      }
+                    </span>
                   </div>
                 </div>
                 
@@ -156,10 +134,20 @@ export default function Autopilot() {
                     </svg>
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    Ready to Enable Autopilot
+                    {gscConnected && trackingInstalled 
+                      ? '🚀 Autopilot is Active!' 
+                      : gscConnected 
+                      ? '⚡ Almost Ready!' 
+                      : 'Ready to Enable Autopilot'
+                    }
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                    Connect Google Search Console and install the tracking script to enable automated technical SEO monitoring and fixes.
+                    {gscConnected && trackingInstalled 
+                      ? 'Your website is being monitored 24/7. Automated technical SEO fixes and performance monitoring are active.'
+                      : gscConnected 
+                      ? 'Google Search Console is connected! Install the tracking script to complete the setup.'
+                      : 'Connect Google Search Console and install the tracking script to enable automated technical SEO monitoring and fixes.'
+                    }
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <div className="flex items-center text-sm text-gray-500">
