@@ -1,7 +1,7 @@
 {
-  "name": "seometrics-nextjs",
+  "name": "seoagent-nextjs",
   "version": "1.0.0",
-  "description": "SEO Metrics Tool - Next.js + Supabase Migration",
+  "description": "SEOAgent.com - Automated SEO Agent for Technical SEO, Content Generation, and Strategy",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -39,8 +39,12 @@
     "typescript": "^5.5.0"
   },
   "keywords": [
-    "seo",
+    "seo-automation",
+    "technical-seo",
     "content-generation",
+    "cms-integration",
+    "seo-agent",
+    "multi-cms",
     "nextjs",
     "supabase"
   ],
