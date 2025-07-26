@@ -1,31 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
     console.log('[GSC PERFORMANCE] Fetching performance data');
     
-    const { siteUrl, startDate, endDate } = await request.json();
+    const { siteUrl, startDate, endDate, userToken } = await request.json();
     
-    if (!siteUrl || !startDate || !endDate) {
+    if (!siteUrl || !startDate || !endDate || !userToken) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
-    }
-
-    // Get authenticated user
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      console.log('[GSC PERFORMANCE] Authentication failed:', authError);
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     // Get active GSC connection
     const { data: connection, error: connectionError } = await supabase
       .from('gsc_connections')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_token', userToken)
       .eq('is_active', true)
       .single();
 
@@ -54,11 +50,8 @@ export async function POST(request: NextRequest) {
     
     if (now >= expiresAt) {
       console.log('[GSC PERFORMANCE] Token expired, attempting refresh');
-      const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gsc/oauth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Cookie': request.headers.get('Cookie') || ''
-        }
+      const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gsc/oauth/refresh?userToken=${userToken}`, {
+        method: 'POST'
       });
       
       if (!refreshResponse.ok) {
@@ -69,7 +62,7 @@ export async function POST(request: NextRequest) {
       const { data: updatedConnection } = await supabase
         .from('gsc_connections')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_token', userToken)
         .eq('is_active', true)
         .single();
         
@@ -215,7 +208,7 @@ export async function POST(request: NextRequest) {
       .from('gsc_performance_data')
       .upsert({
         property_id: property.id,
-        user_id: user.id,
+        user_token: userToken,
         date_start: startDate,
         date_end: endDate,
         total_clicks: aggregated.total.clicks,

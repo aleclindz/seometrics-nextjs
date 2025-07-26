@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,6 +35,8 @@ export async function GET(request: NextRequest) {
       console.log('[GSC OAUTH CALLBACK] Invalid state parameter');
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=invalid_state`);
     }
+
+    const { userToken } = stateData;
 
     // Get OAuth credentials
     const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -69,12 +76,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=email_error`);
     }
 
-    // Get authenticated user from Supabase
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Verify user exists in database
+    const { data: loginUser, error: authError } = await supabase
+      .from('login_users')
+      .select('*')
+      .eq('token', userToken)
+      .single();
     
-    if (authError || !user || user.id !== stateData.userId) {
-      console.log('[GSC OAUTH CALLBACK] Authentication failed or user mismatch');
+    if (authError || !loginUser) {
+      console.log('[GSC OAUTH CALLBACK] Authentication failed or user not found');
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/login?error=auth_required`);
     }
 
@@ -85,7 +95,7 @@ export async function GET(request: NextRequest) {
     const { data: connection, error: dbError } = await supabase
       .from('gsc_connections')
       .upsert({
-        user_id: user.id,
+        user_token: userToken,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         expires_at: expiresAt.toISOString(),
@@ -95,7 +105,7 @@ export async function GET(request: NextRequest) {
         last_sync_at: null,
         sync_errors: []
       }, {
-        onConflict: 'user_id'
+        onConflict: 'user_token'
       })
       .select()
       .single();
@@ -105,7 +115,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=db_error`);
     }
 
-    console.log('[GSC OAUTH CALLBACK] Successfully stored GSC connection for user:', user.id);
+    console.log('[GSC OAUTH CALLBACK] Successfully stored GSC connection for user:', loginUser.email);
     
     // Redirect to autopilot page with success
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?gsc_connected=true`);

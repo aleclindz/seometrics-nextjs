@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
   try {
     console.log('[GSC PROPERTIES] Fetching GSC properties');
     
-    // Get authenticated user
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { searchParams } = new URL(request.url);
+    const userToken = searchParams.get('userToken');
     
-    if (authError || !user) {
-      console.log('[GSC PROPERTIES] Authentication failed:', authError);
+    if (!userToken) {
+      console.log('[GSC PROPERTIES] No user token provided');
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
@@ -19,7 +23,7 @@ export async function GET(request: NextRequest) {
     const { data: connection, error: connectionError } = await supabase
       .from('gsc_connections')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_token', userToken)
       .eq('is_active', true)
       .single();
 
@@ -35,11 +39,8 @@ export async function GET(request: NextRequest) {
     if (now >= expiresAt) {
       console.log('[GSC PROPERTIES] Token expired, attempting refresh');
       // Try to refresh token
-      const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gsc/oauth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Cookie': request.headers.get('Cookie') || ''
-        }
+      const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gsc/oauth/refresh?userToken=${userToken}`, {
+        method: 'POST'
       });
       
       if (!refreshResponse.ok) {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       const { data: updatedConnection } = await supabase
         .from('gsc_connections')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_token', userToken)
         .eq('is_active', true)
         .single();
         
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     const sitesResponse = await webmasters.sites.list();
     const sites = sitesResponse.data.siteEntry || [];
 
-    console.log('[GSC PROPERTIES] Found', sites.length, 'sites for user:', user.id);
+    console.log('[GSC PROPERTIES] Found', sites.length, 'sites for user token:', userToken);
 
     // Update properties in database
     for (const site of sites) {
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
           .from('gsc_properties')
           .upsert({
             connection_id: connection.id,
-            user_id: user.id,
+            user_token: userToken,
             site_url: site.siteUrl,
             permission_level: site.permissionLevel || 'unknown',
             is_verified: true,

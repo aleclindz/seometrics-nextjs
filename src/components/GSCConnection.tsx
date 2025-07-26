@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/auth';
 
 interface GSCConnectionProps {
   onConnectionChange?: (connected: boolean) => void;
@@ -27,6 +28,7 @@ interface Property {
 }
 
 export default function GSCConnection({ onConnectionChange }: GSCConnectionProps) {
+  const { user } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ connected: false });
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,9 +76,14 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
   };
 
   const checkConnectionStatus = async () => {
+    if (!user?.token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await fetch('/api/gsc/connection');
+      const response = await fetch(`/api/gsc/connection?userToken=${user.token}`);
       const data = await response.json();
       
       setConnectionStatus(data);
@@ -94,8 +101,10 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
   };
 
   const fetchProperties = async () => {
+    if (!user?.token) return;
+
     try {
-      const response = await fetch('/api/gsc/properties');
+      const response = await fetch(`/api/gsc/properties?userToken=${user.token}`);
       if (response.ok) {
         const data = await response.json();
         setProperties(data.properties || []);
@@ -106,11 +115,16 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
   };
 
   const handleConnect = async () => {
+    if (!user?.token) {
+      setError('Authentication required');
+      return;
+    }
+
     try {
       setConnecting(true);
       setError(null);
       
-      const response = await fetch('/api/gsc/oauth/start');
+      const response = await fetch(`/api/gsc/oauth/start?userToken=${user.token}`);
       const data = await response.json();
       
       if (data.authUrl) {
@@ -128,13 +142,15 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
   };
 
   const handleDisconnect = async () => {
+    if (!user?.token) return;
+    
     if (!confirm('Are you sure you want to disconnect Google Search Console? This will stop automated monitoring.')) {
       return;
     }
 
     try {
       setLoading(true);
-      const response = await fetch('/api/gsc/connection', { method: 'DELETE' });
+      const response = await fetch(`/api/gsc/connection?userToken=${user.token}`, { method: 'DELETE' });
       
       if (response.ok) {
         setConnectionStatus({ connected: false });

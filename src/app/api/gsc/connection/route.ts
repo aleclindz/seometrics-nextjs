@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
   try {
     console.log('[GSC CONNECTION] Checking connection status');
     
-    // Get authenticated user
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { searchParams } = new URL(request.url);
+    const userToken = searchParams.get('userToken');
     
-    if (authError || !user) {
-      console.log('[GSC CONNECTION] Authentication failed:', authError);
+    if (!userToken) {
+      console.log('[GSC CONNECTION] No user token provided');
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest) {
     const { data: connection, error: connectionError } = await supabase
       .from('gsc_connections')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_token', userToken)
       .eq('is_active', true)
       .single();
 
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
       .eq('connection_id', connection.id)
       .eq('is_active', true);
 
-    console.log('[GSC CONNECTION] Connection found for user:', user.id);
+    console.log('[GSC CONNECTION] Connection found for user token:', userToken);
 
     return NextResponse.json({
       connected: true,
@@ -71,12 +75,11 @@ export async function DELETE(request: NextRequest) {
   try {
     console.log('[GSC CONNECTION] Disconnecting GSC');
     
-    // Get authenticated user
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { searchParams } = new URL(request.url);
+    const userToken = searchParams.get('userToken');
     
-    if (authError || !user) {
-      console.log('[GSC CONNECTION] Authentication failed:', authError);
+    if (!userToken) {
+      console.log('[GSC CONNECTION] No user token provided');
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
@@ -84,7 +87,7 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase
       .from('gsc_connections')
       .update({ is_active: false })
-      .eq('user_id', user.id);
+      .eq('user_token', userToken);
 
     if (error) {
       console.error('[GSC CONNECTION] Error disconnecting:', error);
@@ -95,9 +98,9 @@ export async function DELETE(request: NextRequest) {
     await supabase
       .from('gsc_properties')
       .update({ is_active: false })
-      .eq('user_id', user.id);
+      .eq('user_token', userToken);
 
-    console.log('[GSC CONNECTION] Successfully disconnected for user:', user.id);
+    console.log('[GSC CONNECTION] Successfully disconnected for user token:', userToken);
 
     return NextResponse.json({
       success: true,

@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
     console.log('[GSC OAUTH REFRESH] Refreshing access token');
     
-    // Get authenticated user
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { searchParams } = new URL(request.url);
+    const userToken = searchParams.get('userToken');
     
-    if (authError || !user) {
-      console.log('[GSC OAUTH REFRESH] Authentication failed:', authError);
+    if (!userToken) {
+      console.log('[GSC OAUTH REFRESH] No user token provided');
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
@@ -19,7 +23,7 @@ export async function POST(request: NextRequest) {
     const { data: connection, error: connectionError } = await supabase
       .from('gsc_connections')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_token', userToken)
       .eq('is_active', true)
       .single();
 
@@ -74,7 +78,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update token' }, { status: 500 });
     }
 
-    console.log('[GSC OAUTH REFRESH] Successfully refreshed token for user:', user.id);
+    console.log('[GSC OAUTH REFRESH] Successfully refreshed token for user:', userToken);
     
     return NextResponse.json({ 
       message: 'Token refreshed successfully',

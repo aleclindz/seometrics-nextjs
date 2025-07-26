@@ -1,12 +1,12 @@
--- Google Search Console connections table
--- Stores encrypted OAuth tokens for GSC integration
+-- Google Search Console integration tables
+-- Stores OAuth tokens and search console data
 
 -- GSC connections table for storing OAuth tokens
-CREATE TABLE gsc_connections (
+CREATE TABLE IF NOT EXISTS gsc_connections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
     
-    -- OAuth tokens (encrypted)
+    -- OAuth tokens
     access_token TEXT NOT NULL,
     refresh_token TEXT NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -22,18 +22,21 @@ CREATE TABLE gsc_connections (
     
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Unique per user
+    UNIQUE(user_token)
 );
 
 -- GSC properties table for verified properties
-CREATE TABLE gsc_properties (
+CREATE TABLE IF NOT EXISTS gsc_properties (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     connection_id UUID REFERENCES gsc_connections(id) ON DELETE CASCADE,
     user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
     
     -- Property details
     site_url TEXT NOT NULL,
-    permission_level VARCHAR(50) NOT NULL, -- 'siteOwner', 'siteFullUser', 'siteRestrictedUser'
+    permission_level VARCHAR(50) NOT NULL,
     
     -- Property status
     is_verified BOOLEAN DEFAULT false,
@@ -52,7 +55,7 @@ CREATE TABLE gsc_properties (
 );
 
 -- GSC performance data table for historical data
-CREATE TABLE gsc_performance_data (
+CREATE TABLE IF NOT EXISTS gsc_performance_data (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     property_id UUID REFERENCES gsc_properties(id) ON DELETE CASCADE,
     user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
@@ -81,13 +84,13 @@ CREATE TABLE gsc_performance_data (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_gsc_connections_user_token ON gsc_connections(user_token);
-CREATE INDEX idx_gsc_connections_active ON gsc_connections(user_token, is_active);
-CREATE INDEX idx_gsc_properties_connection_id ON gsc_properties(connection_id);
-CREATE INDEX idx_gsc_properties_user_token ON gsc_properties(user_token);
-CREATE INDEX idx_gsc_properties_active ON gsc_properties(user_token, is_active);
-CREATE INDEX idx_gsc_performance_property_id ON gsc_performance_data(property_id);
-CREATE INDEX idx_gsc_performance_dates ON gsc_performance_data(property_id, date_start, date_end);
+CREATE INDEX IF NOT EXISTS idx_gsc_connections_user_token ON gsc_connections(user_token);
+CREATE INDEX IF NOT EXISTS idx_gsc_connections_active ON gsc_connections(user_token, is_active);
+CREATE INDEX IF NOT EXISTS idx_gsc_properties_connection_id ON gsc_properties(connection_id);
+CREATE INDEX IF NOT EXISTS idx_gsc_properties_user_token ON gsc_properties(user_token);
+CREATE INDEX IF NOT EXISTS idx_gsc_properties_active ON gsc_properties(user_token, is_active);
+CREATE INDEX IF NOT EXISTS idx_gsc_performance_property_id ON gsc_performance_data(property_id);
+CREATE INDEX IF NOT EXISTS idx_gsc_performance_dates ON gsc_performance_data(property_id, date_start, date_end);
 
 -- Updated_at triggers
 CREATE TRIGGER update_gsc_connections_updated_at 
@@ -97,5 +100,3 @@ CREATE TRIGGER update_gsc_connections_updated_at
 CREATE TRIGGER update_gsc_properties_updated_at 
     BEFORE UPDATE ON gsc_properties 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Note: RLS not enabled since this uses token-based auth via login_users table
