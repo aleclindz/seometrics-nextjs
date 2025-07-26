@@ -288,18 +288,40 @@ RESPOND WITH VALID JSON:
   "content": "FULL HTML ARTICLE CONTENT"
 }
 
-ARTICLE STRUCTURE:
-1. Introduction (hook + main keyword)
-2. 4-5 main sections with <h2> headings
-3. 3 FAQ questions with <h3> tags
-4. Conclusion with call-to-action
+ARTICLE STRUCTURE (Follow this exact format):
+1. TL;DR Summary (2-3 bullet points in a callout box)
+2. Introduction with hook + problem statement + article preview
+3. Definition section (What is [main topic]?)
+4. Why it matters/Benefits section
+5. Step-by-step guide or methodology
+6. Real-world examples with specific details
+7. Best practices and tips
+8. Common mistakes to avoid
+9. FAQ section (3-4 questions with H3 tags)
+10. Conclusion with clear call-to-action
+
+CONTENT QUALITY REQUIREMENTS:
+- Start with <div class="tldr-box"><h3>TL;DR</h3><ul> for summary
+- Use specific examples, numbers, and data points
+- Include actionable advice in every section
+- Break complex concepts into digestible chunks
+- Use transition phrases between sections
+- Include semantic keywords naturally
+- Add internal linking opportunities with placeholder text like [internal link: related topic]
 
 FORMAT REQUIREMENTS:
-- Use HTML: <h2>, <h3>, <p>, <strong>, <ul>, <li>
-- Include keywords naturally
-- Write clearly and ${tone === 'professional' ? 'professionally' : tone === 'casual' ? 'conversationally' : 'technically'}
-- Each section: 2-3 paragraphs max
-- Keep FAQ answers concise
+- Use HTML: <h2>, <h3>, <p>, <strong>, <ul>, <li>, <em>
+- Bold important terms and key concepts
+- Use numbered lists for steps, bullet lists for benefits
+- Include 2-3 paragraphs per section with clear topic sentences
+- Write in an engaging, ${tone === 'professional' ? 'authoritative yet accessible' : tone === 'casual' ? 'conversational and relatable' : 'precise and technical'} style
+
+ENGAGEMENT ELEMENTS:
+- Use rhetorical questions to hook readers
+- Include specific statistics or data when relevant
+- Add practical examples that readers can relate to
+- Create scannable content with clear headings
+- End each major section with a key takeaway
 
 META REQUIREMENTS:
 - Title: 50-60 characters, include "${keywords[0] || title.split(' ')[0]}"
@@ -320,7 +342,7 @@ Return ONLY valid JSON, no additional text.`;
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert SEO content writer. Write concise, high-quality articles with proper HTML formatting. Always respond with valid JSON only.' 
+            content: 'You are an expert SEO content writer who creates high-quality, comprehensive articles similar to top-performing content from SurferSEO and industry leaders. Focus on actionable advice, real examples, clear structure, and engaging writing that provides genuine value to readers. Always respond with valid JSON only.' 
           },
           { role: 'user', content: comprehensivePrompt }
         ],

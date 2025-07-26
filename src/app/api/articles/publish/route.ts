@@ -562,6 +562,7 @@ function formatContentForPublication(content: string, schemaInfo: any): string {
     formattedContent = formattedContent.replace(/><h/g, '>\n<h');
     formattedContent = formattedContent.replace(/><p/g, '>\n<p');
     formattedContent = formattedContent.replace(/><ul/g, '>\n<ul');
+    formattedContent = formattedContent.replace(/><div/g, '>\n<div');
     
     // Clean up any remaining malformed structures
     formattedContent = formattedContent.replace(/<p([^>]*)>/g, (match, attrs) => {
