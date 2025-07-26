@@ -355,18 +355,37 @@ async function publishToStrapi({
   // Prepare the article data according to Strapi v4 format with enhanced formatting
   const formattedContent = formatContentForPublication(content, schemaInfo);
   
-  const articleData = {
+  // Build article data with schema-aware field mapping
+  const articleData: any = {
     data: {
       title,
       content: formattedContent,
       slug: slug || generateOptimizedSlug(title),
-      ...(metaTitle && { metaTitle }),
-      ...(metaDescription && { metaDescription }),
-      // Add excerpt if schema supports it
-      ...(schemaInfo?.hasExcerpt && { excerpt: generateExcerpt(content) }),
       publishedAt: publishDraft ? null : new Date().toISOString() // null = draft, date = published
     }
   };
+
+  // Add optional fields based on schema and availability
+  if (metaTitle && schemaInfo?.fields_config?.metaTitle) {
+    articleData.data.metaTitle = metaTitle;
+  } else if (metaTitle && schemaInfo?.fields_config?.meta_title) {
+    articleData.data.meta_title = metaTitle;
+  } else if (metaTitle && schemaInfo?.fields_config?.seoTitle) {
+    articleData.data.seoTitle = metaTitle;
+  }
+
+  if (metaDescription && schemaInfo?.fields_config?.metaDescription) {
+    articleData.data.metaDescription = metaDescription;
+  } else if (metaDescription && schemaInfo?.fields_config?.meta_description) {
+    articleData.data.meta_description = metaDescription;
+  } else if (metaDescription && schemaInfo?.fields_config?.seoDescription) {
+    articleData.data.seoDescription = metaDescription;
+  }
+
+  // Add excerpt if schema supports it
+  if (schemaInfo?.hasExcerpt) {
+    articleData.data.excerpt = generateExcerpt(content);
+  }
 
   console.log('[STRAPI PUBLISH] Article data:', JSON.stringify(articleData, null, 2));
 

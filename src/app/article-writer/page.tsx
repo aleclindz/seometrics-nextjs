@@ -294,7 +294,24 @@ export default function ArticleWriter() {
   };
 
   // Helper function to determine what type of retry is needed
+  const isArticleStuck = (article: any) => {
+    const now = new Date().getTime();
+    const updatedAt = new Date(article.updated_at).getTime();
+    const minutesSinceUpdate = (now - updatedAt) / (1000 * 60);
+    
+    // Consider article stuck if it's been in generating/publishing status for more than 10 minutes
+    return (
+      (article.status === 'generating' && minutesSinceUpdate > 10) ||
+      (article.status === 'publishing' && minutesSinceUpdate > 10)
+    );
+  };
+
   const getRetryContext = (article: any) => {
+    // Check if article is stuck first
+    if (isArticleStuck(article)) {
+      return article.status === 'generating' ? 'generation' : 'publishing';
+    }
+    
     // Use granular status values for precise retry context
     if (article.status === 'generation_failed') {
       return 'generation';
@@ -342,7 +359,14 @@ export default function ArticleWriter() {
     return null;
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (article: any) => {
+    const status = article.status;
+    const stuck = isArticleStuck(article);
+    
+    if (stuck) {
+      return 'text-red-600 bg-red-100 dark:bg-red-900/30';
+    }
+    
     switch (status) {
       case 'pending': return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30';
       case 'generating': return 'text-blue-600 bg-blue-100 dark:bg-blue-900/30';
@@ -356,7 +380,14 @@ export default function ArticleWriter() {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (article: any) => {
+    const status = article.status;
+    const stuck = isArticleStuck(article);
+    
+    if (stuck) {
+      return status === 'generating' ? 'Generation Stuck' : 'Publishing Stuck';
+    }
+    
     switch (status) {
       case 'pending': return 'Pending';
       case 'generating': return 'Generating...';
@@ -665,8 +696,8 @@ export default function ArticleWriter() {
                                     )}
                                   </div>
                                   <div className="flex items-center space-x-3 ml-4">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(article.status)}`}>
-                                      {getStatusText(article.status)}
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(article)}`}>
+                                      {getStatusText(article)}
                                     </span>
                                     {article.status === 'pending' && (
                                       <button
@@ -689,7 +720,7 @@ export default function ArticleWriter() {
                                         )}
                                       </button>
                                     )}
-                                    {(article.status === 'failed' || article.status === 'generation_failed') && getRetryContext(article) === 'generation' && (
+                                    {(article.status === 'failed' || article.status === 'generation_failed' || isArticleStuck(article)) && getRetryContext(article) === 'generation' && (
                                       <button
                                         onClick={() => handleRetryGeneration(article.id)}
                                         disabled={generatingArticle === article.id}
@@ -744,7 +775,7 @@ export default function ArticleWriter() {
                                         Edit in Strapi
                                       </a>
                                     )}
-                                    {(article.status === 'failed' || article.status === 'publishing_failed') && getRetryContext(article) === 'publishing' && article.cms_connections && (
+                                    {(article.status === 'failed' || article.status === 'publishing_failed' || isArticleStuck(article)) && getRetryContext(article) === 'publishing' && article.cms_connections && (
                                       <button
                                         onClick={() => handleRetryPublishing(article.id)}
                                         disabled={publishingArticle === article.id}
