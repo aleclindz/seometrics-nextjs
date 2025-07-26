@@ -61,7 +61,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
           <Link className="block" href="/">
             <Image 
               src="/assets/logodark.png" 
-              alt="Seometrics" 
+              alt="SEOAgent" 
               width={120}
               height={23}
               style={{ height: '23px', width: 'auto' }}
@@ -74,8 +74,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
           {/* Pages group */}
           <div>
             <h3 className="text-xs uppercase text-gray-400 dark:text-gray-500 font-semibold pl-3">
-              <span className={`hidden lg:block ${sidebarExpanded ? 'lg:hidden' : ''} 2xl:hidden text-center w-6`} aria-hidden="true">•••</span>
-              <span className={`lg:hidden ${sidebarExpanded ? 'lg:block' : ''} 2xl:block`}>Pages</span>
+              <span className={`hidden lg:block ${sidebarExpanded ? 'lg:hidden' : ''} 2xl:hidden text-center w-6`} aria-hidden="true">🤖</span>
+              <span className={`lg:hidden ${sidebarExpanded ? 'lg:block' : ''} 2xl:block`}>SEO Agent</span>
             </h3>
             <ul className="mt-3">
               
@@ -100,78 +100,83 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
                 </Link>
               </li>
 
-              {/* AI Tags */}
+              {/* Autopilot - Technical SEO */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
-                isActive('/websites') 
+                isActive('/autopilot') 
                   ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}>
-                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/websites">
-                  <div className="flex items-center">
-                    <svg className={`shrink-0 fill-current transition-colors ${
-                      isActive('/websites') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
-                    }`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                      <path d="M5 4a1 1 0 0 0 0 2h6a1 1 0 1 0 0-2H5Z"></path>
-                      <path d="M4 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4H4ZM2 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4Z"></path>
-                    </svg>
-                    <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
-                      AI Tags
-                    </span>
+                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/autopilot">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center min-w-0">
+                      <svg className={`shrink-0 fill-current transition-colors ${
+                        isActive('/autopilot') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
+                      }`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm3.669 12.538a6.01 6.01 0 0 1-7.338 0 .999.999 0 0 1 .17-1.608l.928-.464A1 1 0 0 0 6 9.5V6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3.5a1 1 0 0 0 .571.966l.928.464a.999.999 0 0 1 .17 1.608Z"></path>
+                        <circle cx="8" cy="3" r="1"></circle>
+                      </svg>
+                      <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
+                        Autopilot
+                      </span>
+                    </div>
+                    <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
+                      <div className="w-2 h-2 bg-green-500 rounded-full" title="Technical SEO automation"></div>
+                    </div>
                   </div>
                 </Link>
               </li>
 
-              {/* Article Writer */}
+              {/* Content Writer */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
-                isActive('/article-writer') 
+                isActive('/content-writer') 
                   ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}>
-                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/article-writer">
+                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/content-writer">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center min-w-0">
                       <svg className={`shrink-0 fill-current transition-colors ${
-                        isActive('/article-writer') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
+                        isActive('/content-writer') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
                       }`} width="16" height="16" viewBox="0 0 16 16">
                         <path d="M13.95.879a3 3 0 0 0-4.243 0L1.293 9.293a1 1 0 0 0-.274.51l-1 5a1 1 0 0 0 1.177 1.177l5-1a1 1 0 0 0 .511-.273l8.414-8.414a3 3 0 0 0 0-4.242L13.95.879ZM11.12 2.293a1 1 0 0 1 1.414 0l1.172 1.172a1 1 0 0 1 0 1.414l-8.2 8.2-3.232.646.646-3.232 8.2-8.2Z"></path>
                         <path d="M10 14a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2h-5Z"></path>
                       </svg>
                       <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
-                        Article Writer
+                        Content Writer
                       </span>
                     </div>
                     {!hasFeature('articleGeneration') && (
                       <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
-                        <UpgradeBadge feature="Article Writer" plan="starter" size="sm" />
+                        <UpgradeBadge feature="Content Writer" plan="starter" size="sm" />
                       </div>
                     )}
                   </div>
                 </Link>
               </li>
 
-              {/* Keyword Research */}
+              {/* Strategy */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
-                isActive('/keywords') 
+                isActive('/strategy') 
                   ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}>
-                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/keywords">
+                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/strategy">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center min-w-0">
                       <svg className={`shrink-0 fill-current transition-colors ${
-                        isActive('/keywords') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
+                        isActive('/strategy') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
                       }`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                        <path d="M9 6.855A3.502 3.502 0 0 0 8 0a3.5 3.5 0 0 0-1 6.855v1.656L5.534 9.65a3.5 3.5 0 1 0 1.229 1.578L8 10.267l1.238.962a3.5 3.5 0 1 0 1.229-1.578L9 8.511V6.855ZM6.5 3.5a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Zm4.803 8.095c.005-.005.01-.01.013-.016l.012-.016a1.5 1.5 0 1 1-.025.032ZM3.5 11c.474 0 .897.22 1.171.563l.013.016.013.017A1.5 1.5 0 1 1 3.5 11Z"></path>
+                        <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"></path>
                       </svg>
                       <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
-                        Keyword Research
+                        Strategy
                       </span>
                     </div>
-                    {!hasFeature('keywordsTool') && (
-                      <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
-                        <UpgradeBadge feature="Keywords Tool" plan="starter" size="sm" />
+                    <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
+                      <div className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded" title="SEO Intelligence Engine">
+                        BETA
                       </div>
-                    )}
+                    </div>
                   </div>
                 </Link>
               </li>
