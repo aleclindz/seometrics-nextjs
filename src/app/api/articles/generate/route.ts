@@ -269,64 +269,43 @@ async function generateComprehensiveArticle({
       stylePrompt = 'Use a professional, authoritative tone that builds trust and demonstrates expertise.';
   }
 
-  const wordTarget = contentLength === 'short' ? 800 : contentLength === 'long' ? 2000 : 1200;
+  const wordTarget = contentLength === 'short' ? 600 : contentLength === 'long' ? 1200 : 800; // Reduced targets
   
-  const comprehensivePrompt = `Create a complete SEO article package for: "${title}"
+  const comprehensivePrompt = `Write a complete SEO article for: "${title}"
 
-  TARGET KEYWORDS: ${keywords.join(', ')}
-  WEBSITE: ${websiteDomain || 'general business'}
-  TONE: ${stylePrompt}
-  WORD COUNT: Approximately ${wordTarget} words
+TARGET KEYWORDS: ${keywords.join(', ')}
+TONE: ${stylePrompt}
+WORD COUNT: ${wordTarget} words
 
-  RESPOND WITH THIS EXACT JSON FORMAT:
-  {
-    "metaTitle": "SEO-optimized title (50-60 characters, include primary keyword)",
-    "metaDescription": "Compelling meta description (150-160 characters, include primary keyword and call-to-action)",
-    "contentOutline": {
-      "introduction": "Brief intro summary",
-      "mainSections": ["Section 1 title", "Section 2 title", "Section 3 title", "etc"],
-      "conclusion": "Brief conclusion summary",
-      "faq": ["FAQ question 1", "FAQ question 2", "etc"]
-    },
-    "content": "FULL ARTICLE CONTENT HERE"
-  }
+RESPOND WITH VALID JSON:
+{
+  "metaTitle": "SEO title (50-60 chars with main keyword)",
+  "metaDescription": "Meta description (150-160 chars with call-to-action)",
+  "contentOutline": {
+    "mainSections": ["Section 1", "Section 2", "Section 3", "Section 4"],
+    "conclusion": "Brief summary"
+  },
+  "content": "FULL HTML ARTICLE CONTENT"
+}
 
-  ARTICLE CONTENT REQUIREMENTS:
-  1. KEY TAKEAWAYS (5-7 bullet points with <ul><li> tags)
-  2. INTRODUCTION (engaging hook with primary keyword)
-  3. MAIN CONTENT (6-8 sections with <h2> headings, include target keywords naturally)
-  4. FAQ SECTION (5 questions with <h3> and detailed <p> answers)
-  5. CONCLUSION (compelling call-to-action)
+ARTICLE STRUCTURE:
+1. Introduction (hook + main keyword)
+2. 4-5 main sections with <h2> headings
+3. 3 FAQ questions with <h3> tags
+4. Conclusion with call-to-action
 
-  CONTENT SPECIFICATIONS:
-  - ${stylePrompt}
-  - Include target keywords naturally (1-2% density)
-  - Use HTML formatting: <h2> for main sections, <h3> for subsections, <strong> for emphasis
-  - Include bullet points with <ul><li> tags where helpful
-  - Write 2-3 detailed paragraphs for each main section
-  - Include actionable insights and practical examples
-  - End with compelling conclusion mentioning ${websiteDomain || 'the topic'}
-  - FAQ questions should address common user concerns with long-tail keywords
-  - Key takeaways should be specific and actionable
+FORMAT REQUIREMENTS:
+- Use HTML: <h2>, <h3>, <p>, <strong>, <ul>, <li>
+- Include keywords naturally
+- Write clearly and ${tone === 'professional' ? 'professionally' : tone === 'casual' ? 'conversationally' : 'technically'}
+- Each section: 2-3 paragraphs max
+- Keep FAQ answers concise
 
-  META TITLE REQUIREMENTS:
-  - 50-60 characters total
-  - Include primary keyword: "${keywords[0]}"
-  - Compelling and click-worthy
-  - Different from main article title
+META REQUIREMENTS:
+- Title: 50-60 characters, include "${keywords[0] || title.split(' ')[0]}"
+- Description: 150-160 characters, compelling, include primary keyword and call-to-action
 
-  META DESCRIPTION REQUIREMENTS:
-  - 150-160 characters total
-  - Include primary keyword: "${keywords[0]}"
-  - Include a call-to-action
-  - Summarize the article's value proposition
-
-  CONTENT OUTLINE REQUIREMENTS:
-  - Extract main section headings from the article
-  - Include 5 FAQ questions that will be answered
-  - Brief summaries for intro and conclusion
-
-  Return ONLY the JSON response, no additional text.`;
+Return ONLY valid JSON, no additional text.`;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -339,14 +318,14 @@ async function generateComprehensiveArticle({
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert SEO content writer and strategist. You create comprehensive article packages with optimized metadata. Always respond with valid JSON in the exact format requested.' 
+          content: 'You are an expert SEO content writer. Write concise, high-quality articles with proper HTML formatting. Always respond with valid JSON only.' 
         },
         { role: 'user', content: comprehensivePrompt }
       ],
-      temperature: 0.1,
-      max_tokens: 4500
+      temperature: 0.2,
+      max_tokens: 3000 // Reduced for faster generation
     }),
-    signal: AbortSignal.timeout(45000) // 45-second timeout
+    signal: AbortSignal.timeout(25000) // 25-second timeout to stay under Vercel limit
   });
 
   if (!response.ok) {
