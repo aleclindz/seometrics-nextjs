@@ -16,7 +16,7 @@ export default function HeroSection() {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white mb-6">
             Put your SEO on{' '}
             <span className="text-violet-600 relative">
               auto-pilot
@@ -43,10 +43,18 @@ export default function HeroSection() {
             </Link>
             <button className="flex items-center text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 font-medium transition-colors">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 00.707-.293l4.414-4.414a1 1 0 111.414 1.414L12.707 11H9v4a1 1 0 01-1 1H7a1 1 0 01-1-1v-4a1 1 0 011-1z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 00.707-.293l4.414-4.414a1 1 0 111.414 1.414L12.707 11H9v4a1 1 0 01-1 1H7a1 1 0 01-1 1v-4a1 1 0 011-1z" />
               </svg>
-              Watch Demo
+              Watch 90-sec Demo
             </button>
+          </div>
+          
+          {/* Risk Reversal Badge */}
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm font-medium mb-8">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            14-day free trial • No credit card required
           </div>
 
           {/* Features Preview */}

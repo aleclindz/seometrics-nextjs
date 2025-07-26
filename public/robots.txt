@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://seoagent.com/sitemap.xml
+
+# Disallow sensitive paths
+Disallow: /api/
+Disallow: /account
+Disallow: /debug-seo
+Disallow: /_next/
+Disallow: /login

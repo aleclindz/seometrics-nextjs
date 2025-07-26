@@ -4,31 +4,37 @@ import "./globals.css";
 import { AuthProvider } from '@/contexts/auth';
 
 export const metadata: Metadata = {
-  title: "SEO Metrics - Put Your SEO on Auto-Pilot | AI-Powered SEO Automation",
-  description: "Automate your SEO with AI-powered alt-tags, meta descriptions, and Generative Engine Optimization. Perfect for side projects and developers. Get discovered by ChatGPT, Claude, and AI search engines.",
-  keywords: ["SEO automation", "AI SEO", "alt-tags", "meta descriptions", "GEO", "ChatGPT SEO", "Claude SEO", "side projects", "developers"],
-  authors: [{ name: "SEO Metrics" }],
-  creator: "SEO Metrics",
-  publisher: "SEO Metrics",
+  title: "SEOAgent.com - Put Your SEO on Auto-Pilot | AI SEO Automation for Bootstrappers",
+  description: "Automated technical SEO, content writing, and strategic optimization for indie hackers. Built for apps made with Lovable, v0, Create, Replit. Multi-CMS support beats SurferSEO&apos;s WordPress-only limitation.",
+  keywords: ["SEO automation", "AI SEO", "technical SEO", "content writer", "multi-CMS", "indie hackers", "bootstrappers", "Lovable", "v0", "Create", "Replit", "SurferSEO alternative"],
+  authors: [{ name: "SEOAgent" }],
+  creator: "SEOAgent",
+  publisher: "SEOAgent",
   robots: "index, follow",
+  metadataBase: new URL("https://seoagent.com"),
+  alternates: {
+    canonical: "https://seoagent.com",
+  },
   openGraph: {
-    title: "SEO Metrics - Put Your SEO on Auto-Pilot",
-    description: "AI-powered SEO automation for developers and side projects. Auto-generate alt-tags, meta descriptions, and optimize for AI search engines.",
-    url: "https://seometrics.com",
-    siteName: "SEO Metrics",
+    title: "SEOAgent.com - Put Your SEO on Auto-Pilot",
+    description: "Automated technical SEO, content writing, and strategic optimization for indie hackers and bootstrappers. Multi-CMS support for Strapi, WordPress, Webflow, Shopify, Ghost.",
+    url: "https://seoagent.com",
+    siteName: "SEOAgent",
     type: "website",
+    locale: "en_US",
     images: [{
       url: "/og-image.jpg",
       width: 1200,
       height: 630,
-      alt: "SEO Metrics - AI-Powered SEO Automation"
+      alt: "SEOAgent - AI SEO Automation for Bootstrappers"
     }]
   },
   twitter: {
     card: "summary_large_image",
-    title: "SEO Metrics - Put Your SEO on Auto-Pilot",
-    description: "AI-powered SEO automation for developers and side projects. Auto-generate alt-tags, meta descriptions, and optimize for AI search engines.",
-    images: ["/og-image.jpg"]
+    title: "SEOAgent.com - Put Your SEO on Auto-Pilot",
+    description: "Automated technical SEO, content writing, and strategic optimization for indie hackers. Multi-CMS support beats SurferSEO&apos;s WordPress-only limitation.",
+    images: ["/og-image.jpg"],
+    creator: "@seoagent"
   },
   viewport: "width=device-width, initial-scale=1",
   themeColor: "#7c3aed"
