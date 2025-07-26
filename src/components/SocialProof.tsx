@@ -81,10 +81,10 @@ export default function SocialProof() {
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Trusted by developers worldwide
+            Trusted by indie hackers & bootstrappers worldwide
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Join thousands of developers who have already automated their SEO and are seeing incredible results.
+            You&apos;ve built your app with Lovable, v0, Create, or Replit. Now let it grow with automated SEO.
           </p>
         </div>
 

@@ -12,7 +12,7 @@ export default function HeroSection() {
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            Perfect for Side Projects
+            Perfect for Indie Hackers & Bootstrappers
           </div>
 
           {/* Main Headline */}
@@ -28,7 +28,7 @@ export default function HeroSection() {
 
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-4xl mx-auto">
-            AI-powered meta tags, alt-text, and Generative Engine Optimization that works while you sleep.
+            Automated technical SEO, content writing, and strategic optimization that works while you sleep.
             <br className="hidden md:block" />
             <span className="text-violet-600 dark:text-violet-400 font-semibold">One script. Infinite possibilities.</span>
           </p>
@@ -57,7 +57,7 @@ export default function HeroSection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="font-medium">Auto Alt-Tags</span>
+              <span className="font-medium">Technical SEO</span>
             </div>
             <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300">
               <div className="w-6 h-6 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
@@ -65,7 +65,7 @@ export default function HeroSection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="font-medium">Auto Meta-Tags</span>
+              <span className="font-medium">Content Writer</span>
             </div>
             <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300">
               <div className="w-6 h-6 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
@@ -73,7 +73,7 @@ export default function HeroSection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="font-medium">GEO Ready</span>
+              <span className="font-medium">SEO Strategy</span>
             </div>
           </div>
         </div>
