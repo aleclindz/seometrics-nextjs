@@ -307,29 +307,38 @@ META REQUIREMENTS:
 
 Return ONLY valid JSON, no additional text.`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini', // Faster and cheaper than gpt-4
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert SEO content writer. Write concise, high-quality articles with proper HTML formatting. Always respond with valid JSON only.' 
-        },
-        { role: 'user', content: comprehensivePrompt }
-      ],
-      temperature: 0.2,
-      max_tokens: 3000 // Reduced for faster generation
-    }),
-    signal: AbortSignal.timeout(25000) // 25-second timeout to stay under Vercel limit
-  });
+  let response;
+  try {
+    response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini', // Faster and cheaper than gpt-4
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are an expert SEO content writer. Write concise, high-quality articles with proper HTML formatting. Always respond with valid JSON only.' 
+          },
+          { role: 'user', content: comprehensivePrompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 3000 // Reduced for faster generation
+      }),
+      signal: AbortSignal.timeout(25000) // 25-second timeout to stay under Vercel limit
+    });
+  } catch (fetchError: any) {
+    if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
+      throw new Error('Article generation timed out. Please try again with shorter content or simpler requirements.');
+    }
+    throw new Error(`OpenAI API connection error: ${fetchError.message}`);
+  }
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
