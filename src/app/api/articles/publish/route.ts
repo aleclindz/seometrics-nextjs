@@ -535,18 +535,47 @@ function formatContentForPublication(content: string, schemaInfo: any): string {
   // Enhanced HTML formatting for better article presentation
   let formattedContent = content.trim();
   
-  // If content is already HTML (starts with HTML tags), clean it up
+  // If content is already HTML (starts with HTML tags), clean it up extensively
   if (formattedContent.startsWith('<')) {
+    // Remove any malformed paragraph wrapping around headers
+    formattedContent = formattedContent.replace(/<p>\s*<h([1-6])>/g, '<h$1>');
+    formattedContent = formattedContent.replace(/<\/h([1-6])>\s*<\/p>/g, '</h$1>');
+    
     // Clean up malformed nested lists
     formattedContent = formattedContent.replace(/<ul><ul>/g, '<ul>');
     formattedContent = formattedContent.replace(/<\/ul><\/ul>/g, '</ul>');
     
-    // Ensure proper spacing around headers
-    formattedContent = formattedContent.replace(/(<\/[^>]+>)(<h[1-6])/g, '$1\n\n$2');
-    formattedContent = formattedContent.replace(/(<\/h[1-6]>)(<[^\/])/g, '$1\n\n$2');
+    // Fix double closing paragraph tags
+    formattedContent = formattedContent.replace(/<\/p><\/p>/g, '</p>');
     
-    // Ensure proper spacing around paragraphs
-    formattedContent = formattedContent.replace(/(<\/p>)(<[^\/])/g, '$1\n\n$2');
+    // Remove paragraph tags around headers
+    formattedContent = formattedContent.replace(/<p>(<h[1-6].*?<\/h[1-6]>)<\/p>/g, '$1');
+    
+    // Clean up excessive line breaks and paragraph spacing
+    formattedContent = formattedContent.replace(/<\/p><br>\s*<br>\s*<p>/g, '</p>\n<p>');
+    formattedContent = formattedContent.replace(/<br>\s*<br>/g, '</p>\n<p>');
+    
+    // Remove empty paragraphs
+    formattedContent = formattedContent.replace(/<p>\s*<\/p>/g, '');
+    
+    // Ensure proper spacing between elements
+    formattedContent = formattedContent.replace(/><h/g, '>\n<h');
+    formattedContent = formattedContent.replace(/><p/g, '>\n<p');
+    formattedContent = formattedContent.replace(/><ul/g, '>\n<ul');
+    
+    // Clean up any remaining malformed structures
+    formattedContent = formattedContent.replace(/<p([^>]*)>/g, (match, attrs) => {
+      // If this paragraph contains a header, remove the paragraph wrapper
+      const nextTag = formattedContent.substring(formattedContent.indexOf(match) + match.length, formattedContent.indexOf(match) + match.length + 10);
+      if (nextTag.includes('<h')) {
+        return '';
+      }
+      return match;
+    });
+    
+    // Final cleanup
+    formattedContent = formattedContent.replace(/\n{3,}/g, '\n\n');
+    formattedContent = formattedContent.trim();
     
     return formattedContent;
   }
@@ -566,8 +595,7 @@ function formatContentForPublication(content: string, schemaInfo: any): string {
         processedLines.push('</ul>');
         inList = false;
       }
-      processedLines.push('');
-      continue;
+      continue; // Skip empty lines for cleaner output
     }
     
     // Headers
@@ -613,11 +641,8 @@ function formatContentForPublication(content: string, schemaInfo: any): string {
     processedLines.push('</ul>');
   }
   
-  // Join with proper spacing
+  // Join with single newlines for clean HTML
   let result = processedLines.join('\n');
-  
-  // Clean up excessive spacing
-  result = result.replace(/\n{3,}/g, '\n\n');
   
   return result;
 }
