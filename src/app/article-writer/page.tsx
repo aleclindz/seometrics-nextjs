@@ -25,6 +25,7 @@ interface Article {
   retry_count?: number;
   article_content?: string;
   cms_admin_url?: string;
+  public_url?: string;
   websites?: {
     domain: string;
   };
@@ -761,6 +762,19 @@ export default function ArticleWriter() {
                                           </>
                                         )}
                                       </button>
+                                    )}
+                                    {article.status === 'published' && article.public_url && (
+                                      <a
+                                        href={article.public_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                      >
+                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                        View Live Article
+                                      </a>
                                     )}
                                     {article.status === 'published' && article.cms_admin_url && (
                                       <a

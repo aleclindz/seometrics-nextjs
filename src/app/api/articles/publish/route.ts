@@ -200,7 +200,13 @@ export async function POST(request: NextRequest) {
         cmsArticleId
       );
 
-      // Update article with CMS ID, published status, and admin URL
+      // Generate public URL for the published article
+      const publicUrl = generatePublicArticleUrl(
+        article.cms_connections.base_url,
+        article.slug || generateOptimizedSlug(article.title)
+      );
+
+      // Update article with CMS ID, published status, admin URL, and public URL
       const { error: updateError } = await supabase
         .from('article_queue')
         .update({
@@ -208,7 +214,8 @@ export async function POST(request: NextRequest) {
           status: 'published',
           published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          cms_admin_url: strapiAdminUrl
+          cms_admin_url: strapiAdminUrl,
+          public_url: publicUrl
         })
         .eq('id', articleId);
 
@@ -526,42 +533,93 @@ async function getContentTypeSchema(connectionId: string, contentType: string) {
 
 function formatContentForPublication(content: string, schemaInfo: any): string {
   // Enhanced HTML formatting for better article presentation
-  let formattedContent = content;
+  let formattedContent = content.trim();
   
-  // Ensure proper paragraph spacing
-  formattedContent = formattedContent.replace(/\n\n+/g, '</p>\n\n<p>');
-  
-  // Wrap content in paragraph tags if not already wrapped
-  if (!formattedContent.trim().startsWith('<')) {
-    formattedContent = `<p>${formattedContent}</p>`;
+  // If content is already HTML (starts with HTML tags), clean it up
+  if (formattedContent.startsWith('<')) {
+    // Clean up malformed nested lists
+    formattedContent = formattedContent.replace(/<ul><ul>/g, '<ul>');
+    formattedContent = formattedContent.replace(/<\/ul><\/ul>/g, '</ul>');
+    
+    // Ensure proper spacing around headers
+    formattedContent = formattedContent.replace(/(<\/[^>]+>)(<h[1-6])/g, '$1\n\n$2');
+    formattedContent = formattedContent.replace(/(<\/h[1-6]>)(<[^\/])/g, '$1\n\n$2');
+    
+    // Ensure proper spacing around paragraphs
+    formattedContent = formattedContent.replace(/(<\/p>)(<[^\/])/g, '$1\n\n$2');
+    
+    return formattedContent;
   }
   
-  // Fix heading formatting - ensure proper HTML structure
-  formattedContent = formattedContent.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-  formattedContent = formattedContent.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  formattedContent = formattedContent.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  formattedContent = formattedContent.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  // Convert markdown-style formatting to HTML
+  // Process line by line to maintain structure
+  const lines = formattedContent.split('\n');
+  const processedLines: string[] = [];
+  let inList = false;
   
-  // Fix list formatting
-  formattedContent = formattedContent.replace(/^\* (.+)$/gm, '<li>$1</li>');
-  formattedContent = formattedContent.replace(/^- (.+)$/gm, '<li>$1</li>');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    if (!line) {
+      // Empty line - close any open lists and add spacing
+      if (inList) {
+        processedLines.push('</ul>');
+        inList = false;
+      }
+      processedLines.push('');
+      continue;
+    }
+    
+    // Headers
+    if (line.startsWith('#### ')) {
+      if (inList) { processedLines.push('</ul>'); inList = false; }
+      processedLines.push(`<h4>${line.substring(5)}</h4>`);
+    } else if (line.startsWith('### ')) {
+      if (inList) { processedLines.push('</ul>'); inList = false; }
+      processedLines.push(`<h3>${line.substring(4)}</h3>`);
+    } else if (line.startsWith('## ')) {
+      if (inList) { processedLines.push('</ul>'); inList = false; }
+      processedLines.push(`<h2>${line.substring(3)}</h2>`);
+    } else if (line.startsWith('# ')) {
+      if (inList) { processedLines.push('</ul>'); inList = false; }
+      processedLines.push(`<h1>${line.substring(2)}</h1>`);
+    } 
+    // List items
+    else if (line.startsWith('- ') || line.startsWith('* ')) {
+      if (!inList) {
+        processedLines.push('<ul>');
+        inList = true;
+      }
+      const listContent = line.substring(2);
+      // Apply bold/italic formatting to list content
+      const formattedListContent = listContent
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>');
+      processedLines.push(`<li>${formattedListContent}</li>`);
+    }
+    // Regular paragraphs
+    else {
+      if (inList) { processedLines.push('</ul>'); inList = false; }
+      // Apply bold/italic formatting
+      const formattedLine = line
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>');
+      processedLines.push(`<p>${formattedLine}</p>`);
+    }
+  }
   
-  // Wrap orphaned list items in ul tags
-  formattedContent = formattedContent.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
+  // Close any remaining open lists
+  if (inList) {
+    processedLines.push('</ul>');
+  }
   
-  // Fix bold and italic formatting
-  formattedContent = formattedContent.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  formattedContent = formattedContent.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Join with proper spacing
+  let result = processedLines.join('\n');
   
-  // Add line breaks where needed
-  formattedContent = formattedContent.replace(/\n/g, '<br>\n');
+  // Clean up excessive spacing
+  result = result.replace(/\n{3,}/g, '\n\n');
   
-  // Clean up double paragraph tags and breaks
-  formattedContent = formattedContent.replace(/<\/p><br>\n\n<p>/g, '</p>\n\n<p>');
-  formattedContent = formattedContent.replace(/<br>\n<h/g, '\n<h');
-  formattedContent = formattedContent.replace(/<\/h([1-6])><br>/g, '</h$1>');
-  
-  return formattedContent;
+  return result;
 }
 
 function generateOptimizedSlug(title: string): string {
@@ -613,4 +671,14 @@ function generateStrapiAdminUrl(baseUrl: string, contentType: string, documentId
   }
   
   return `${cleanUrl}/admin/content-manager/collection-types/${contentType}/${documentId}`;
+}
+
+function generatePublicArticleUrl(baseUrl: string, slug: string): string {
+  // Generate public URL for the published article
+  const cleanUrl = baseUrl.replace(/\/$/, '');
+  const cleanSlug = slug.replace(/^\/|\/$/g, ''); // Remove leading/trailing slashes
+  
+  // For most websites, articles are at /blog/slug
+  // This can be made configurable later based on CMS configuration
+  return `${cleanUrl}/blog/${cleanSlug}`;
 }
