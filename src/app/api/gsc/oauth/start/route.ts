@@ -40,9 +40,25 @@ export async function GET(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
     const redirectUri = `${baseUrl}/api/gsc/oauth/callback`;
     
+    // Debug logging for environment variables
+    console.log('[GSC OAUTH START] Environment check:', {
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+      clientIdPrefix: clientId ? clientId.substring(0, 10) + '...' : 'undefined',
+      baseUrl,
+      redirectUri
+    });
+    
     if (!clientId || !clientSecret) {
-      console.log('[GSC OAUTH START] Missing OAuth credentials');
-      return NextResponse.json({ error: 'OAuth credentials not configured' }, { status: 500 });
+      console.log('[GSC OAUTH START] Missing OAuth credentials - clientId:', !!clientId, 'clientSecret:', !!clientSecret);
+      return NextResponse.json({ 
+        error: 'OAuth credentials not configured',
+        debug: {
+          hasClientId: !!clientId,
+          hasClientSecret: !!clientSecret,
+          env: process.env.NODE_ENV
+        }
+      }, { status: 500 });
     }
 
     // Create OAuth2 client
