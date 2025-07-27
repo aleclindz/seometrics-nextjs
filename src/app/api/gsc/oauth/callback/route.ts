@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -19,12 +22,14 @@ export async function GET(request: NextRequest) {
     // Handle OAuth errors
     if (error) {
       console.log('[GSC OAUTH CALLBACK] OAuth error:', error);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=oauth_denied`);
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      return NextResponse.redirect(`${baseUrl}/autopilot?error=oauth_denied`);
     }
 
     if (!code || !state) {
       console.log('[GSC OAUTH CALLBACK] Missing code or state parameter');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=invalid_request`);
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      return NextResponse.redirect(`${baseUrl}/autopilot?error=invalid_request`);
     }
 
     // Verify state parameter
@@ -33,7 +38,8 @@ export async function GET(request: NextRequest) {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString());
     } catch (e) {
       console.log('[GSC OAUTH CALLBACK] Invalid state parameter');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=invalid_state`);
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      return NextResponse.redirect(`${baseUrl}/autopilot?error=invalid_state`);
     }
 
     const { userToken } = stateData;
@@ -41,11 +47,12 @@ export async function GET(request: NextRequest) {
     // Get OAuth credentials
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/gsc/oauth/callback`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const redirectUri = `${baseUrl}/api/gsc/oauth/callback`;
     
     if (!clientId || !clientSecret) {
       console.log('[GSC OAUTH CALLBACK] Missing OAuth credentials');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=server_error`);
+      return NextResponse.redirect(`${baseUrl}/autopilot?error=server_error`);
     }
 
     // Create OAuth2 client
@@ -60,7 +67,7 @@ export async function GET(request: NextRequest) {
     
     if (!tokens.access_token || !tokens.refresh_token) {
       console.log('[GSC OAUTH CALLBACK] Missing required tokens');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=token_error`);
+      return NextResponse.redirect(`${baseUrl}/autopilot?error=token_error`);
     }
 
     // Set credentials to get user info
@@ -73,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     if (!email) {
       console.log('[GSC OAUTH CALLBACK] Unable to get user email');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=email_error`);
+      return NextResponse.redirect(`${baseUrl}/autopilot?error=email_error`);
     }
 
     // Verify user exists in database
@@ -85,7 +92,7 @@ export async function GET(request: NextRequest) {
     
     if (authError || !loginUser) {
       console.log('[GSC OAUTH CALLBACK] Authentication failed or user not found');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/login?error=auth_required`);
+      return NextResponse.redirect(`${baseUrl}/login?error=auth_required`);
     }
 
     // Calculate expiry time
@@ -112,16 +119,17 @@ export async function GET(request: NextRequest) {
 
     if (dbError) {
       console.error('[GSC OAUTH CALLBACK] Database error:', dbError);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=db_error`);
+      return NextResponse.redirect(`${baseUrl}/autopilot?error=db_error`);
     }
 
     console.log('[GSC OAUTH CALLBACK] Successfully stored GSC connection for user:', loginUser.email);
     
     // Redirect to autopilot page with success
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?gsc_connected=true`);
+    return NextResponse.redirect(`${baseUrl}/autopilot?gsc_connected=true`);
 
   } catch (error) {
     console.error('[GSC OAUTH CALLBACK] Unexpected error:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/autopilot?error=unexpected`);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    return NextResponse.redirect(`${baseUrl}/autopilot?error=unexpected`);
   }
 }
