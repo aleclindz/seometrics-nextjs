@@ -88,10 +88,11 @@ export async function GET(request: NextRequest) {
 
     console.log('[GSC PROPERTIES] Found', sites.length, 'sites for user token:', userToken);
 
-    // Update properties in database
+    // Update properties in database and auto-populate websites table
     for (const site of sites) {
       if (site.siteUrl) {
-        await supabase
+        // Upsert GSC property
+        const { error: upsertError } = await supabase
           .from('gsc_properties')
           .upsert({
             connection_id: connection.id,
@@ -104,6 +105,46 @@ export async function GET(request: NextRequest) {
           }, {
             onConflict: 'connection_id,site_url'
           });
+
+        if (upsertError) {
+          console.error('[GSC PROPERTIES] Error upserting property:', upsertError);
+        } else {
+          console.log('[GSC PROPERTIES] Successfully updated property:', site.siteUrl);
+        }
+
+        // Auto-populate websites table from GSC property
+        const domain = site.siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        
+        // Check if website already exists
+        const { data: existingWebsite } = await supabase
+          .from('websites')
+          .select('website_token')
+          .eq('user_token', userToken)
+          .eq('domain', domain)
+          .single();
+
+        if (!existingWebsite) {
+          // Generate a unique token for the website
+          const websiteToken = crypto.randomUUID();
+          
+          const { error: websiteError } = await supabase
+            .from('websites')
+            .insert({
+              website_token: websiteToken,
+              user_token: userToken,
+              domain: domain,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (websiteError) {
+            console.error('[GSC PROPERTIES] Error creating website from GSC property:', websiteError);
+          } else {
+            console.log('[GSC PROPERTIES] Successfully created website from GSC:', domain);
+          }
+        } else {
+          console.log('[GSC PROPERTIES] Website already exists for:', domain);
+        }
       }
     }
 

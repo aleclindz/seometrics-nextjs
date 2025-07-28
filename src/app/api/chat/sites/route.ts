@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch websites' }, { status: 500 });
     }
 
+    console.log('[CHAT SITES] Found', websites?.length || 0, 'websites for user token:', userToken);
+
     // Get GSC connections for these websites
     const { data: gscConnections, error: gscError } = await supabase
       .from('gsc_connections')
