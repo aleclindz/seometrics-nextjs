@@ -103,23 +103,50 @@ export async function GET(request: NextRequest) {
     // Store connection in database
     console.log('[GSC OAUTH CALLBACK] Attempting to store GSC connection for userToken:', userToken);
     
-    const { data: connection, error: dbError } = await supabase
+    // First, try to find existing connection
+    const { data: existingConnection } = await supabase
       .from('gsc_connections')
-      .upsert({
-        user_token: userToken,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        expires_at: expiresAt.toISOString(),
-        email: email,
-        scope: 'https://www.googleapis.com/auth/webmasters.readonly',
-        is_active: true,
-        last_sync_at: null,
-        sync_errors: []
-      }, {
-        onConflict: 'user_token'
-      })
-      .select()
+      .select('id')
+      .eq('user_token', userToken)
       .single();
+
+    const connectionData = {
+      user_token: userToken,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expires_at: expiresAt.toISOString(),
+      email: email,
+      scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+      is_active: true,
+      last_sync_at: null,
+      sync_errors: []
+    };
+
+    let connection;
+    let dbError;
+
+    if (existingConnection) {
+      // Update existing connection
+      console.log('[GSC OAUTH CALLBACK] Updating existing connection:', existingConnection.id);
+      const result = await supabase
+        .from('gsc_connections')
+        .update(connectionData)
+        .eq('id', existingConnection.id)
+        .select()
+        .single();
+      connection = result.data;
+      dbError = result.error;
+    } else {
+      // Insert new connection
+      console.log('[GSC OAUTH CALLBACK] Creating new connection');
+      const result = await supabase
+        .from('gsc_connections')
+        .insert(connectionData)
+        .select()
+        .single();
+      connection = result.data;
+      dbError = result.error;
+    }
 
     if (dbError) {
       console.error('[GSC OAUTH CALLBACK] Database error details:', {
