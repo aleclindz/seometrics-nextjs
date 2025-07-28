@@ -44,18 +44,24 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
   // Check for connection callback
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    console.log('[GSC COMPONENT] URL params on load:', urlParams.toString());
+    
     if (urlParams.get('gsc_connected') === 'true') {
+      console.log('[GSC COMPONENT] GSC connection success detected, refreshing status...');
       // Remove the parameter from URL
       window.history.replaceState({}, document.title, window.location.pathname);
       // Refresh connection status
       setTimeout(() => {
+        console.log('[GSC COMPONENT] Running delayed connection status check...');
         checkConnectionStatus();
       }, 1000);
     }
     
     const errorParam = urlParams.get('error');
     if (errorParam) {
-      setError(getErrorMessage(errorParam));
+      console.log('[GSC COMPONENT] OAuth error detected:', errorParam);
+      const details = urlParams.get('details');
+      setError(getErrorMessage(errorParam) + (details ? `: ${details}` : ''));
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -77,23 +83,29 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
 
   const checkConnectionStatus = async () => {
     if (!user?.token) {
+      console.log('[GSC COMPONENT] No user token available, skipping connection check');
       setLoading(false);
       return;
     }
 
     try {
+      console.log('[GSC COMPONENT] Checking connection status for user token:', user.token);
       setLoading(true);
       const response = await fetch(`/api/gsc/connection?userToken=${user.token}`);
       const data = await response.json();
       
+      console.log('[GSC COMPONENT] Connection status response:', data);
       setConnectionStatus(data);
       onConnectionChange?.(data.connected);
       
       if (data.connected) {
+        console.log('[GSC COMPONENT] Connection found, fetching properties...');
         await fetchProperties();
+      } else {
+        console.log('[GSC COMPONENT] No connection found');
       }
     } catch (error) {
-      console.error('Error checking GSC connection:', error);
+      console.error('[GSC COMPONENT] Error checking GSC connection:', error);
       setError('Failed to check connection status');
     } finally {
       setLoading(false);
