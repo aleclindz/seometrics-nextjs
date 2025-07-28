@@ -16,55 +16,29 @@ interface Site {
     clicks: number;
     impressions: number;
     ctr: number;
+    position: number;
   };
 }
 
 interface ChatSidebarProps {
+  sites: Site[];
+  selectedSite: Site | null;
+  onSiteSelect: (site: Site) => void;
+  sitesLoading: boolean;
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }
 
-export function ChatSidebar({ collapsed, onToggleCollapsed }: ChatSidebarProps) {
+export function ChatSidebar({ 
+  sites, 
+  selectedSite, 
+  onSiteSelect, 
+  sitesLoading, 
+  collapsed, 
+  onToggleCollapsed 
+}: ChatSidebarProps) {
   const { user } = useAuth();
-  const [sites, setSites] = useState<Site[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSite, setSelectedSite] = useState<string | null>(null);
-
-  // Mock data for now - will be replaced with real API calls
-  useEffect(() => {
-    const mockSites: Site[] = [
-      {
-        id: '1',
-        url: 'example.com',
-        name: 'Example Site',
-        gscStatus: 'connected',
-        cmsStatus: 'connected',
-        smartjsStatus: 'active',
-        lastSync: new Date(),
-        metrics: { clicks: 1250, impressions: 15000, ctr: 8.3 }
-      },
-      {
-        id: '2',
-        url: 'mystore.com',
-        name: 'My Store',
-        gscStatus: 'connected',
-        cmsStatus: 'pending',
-        smartjsStatus: 'active',
-        lastSync: new Date(),
-        metrics: { clicks: 890, impressions: 12000, ctr: 7.4 }
-      },
-      {
-        id: '3',
-        url: 'newsite.com',
-        name: 'New Site',
-        gscStatus: 'pending',
-        cmsStatus: 'none',
-        smartjsStatus: 'inactive',
-        lastSync: undefined
-      }
-    ];
-    setSites(mockSites);
-  }, []);
 
   const filteredSites = sites.filter(site =>
     site.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -90,20 +64,24 @@ export function ChatSidebar({ collapsed, onToggleCollapsed }: ChatSidebarProps) 
         
         {/* Collapsed site indicators */}
         <div className="space-y-2">
-          {filteredSites.slice(0, 5).map((site) => (
-            <button
-              key={site.id}
-              onClick={() => setSelectedSite(site.id)}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-colors ${
-                selectedSite === site.id 
-                  ? 'bg-[#5E6AD2] text-white' 
-                  : 'bg-white/10 hover:bg-white/20'
-              }`}
-              title={site.name}
-            >
-              {site.name.charAt(0).toUpperCase()}
-            </button>
-          ))}
+          {sitesLoading ? (
+            <div className="w-10 h-10 rounded-lg bg-white/10 animate-pulse"></div>
+          ) : (
+            filteredSites.slice(0, 5).map((site) => (
+              <button
+                key={site.id}
+                onClick={() => onSiteSelect(site)}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-medium transition-colors ${
+                  selectedSite?.id === site.id 
+                    ? 'bg-[#5E6AD2] text-white' 
+                    : 'bg-white/10 hover:bg-white/20'
+                }`}
+                title={site.name}
+              >
+                {site.name.charAt(0).toUpperCase()}
+              </button>
+            ))
+          )}
         </div>
       </div>
     );
@@ -167,14 +145,22 @@ export function ChatSidebar({ collapsed, onToggleCollapsed }: ChatSidebarProps) 
         </div>
         
         <div className="space-y-1 px-3">
-          {filteredSites.map((site) => (
-            <SiteCard
-              key={site.id}
-              site={site}
-              isSelected={selectedSite === site.id}
-              onClick={() => setSelectedSite(site.id)}
-            />
-          ))}
+          {sitesLoading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-24 bg-white/5 rounded-lg animate-pulse"></div>
+              ))}
+            </div>
+          ) : (
+            filteredSites.map((site) => (
+              <SiteCard
+                key={site.id}
+                site={site}
+                isSelected={selectedSite?.id === site.id}
+                onClick={() => onSiteSelect(site)}
+              />
+            ))
+          )}
         </div>
 
         {filteredSites.length === 0 && searchQuery && (

@@ -21,17 +21,39 @@ interface ChatMessage {
   isTyping?: boolean;
 }
 
+interface Site {
+  id: string;
+  url: string;
+  name: string;
+  gscStatus: 'connected' | 'pending' | 'error' | 'none';
+  cmsStatus: 'connected' | 'pending' | 'error' | 'none';
+  smartjsStatus: 'active' | 'inactive' | 'error';
+  lastSync?: Date;
+  metrics?: {
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  };
+  performanceHistory?: any[];
+}
+
+interface ChatThread {
+  id: string;
+  siteId: string;
+  title: string;
+  lastMessage?: string;
+  updatedAt: Date;
+}
+
 export function ChatInterface() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      type: 'assistant',
-      content: 'Hi there! I&apos;m your SEO assistant. I can help you connect Google Search Console, manage your websites, generate content, and optimize your SEO performance. What would you like to do first?',
-      timestamp: new Date()
-    }
-  ]);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+  const [currentThread, setCurrentThread] = useState<ChatThread | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sitesLoading, setSitesLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [openaiClient, setOpenaiClient] = useState<OpenAIFunctionClient | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -46,6 +68,183 @@ export function ChatInterface() {
     }
   }, []);
 
+  // Load user sites
+  useEffect(() => {
+    const loadSites = async () => {
+      if (!user) return;
+
+      try {
+        setSitesLoading(true);
+        const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+        
+        if (!userToken) {
+          console.error('No user token found');
+          return;
+        }
+
+        const response = await fetch(`/api/chat/sites?userToken=${userToken}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch sites');
+        }
+
+        const { sites: fetchedSites } = await response.json();
+        setSites(fetchedSites);
+
+        // Auto-select first site if available and no site is selected
+        if (fetchedSites.length > 0 && !selectedSite) {
+          setSelectedSite(fetchedSites[0]);
+        }
+      } catch (error) {
+        console.error('Error loading sites:', error);
+      } finally {
+        setSitesLoading(false);
+      }
+    };
+
+    loadSites();
+  }, [user, selectedSite]);
+
+  // Load or create thread when site is selected
+  useEffect(() => {
+    const loadOrCreateThread = async () => {
+      if (!selectedSite || !user) return;
+
+      try {
+        const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+        if (!userToken) return;
+
+        // Try to get existing thread for this site
+        const threadsResponse = await fetch(`/api/chat/threads?userToken=${userToken}&siteId=${selectedSite.id}`);
+        if (threadsResponse.ok) {
+          const { threads } = await threadsResponse.json();
+          
+          if (threads.length > 0) {
+            // Use the most recent thread
+            const thread = threads[0];
+            setCurrentThread(thread);
+            await loadThreadMessages(thread.id);
+          } else {
+            // Create new thread
+            await createNewThread();
+          }
+        }
+      } catch (error) {
+        console.error('Error loading/creating thread:', error);
+        // Create a default thread to continue
+        await createNewThread();
+      }
+    };
+
+    loadOrCreateThread();
+  }, [selectedSite, user]);
+
+  const createNewThread = async () => {
+    if (!selectedSite || !user) return;
+
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      if (!userToken) return;
+
+      const response = await fetch('/api/chat/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          siteId: selectedSite.id,
+          title: `Chat for ${selectedSite.name}`,
+          lastMessage: ''
+        })
+      });
+
+      if (response.ok) {
+        const { thread } = await response.json();
+        setCurrentThread(thread);
+        
+        // Set welcome message
+        const welcomeMessage: ChatMessage = {
+          id: '1',
+          type: 'assistant',
+          content: `Hi! I&apos;m your SEO assistant for **${selectedSite.name}**. I can help you audit your site, analyze GSC performance, generate content, and optimize your SEO. What would you like to do first?`,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+      }
+    } catch (error) {
+      console.error('Error creating thread:', error);
+    }
+  };
+
+  const loadThreadMessages = async (threadId: string) => {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      if (!userToken) return;
+
+      const response = await fetch(`/api/chat/messages?userToken=${userToken}&threadId=${threadId}`);
+      if (response.ok) {
+        const { messages: threadMessages } = await response.json();
+        
+        const formattedMessages: ChatMessage[] = threadMessages.map((msg: any) => ({
+          id: msg.id,
+          type: msg.message_type,
+          content: msg.content,
+          functionCall: msg.function_call,
+          timestamp: new Date(msg.created_at)
+        }));
+
+        if (formattedMessages.length === 0) {
+          // No messages in thread, add welcome message
+          const welcomeMessage: ChatMessage = {
+            id: '1',
+            type: 'assistant',
+            content: `Hi! I&apos;m your SEO assistant for **${selectedSite?.name}**. I can help you audit your site, analyze GSC performance, generate content, and optimize your SEO. What would you like to do first?`,
+            timestamp: new Date()
+          };
+          setMessages([welcomeMessage]);
+        } else {
+          setMessages(formattedMessages);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading thread messages:', error);
+    }
+  };
+
+  const saveMessage = async (message: ChatMessage) => {
+    if (!currentThread || !user) return;
+
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      if (!userToken) return;
+
+      await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          threadId: currentThread.id,
+          type: message.type,
+          content: message.content,
+          functionCall: message.functionCall
+        })
+      });
+
+      // Update thread with last message
+      await fetch('/api/chat/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          threadId: currentThread.id,
+          siteId: selectedSite?.id,
+          title: currentThread.title,
+          lastMessage: message.content.substring(0, 100)
+        })
+      });
+    } catch (error) {
+      console.error('Error saving message:', error);
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -55,7 +254,7 @@ export function ChatInterface() {
   }, [messages]);
 
   const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !openaiClient) return;
+    if (!content.trim() || !openaiClient || !selectedSite) return;
 
     // Add user message
     const userMessage: ChatMessage = {
@@ -66,10 +265,11 @@ export function ChatInterface() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    await saveMessage(userMessage);
     setIsLoading(true);
 
     try {
-      // Build chat context from previous messages
+      // Build chat context from previous messages with current site context
       const chatContext = {
         history: messages.map(msg => ({
           role: msg.type === 'user' ? 'user' as const : 'assistant' as const,
@@ -77,11 +277,13 @@ export function ChatInterface() {
           function_call: msg.functionCall
         })),
         siteContext: {
-          // TODO: Get actual user sites from context/API
-          userSites: [
-            { id: '1', url: 'example.com', name: 'Example Site' },
-            { id: '2', url: 'mystore.com', name: 'My Store' }
-          ]
+          selectedSite: selectedSite.url,
+          currentSiteData: selectedSite,
+          userSites: sites.map(site => ({
+            id: site.id,
+            url: site.url,
+            name: site.name
+          }))
         }
       };
 
@@ -98,6 +300,7 @@ export function ChatInterface() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      await saveMessage(assistantMessage);
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -109,6 +312,7 @@ export function ChatInterface() {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+      await saveMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +330,10 @@ export function ChatInterface() {
 
       {/* Sidebar */}
       <ChatSidebar 
+        sites={sites}
+        selectedSite={selectedSite}
+        onSiteSelect={setSelectedSite}
+        sitesLoading={sitesLoading}
         collapsed={sidebarCollapsed} 
         onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
