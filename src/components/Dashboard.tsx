@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import SnippetModal from './SnippetModal';
 import OnboardingFlow from './OnboardingFlow';
+import { InterfaceToggle } from '@/components/navigation/InterfaceToggle';
 import { useAuth } from '@/contexts/auth';
 import { createClientComponentClient } from '@/lib/supabase';
 import { generateToken } from '@/lib/utils';
@@ -183,6 +184,9 @@ export default function Dashboard() {
 
   return (
     <div className="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+      {/* Interface Toggle */}
+      <InterfaceToggle />
+      
       <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
         <Sidebar 
