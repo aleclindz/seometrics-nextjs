@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const webmasters = google.webmasters({ version: 'v3', auth: oauth2Client });
 
     // Get all properties for this connection
-    const { data: properties, error: propertiesError } = await supabase
+    let { data: properties, error: propertiesError } = await supabase
       .from('gsc_properties')
       .select('*')
       .eq('connection_id', connection.id)
@@ -118,10 +118,13 @@ export async function POST(request: NextRequest) {
         .eq('connection_id', connection.id)
         .eq('is_active', true);
       
-      properties.push(...(newProperties || []));
+      properties = newProperties || [];
     }
 
-    console.log('[GSC SYNC] Found', properties.length, 'properties to sync');
+    // Ensure properties is not null
+    const propertiesToSync = properties || [];
+
+    console.log('[GSC SYNC] Found', propertiesToSync.length, 'properties to sync');
 
     // Sync performance data for each property (last 7 days)
     const endDate = new Date();
@@ -130,7 +133,7 @@ export async function POST(request: NextRequest) {
     
     const syncResults = [];
     
-    for (const property of properties) {
+    for (const property of propertiesToSync) {
       try {
         console.log('[GSC SYNC] Syncing property:', property.site_url);
         
@@ -300,7 +303,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Sync completed successfully',
       results: syncResults,
-      propertiesCount: properties.length,
+      propertiesCount: propertiesToSync.length,
       successCount: syncResults.filter(r => r.success).length,
       errorCount: syncResults.filter(r => !r.success).length
     });
