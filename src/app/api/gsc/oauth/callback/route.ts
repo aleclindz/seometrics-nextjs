@@ -101,6 +101,8 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + (tokens.expiry_date || Date.now() + 3600 * 1000));
 
     // Store connection in database
+    console.log('[GSC OAUTH CALLBACK] Attempting to store GSC connection for userToken:', userToken);
+    
     const { data: connection, error: dbError } = await supabase
       .from('gsc_connections')
       .upsert({
@@ -120,8 +122,14 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (dbError) {
-      console.error('[GSC OAUTH CALLBACK] Database error:', dbError);
-      return NextResponse.redirect(`${getBaseUrl()}/autopilot?error=db_error`);
+      console.error('[GSC OAUTH CALLBACK] Database error details:', {
+        error: dbError,
+        message: dbError.message,
+        code: dbError.code,
+        details: dbError.details,
+        hint: dbError.hint
+      });
+      return NextResponse.redirect(`${getBaseUrl()}/autopilot?error=db_error&details=${encodeURIComponent(dbError.message)}`);
     }
 
     console.log('[GSC OAUTH CALLBACK] Successfully stored GSC connection for user:', loginUser.email);

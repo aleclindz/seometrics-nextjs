@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get GSC connection
+    console.log('[GSC CONNECTION] Looking for connection with userToken:', userToken);
+    
     const { data: connection, error: connectionError } = await supabase
       .from('gsc_connections')
       .select('*')
@@ -30,10 +32,25 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (connectionError || !connection) {
-      console.log('[GSC CONNECTION] No active connection found');
+      console.log('[GSC CONNECTION] No active connection found. Error:', connectionError);
+      console.log('[GSC CONNECTION] Checking all connections for this user...');
+      
+      // Check if any connection exists for this user (for debugging)
+      const { data: allConnections, error: allError } = await supabase
+        .from('gsc_connections')
+        .select('*')
+        .eq('user_token', userToken);
+        
+      console.log('[GSC CONNECTION] All connections for user:', allConnections, 'Error:', allError);
+      
       return NextResponse.json({
         connected: false,
-        message: 'No Google Search Console connection found'
+        message: 'No Google Search Console connection found',
+        debug: {
+          userToken,
+          connectionError: connectionError?.message,
+          totalConnections: allConnections?.length || 0
+        }
       });
     }
 
