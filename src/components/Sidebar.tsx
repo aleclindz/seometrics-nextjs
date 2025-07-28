@@ -100,31 +100,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
                 </Link>
               </li>
 
-              {/* Autopilot - Technical SEO */}
-              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
-                isActive('/autopilot') 
-                  ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}>
-                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/autopilot">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center min-w-0">
-                      <svg className={`shrink-0 fill-current transition-colors ${
-                        isActive('/autopilot') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
-                      }`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                        <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm3.669 12.538a6.01 6.01 0 0 1-7.338 0 .999.999 0 0 1 .17-1.608l.928-.464A1 1 0 0 0 6 9.5V6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3.5a1 1 0 0 0 .571.966l.928.464a.999.999 0 0 1 .17 1.608Z"></path>
-                        <circle cx="8" cy="3" r="1"></circle>
-                      </svg>
-                      <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
-                        Autopilot
-                      </span>
-                    </div>
-                    <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
-                      <div className="w-2 h-2 bg-green-500 rounded-full" title="Technical SEO automation"></div>
-                    </div>
-                  </div>
-                </Link>
-              </li>
 
               {/* Content Writer */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
