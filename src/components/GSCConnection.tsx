@@ -33,8 +33,10 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showProperties, setShowProperties] = useState(false);
+  const [syncResults, setSyncResults] = useState<any>(null);
 
   // Check connection status on mount
   useEffect(() => {
@@ -190,6 +192,43 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
     }
   };
 
+  const handleSync = async () => {
+    if (!user?.token || !connectionStatus.connected) return;
+    
+    try {
+      setSyncing(true);
+      setError(null);
+      setSyncResults(null);
+      
+      console.log('[GSC COMPONENT] Starting manual sync...');
+      const response = await fetch('/api/gsc/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userToken: user.token
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('[GSC COMPONENT] Sync completed:', data);
+        setSyncResults(data);
+        // Refresh connection status to update last sync time
+        await checkConnectionStatus();
+      } else {
+        setError(data.error || 'Failed to sync GSC data');
+      }
+    } catch (error) {
+      console.error('[GSC COMPONENT] Error during sync:', error);
+      setError('Failed to sync GSC data');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading && !connectionStatus.connected) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-6">
@@ -264,6 +303,45 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
               </span>
             </div>
           </div>
+
+          {/* Sync Button */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={handleSync}
+              disabled={syncing || loading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm flex items-center gap-2"
+            >
+              {syncing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Sync Data
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Sync Results */}
+          {syncResults && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-600 font-medium mb-2">
+                ✅ Sync completed successfully!
+              </p>
+              <div className="text-xs text-green-600 space-y-1">
+                <div>Properties synced: {syncResults.propertiesCount}</div>
+                <div>Successful: {syncResults.successCount}</div>
+                {syncResults.errorCount > 0 && (
+                  <div>Errors: {syncResults.errorCount}</div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Token Status */}
           {connectionStatus.connection.is_expired && (
