@@ -5,7 +5,6 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import SnippetModal from './SnippetModal';
 import OnboardingFlow from './OnboardingFlow';
-import { InterfaceToggle } from '@/components/navigation/InterfaceToggle';
 import { useAuth } from '@/contexts/auth';
 import { createClientComponentClient } from '@/lib/supabase';
 import { generateToken } from '@/lib/utils';
@@ -184,9 +183,6 @@ export default function Dashboard() {
 
   return (
     <div className="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
-      {/* Interface Toggle */}
-      <InterfaceToggle />
-      
       <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
         <Sidebar 
@@ -214,14 +210,16 @@ export default function Dashboard() {
                   <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Dashboard</h1>
                 </div>
                 <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
+                  {/* Interface Toggle - integrated into header */}
                   <a
                     href="/chat"
-                    className="btn bg-[#5E6AD2] hover:bg-[#5E6AD2]/90 text-white"
+                    className="btn bg-[#1E1E26] border border-white/10 hover:border-white/20 text-gray-300 hover:text-white"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
-                    AI Chat Assistant
+                    AI Chat
+                    <div className="w-2 h-2 bg-green-500 rounded-full ml-2"></div>
                   </a>
                   <a
                     href="/add-website"
