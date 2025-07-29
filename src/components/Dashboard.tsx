@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import GSCConnection from './GSCConnection';
 import { useAuth } from '@/contexts/auth';
 
 export default function Dashboard() {
@@ -21,11 +22,13 @@ export default function Dashboard() {
     };
   }>>([]);
   const [loading, setLoading] = useState(true);
+  const [gscConnected, setGscConnected] = useState(false);
+  const [checkingGsc, setCheckingGsc] = useState(true);
   
   const { user } = useAuth();
 
   useEffect(() => {
-    const fetchGscWebsites = async () => {
+    const fetchData = async () => {
       if (!user) return;
 
       try {
@@ -37,36 +40,56 @@ export default function Dashboard() {
         
         const { userToken } = await response.json();
         
-        // Fetch GSC websites
-        const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
-        if (!sitesResponse.ok) {
-          throw new Error('Failed to fetch GSC websites');
-        }
+        // Check GSC connection status first
+        const gscResponse = await fetch(`/api/gsc/connection?userToken=${userToken}`);
+        const gscData = await gscResponse.json();
         
-        const sitesData = await sitesResponse.json();
+        console.log('GSC connection status:', gscData);
+        setGscConnected(gscData.connected || false);
+        setCheckingGsc(false);
         
-        if (sitesData.success && sitesData.sites) {
-          console.log('GSC websites data:', sitesData.sites);
-          
-          const formattedWebsites = sitesData.sites.map((site: any) => ({
-            id: site.id,
-            domain: site.url,
-            gscStatus: site.gscStatus,
-            lastSync: site.lastSync ? new Date(site.lastSync) : undefined,
-            metrics: site.metrics
-          }));
+        // If GSC is connected, fetch websites
+        if (gscData.connected) {
+          const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
+          if (sitesResponse.ok) {
+            const sitesData = await sitesResponse.json();
+            
+            if (sitesData.success && sitesData.sites) {
+              console.log('GSC websites data:', sitesData.sites);
+              
+              const formattedWebsites = sitesData.sites.map((site: any) => ({
+                id: site.id,
+                domain: site.url,
+                gscStatus: site.gscStatus,
+                lastSync: site.lastSync ? new Date(site.lastSync) : undefined,
+                metrics: site.metrics
+              }));
 
-          setGscWebsites(formattedWebsites);
+              setGscWebsites(formattedWebsites);
+            }
+          }
         }
       } catch (error) {
-        console.error('Error fetching GSC websites:', error);
+        console.error('Error fetching dashboard data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchGscWebsites();
+    fetchData();
   }, [user]);
+
+  const handleGscConnectionChange = (connected: boolean) => {
+    console.log('GSC connection changed:', connected);
+    setGscConnected(connected);
+    
+    // If GSC was just connected, refresh the data
+    if (connected) {
+      setTimeout(() => {
+        window.location.reload(); // Simple refresh to reload all data
+      }, 1000);
+    }
+  };
 
   const refreshGscData = async () => {
     if (!user) return;
@@ -191,36 +214,15 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Connect to GSC if no websites */}
-              {gscWebsites.length === 0 && (
-                <div className="mb-8 text-center bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8">
-                  <div className="max-w-md mx-auto">
-                    <div className="w-16 h-16 bg-violet-100 dark:bg-violet-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <svg className="w-8 h-8 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2V7a2 2 0 012-2h2a2 2 0 002-2V1a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 002 2h2a2 2 0 012 2v2a2 2 0 00-2 2h-2a2 2 0 00-2 2v6a2 2 0 01-2 2H9z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                      Connect to Google Search Console
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">
-                      Connect your Google Search Console to view your websites and start optimizing with AI.
-                    </p>
-                    <a
-                      href="/websites"
-                      className="btn bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      Connect GSC
-                    </a>
-                  </div>
+              {/* GSC Connection or No Connection State */}
+              {!checkingGsc && !gscConnected && (
+                <div className="mb-8">
+                  <GSCConnection onConnectionChange={handleGscConnectionChange} />
                 </div>
               )}
 
               {/* GSC Websites */}
-              {gscWebsites.length > 0 && (
+              {!checkingGsc && gscConnected && gscWebsites.length > 0 && (
                 <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
                   <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
                     <div className="flex justify-between items-center">
@@ -327,6 +329,34 @@ export default function Dashboard() {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* GSC Connected but no websites found */}
+              {!checkingGsc && gscConnected && gscWebsites.length === 0 && (
+                <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-8 text-center">
+                  <div className="max-w-md mx-auto">
+                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                      Google Search Console Connected!
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                      Your GSC is connected but no websites were found. This may take a few moments to sync.
+                    </p>
+                    <button
+                      onClick={refreshGscData}
+                      className="btn bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Refresh Data
+                    </button>
                   </div>
                 </div>
               )}
