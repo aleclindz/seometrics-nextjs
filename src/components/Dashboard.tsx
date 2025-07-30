@@ -19,11 +19,14 @@ export default function Dashboard() {
       impressions: number;
       ctr: number;
       position: number;
+      dateStart?: string;
+      dateEnd?: string;
     };
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [gscConnected, setGscConnected] = useState(false);
   const [checkingGsc, setCheckingGsc] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   
   const { user } = useAuth();
 
@@ -92,33 +95,43 @@ export default function Dashboard() {
   const refreshGscData = async () => {
     if (!user || !user.token) return;
     
+    setRefreshing(true);
+    
     try {
       // Use token from auth context
       const userToken = user.token;
       
       // Trigger GSC properties refresh
-      await fetch(`/api/gsc/properties?userToken=${userToken}`, {
+      const propertiesResponse = await fetch(`/api/gsc/properties?userToken=${userToken}`, {
         method: 'POST'
       });
       
+      if (!propertiesResponse.ok) {
+        throw new Error('Failed to refresh GSC properties');
+      }
+      
       // Refresh the dashboard data
       const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
-      if (sitesResponse.ok) {
-        const sitesData = await sitesResponse.json();
-        if (sitesData.success && sitesData.sites) {
-          const formattedWebsites = sitesData.sites.map((site: any) => ({
-            id: site.id,
-            domain: site.url,
-            gscStatus: site.gscStatus,
-            lastSync: site.lastSync ? new Date(site.lastSync) : undefined,
-            metrics: site.metrics
-          }));
-          setGscWebsites(formattedWebsites);
-        }
+      if (!sitesResponse.ok) {
+        throw new Error('Failed to fetch updated site data');
+      }
+      
+      const sitesData = await sitesResponse.json();
+      if (sitesData.success && sitesData.sites) {
+        const formattedWebsites = sitesData.sites.map((site: any) => ({
+          id: site.id,
+          domain: site.url,
+          gscStatus: site.gscStatus,
+          lastSync: site.lastSync ? new Date(site.lastSync) : undefined,
+          metrics: site.metrics
+        }));
+        setGscWebsites(formattedWebsites);
       }
     } catch (error) {
       console.error('Error refreshing GSC data:', error);
-      alert('Failed to refresh data. Please try again.');
+      alert(`Failed to refresh data: ${error instanceof Error ? error.message : 'Please try again.'}`);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -186,12 +199,22 @@ export default function Dashboard() {
                 <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
                   <button
                     onClick={refreshGscData}
-                    className="btn bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
+                    disabled={refreshing}
+                    className="btn bg-gray-200 hover:bg-gray-300 disabled:bg-gray-300 disabled:cursor-not-allowed text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-600 dark:text-gray-200"
                   >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Refresh GSC
+                    {refreshing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-800 dark:border-gray-200 mr-2"></div>
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Refresh GSC
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -207,12 +230,17 @@ export default function Dashboard() {
               {!checkingGsc && gscConnected && (
                 <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
                   <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center mb-2">
                       <h2 className="font-semibold text-gray-800 dark:text-gray-100">Your Websites from Google Search Console</h2>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
                         {gscWebsites.length} website{gscWebsites.length !== 1 ? 's' : ''} found
                       </div>
                     </div>
+                    {gscWebsites.length > 0 && gscWebsites[0].metrics?.dateStart && gscWebsites[0].metrics?.dateEnd && (
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Performance data: {new Date(gscWebsites[0].metrics.dateStart).toLocaleDateString()} - {new Date(gscWebsites[0].metrics.dateEnd).toLocaleDateString()}
+                      </div>
+                    )}
                   </header>
                   <div className="p-3">
                     {gscWebsites.length > 0 ? (
@@ -224,7 +252,7 @@ export default function Dashboard() {
                                 <div className="font-semibold text-left">Domain</div>
                               </th>
                               <th className="p-2">
-                                <div className="font-semibold text-center">GSC Status</div>
+                                <div className="font-semibold text-center" title="Google Search Console connection status">GSC Status</div>
                               </th>
                               <th className="p-2">
                                 <div className="font-semibold text-center">Clicks</div>
@@ -328,12 +356,22 @@ export default function Dashboard() {
                           </p>
                           <button
                             onClick={refreshGscData}
-                            className="btn bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center"
+                            disabled={refreshing}
+                            className="btn bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 disabled:cursor-not-allowed text-white inline-flex items-center"
                           >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Refresh Data
+                            {refreshing ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Refreshing...
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Refresh Data
+                              </>
+                            )}
                           </button>
                         </div>
                       </div>

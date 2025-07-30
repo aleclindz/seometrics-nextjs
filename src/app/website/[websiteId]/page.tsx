@@ -19,6 +19,8 @@ interface Website {
     impressions: number;
     ctr: number;
     position: number;
+    dateStart?: string;
+    dateEnd?: string;
   };
   lastAuditDate?: string;
   auditScore?: number;
@@ -92,7 +94,7 @@ export default function WebsitePage() {
           url: currentWebsite.url,
           name: currentWebsite.name || currentWebsite.url,
           gscStatus: currentWebsite.gscStatus || 'none',
-          cmsStatus: 'none', // TODO: Implement CMS status check
+          cmsStatus: currentWebsite.cmsStatus || 'none',
           smartjsStatus: 'inactive', // TODO: Implement smart.js status check
           lastSync: currentWebsite.lastSync ? new Date(currentWebsite.lastSync) : undefined,
           metrics: currentWebsite.metrics,
@@ -345,10 +347,19 @@ export default function WebsitePage() {
                   </div>
                 </div>
 
-                {/* Performance Metrics */}
-                {website.metrics && (
-                  <>
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+              {/* Date Range Header for Metrics */}
+              {website.metrics?.dateStart && website.metrics?.dateEnd && (
+                <div className="grid grid-cols-1 gap-4 mb-4">
+                  <div className="text-center text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 rounded-lg py-2">
+                    Performance data: {new Date(website.metrics.dateStart).toLocaleDateString()} - {new Date(website.metrics.dateEnd).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
+
+              {/* Performance Metrics */}
+              {website.metrics && (
+                <>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Clicks</p>

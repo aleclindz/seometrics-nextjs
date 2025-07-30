@@ -44,6 +44,13 @@ export async function GET(request: NextRequest) {
       .eq('user_token', userToken)
       .eq('is_active', true);
 
+    // Get CMS connections for these websites
+    const { data: cmsConnections, error: cmsError } = await supabase
+      .from('cms_connections')
+      .select('*')
+      .eq('user_token', userToken)
+      .eq('status', 'active');
+
     // Get latest GSC performance data
     const { data: performanceData, error: performanceError } = await supabase
       .from('gsc_performance_data')
@@ -73,19 +80,24 @@ export async function GET(request: NextRequest) {
         ? performanceData?.find(perf => perf.property_id === gscProperty.id)
         : null;
 
+      // Find CMS connection for this website (using website.id as foreign key)
+      const cmsConnection = cmsConnections?.find(cms => cms.website_id === website.id);
+
       return {
         id: website.website_token,
         url: website.domain,
         name: website.domain, // You might want to add a name field to websites table
         gscStatus: gscConnection?.is_active ? 'connected' : 'none',
-        cmsStatus: 'none', // TODO: Implement CMS status checking
+        cmsStatus: cmsConnection?.status === 'active' ? 'connected' : 'none',
         smartjsStatus: 'active', // Assuming Smart.js is active for all sites
         lastSync: gscConnection?.last_sync_at ? new Date(gscConnection.last_sync_at) : undefined,
         metrics: latestPerformance ? {
           clicks: latestPerformance.total_clicks || 0,
           impressions: latestPerformance.total_impressions || 0,
           ctr: (latestPerformance.avg_ctr || 0) * 100,
-          position: latestPerformance.avg_position || 0
+          position: latestPerformance.avg_position || 0,
+          dateStart: latestPerformance.date_start,
+          dateEnd: latestPerformance.date_end
         } : undefined,
         gscProperty: gscProperty,
         performanceHistory: performanceData?.filter(perf => perf.property_id === gscProperty?.id) || []

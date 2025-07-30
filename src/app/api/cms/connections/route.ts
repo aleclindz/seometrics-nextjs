@@ -155,18 +155,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate connection names
-    const { data: existing } = await supabase
+    // Check for existing connection for this website (enforce one connection per website)
+    const { data: existingConnection } = await supabase
       .from('cms_connections')
-      .select('id')
+      .select('id, connection_name, status')
       .eq('user_token', userToken)
       .eq('website_id', website_id)
-      .eq('connection_name', connection_name)
       .single();
 
-    if (existing) {
+    if (existingConnection) {
       return NextResponse.json(
-        { error: 'A connection with this name already exists for this website' },
+        { 
+          error: `This website already has a CMS connection named "${existingConnection.connection_name}". Only one CMS connection per website is allowed.`,
+          existingConnection: {
+            name: existingConnection.connection_name,
+            status: existingConnection.status
+          }
+        },
         { status: 409 }
       );
     }
@@ -201,6 +206,67 @@ export async function POST(request: NextRequest) {
       success: true,
       connection,
       message: 'CMS connection created successfully'
+    });
+
+  } catch (error) {
+    console.error('[CMS CONNECTIONS] Unexpected error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const userToken = searchParams.get('userToken');
+    const connectionId = searchParams.get('connectionId');
+
+    if (!userToken || !connectionId) {
+      return NextResponse.json(
+        { error: 'Missing userToken or connectionId parameter' },
+        { status: 400 }
+      );
+    }
+
+    console.log('[CMS CONNECTIONS] Deleting connection:', connectionId);
+
+    // Verify the connection belongs to the user
+    const { data: connection, error: fetchError } = await supabase
+      .from('cms_connections')
+      .select('id, connection_name')
+      .eq('id', connectionId)
+      .eq('user_token', userToken)
+      .single();
+
+    if (fetchError || !connection) {
+      return NextResponse.json(
+        { error: 'Connection not found or access denied' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the connection
+    const { error: deleteError } = await supabase
+      .from('cms_connections')
+      .delete()
+      .eq('id', connectionId)
+      .eq('user_token', userToken);
+
+    if (deleteError) {
+      console.error('[CMS CONNECTIONS] Delete error:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete connection' },
+        { status: 500 }
+      );
+    }
+
+    console.log('[CMS CONNECTIONS] Deleted connection:', connection.connection_name);
+
+    return NextResponse.json({
+      success: true,
+      message: `CMS connection "${connection.connection_name}" deleted successfully`
     });
 
   } catch (error) {
