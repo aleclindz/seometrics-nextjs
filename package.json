@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "audit-db": "node scripts/audit-database.js",
-    "init-seometrics": "node scripts/init-seometrics-website.js",
+    "init-seoagent": "node scripts/init-seoagent-website.js",
     "setup-stripe": "node scripts/setup-stripe-products.js",
     "run-migration": "node scripts/run-migration.js",
     "setup-subscription-db": "node scripts/create-subscription-tables.js",

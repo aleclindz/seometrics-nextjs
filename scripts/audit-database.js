@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Database Audit Script for SEO Metrics
+ * Database Audit Script for SEO Agent
  * Checks website token existence and configuration
  */
 
@@ -11,7 +11,7 @@ require('dotenv').config();
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TARGET_TOKEN = '1c9d8bc5-14eb-4223-a6ff-8c69d6aab1d8';
-const TARGET_DOMAIN = 'seometrics.ai';
+const TARGET_DOMAIN = 'seoagent.com';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error('❌ Missing required environment variables');
@@ -22,7 +22,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function auditDatabase() {
-  console.log('🔍 SEO Metrics Database Audit');
+  console.log('🔍 SEO Agent Database Audit');
   console.log('================================');
   console.log(`Target Token: ${TARGET_TOKEN}`);
   console.log(`Target Domain: ${TARGET_DOMAIN}`);
@@ -161,7 +161,7 @@ async function auditDatabase() {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
-          url: 'https://seometrics.ai',
+          url: 'https://seoagent.com',
           id: TARGET_TOKEN
         })
       });
@@ -188,7 +188,7 @@ async function auditDatabase() {
         },
         body: JSON.stringify({
           id: TARGET_TOKEN,
-          images: ['https://seometrics.ai/test-image.jpg']
+          images: ['https://seoagent.com/test-image.jpg']
         })
       });
 

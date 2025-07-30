@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Database Initialization Script for SEOmetrics.ai
+ * Database Initialization Script for SEOAgent.com
  * Creates the website record if it doesn't exist
  */
 
@@ -11,7 +11,7 @@ require('dotenv').config();
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TARGET_TOKEN = '1c9d8bc5-14eb-4223-a6ff-8c69d6aab1d8';
-const TARGET_DOMAIN = 'seometrics.ai';
+const TARGET_DOMAIN = 'seoagent.com';
 
 // You need to provide the user token that should own this website
 // This should be the token from login_users table for the admin user
@@ -25,7 +25,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 if (!ADMIN_USER_TOKEN) {
   console.error('❌ Missing ADMIN_USER_TOKEN environment variable');
-  console.error('Please set ADMIN_USER_TOKEN to the user token that should own seometrics.ai');
+  console.error('Please set ADMIN_USER_TOKEN to the user token that should own seoagent.com');
   process.exit(1);
 }
 
@@ -40,8 +40,8 @@ function generateUUID() {
   });
 }
 
-async function initializeSeometricsWebsite() {
-  console.log('🚀 Initializing SEOmetrics.ai Website');
+async function initializeSeoagentWebsite() {
+  console.log('🚀 Initializing SEOAgent.com Website');
   console.log('===================================');
   console.log(`Target Domain: ${TARGET_DOMAIN}`);
   console.log(`Target Token: ${TARGET_TOKEN}`);
@@ -209,7 +209,7 @@ async function initializeSeometricsWebsite() {
     }
 
     console.log('');
-    console.log('🎉 SEOmetrics.ai website initialization completed!');
+    console.log('🎉 SEOAgent.com website initialization completed!');
     console.log('');
     console.log('Next steps:');
     console.log('1. Add the script to your website HTML:');
@@ -262,5 +262,5 @@ if (args.includes('--create-admin')) {
   }
 } else {
   // Run the main initialization
-  initializeSeometricsWebsite().catch(console.error);
+  initializeSeoagentWebsite().catch(console.error);
 }

@@ -69,7 +69,7 @@ function testWebhookConfig() {
   if (webhookTest) {
     console.log('\n🎉 All webhook configuration tests passed!');
     console.log('\n📋 Your webhook is configured for:');
-    console.log('   Endpoint: https://seometrics.ai/api/subscription/webhook');
+    console.log('   Endpoint: https://seoagent.com/api/subscription/webhook');
     console.log('   Events: checkout.session.completed, customer.subscription.*, invoice.payment.*');
     console.log('   API Version: 2025-06-30.basil');
     console.log('\n✅ Ready for production deployment!');

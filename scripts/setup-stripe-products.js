@@ -68,7 +68,7 @@ const SUBSCRIPTION_TIERS = [
 ];
 
 async function createStripeProducts() {
-  console.log('🚀 Setting up Stripe products for SEOMetrics.ai...\n');
+  console.log('🚀 Setting up Stripe products for SEOAgent.com...\n');
 
   try {
     for (const tier of SUBSCRIPTION_TIERS) {
@@ -76,7 +76,7 @@ async function createStripeProducts() {
 
       // Create product
       const product = await stripe.products.create({
-        id: `seometrics-${tier.id}`,
+        id: `seoagent-${tier.id}`,
         name: tier.name,
         description: tier.description,
         metadata: tier.metadata

@@ -35,7 +35,7 @@ export abstract class BaseCMSProvider implements CMSProvider {
         ...options,
         headers: {
           'Content-Type': 'application/json',
-          'User-Agent': 'SEOMetrics/1.0',
+          'User-Agent': 'SEOAgent/1.0',
           ...options.headers,
         },
       });

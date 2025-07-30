@@ -1,6 +1,6 @@
-# SEOMetrics API Service
+# SEOAgent API Service
 
-Backend API service for SEOMetrics.ai - handles authentication, data processing, and third-party integrations.
+Backend API service for SEOAgent.com - handles authentication, data processing, and third-party integrations.
 
 ## Architecture
 
@@ -46,7 +46,7 @@ See `.env.example` for required environment variables.
 
 ### Base URL
 - Development: `http://localhost:3001/v1`
-- Production: `https://api.seometrics.ai/v1`
+- Production: `https://api.seoagent.com/v1`
 
 ### Endpoints
 

@@ -1,10 +1,10 @@
-# SEO Metrics Debugging & Audit Tools
+# SEO Agent Debugging & Audit Tools
 
-This document explains how to use the comprehensive debugging and audit tools created to investigate why SEOmetrics.ai (or any website) may not be generating alt-tags or meta-tags properly.
+This document explains how to use the comprehensive debugging and audit tools created to investigate why seoagent.com (or any website) may not be generating alt-tags or meta-tags properly.
 
 ## 🔍 Problem Analysis
 
-The SEOmetrics.ai website has the smart.js script installed but no alt-tags or meta-tags are being generated. This could be due to several issues:
+The seoagent.com website has the smart.js script installed but no alt-tags or meta-tags are being generated. This could be due to several issues:
 
 1. **Database Issues**: Website token doesn't exist or is misconfigured
 2. **API Issues**: Edge Functions not working properly
@@ -31,17 +31,17 @@ npm run audit-db
 
 **Example Output**:
 ```
-🔍 SEO Metrics Database Audit
+🔍 SEO Agent Database Audit
 ================================
 Target Token: 1c9d8bc5-14eb-4223-a6ff-8c69d6aab1d8
-Target Domain: seometrics.ai
+Target Domain: seoagent.com
 
 1️⃣ Checking website token existence...
 ✅ Website token found!
 
 📊 Website Configuration:
 ------------------------
-Domain: seometrics.ai
+Domain: seoagent.com
 User Token: abc123...
 Language: english
 Meta Tags Enabled: true
@@ -52,7 +52,7 @@ Image Tags Count: 0
 
 ### 2. Database Initialization Script
 
-**Purpose**: Create or update the SEOmetrics.ai website record in the database
+**Purpose**: Create or update the seoagent.com website record in the database
 
 **Usage**:
 ```bash
@@ -60,7 +60,7 @@ Image Tags Count: 0
 export ADMIN_USER_TOKEN="your-admin-user-token"
 
 # Then run the initialization
-npm run init-seometrics
+npm run init-seoagent
 ```
 
 **What it does**:
@@ -71,12 +71,12 @@ npm run init-seometrics
 
 **Creating Admin User** (if needed):
 ```bash
-node scripts/init-seometrics-website.js --create-admin admin@seometrics.ai
+node scripts/init-seoagent-website.js --create-admin admin@seoagent.com
 ```
 
 ### 3. Debug Dashboard
 
-**Purpose**: Real-time debugging interface for testing SEO Metrics functionality
+**Purpose**: Real-time debugging interface for testing SEO Agent functionality
 
 **Access**: Visit `/debug-seo` in your browser (requires authentication)
 
@@ -90,7 +90,7 @@ node scripts/init-seometrics-website.js --create-admin admin@seometrics.ai
 - 📊 **Current Page Analysis**: Shows images and meta-tags on current page
 
 **Usage**:
-1. Login to your SEO Metrics account
+1. Login to your SEO Agent account
 2. Navigate to `/debug-seo`
 3. Click "Run All Tests" or run individual tests
 4. Review results for any errors or issues
@@ -101,13 +101,13 @@ node scripts/init-seometrics-website.js --create-admin admin@seometrics.ai
 The smart.js script now provides comprehensive logging. Open browser DevTools (F12) and look for:
 
 ```
-[SEO-METRICS] Smart.js initializing...
+[SEO-AGENT] Smart.js initializing...
 [SEO-METRICS] API Base URL: https://...
-[SEO-METRICS] Website token (idv): 1c9d8bc5-14eb-4223-a6ff-8c69d6aab1d8
-[SEO-METRICS] Current page URL: https://seometrics.ai/
-[SEO-METRICS] Found 5 total img elements
-[SEO-METRICS] Filtered to 3 non-SVG images
-[SEO-METRICS] Meta tags processed successfully
+[SEO-AGENT] Website token (idv): 1c9d8bc5-14eb-4223-a6ff-8c69d6aab1d8
+[SEO-AGENT] Current page URL: https://seoagent.com/
+[SEO-AGENT] Found 5 total img elements
+[SEO-AGENT] Filtered to 3 non-SVG images
+[SEO-AGENT] Meta tags processed successfully
 ```
 
 **Edge Function Logs**:
@@ -115,8 +115,8 @@ Check Supabase Edge Function logs for detailed server-side information:
 
 ```
 [META-TAGS] Function called with method: POST
-[META-TAGS] Processing smart.js request for URL: https://seometrics.ai/
-[META-TAGS] Found website: seometrics.ai, meta_tags_enabled: true
+[META-TAGS] Processing smart.js request for URL: https://seoagent.com/
+[META-TAGS] Found website: seoagent.com, meta_tags_enabled: true
 [META-TAGS] Meta tags processed successfully
 ```
 
@@ -133,17 +133,17 @@ npm run audit-db
 export ADMIN_USER_TOKEN="your-admin-user-token"
 
 # Initialize website
-npm run init-seometrics
+npm run init-seoagent
 ```
 
 ### Step 3: Test in Browser
 1. Visit your website
 2. Open DevTools (F12) → Console
-3. Look for `[SEO-METRICS]` logs
+3. Look for `[SEO-AGENT]` logs
 4. Check for any error messages
 
 ### Step 4: Use Debug Dashboard
-1. Login to SEO Metrics
+1. Login to SEO Agent
 2. Visit `/debug-seo`
 3. Run all tests
 4. Review any failed tests
@@ -163,14 +163,14 @@ ADMIN_USER_TOKEN=your_admin_user_token
 
 ### Issue 1: Website Token Not Found
 **Symptoms**: Audit script shows "Website token not found"
-**Solution**: Run `npm run init-seometrics` to create the website record
+**Solution**: Run `npm run init-seoagent` to create the website record
 
 ### Issue 2: API Endpoints Return 404
 **Symptoms**: Debug dashboard shows API test failures
 **Solution**: Check Edge Functions are deployed and OpenAI API key is configured
 
 ### Issue 3: Smart.js Not Loading
-**Symptoms**: No console logs starting with `[SEO-METRICS]`
+**Symptoms**: No console logs starting with `[SEO-AGENT]`
 **Solution**: Check script is included in HTML and website token is defined
 
 ### Issue 4: Feature Flags Disabled

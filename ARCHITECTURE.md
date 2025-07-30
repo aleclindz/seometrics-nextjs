@@ -1,8 +1,8 @@
-# 📊 SEOMetrics.ai System Architecture
+# 📊 SEOAgent.com System Architecture
 
 ## System Architecture Overview
 
-This document contains the complete system architecture for SEOMetrics.ai, including all components, data flows, and integrations.
+This document contains the complete system architecture for SEOAgent.com, including all components, data flows, and integrations.
 
 ```mermaid
 graph TB

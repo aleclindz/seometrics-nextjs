@@ -342,8 +342,8 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
     
     const testPayload = {
       data: {
-        title: 'SEOMetrics Test Article - Please Delete',
-        content: 'This is a test article created by SEOMetrics to verify write permissions. Please delete this entry.',
+        title: 'SEOAgent Test Article - Please Delete',
+        content: 'This is a test article created by SEOAgent to verify write permissions. Please delete this entry.',
         published: false
       }
     };

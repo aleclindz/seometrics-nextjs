@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEO Metrics Test Page</title>
+    <title>SEO Agent Test Page</title>
 </head>
 <body>
-    <h1>SEO Metrics Test Page</h1>
+    <h1>SEO Agent Test Page</h1>
     
-    <p>This is a test page to verify that the SEO Metrics system is working properly.</p>
+    <p>This is a test page to verify that the SEO Agent system is working properly.</p>
     
     <h2>Images to Test Alt-Tag Generation</h2>
     
@@ -18,7 +18,7 @@
     
     <h2>Content for Meta-Tag Generation</h2>
     
-    <p>This page contains sample content about web development and SEO optimization. The SEO Metrics system should automatically generate meta titles and descriptions based on this content.</p>
+    <p>This page contains sample content about web development and SEO optimization. The SEO Agent system should automatically generate meta titles and descriptions based on this content.</p>
     
     <p>Key topics covered on this page include:</p>
     <ul>
@@ -30,19 +30,19 @@
     
     <p>The smart.js script should scan this page and automatically generate appropriate meta tags and alt-text for the images above.</p>
     
-    <!-- SEO Metrics JavaScript - Replace 'YOUR_WEBSITE_TOKEN' with actual token -->
+    <!-- SEO Agent JavaScript - Replace 'YOUR_WEBSITE_TOKEN' with actual token -->
     <script src="https://seometrics-nextjs.vercel.app/smart.js"></script>
     <script>
         // NOTE: Replace 'YOUR_WEBSITE_TOKEN' with the actual token from your website
         const idv = 'YOUR_WEBSITE_TOKEN';
         
         // Add some debugging to see what happens
-        console.log('SEO Metrics: Test page loaded with token:', idv);
+        console.log('SEO Agent: Test page loaded with token:', idv);
         
         // Wait a bit then check if alt tags were added
         setTimeout(function() {
             const images = document.querySelectorAll('img');
-            console.log('SEO Metrics: Checking alt tags after 5 seconds...');
+            console.log('SEO Agent: Checking alt tags after 5 seconds...');
             images.forEach((img, index) => {
                 console.log(`Image ${index + 1}: ${img.src} -> Alt: "${img.alt}"`);
             });

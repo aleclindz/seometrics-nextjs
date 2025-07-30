@@ -66,14 +66,14 @@ describe('CMS Integration System', () => {
     });
 
     it('should generate correct auth URL', () => {
-      const redirectUri = 'https://app.seometrics.com/callback';
+      const redirectUri = 'https://app.seoagent.com/callback';
       const state = 'test-state';
       const siteUrl = 'https://example.com';
 
       const authUrl = provider.getAuthUrl(redirectUri, state, siteUrl);
 
       expect(authUrl).toContain('https://example.com/wp-admin/authorize-application.php');
-      expect(authUrl).toContain('app_name=SEOMetrics.ai');
+      expect(authUrl).toContain('app_name=SEOAgent.com');
       expect(authUrl).toContain('success_url=');
       expect(authUrl).toContain('state=test-state');
     });
@@ -157,7 +157,7 @@ describe('CMS Integration System', () => {
     });
 
     it('should generate correct auth URL', () => {
-      const redirectUri = 'https://app.seometrics.com/callback';
+      const redirectUri = 'https://app.seoagent.com/callback';
       const state = 'test-state';
 
       const authUrl = provider.getAuthUrl(redirectUri, state);
@@ -170,7 +170,7 @@ describe('CMS Integration System', () => {
 
     it('should exchange code for token', async () => {
       const code = 'test-code';
-      const redirectUri = 'https://app.seometrics.com/callback';
+      const redirectUri = 'https://app.seoagent.com/callback';
 
       // Mock Webflow token response
       (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -232,7 +232,7 @@ describe('CMS Integration System', () => {
     });
 
     it('should generate correct auth URL', () => {
-      const redirectUri = 'https://app.seometrics.com/callback';
+      const redirectUri = 'https://app.seoagent.com/callback';
       const state = 'test-state';
       const shopDomain = 'test-shop.myshopify.com';
 
@@ -246,7 +246,7 @@ describe('CMS Integration System', () => {
 
     it('should exchange code for token', async () => {
       const code = 'test-code';
-      const redirectUri = 'https://app.seometrics.com/callback?shop=test-shop.myshopify.com';
+      const redirectUri = 'https://app.seoagent.com/callback?shop=test-shop.myshopify.com';
 
       // Mock Shopify token response
       (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -338,7 +338,7 @@ describe('CMS Integration System', () => {
   describe('Integration Flow Tests', () => {
     it('should complete end-to-end WordPress connection flow', async () => {
       const userId = 'test-user-123';
-      const redirectUri = 'https://app.seometrics.com/callback';
+      const redirectUri = 'https://app.seoagent.com/callback';
 
       // Start OAuth flow
       const { authUrl, state } = await cmsManager.startOAuthFlow(
@@ -389,7 +389,7 @@ describe('CMS Integration System', () => {
   describe('Performance Tests', () => {
     it('should handle concurrent connection attempts', async () => {
       const userId = 'test-user-123';
-      const redirectUri = 'https://app.seometrics.com/callback';
+      const redirectUri = 'https://app.seoagent.com/callback';
 
       const promises = [
         cmsManager.startOAuthFlow('wordpress', userId, redirectUri, 'https://site1.com'),

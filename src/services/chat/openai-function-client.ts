@@ -358,7 +358,7 @@ export class OpenAIFunctionClient {
   }
 
   private buildSystemPrompt(context: ChatContext): string {
-    let prompt = `You are an expert SEO assistant for SEOMetrics.ai. You help users with:
+    let prompt = `You are an expert SEO assistant for SEOAgent.com. You help users with:
 
 1. **Google Search Console Integration**: Connect websites, sync performance data, analyze search metrics
 2. **Content Optimization**: Generate SEO articles, analyze content gaps, optimize existing pages

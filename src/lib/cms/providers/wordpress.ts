@@ -16,7 +16,7 @@ export class WordPressProvider extends BaseCMSProvider {
    * Redirects to the site's authorize-application.php page
    */
   getAuthUrl(redirectUri: string, state: string, siteUrl: string): string {
-    const appName = encodeURIComponent('SEOMetrics.ai');
+    const appName = encodeURIComponent('SEOAgent.com');
     const successUrl = encodeURIComponent(`${redirectUri}?state=${state}`);
     const rejectUrl = encodeURIComponent(`${redirectUri}?error=access_denied&state=${state}`);
     

@@ -98,7 +98,7 @@ export default function OnboardingFlow({ onComplete, className = '' }: Onboardin
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Welcome to SEOMetrics.ai! 👋
+              Welcome to SEOAgent.com! 👋
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Get started in 3 simple steps to automate your SEO content

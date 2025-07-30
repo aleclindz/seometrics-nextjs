@@ -1,4 +1,4 @@
-# Stripe Setup Guide for SEOMetrics.ai
+# Stripe Setup Guide for SEOAgent.com
 
 ## 🔧 Prerequisites
 

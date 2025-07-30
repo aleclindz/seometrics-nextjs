@@ -7,7 +7,7 @@ Great. I’ll compile the necessary API documentation links and provide step-by-
 
 * **API documentation:** WordPress’s REST API is documented on the official Developer Handbook (e.g. the reference for Posts). This includes endpoints under `/wp-json/wp/v2/` for posts, pages, etc.
 
-* **Authentication method & flow:** Self-hosted WordPress uses basic authentication or token-based auth for its REST API. A common approach is **Application Passwords** (introduced in WordPress 5.6) which serve as API keys for a user. The user can generate an application password in their profile, and your integration can use it with HTTP Basic Auth (username and the 24-character app password) to authenticate REST requests. For a *1-click* style onboarding, WordPress provides an **OAuth-like flow** using the built-in Application Password authorization screen. Your app can redirect the user to `https://<site>/wp-admin/authorize-application.php?app_name=SEOMetrics&success_url=<callback>&reject_url=<cancel>` . The user will log in (if not already) and approve, and WordPress will then redirect to your `success_url` with `site_url`, `user_login`, and `password` in the query string. The returned `password` is the new application password, which your app can capture and use for future API calls (the username is given by `user_login`). This eliminates manual copy-pasting. (If the WordPress site has **Jetpack** installed and connected to WordPress.com, you could alternatively use the WordPress.com OAuth2 flow, but the Application Password approach is native to WordPress core.)
+* **Authentication method & flow:** Self-hosted WordPress uses basic authentication or token-based auth for its REST API. A common approach is **Application Passwords** (introduced in WordPress 5.6) which serve as API keys for a user. The user can generate an application password in their profile, and your integration can use it with HTTP Basic Auth (username and the 24-character app password) to authenticate REST requests. For a *1-click* style onboarding, WordPress provides an **OAuth-like flow** using the built-in Application Password authorization screen. Your app can redirect the user to `https://<site>/wp-admin/authorize-application.php?app_name=SEOAgent&success_url=<callback>&reject_url=<cancel>` . The user will log in (if not already) and approve, and WordPress will then redirect to your `success_url` with `site_url`, `user_login`, and `password` in the query string. The returned `password` is the new application password, which your app can capture and use for future API calls (the username is given by `user_login`). This eliminates manual copy-pasting. (If the WordPress site has **Jetpack** installed and connected to WordPress.com, you could alternatively use the WordPress.com OAuth2 flow, but the Application Password approach is native to WordPress core.)
 
 * **Required token scopes or permissions:** WordPress’s REST API doesn’t use granular OAuth scopes. Access is determined by the user’s role and capabilities. The application password inherits the permissions of the user who created it. For example, a user with Author or Administrator role can create and edit posts via the API. Ensure the user you connect as has rights to read and write posts (e.g. an Author or above for blog posts). If using the WordPress.com/Jetpack OAuth method, you can request scopes like `posts` and `comments` (or omit `scope` to get full access to the blog).
 
@@ -46,7 +46,7 @@ Great. I’ll compile the necessary API documentation links and provide step-by-
   1. **Direct user to authorize:** Construct the WP Admin authorization URL with your app’s name and a secure callback URL. For example:
 
      ```
-     https://example.com/wp-admin/authorize-application.php?app_name=SEOMetrics&success_url=https://app.seometrics.com/wp-callback&app_id=<UUID>
+     https://example.com/wp-admin/authorize-application.php?app_name=SEOAgent&success_url=https://app.seoagent.com/wp-callback&app_id=<UUID>
      ```
 
      (Use a unique `app_id` UUID to identify your app instance, and ensure the site is HTTPS.)
@@ -129,7 +129,7 @@ Great. I’ll compile the necessary API documentation links and provide step-by-
 
 * **API documentation:** Shopify’s Admin API covers blogs and articles (blog posts) under the “Content” category. The **Article** resource is documented in the REST Admin API reference. (Each Shopify store can have multiple Blogs, and each Blog contains Articles – which are the individual blog posts.) The docs outline endpoints like `/admin/api/<version>/blogs/{blog_id}/articles.json` for articles. *Note:* As of 2024, Shopify encourages use of their GraphQL API for new apps, but the REST API is still fully supported. We will focus on REST for clarity.
 
-* **Authentication method & flow:** Shopify uses OAuth 2.0 for apps to access a store’s Admin API. To integrate SEOMetrics with a Shopify store in one click, you would create a **public Shopify App** (or a custom app for a single client) and implement the OAuth authorization code grant flow.
+* **Authentication method & flow:** Shopify uses OAuth 2.0 for apps to access a store’s Admin API. To integrate SEOAgent with a Shopify store in one click, you would create a **public Shopify App** (or a custom app for a single client) and implement the OAuth authorization code grant flow.
 
   * **OAuth flow:** You must have an app API Key (client\_id) and API Secret (client\_secret) from the Shopify Partners dashboard (where you create the app). When a user wants to connect their store, you redirect them to the Shopify authorization URL:
 
@@ -177,7 +177,7 @@ Great. I’ll compile the necessary API documentation links and provide step-by-
        -H "Content-Type: application/json" \
        -d '{
              "article": {
-               "title": "New Post from SEOMetrics",
+               "title": "New Post from SEOAgent",
                "body_html": "<p>This is the content of the blog post.</p>",
                "published_at": "2025-07-24T14:20:00Z"
              }
@@ -197,7 +197,7 @@ Great. I’ll compile the necessary API documentation links and provide step-by-
 
   This will return a JSON with an `"articles"` array containing up to 10 articles from the specified blog. You can paginate through articles using parameters like `since_id` or using cursor-based pagination via the Link header (Shopify’s REST API paginates results). Each Article object includes fields like `id`, `title`, `body_html`, `created_at`, `updated_at`, `published_at`, `tags`, etc.. If you need a specific article, you can GET `/blogs/{$BlogID}/articles/{$ArticleID}.json`. The API will only return articles that the token’s scopes allow – with `read_content` you’ll get both published and unpublished articles. (If an article is a draft, its `published_at` will be null.) Ensure you handle the case where no articles or the blog ID is wrong – the API would return an error or empty result.
 
-* **Programmatic OAuth onboarding:** To integrate the Shopify OAuth flow programmatically in SEOMetrics:
+* **Programmatic OAuth onboarding:** To integrate the Shopify OAuth flow programmatically in SEOAgent:
 
   1. **App registration:** Create your app in the Shopify Partner Dashboard. Set the app’s **App URL** (where Shopify redirects after install) and **Redirect URLs** to your server endpoints (e.g. `https://yourapp.com/shopify/callback`). Define the scopes `read_content, write_content` in the app settings.
   2. **Initiate OAuth:** When the user chooses to connect a Shopify store, have them enter their shop’s `.myshopify.com` domain (or use Shopify App Bridge if embedded). Your backend then creates the Shopify authorize URL (as shown above) and redirects the user. For example:
@@ -215,7 +215,7 @@ Great. I’ll compile the necessary API documentation links and provide step-by-
 
   Shopify’s API infrastructure handles a lot, but be mindful of a few things: **API versioning** – use a stable version in your URLs (e.g. `2024-10`) and update your app periodically to support newer versions. Also, **rate limits** – the content API is not high-volume, but if you bulk publish many posts, watch the 40 req/min limit (you might enqueue or throttle calls; the response headers will show usage). The official libraries have utilities for these concerns.
 
-By implementing the above for each platform, SEOMetrics can seamlessly connect to a user’s CMS with minimal effort from them – they just click “Connect” and authorize, and then your app can programmatically read their existing posts and publish new SEO-optimized articles directly to their site.
+By implementing the above for each platform, SEOAgent can seamlessly connect to a user's CMS with minimal effort from them – they just click “Connect” and authorize, and then your app can programmatically read their existing posts and publish new SEO-optimized articles directly to their site.
 
 **Sources:**
 

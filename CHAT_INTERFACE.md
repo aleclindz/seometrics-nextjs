@@ -1,8 +1,8 @@
-# SEOMetrics Chat Interface
+# SEOAgent Chat Interface
 
 ## Overview
 
-The SEOMetrics chat interface is a modern, AI-powered conversational interface that allows users to interact with all SEO tools and features through natural language commands. Built with OpenAI's Function Calling API, it provides an intuitive alternative to the traditional dashboard interface.
+The SEOAgent chat interface is a modern, AI-powered conversational interface that allows users to interact with all SEO tools and features through natural language commands. Built with OpenAI's Function Calling API, it provides an intuitive alternative to the traditional dashboard interface.
 
 ## Features
 
