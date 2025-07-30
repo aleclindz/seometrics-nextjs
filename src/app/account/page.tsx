@@ -6,7 +6,6 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import SubscriptionManager from '@/components/SubscriptionManager';
-import UsageDashboard from '@/components/UsageDashboard';
 import WebsiteManagement from '@/components/WebsiteManagement';
 
 export default function Account() {
@@ -119,11 +118,6 @@ export default function Account() {
                   {/* Website Management */}
                   <div className="col-span-full">
                     <WebsiteManagement />
-                  </div>
-
-                  {/* Usage Dashboard */}
-                  <div className="col-span-full">
-                    <UsageDashboard />
                   </div>
 
                   {/* Subscription Management */}

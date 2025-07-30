@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth';
 interface Website {
   id: string;
   domain: string;
+  website_token: string;
   is_managed: boolean;
   is_excluded_from_sync: boolean;
   created_at: string;
@@ -76,12 +77,80 @@ export default function WebsiteManagement() {
     }
   };
 
+  const switchManagedWebsite = async (newWebsiteId: string) => {
+    if (!user?.token) return;
+
+    setUpdating(newWebsiteId);
+    setError(null);
+
+    try {
+      // First, unmanage all currently managed websites
+      const currentlyManagedWebsites = websites.filter(w => w.is_managed);
+      
+      for (const website of currentlyManagedWebsites) {
+        const response = await fetch(`/api/websites?userToken=${user.token}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            websiteId: website.website_token,
+            is_managed: false
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to unmanage previous website');
+        }
+      }
+
+      // Then, manage the new website
+      const response = await fetch(`/api/websites?userToken=${user.token}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          websiteId: newWebsiteId,
+          is_managed: true
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state: unmanage all others, manage the selected one
+        setWebsites(prev => prev.map(w => ({
+          ...w,
+          is_managed: w.website_token === newWebsiteId
+        })));
+      } else {
+        setError(data.error || 'Failed to switch managed website');
+      }
+    } catch (error) {
+      console.error('Error switching managed website:', error);
+      setError('Failed to switch managed website');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const handleManageToggle = async (websiteId: string, currentlyManaged: boolean) => {
     if (!user?.token) return;
 
     const newManagedState = !currentlyManaged;
     
-    // Check if we&apos;re trying to manage a new website and would exceed limits
+    // For single-website plans (starter), handle switching logic
+    if (newManagedState && userPlan.maxSites === 1) {
+      const currentManagedCount = websites.filter(w => w.is_managed).length;
+      if (currentManagedCount >= 1) {
+        // Switch: first unmanage all other websites, then manage this one
+        await switchManagedWebsite(websiteId);
+        return;
+      }
+    }
+    
+    // For multi-website plans, check if we&apos;re trying to manage a new website and would exceed limits
     if (newManagedState) {
       const currentManagedCount = websites.filter(w => w.is_managed).length;
       if (userPlan.maxSites !== -1 && currentManagedCount >= userPlan.maxSites) {
@@ -110,7 +179,7 @@ export default function WebsiteManagement() {
       if (data.success) {
         // Update local state
         setWebsites(prev => prev.map(w => 
-          w.id === websiteId ? { ...w, is_managed: newManagedState } : w
+          w.website_token === websiteId ? { ...w, is_managed: newManagedState } : w
         ));
       } else {
         setError(data.error || 'Failed to update website status');
@@ -142,7 +211,7 @@ export default function WebsiteManagement() {
 
       if (data.success) {
         // Remove from local state
-        setWebsites(prev => prev.filter(w => w.id !== websiteId));
+        setWebsites(prev => prev.filter(w => w.website_token !== websiteId));
       } else {
         setError(data.error || 'Failed to remove website');
       }
@@ -212,7 +281,7 @@ export default function WebsiteManagement() {
           <div className="space-y-4">
             {websites.map((website) => (
               <div
-                key={website.id}
+                key={website.website_token}
                 className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
               >
                 <div className="flex items-center space-x-3">
@@ -237,8 +306,8 @@ export default function WebsiteManagement() {
                     <input
                       type="radio"
                       checked={website.is_managed}
-                      onChange={() => handleManageToggle(website.id, website.is_managed)}
-                      disabled={updating === website.id}
+                      onChange={() => handleManageToggle(website.website_token, website.is_managed)}
+                      disabled={updating === website.website_token}
                       className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300"
                       name="managed-website"
                     />
@@ -247,15 +316,15 @@ export default function WebsiteManagement() {
                     <input
                       type="checkbox"
                       checked={website.is_managed}
-                      onChange={() => handleManageToggle(website.id, website.is_managed)}
-                      disabled={updating === website.id}
+                      onChange={() => handleManageToggle(website.website_token, website.is_managed)}
+                      disabled={updating === website.website_token}
                       className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
                     />
                   )}
                   
                   <button
-                    onClick={() => handleRemoveWebsite(website.id, website.domain)}
-                    disabled={updating === website.id}
+                    onClick={() => handleRemoveWebsite(website.website_token, website.domain)}
+                    disabled={updating === website.website_token}
                     className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
                     title="Remove website permanently"
                   >

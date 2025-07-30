@@ -333,24 +333,18 @@ export default function SubscriptionManager() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {plan.sites_allowed === -1 ? '∞' : plan.sites_allowed}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Sites allowed</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Websites allowed</div>
             </div>
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {plan.posts_allowed === -1 ? '∞' : plan.posts_allowed}
+                ∞
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Articles per site</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {usage.articles}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Used this month</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Article generation</div>
             </div>
           </div>
 
