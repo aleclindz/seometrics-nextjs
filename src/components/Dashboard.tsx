@@ -29,16 +29,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
+      if (!user || !user.token) {
+        console.log('No user or token available:', { user: !!user, token: !!user?.token });
+        return;
+      }
 
       try {
-        // Get user token from auth
-        const response = await fetch('/api/auth/get-token');
-        if (!response.ok) {
-          throw new Error('Failed to get user token');
-        }
-        
-        const { userToken } = await response.json();
+        // Use token from auth context
+        const userToken = user.token;
         
         // Check GSC connection status first
         const gscResponse = await fetch(`/api/gsc/connection?userToken=${userToken}`);
@@ -92,16 +90,11 @@ export default function Dashboard() {
   };
 
   const refreshGscData = async () => {
-    if (!user) return;
+    if (!user || !user.token) return;
     
     try {
-      // Get user token from auth
-      const response = await fetch('/api/auth/get-token');
-      if (!response.ok) {
-        throw new Error('Failed to get user token');
-      }
-      
-      const { userToken } = await response.json();
+      // Use token from auth context
+      const userToken = user.token;
       
       // Trigger GSC properties refresh
       await fetch(`/api/gsc/properties?userToken=${userToken}`, {

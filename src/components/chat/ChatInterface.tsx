@@ -75,13 +75,11 @@ export function ChatInterface() {
 
       try {
         setSitesLoading(true);
-        // Get user token from auth - matching Dashboard.tsx approach
-        const response = await fetch('/api/auth/get-token');
-        if (!response.ok) {
-          throw new Error('Failed to get user token');
+        // Get user token from auth context
+        if (!user?.token) {
+          throw new Error('No user token available');
         }
-        
-        const { userToken } = await response.json();
+        const userToken = user.token;
 
         const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
         if (!sitesResponse.ok) {
@@ -111,11 +109,9 @@ export function ChatInterface() {
       if (!selectedSite || !user) return;
 
       try {
-        // Get user token from auth
-        const tokenResponse = await fetch('/api/auth/get-token');
-        if (!tokenResponse.ok) return;
-        
-        const { userToken } = await tokenResponse.json();
+        // Get user token from auth context
+        if (!user?.token) return;
+        const userToken = user.token;
 
         // Try to get existing thread for this site
         const threadsResponse = await fetch(`/api/chat/threads?userToken=${userToken}&siteId=${selectedSite.id}`);
@@ -146,11 +142,9 @@ export function ChatInterface() {
     if (!selectedSite || !user) return;
 
     try {
-      // Get user token from auth
-      const tokenResponse = await fetch('/api/auth/get-token');
-      if (!tokenResponse.ok) return;
-      
-      const { userToken } = await tokenResponse.json();
+      // Get user token from auth context
+      if (!user?.token) return;
+      const userToken = user.token;
 
       const response = await fetch('/api/chat/threads', {
         method: 'POST',
@@ -183,11 +177,9 @@ export function ChatInterface() {
 
   const loadThreadMessages = async (threadId: string) => {
     try {
-      // Get user token from auth
-      const tokenResponse = await fetch('/api/auth/get-token');
-      if (!tokenResponse.ok) return;
-      
-      const { userToken } = await tokenResponse.json();
+      // Get user token from auth context
+      if (!user?.token) return;
+      const userToken = user.token;
 
       const response = await fetch(`/api/chat/messages?userToken=${userToken}&threadId=${threadId}`);
       if (response.ok) {
@@ -223,11 +215,9 @@ export function ChatInterface() {
     if (!currentThread || !user) return;
 
     try {
-      // Get user token from auth
-      const tokenResponse = await fetch('/api/auth/get-token');
-      if (!tokenResponse.ok) return;
-      
-      const { userToken } = await tokenResponse.json();
+      // Get user token from auth context
+      if (!user?.token) return;
+      const userToken = user.token;
 
       await fetch('/api/chat/messages', {
         method: 'POST',
