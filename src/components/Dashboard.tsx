@@ -191,17 +191,6 @@ export default function Dashboard() {
                   <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Dashboard</h1>
                 </div>
                 <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-                  {/* AI Chat Toggle - matching violet theme */}
-                  <a
-                    href="/chat"
-                    className="btn bg-violet-600 hover:bg-violet-700 text-white"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                    AI Chat
-                    <div className="w-2 h-2 bg-green-400 rounded-full ml-2"></div>
-                  </a>
                   <button
                     onClick={refreshGscData}
                     className="btn bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
@@ -222,7 +211,7 @@ export default function Dashboard() {
               )}
 
               {/* GSC Websites */}
-              {!checkingGsc && gscConnected && gscWebsites.length > 0 && (
+              {!checkingGsc && gscConnected && (
                 <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
                   <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
                     <div className="flex justify-between items-center">
@@ -233,133 +222,133 @@ export default function Dashboard() {
                     </div>
                   </header>
                   <div className="p-3">
-                    <div className="overflow-x-auto">
-                      <table className="table-auto w-full dark:text-gray-300">
-                        <thead className="text-xs uppercase text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700 dark:bg-opacity-50 rounded-sm">
-                          <tr>
-                            <th className="p-2">
-                              <div className="font-semibold text-left">Domain</div>
-                            </th>
-                            <th className="p-2">
-                              <div className="font-semibold text-center">GSC Status</div>
-                            </th>
-                            <th className="p-2">
-                              <div className="font-semibold text-center">Clicks</div>
-                            </th>
-                            <th className="p-2">
-                              <div className="font-semibold text-center">Impressions</div>
-                            </th>
-                            <th className="p-2">
-                              <div className="font-semibold text-center">CTR</div>
-                            </th>
-                            <th className="p-2">
-                              <div className="font-semibold text-center">Position</div>
-                            </th>
-                            <th className="p-2">
-                              <div className="font-semibold text-center">Last Sync</div>
-                            </th>
-                            <th className="p-2">
-                              <div className="font-semibold text-center">Actions</div>
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-sm font-medium divide-y divide-gray-100 dark:divide-gray-700/60">
-                          {gscWebsites.map((website, index) => (
-                            <tr key={index}>
-                              <td className="p-2">
-                                <div className="text-left">
-                                  <div className="font-medium text-gray-900 dark:text-gray-100">
-                                    {website.domain}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <div className="text-center">
-                                  {website.gscStatus === 'connected' ? (
-                                    <div className="text-xs inline-flex font-medium bg-green-500/20 text-green-700 rounded-full text-center px-2.5 py-1">
-                                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                      </svg>
-                                      Connected
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs inline-flex font-medium bg-gray-500/20 text-gray-700 rounded-full text-center px-2.5 py-1">
-                                      Not Connected
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <div className="text-center text-gray-900 dark:text-gray-100">
-                                  {website.metrics?.clicks?.toLocaleString() || '-'}
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <div className="text-center text-gray-900 dark:text-gray-100">
-                                  {website.metrics?.impressions?.toLocaleString() || '-'}
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <div className="text-center text-gray-900 dark:text-gray-100">
-                                  {website.metrics?.ctr ? `${website.metrics.ctr.toFixed(2)}%` : '-'}
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <div className="text-center text-gray-900 dark:text-gray-100">
-                                  {website.metrics?.position ? website.metrics.position.toFixed(1) : '-'}
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
-                                  {website.lastSync ? website.lastSync.toLocaleDateString() : 'Never'}
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <div className="text-center">
-                                  <a
-                                    href={`/chat?site=${website.id}`}
-                                    className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
-                                  >
-                                    Chat
-                                  </a>
-                                </div>
-                              </td>
+                    {gscWebsites.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="table-auto w-full dark:text-gray-300">
+                          <thead className="text-xs uppercase text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700 dark:bg-opacity-50 rounded-sm">
+                            <tr>
+                              <th className="p-2">
+                                <div className="font-semibold text-left">Domain</div>
+                              </th>
+                              <th className="p-2">
+                                <div className="font-semibold text-center">GSC Status</div>
+                              </th>
+                              <th className="p-2">
+                                <div className="font-semibold text-center">Clicks</div>
+                              </th>
+                              <th className="p-2">
+                                <div className="font-semibold text-center">Impressions</div>
+                              </th>
+                              <th className="p-2">
+                                <div className="font-semibold text-center">CTR</div>
+                              </th>
+                              <th className="p-2">
+                                <div className="font-semibold text-center">Position</div>
+                              </th>
+                              <th className="p-2">
+                                <div className="font-semibold text-center">Last Sync</div>
+                              </th>
+                              <th className="p-2">
+                                <div className="font-semibold text-center">Actions</div>
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody className="text-sm font-medium divide-y divide-gray-100 dark:divide-gray-700/60">
+                            {gscWebsites.map((website, index) => (
+                              <tr key={index}>
+                                <td className="p-2">
+                                  <div className="text-left">
+                                    <div className="font-medium text-gray-900 dark:text-gray-100">
+                                      {website.domain}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center">
+                                    {website.gscStatus === 'connected' ? (
+                                      <div className="text-xs inline-flex font-medium bg-green-500/20 text-green-700 rounded-full text-center px-2.5 py-1">
+                                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        </svg>
+                                        Connected
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs inline-flex font-medium bg-gray-500/20 text-gray-700 rounded-full text-center px-2.5 py-1">
+                                        Not Connected
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center text-gray-900 dark:text-gray-100">
+                                    {website.metrics?.clicks?.toLocaleString() || '-'}
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center text-gray-900 dark:text-gray-100">
+                                    {website.metrics?.impressions?.toLocaleString() || '-'}
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center text-gray-900 dark:text-gray-100">
+                                    {website.metrics?.ctr ? `${website.metrics.ctr.toFixed(2)}%` : '-'}
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center text-gray-900 dark:text-gray-100">
+                                    {website.metrics?.position ? website.metrics.position.toFixed(1) : '-'}
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
+                                    {website.lastSync ? website.lastSync.toLocaleDateString() : 'Never'}
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="text-center">
+                                    <a
+                                      href={`/chat?site=${website.id}`}
+                                      className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
+                                    >
+                                      Chat
+                                    </a>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="max-w-md mx-auto">
+                          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                            Google Search Console Connected!
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            Your GSC is connected but no websites were found. This may take a few moments to sync.
+                          </p>
+                          <button
+                            onClick={refreshGscData}
+                            className="btn bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Refresh Data
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* GSC Connected but no websites found */}
-              {!checkingGsc && gscConnected && gscWebsites.length === 0 && (
-                <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-8 text-center">
-                  <div className="max-w-md mx-auto">
-                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                      Google Search Console Connected!
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">
-                      Your GSC is connected but no websites were found. This may take a few moments to sync.
-                    </p>
-                    <button
-                      onClick={refreshGscData}
-                      className="btn bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Refresh Data
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </main>
         </div>

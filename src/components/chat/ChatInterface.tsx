@@ -75,19 +75,20 @@ export function ChatInterface() {
 
       try {
         setSitesLoading(true);
-        const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
-        
-        if (!userToken) {
-          console.error('No user token found');
-          return;
-        }
-
-        const response = await fetch(`/api/chat/sites?userToken=${userToken}`);
+        // Get user token from auth - matching Dashboard.tsx approach
+        const response = await fetch('/api/auth/get-token');
         if (!response.ok) {
+          throw new Error('Failed to get user token');
+        }
+        
+        const { userToken } = await response.json();
+
+        const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
+        if (!sitesResponse.ok) {
           throw new Error('Failed to fetch sites');
         }
 
-        const { sites: fetchedSites } = await response.json();
+        const { sites: fetchedSites } = await sitesResponse.json();
         setSites(fetchedSites);
 
         // Auto-select first site if available and no site is selected
@@ -110,8 +111,11 @@ export function ChatInterface() {
       if (!selectedSite || !user) return;
 
       try {
-        const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
-        if (!userToken) return;
+        // Get user token from auth
+        const tokenResponse = await fetch('/api/auth/get-token');
+        if (!tokenResponse.ok) return;
+        
+        const { userToken } = await tokenResponse.json();
 
         // Try to get existing thread for this site
         const threadsResponse = await fetch(`/api/chat/threads?userToken=${userToken}&siteId=${selectedSite.id}`);
@@ -142,8 +146,11 @@ export function ChatInterface() {
     if (!selectedSite || !user) return;
 
     try {
-      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
-      if (!userToken) return;
+      // Get user token from auth
+      const tokenResponse = await fetch('/api/auth/get-token');
+      if (!tokenResponse.ok) return;
+      
+      const { userToken } = await tokenResponse.json();
 
       const response = await fetch('/api/chat/threads', {
         method: 'POST',
@@ -176,8 +183,11 @@ export function ChatInterface() {
 
   const loadThreadMessages = async (threadId: string) => {
     try {
-      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
-      if (!userToken) return;
+      // Get user token from auth
+      const tokenResponse = await fetch('/api/auth/get-token');
+      if (!tokenResponse.ok) return;
+      
+      const { userToken } = await tokenResponse.json();
 
       const response = await fetch(`/api/chat/messages?userToken=${userToken}&threadId=${threadId}`);
       if (response.ok) {
@@ -213,8 +223,11 @@ export function ChatInterface() {
     if (!currentThread || !user) return;
 
     try {
-      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
-      if (!userToken) return;
+      // Get user token from auth
+      const tokenResponse = await fetch('/api/auth/get-token');
+      if (!tokenResponse.ok) return;
+      
+      const { userToken } = await tokenResponse.json();
 
       await fetch('/api/chat/messages', {
         method: 'POST',
