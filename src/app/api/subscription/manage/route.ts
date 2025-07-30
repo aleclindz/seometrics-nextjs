@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
         .insert({
           user_token: userToken,
           tier: 'starter',
-          sites_allowed: 2,
-          posts_allowed: 8,
+          sites_allowed: 1,
+          posts_allowed: -1, // Unlimited articles
           status: 'active'
         })
         .select('*')
@@ -106,6 +106,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
+      success: true,
       plan: userPlan,
       usage: {
         sites: websites?.length || 0, // Actual count of connected websites
@@ -157,8 +158,8 @@ export async function POST(request: NextRequest) {
         .insert({
           user_token: userToken,
           tier: 'starter',
-          sites_allowed: 2,
-          posts_allowed: 8,
+          sites_allowed: 1,
+          posts_allowed: -1, // Unlimited articles
           status: 'active'
         })
         .select('*')

@@ -47,26 +47,26 @@ const SUBSCRIPTION_TIERS = {
   },
   starter: {
     name: 'Starter Plan',
-    price: 49,
+    price: 29,
     features: [
-      '2 connected sites',
-      '4 articles per site per month',
-      'Advanced SEO optimization',
-      'Article generation',
-      'Keywords tool',
+      '1 managed website',
+      'Unlimited article generation',
+      'Technical SEO optimization',
+      'Content optimization',
+      'Keywords research tool',
       'Email support'
     ]
   },
   pro: {
     name: 'Pro Plan',
-    price: 139,
+    price: 79,
     features: [
-      '5 connected sites',
-      '10 articles per site per month',
+      '5 managed websites',
+      'Unlimited article generation',
       'All Starter features',
       'Priority support',
       'Analytics dashboard',
-      'SEO debugging tools'
+      'Advanced SEO debugging tools'
     ]
   },
   enterprise: {

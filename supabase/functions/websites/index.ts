@@ -268,7 +268,7 @@ serve(async (req) => {
         const upgradeMessage = userPlan.tier === 'free' 
           ? 'Upgrade to Starter plan ($29/month) to add more websites'
           : userPlan.tier === 'starter'
-          ? 'Upgrade to Pro plan ($79/month) to add more websites'
+          ? 'Upgrade to Pro plan ($79/month) to manage up to 5 websites'
           : 'Contact support to increase your website limit'
 
         return new Response(

@@ -108,7 +108,7 @@ export async function PUT(request: NextRequest) {
       const planLimits = {
         free: 1,
         starter: 1,
-        pro: 10,
+        pro: 5,
         enterprise: -1
       };
 
@@ -118,7 +118,7 @@ export async function PUT(request: NextRequest) {
         const upgradeMessage = currentPlan === 'free' 
           ? 'Upgrade to Starter plan ($29/month) to manage this website'
           : currentPlan === 'starter'
-          ? 'Upgrade to Pro plan ($79/month) to manage more websites'
+          ? 'Upgrade to Pro plan ($79/month) to manage up to 5 websites'
           : 'Contact support to increase your website limit';
 
         return NextResponse.json(

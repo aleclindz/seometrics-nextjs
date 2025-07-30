@@ -118,6 +118,12 @@ SEOAgent.com differentiates from tools like SurferSEO by focusing on **automatio
 - [TODO] Content automation workflows (scheduled publishing)
 - [TODO] Content performance tracking and optimization
 
+#### Content Enhancement & Cross-Linking System
+- [TODO] CMS post retrieval system to pull existing articles from connected CMS
+- [TODO] Content analysis system to identify cross-linking opportunities between posts
+- [TODO] Automated content editing system to add cross-links to existing posts
+- [TODO] CMS post update/re-upload functionality for edited content
+
 ### 📊 **PILLAR 3: SEO STRATEGIST (Strategy & Research Engine)**
 **Mission**: Automated SEO strategy and competitive research
 
@@ -135,6 +141,24 @@ SEOAgent.com differentiates from tools like SurferSEO by focusing on **automatio
 - [TODO] SERP feature optimization (featured snippets, PAA)
 - [TODO] Local SEO optimization for applicable businesses
 - [TODO] Performance forecasting and ROI projections
+
+## 🎯 **RECENT COMPLETED WORK (Phase 1: Foundation)**
+
+### Website Management & Plan Restructure
+- [COMPLETED] SEO Metrics → SEOAgent rebranding (login page and references)
+- [COMPLETED] Plan pricing restructure: Starter $49→$29 (1 site), Pro $139→$79 (10 sites)
+- [COMPLETED] Database schema: Added `is_managed`, `is_excluded_from_sync` to websites table
+- [COMPLETED] Website management API endpoints (PUT for management status, DELETE for removal)
+- [COMPLETED] Website Management UI component in Settings/Account page
+- [COMPLETED] Dashboard filtering to show only managed websites
+- [COMPLETED] GSC sync logic updated to respect exclusion flags
+- [COMPLETED] Plan enforcement with quota checking and upgrade prompts
+
+### Dashboard & UX Improvements  
+- [COMPLETED] CMS connection status fix (no longer hardcoded to 'none')
+- [COMPLETED] Loading states and error feedback for dashboard refresh
+- [COMPLETED] Date range context for GSC performance data display
+- [COMPLETED] Enhanced user messaging and navigation flows
 
 ## 💳 **SUBSCRIPTION & ACCESS CONTROL (Foundation)**
 #### Stripe Integration & Billing
@@ -161,30 +185,34 @@ SEOAgent.com differentiates from tools like SurferSEO by focusing on **automatio
 
 ### Database (Supabase PostgreSQL)
 - [COMPLETED] Core authentication tables with RLS
-- [COMPLETED] Website management tables
+- [COMPLETED] Website management tables (with `is_managed`, `is_excluded_from_sync` columns)
 - [COMPLETED] Article storage and metadata
 - [COMPLETED] SEO tags generation tables
 - [COMPLETED] Subscription system tables (`user_plans`, `usage_tracking`)
 - [COMPLETED] Article versioning tables
+- [COMPLETED] Website management system migration (026_website_management_system.sql)
 
 ### API Routes (Next.js)
 - [COMPLETED] Authentication endpoints
-- [COMPLETED] Website management endpoints
+- [COMPLETED] Website management endpoints (with PUT/DELETE for selective management)
 - [COMPLETED] Article generation endpoints
 - [COMPLETED] SEO tag generation endpoints
 - [COMPLETED] Subscription management endpoints (`/api/subscription/*`)
+- [COMPLETED] Enhanced `/api/chat/sites` with managed website filtering
 - [TODO] Article publishing endpoints
 - [TODO] CMS integration endpoints
 - [TODO] Analytics/reporting endpoints
 
 ### Frontend Components (Next.js + TypeScript)
 - [COMPLETED] Authentication system with Supabase
-- [COMPLETED] Dashboard and navigation
+- [COMPLETED] Dashboard and navigation (with managed website filtering)
 - [COMPLETED] Website management UI
 - [COMPLETED] Article generation interface
 - [COMPLETED] SEO tag generation tools
 - [COMPLETED] Subscription management interface
 - [COMPLETED] Usage dashboard and feature gates
+- [COMPLETED] WebsiteManagement component in Account settings
+- [COMPLETED] Enhanced Dashboard with loading states and date context
 - [TODO] Article management interface
 - [TODO] CMS connection interface
 - [TODO] Analytics dashboard

@@ -22,7 +22,7 @@ export default function WebsiteManagement() {
   const planLimits = {
     free: 1,
     starter: 1,
-    pro: 10,
+    pro: 5,
     enterprise: -1
   };
 
@@ -38,8 +38,8 @@ export default function WebsiteManagement() {
       const response = await fetch(`/api/subscription/manage?userToken=${user.token}`);
       const data = await response.json();
       
-      if (data.success && data.subscription) {
-        const planId = data.subscription.plan_id || 'free';
+      if (data.success && data.plan) {
+        const planId = data.plan.tier || 'free';
         const maxSites = planLimits[planId as keyof typeof planLimits] || 1;
         setUserPlan({ plan_id: planId, maxSites });
       }
@@ -61,11 +61,16 @@ export default function WebsiteManagement() {
         const activeWebsites = data.websites.filter((w: Website) => !w.is_excluded_from_sync);
         setWebsites(activeWebsites);
       } else {
-        setError('Failed to load websites');
+        setError(data.error || 'Failed to load websites');
       }
     } catch (error) {
       console.error('Error fetching websites:', error);
-      setError('Failed to load websites');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load websites';
+      if (errorMessage.includes('column') && errorMessage.includes('does not exist')) {
+        setError('Database migration required. Please contact support or run the database migration.');
+      } else {
+        setError('Failed to load websites');
+      }
     } finally {
       setLoading(false);
     }
@@ -273,14 +278,18 @@ export default function WebsiteManagement() {
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                About Website Management
+                How SEOAgent Website Management Works
               </h3>
               <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Only managed websites appear in your dashboard and receive SEO services</li>
-                  <li>Your {userPlan.plan_id} plan allows {userPlan.maxSites === -1 ? 'unlimited' : userPlan.maxSites} managed website{userPlan.maxSites === 1 ? '' : 's'}</li>
-                  <li>Removed websites will not be re-imported from Google Search Console</li>
-                  <li>You can change managed websites anytime within your plan limits</li>
+                  <li><strong>Selective Management:</strong> Choose which websites receive SEOAgent&apos;s automated SEO services</li>
+                  <li><strong>Plan Limits:</strong> Your {userPlan.plan_id === 'starter' ? 'Starter ($29/month)' : userPlan.plan_id === 'pro' ? 'Pro ($79/month)' : userPlan.plan_id} plan includes {userPlan.maxSites === -1 ? 'unlimited' : userPlan.maxSites} managed website{userPlan.maxSites === 1 ? '' : 's'} with unlimited content generation</li>
+                  <li><strong>SEO Services:</strong> Managed websites get technical SEO analysis, content optimization, and automated improvements</li>
+                  <li><strong>Permanent Removal:</strong> Deleted websites won&apos;t return when syncing Google Search Console</li>
+                  <li><strong>Flexible Changes:</strong> Switch managed websites anytime within your subscription limits</li>
+                  {userPlan.maxSites === 1 && (
+                    <li><strong>Single Website Focus:</strong> Your plan optimizes one website completely rather than spreading resources thin</li>
+                  )}
                 </ul>
               </div>
             </div>
