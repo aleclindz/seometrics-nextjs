@@ -300,10 +300,10 @@ export default function Dashboard() {
                                 <td className="p-2">
                                   <div className="text-center">
                                     <a
-                                      href={`/chat?site=${website.id}`}
+                                      href={`/website/${website.id}`}
                                       className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
                                     >
-                                      Chat
+                                      Manage
                                     </a>
                                   </div>
                                 </td>
