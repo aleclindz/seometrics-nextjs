@@ -27,14 +27,30 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
         <div className="flex items-center justify-between h-16 lg:border-b border-gray-200 dark:border-gray-700/60">
 
           {/* Header: Left side */}
-          <div className="flex">
+          <div className="flex items-center space-x-3">
             <a 
               href="https://calendly.com/alec-aleclindz/30min" 
               target="_blank"
               rel="noopener noreferrer"
               className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300"
+              aria-label="Get support via Calendly"
             >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.25a9.75 9.75 0 109.75 9.75M15.91 13.313c.227-.1.453-.3.598-.586.126-.25.172-.515.158-.78-.126-2.5-1.062-7.42-3.403-9.864a.75.75 0 10-1.06 1.06c1.875 1.954 2.7 6.001 2.8 8.25a.75.75 0 001.907.164z" />
+              </svg>
               Support
+            </a>
+            <a 
+              href="https://seoagent.canny.io/" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300"
+              aria-label="Share feedback on Canny"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+              Feedback
             </a>
           </div>
 
