@@ -188,12 +188,17 @@ async function performBasicAudit(websiteUrl: string, maxPages: number) {
 
   try {
     // Simple homepage audit for now
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
     const response = await fetch(websiteUrl, {
       headers: {
         'User-Agent': 'SEOAgent/1.0 (+https://seoagent.com)'
       },
-      timeout: 30000
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);

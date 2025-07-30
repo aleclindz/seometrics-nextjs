@@ -353,8 +353,6 @@ export default function WebsiteCMSConnection() {
 
                 <OneClickCMSConnection
                   onConnectionComplete={handleConnectionComplete}
-                  websiteId={websiteId}
-                  websiteUrl={website.url}
                 />
               </div>
 
