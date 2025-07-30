@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       .select('user_token')
       .not('user_token', 'in', `(${(userPlans || []).map(p => `'${p.user_token}'`).join(',') || "'none'"})`)
       .then(result => ({
-        data: result.data ? [...new Set(result.data.map(w => w.user_token))] : [],
+        data: result.data ? Array.from(new Set(result.data.map(w => w.user_token))) : [],
         error: result.error
       }));
 
