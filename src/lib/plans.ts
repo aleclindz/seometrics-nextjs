@@ -32,10 +32,10 @@ export const PLANS: Record<string, PlanConfig> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    price: 49,
+    price: 29,
     features: {
-      maxSites: 2,
-      maxArticlesPerMonth: 8, // 4 per site * 2 sites
+      maxSites: 1,
+      maxArticlesPerMonth: 4, // 4 per site * 1 site
       articleGeneration: true,
       keywordsTool: true,
       seoDebug: false,
@@ -46,10 +46,10 @@ export const PLANS: Record<string, PlanConfig> = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 139,
+    price: 79,
     features: {
-      maxSites: 5,
-      maxArticlesPerMonth: 50, // 10 per site * 5 sites
+      maxSites: 10,
+      maxArticlesPerMonth: 100, // 10 per site * 10 sites
       articleGeneration: true,
       keywordsTool: true,
       seoDebug: true,

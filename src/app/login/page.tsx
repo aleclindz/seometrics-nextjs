@@ -65,7 +65,7 @@ function LoginForm() {
           {isSignUp ? 'Create your account' : 'Sign in to your account'}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          SEO Metrics Tool - AI-powered content optimization
+          SEOAgent - AI-powered content optimization
         </p>
       </div>
 
@@ -132,7 +132,7 @@ function LoginForm() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                  {isSignUp ? 'Already have an account?' : 'New to SEO Metrics?'}
+                  {isSignUp ? 'Already have an account?' : 'New to SEOAgent?'}
                 </span>
               </div>
             </div>

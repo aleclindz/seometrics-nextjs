@@ -115,10 +115,10 @@ export async function GET(request: NextRequest) {
         // Auto-populate websites table from GSC property
         const domain = site.siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
         
-        // Check if website already exists
+        // Check if website already exists or was excluded
         const { data: existingWebsite } = await supabase
           .from('websites')
-          .select('website_token')
+          .select('website_token, is_excluded_from_sync')
           .eq('user_token', userToken)
           .eq('domain', domain)
           .single();
@@ -133,6 +133,8 @@ export async function GET(request: NextRequest) {
               website_token: websiteToken,
               user_token: userToken,
               domain: domain,
+              is_managed: false, // New websites start as unmanaged
+              is_excluded_from_sync: false,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
@@ -142,6 +144,8 @@ export async function GET(request: NextRequest) {
           } else {
             console.log('[GSC PROPERTIES] Successfully created website from GSC:', domain);
           }
+        } else if (existingWebsite.is_excluded_from_sync) {
+          console.log('[GSC PROPERTIES] Website was excluded from sync, skipping:', domain);
         } else {
           console.log('[GSC PROPERTIES] Website already exists for:', domain);
         }

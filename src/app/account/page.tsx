@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import SubscriptionManager from '@/components/SubscriptionManager';
 import UsageDashboard from '@/components/UsageDashboard';
+import WebsiteManagement from '@/components/WebsiteManagement';
 
 export default function Account() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -113,6 +114,11 @@ export default function Account() {
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Website Management */}
+                  <div className="col-span-full">
+                    <WebsiteManagement />
                   </div>
 
                   {/* Usage Dashboard */}

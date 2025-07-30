@@ -266,9 +266,9 @@ serve(async (req) => {
       // Check if user has reached their limit
       if (maxAllowed !== -1 && currentWebsiteCount >= maxAllowed) {
         const upgradeMessage = userPlan.tier === 'free' 
-          ? 'Upgrade to Starter plan ($49/month) to add more websites'
+          ? 'Upgrade to Starter plan ($29/month) to add more websites'
           : userPlan.tier === 'starter'
-          ? 'Upgrade to Pro plan ($139/month) to add more websites'
+          ? 'Upgrade to Pro plan ($79/month) to add more websites'
           : 'Contact support to increase your website limit'
 
         return new Response(

@@ -18,11 +18,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User token required' }, { status: 401 });
     }
 
-    // Get user websites
+    // Get user websites (only managed and not excluded)
     const { data: websites, error: websitesError } = await supabase
       .from('websites')
       .select('*')
-      .eq('user_token', userToken);
+      .eq('user_token', userToken)
+      .eq('is_managed', true)
+      .eq('is_excluded_from_sync', false);
 
     if (websitesError) {
       console.error('[CHAT SITES] Error fetching websites:', websitesError);
