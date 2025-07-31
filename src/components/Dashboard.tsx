@@ -266,9 +266,12 @@ export default function Dashboard() {
                               <tr key={website.website_token}>
                                 <td className="p-2">
                                   <div className="text-left">
-                                    <div className="font-medium text-gray-900 dark:text-gray-100">
+                                    <a
+                                      href={`/website/${website.website_token}`}
+                                      className="font-medium text-gray-900 dark:text-gray-100 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                                    >
                                       {website.domain}
-                                    </div>
+                                    </a>
                                   </div>
                                 </td>
                                 <td className="p-2">
@@ -289,10 +292,10 @@ export default function Dashboard() {
                                 <td className="p-2">
                                   <div className="text-center">
                                     <a
-                                      href="/account"
+                                      href={`/website/${website.website_token}`}
                                       className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
                                     >
-                                      Manage
+                                      View Status
                                     </a>
                                   </div>
                                 </td>

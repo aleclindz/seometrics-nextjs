@@ -58,14 +58,10 @@ export function ChatInterface() {
   const [openaiClient, setOpenaiClient] = useState<OpenAIFunctionClient | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize OpenAI client
+  // Initialize OpenAI client (now handled server-side)
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
-    if (apiKey) {
-      setOpenaiClient(new OpenAIFunctionClient(apiKey));
-    } else {
-      console.warn('OpenAI API key not found. Chat functionality will be limited.');
-    }
+    // OpenAI API calls are now handled server-side for security
+    setOpenaiClient({ initialized: true } as any);
   }, []);
 
   // Load user sites
@@ -87,11 +83,18 @@ export function ChatInterface() {
         }
 
         const { sites: fetchedSites } = await sitesResponse.json();
-        setSites(fetchedSites);
+        
+        // Convert lastSync strings back to Date objects 
+        const processedSites = fetchedSites.map((site: any) => ({
+          ...site,
+          lastSync: site.lastSync ? new Date(site.lastSync) : undefined
+        }));
+        
+        setSites(processedSites);
 
         // Auto-select first site if available and no site is selected
-        if (fetchedSites.length > 0 && !selectedSite) {
-          setSelectedSite(fetchedSites[0]);
+        if (processedSites.length > 0 && !selectedSite) {
+          setSelectedSite(processedSites[0]);
         }
       } catch (error) {
         console.error('Error loading sites:', error);
@@ -290,8 +293,22 @@ export function ChatInterface() {
         }
       };
 
-      // Send message to OpenAI with function calling
-      const response = await openaiClient.sendMessage(content, chatContext);
+      // Send message to server-side OpenAI API
+      const aiResponse = await fetch('/api/chat/ai-response', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: user?.token,
+          message: content,
+          chatContext
+        })
+      });
+
+      if (!aiResponse.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const response = await aiResponse.json();
 
       // Create assistant message
       const assistantMessage: ChatMessage = {

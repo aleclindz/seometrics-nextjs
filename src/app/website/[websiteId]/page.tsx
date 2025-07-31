@@ -25,6 +25,8 @@ interface Website {
   lastAuditDate?: string;
   auditScore?: number;
   criticalIssues?: number;
+  metaTagsCount?: number;
+  altTagsCount?: number;
 }
 
 interface Audit {
@@ -89,6 +91,22 @@ export default function WebsitePage() {
           console.log('No audit data available:', auditError);
         }
 
+        // Fetch meta and alt tags stats
+        let metaTagsCount = 0;
+        let altTagsCount = 0;
+        try {
+          const statsResponse = await fetch(`/api/websites/${websiteId}/stats?userToken=${user.token}`);
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            if (statsData.success) {
+              metaTagsCount = statsData.stats.metaTagsCount;
+              altTagsCount = statsData.stats.altTagsCount;
+            }
+          }
+        } catch (statsError) {
+          console.log('No stats data available:', statsError);
+        }
+
         setWebsite({
           id: currentWebsite.id,
           url: currentWebsite.url,
@@ -100,7 +118,9 @@ export default function WebsitePage() {
           metrics: currentWebsite.metrics,
           lastAuditDate: auditData?.completed_at || auditData?.created_at,
           auditScore: auditData?.overall_score,
-          criticalIssues: auditData?.critical_issues
+          criticalIssues: auditData?.critical_issues,
+          metaTagsCount,
+          altTagsCount
         });
       } catch (error) {
         console.error('Error fetching website:', error);
@@ -319,7 +339,7 @@ export default function WebsitePage() {
               </div>
 
               {/* Quick Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {/* GSC Status */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                   <div className="flex items-center justify-between">
@@ -347,6 +367,68 @@ export default function WebsitePage() {
                   </div>
                 </div>
 
+                {/* CMS Status */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">CMS Status</p>
+                      <div className="flex items-center mt-2">
+                        {website.cmsStatus === 'connected' ? (
+                          <>
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            <span className="text-sm font-medium text-green-700 dark:text-green-400">Connected</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                            <span className="text-sm font-medium text-gray-500">Not Connected</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 bg-violet-100 dark:bg-violet-900/20 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Meta Tags Count */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Meta Tags</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                        {website.metaTagsCount || 0}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c1.1 0 2 .9 2 2v1M7 7c0 1.1.9 2 2 2h.01M7 7c0-1.1.9-2 2-2h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Alt Tags Count */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Alt Tags</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                        {website.altTagsCount || 0}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 bg-teal-100 dark:bg-teal-900/20 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Date Range Header for Metrics */}
               {website.metrics?.dateStart && website.metrics?.dateEnd && (
                 <div className="grid grid-cols-1 gap-4 mb-4">
@@ -358,58 +440,57 @@ export default function WebsitePage() {
 
               {/* Performance Metrics */}
               {website.metrics && (
-                <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Clicks</p>
-                          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                            {website.metrics.clicks.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-                          </svg>
-                        </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Clicks</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                          {website.metrics.clicks.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                        </svg>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Impressions</p>
-                          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                            {website.metrics.impressions.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Impressions</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                          {website.metrics.impressions.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">CTR</p>
-                          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                            {website.metrics.ctr.toFixed(2)}%
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
-                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                          </svg>
-                        </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">CTR</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                          {website.metrics.ctr.toFixed(2)}%
+                        </p>
+                      </div>
+                      <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
                       </div>
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                </div>
+              )}
 
               {/* Main Actions */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

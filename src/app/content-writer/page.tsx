@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import FeatureGate from '@/components/FeatureGate';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import { useFeatures } from '@/hooks/useFeatures';
 
 interface Article {
   id: number;
@@ -50,6 +51,7 @@ interface CMSConnection {
 
 export default function ArticleWriter() {
   const { user } = useAuth();
+  const { userPlan } = useFeatures();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   
@@ -409,6 +411,13 @@ export default function ArticleWriter() {
     ? articles 
     : articles.filter(article => article.website_id?.toString() === selectedWebsiteFilter);
 
+  // Only show website filter for users with multiple managed websites (Pro+ plans)
+  const managedWebsites = websites.filter(website => {
+    // Assuming managed websites are the ones available to the user
+    return true; // All websites returned from API should be managed
+  });
+  const showWebsiteFilter = managedWebsites.length > 1;
+
   return (
     <ProtectedRoute>
       <FeatureGate feature="articleGeneration">
@@ -613,21 +622,23 @@ export default function ArticleWriter() {
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                               Your Articles
                             </h2>
-                            <div className="flex items-center space-x-2">
-                              <label className="text-sm text-gray-600 dark:text-gray-400">Filter by website:</label>
-                              <select
-                                value={selectedWebsiteFilter}
-                                onChange={(e) => setSelectedWebsiteFilter(e.target.value)}
-                                className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                              >
-                                <option value="all">All Websites</option>
-                                {websites.map((website) => (
-                                  <option key={website.id} value={website.id.toString()}>
-                                    {website.domain}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                            {showWebsiteFilter && (
+                              <div className="flex items-center space-x-2">
+                                <label className="text-sm text-gray-600 dark:text-gray-400">Filter by website:</label>
+                                <select
+                                  value={selectedWebsiteFilter}
+                                  onChange={(e) => setSelectedWebsiteFilter(e.target.value)}
+                                  className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                                >
+                                  <option value="all">All Websites</option>
+                                  {websites.map((website) => (
+                                    <option key={website.id} value={website.id.toString()}>
+                                      {website.domain}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
                           </div>
                         </div>
 
