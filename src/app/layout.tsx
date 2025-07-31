@@ -59,10 +59,10 @@ export default function RootLayout({
           {children}
         </AuthProvider>
         
-        {/* SEO Metrics Smart.js */}
-        <Script src="/smart.js" strategy="afterInteractive" />
-        <Script id="seo-metrics-config" strategy="afterInteractive">
-          {`const idv = '1c9d8bc5-14eb-4223-a6ff-8c69d6aab1d8';`}
+        {/* SEOAgent Smart.js */}
+        <Script src="https://seoagent.com/smart.js" strategy="afterInteractive" />
+        <Script id="seoagent-config" strategy="afterInteractive">
+          {`const idv = '6c75fd38-4b80-4a48-be65-66077efb92d9';`}
         </Script>
       </body>
     </html>

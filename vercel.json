@@ -9,5 +9,29 @@
       "path": "/api/cron/gsc-sync",
       "schedule": "0 6 * * *"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "seometrics.ai"
+        }
+      ],
+      "destination": "https://seoagent.com/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.seometrics.ai"
+        }
+      ],
+      "destination": "https://seoagent.com/$1",
+      "permanent": true
+    }
   ]
 }
