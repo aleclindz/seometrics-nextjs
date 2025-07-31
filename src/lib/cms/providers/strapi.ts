@@ -10,7 +10,7 @@ export class StrapiProvider extends BaseCMSProvider {
     super('', '', baseUrl);
   }
 
-  async getAuthUrl(redirectUri: string, state: string): Promise<string> {
+  getAuthUrl(redirectUri: string, state: string): string {
     // For Strapi, we'll use direct API token authentication
     // This is a simplified flow for internal use
     return `${this.baseUrl}/admin/auth/login?redirect=${encodeURIComponent(redirectUri)}&state=${state}`;

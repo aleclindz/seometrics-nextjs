@@ -44,7 +44,6 @@ export class ShopifyProvider extends BaseCMSProvider {
     });
 
     return {
-      type: 'shopify',
       accessToken: tokenData.access_token,
       shopDomain: shop,
       scopes: tokenData.scope?.split(',') || [],

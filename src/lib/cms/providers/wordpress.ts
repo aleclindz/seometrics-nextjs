@@ -46,7 +46,6 @@ export class WordPressProvider extends BaseCMSProvider {
     await this.testCredentials(siteUrl, userLogin, password);
 
     return {
-      type: 'wordpress',
       accessToken: password,
       siteUrl: siteUrl,
       username: userLogin,
@@ -119,8 +118,8 @@ export class WordPressProvider extends BaseCMSProvider {
       date: options?.publishedAt?.toISOString() || new Date().toISOString(),
       excerpt: article.excerpt || '',
       meta: {
-        _yoast_wpseo_title: article.meta?.title || article.title,
-        _yoast_wpseo_metadesc: article.meta?.description || article.excerpt,
+        _yoast_wpseo_title: article.seo?.title || article.title,
+        _yoast_wpseo_metadesc: article.seo?.description || article.excerpt,
       },
     };
 

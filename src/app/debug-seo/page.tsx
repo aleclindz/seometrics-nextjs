@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/auth';
 import { createClientComponentClient } from '@/lib/supabase';
 import Header from '@/components/Header';
@@ -443,9 +444,11 @@ export default function DebugSeoPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {currentImages.slice(0, 9).map((src, index) => (
                         <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                          <img 
+                          <Image 
                             src={src} 
                             alt={`Image ${index + 1}`}
+                            width={300}
+                            height={128}
                             className="w-full h-32 object-cover rounded mb-2"
                           />
                           <p className="text-xs text-gray-600 dark:text-gray-400 break-all">

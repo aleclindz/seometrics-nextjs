@@ -37,7 +37,6 @@ export class WebflowProvider extends BaseCMSProvider {
     });
 
     return {
-      type: 'webflow',
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : undefined,
@@ -60,7 +59,6 @@ export class WebflowProvider extends BaseCMSProvider {
     });
 
     return {
-      type: 'webflow',
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token || refreshToken,
       expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : undefined,
@@ -315,12 +313,12 @@ export class WebflowProvider extends BaseCMSProvider {
     }
 
     // SEO fields
-    if (article.meta?.title) {
-      fieldData['meta-title'] = article.meta.title;
+    if (article.seo?.title) {
+      fieldData['meta-title'] = article.seo.title;
     }
 
-    if (article.meta?.description) {
-      fieldData['meta-description'] = article.meta.description;
+    if (article.seo?.description) {
+      fieldData['meta-description'] = article.seo.description;
     }
 
     return fieldData;

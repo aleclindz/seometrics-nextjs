@@ -333,7 +333,6 @@ export class CMSManager {
       type: record.cms_type as CMSType,
       name: record.connection_name,
       credentials: {
-        type: record.cms_type,
         accessToken: record.api_token,
         siteUrl: record.base_url
       },
