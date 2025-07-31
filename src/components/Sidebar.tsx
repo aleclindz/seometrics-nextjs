@@ -60,11 +60,11 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
           {/* Logo */}
           <Link className="block" href="/">
             <Image 
-              src="/assets/logodark.png" 
+              src="/assets/SEOAgent_logo.png" 
               alt="SEOAgent" 
               width={120}
-              height={23}
-              style={{ height: '23px', width: 'auto' }}
+              height={32}
+              style={{ height: '32px', width: 'auto' }}
             />
           </Link>
         </div>

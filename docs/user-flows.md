@@ -50,10 +50,10 @@
 
 ## Login Page {#login-page}
 
-**Description:** Page for users to enter their credentials and log into their account
+**Description:** Page for users to log into their existing accounts
 
 **Steps:**
-1. **Submit Login Form**
+1. **Submit Login**
    - **UI Component:** [login-page](frontend.md#login-page)
    - **Event:** `onSubmit`
    - **API Call:** [authenticate-user-function](backend.md#authenticate-user-function)
@@ -61,52 +61,53 @@
    - **Database:** `users`
    - **Result:** Navigate to dashboard
 
+2. **Forgot Password Link**
+   - **UI Component:** [login-page](frontend.md#login-page)
+   - **Event:** `onClick`
+   
+   
+   
+   - **Result:** Navigate to forgot-password
+
 
 ---
 
 ## Website Management Page {#website-management}
 
-**Description:** Page where users can manage their connected websites
+**Description:** Interface for users to manage their websites and SEO settings
 
 **Steps:**
-1. **Add Website Button**
+1. **Add New Website**
    - **UI Component:** [website-management](frontend.md#website-management)
    - **Event:** `onClick`
    - **API Call:** [add-website-function](backend.md#add-website-function)
    - **Service:** `addWebsite`
    - **Database:** `websites`
-   - **Result:** Navigate to add-website-page
+   - **Result:** Navigate to add-website
 
-2. **Edit Website Button**
+2. **Edit Website**
    - **UI Component:** [website-management](frontend.md#website-management)
    - **Event:** `onClick`
-   - **API Call:** [update-website-function](backend.md#update-website-function)
-   - **Service:** `updateWebsite`
-   - **Database:** `websites`
-   - **Result:** Navigate to edit-website-page
+   
+   
+   
+   - **Result:** Navigate to edit-website
 
 
 ---
 
 ## Terms Page {#terms-page}
 
-**Description:** Page displaying the terms and conditions of using the application
+**Description:** Page displaying the terms of service for the application
 
 **Steps:**
-1. **Accept Terms Button**
-   - **UI Component:** [terms-page](frontend.md#terms-page)
-   - **Event:** `onClick`
-   - **API Call:** [accept-terms-function](backend.md#accept-terms-function)
-   - **Service:** `acceptTerms`
-   - **Database:** `users`
-   - **Result:** Navigate to dashboard
 
 
 ---
 
 ## Privacy Page {#privacy-page}
 
-**Description:** Page displaying the privacy policy of the application
+**Description:** Page detailing the privacy policy of the application
 
 **Steps:**
 
@@ -115,16 +116,16 @@
 
 ## Debug SEO Page {#debug-seo-page}
 
-**Description:** Page for debugging SEO-related issues for the user's websites
+**Description:** Page for users to test and debug SEO settings
 
 **Steps:**
-1. **Run Debug Tool**
+1. **Test SEO Settings**
    - **UI Component:** [debug-seo-page](frontend.md#debug-seo-page)
    - **Event:** `onClick`
-   - **API Call:** [run-debug-seo-function](backend.md#run-debug-seo-function)
-   - **Service:** `runDebugSeo`
+   - **API Call:** [test-seo-settings-function](backend.md#test-seo-settings-function)
+   - **Service:** `testSeoSettings`
    - **Database:** `websites`
-   - **Result:** Navigate to debug-results-page
+   - **Result:** Navigate to debug-results
 
 
 ---

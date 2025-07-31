@@ -2,76 +2,71 @@
 
 # Database Documentation
 
-This documentation provides a comprehensive overview of the database architecture, schema, query patterns, data models, and performance considerations for the project utilizing Supabase as the database solution.
+This document provides a comprehensive overview of the database architecture, schema, query patterns, data models, and performance considerations for the project utilizing Supabase as the database solution.
 
 ## 1. Database Architecture
 
-### Type
-The project uses **Supabase**, an open-source backend-as-a-service (BaaS) that provides a PostgreSQL database, authentication, real-time subscriptions, and storage.
+### 1.1 Database Type
+- **Type**: Supabase (PostgreSQL)
+- **Hosting**: Supabase provides a managed PostgreSQL database hosted in the cloud.
 
-### Hosting
-Supabase is hosted on the Supabase cloud infrastructure, which offers scalability and reliability. The database is managed by Supabase, ensuring automatic backups and updates.
+### 1.2 Connection Details
+- **Client Library**: `@supabase/supabase-js`
+- **SSR Library**: `@supabase/ssr`
+- **Connection String**: The connection string is typically provided in the environment variables and follows the format:
+  ```
+  supabaseUrl = 'https://<project-ref>.supabase.co'
+  supabaseKey = '<anon-key>'
+  ```
+- **Initialization**:
+  ```javascript
+  import { createClient } from '@supabase/supabase-js';
 
-### Connection Details
-To connect to the Supabase database, the following details are required:
-- **URL**: The Supabase project URL, typically in the format `https://<project-ref>.supabase.co`
-- **API Key**: A secret API key that grants access to the database.
-- **Database URL**: The PostgreSQL connection string, which includes the database name, user, password, and host.
-
-### Dependencies
-The project relies on the following npm packages:
-- `@supabase/ssr`: For server-side rendering with Supabase.
-- `@supabase/supabase-js`: The official JavaScript client library for interacting with Supabase.
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  ```
 
 ## 2. Schema Overview
 
-The database schema consists of multiple tables that represent different entities in the application. Below is a high-level overview of the tables and their relationships.
+### 2.1 Tables/Collections
+The following is a high-level overview of the primary tables utilized in the database. Each table includes its purpose and key relationships.
 
-### Tables
-- **Users**: Stores user information and authentication details.
-- **Posts**: Contains blog posts or articles created by users.
-- **Comments**: Stores comments made by users on posts.
-- **Categories**: Represents categories for organizing posts.
-- **Tags**: Allows tagging of posts for better searchability.
+| Table Name             | Description                                      | Relationships                |
+|------------------------|--------------------------------------------------|------------------------------|
+| users                  | Stores user information                          | One-to-many with profiles    |
+| profiles               | Stores user profile details                      | One-to-one with users        |
+| posts                  | Contains blog posts                              | Many-to-one with users       |
+| comments               | Stores comments on posts                         | Many-to-one with posts       |
+| categories             | Categorizes posts                                | Many-to-many with posts      |
+| tags                   | Tags for posts                                   | Many-to-many with posts      |
+| settings               | User-specific settings                          | One-to-one with users        |
 
-### Relationships
-- **Users to Posts**: One-to-Many (A user can create multiple posts).
-- **Posts to Comments**: One-to-Many (A post can have multiple comments).
-- **Posts to Categories**: Many-to-One (A post belongs to one category).
-- **Posts to Tags**: Many-to-Many (A post can have multiple tags, and a tag can belong to multiple posts).
+### 2.2 Relationships
+- **Users to Profiles**: One-to-one relationship where each user has one profile.
+- **Users to Posts**: One-to-many relationship where each user can create multiple posts.
+- **Posts to Comments**: One-to-many relationship where each post can have multiple comments.
+- **Posts to Categories/Tags**: Many-to-many relationships allowing posts to be categorized and tagged.
 
 ## 3. Query Patterns
 
-The database is accessed and modified through various query patterns, primarily using the Supabase client library. Below are examples of common query patterns:
+### 3.1 Data Access
+Data is accessed primarily through the following methods:
 
-### Data Retrieval
-- **Fetching All Posts**:
-  ```javascript
-  const { data, error } = await supabase
-    .from('posts')
-    .select('*');
-  ```
-
-- **Fetching Posts by Category**:
+- **Select Queries**: Fetching data from tables.
   ```javascript
   const { data, error } = await supabase
     .from('posts')
     .select('*')
-    .eq('category_id', categoryId);
+    .eq('user_id', userId);
   ```
 
-### Data Insertion
-- **Inserting a New Post**:
+- **Insert Queries**: Adding new records.
   ```javascript
   const { data, error } = await supabase
     .from('posts')
-    .insert([
-      { title: 'New Post', content: 'Post content', user_id: userId, category_id: categoryId }
-    ]);
+    .insert([{ title: 'New Post', content: 'Post content', user_id: userId }]);
   ```
 
-### Data Update
-- **Updating a Post**:
+- **Update Queries**: Modifying existing records.
   ```javascript
   const { data, error } = await supabase
     .from('posts')
@@ -79,64 +74,71 @@ The database is accessed and modified through various query patterns, primarily 
     .eq('id', postId);
   ```
 
-### Data Deletion
-- **Deleting a Comment**:
+- **Delete Queries**: Removing records.
   ```javascript
   const { data, error } = await supabase
-    .from('comments')
+    .from('posts')
     .delete()
-    .eq('id', commentId);
+    .eq('id', postId);
   ```
+
+### 3.2 Data Modification
+Data modification follows RESTful principles, where HTTP methods correspond to CRUD operations.
 
 ## 4. Data Models
 
-### Users Table
-- **id**: UUID (Primary Key)
-- **email**: String (Unique, Required)
-- **password**: String (Required)
-- **created_at**: Timestamp (Default: now())
+### 4.1 Structure
+Each table has a defined structure with specific fields. Below are examples of the structure for key tables:
 
-### Posts Table
-- **id**: UUID (Primary Key)
-- **title**: String (Required)
-- **content**: Text (Required)
-- **user_id**: UUID (Foreign Key referencing Users)
-- **category_id**: UUID (Foreign Key referencing Categories)
-- **created_at**: Timestamp (Default: now())
+#### Users Table
+| Field Name | Type       | Constraints            |
+|------------|------------|------------------------|
+| id         | UUID       | Primary Key            |
+| email      | VARCHAR    | Unique, Not Null       |
+| password   | VARCHAR    | Not Null               |
+| created_at | TIMESTAMP  | Default: now()         |
 
-### Comments Table
-- **id**: UUID (Primary Key)
-- **post_id**: UUID (Foreign Key referencing Posts)
-- **user_id**: UUID (Foreign Key referencing Users)
-- **content**: Text (Required)
-- **created_at**: Timestamp (Default: now())
+#### Posts Table
+| Field Name | Type       | Constraints            |
+|------------|------------|------------------------|
+| id         | UUID       | Primary Key            |
+| title      | VARCHAR    | Not Null               |
+| content    | TEXT       | Not Null               |
+| user_id    | UUID       | Foreign Key (users.id) |
+| created_at | TIMESTAMP  | Default: now()         |
 
-### Categories Table
-- **id**: UUID (Primary Key)
-- **name**: String (Unique, Required)
-
-### Tags Table
-- **id**: UUID (Primary Key)
-- **name**: String (Unique, Required)
-
-### PostTags Table (Join Table for Many-to-Many Relationship)
-- **post_id**: UUID (Foreign Key referencing Posts)
-- **tag_id**: UUID (Foreign Key referencing Tags)
+### 4.2 Validation Rules
+Validation rules are enforced at the application level, ensuring that required fields are populated and data types are respected before any database operations are executed.
 
 ## 5. Performance Considerations
 
-### Indexing
-To optimize query performance, the following indexes should be considered:
-- Index on `user_id` in the Posts table to speed up queries filtering by user.
-- Index on `category_id` in the Posts table to enhance performance for category-based queries.
-- Composite index on `post_id` and `user_id` in the Comments table for efficient retrieval of comments.
+### 5.1 Indexing
+To enhance query performance, the following indexes are recommended:
+- Index on `user_id` in the `posts` table to speed up user-specific queries.
+- Index on `post_id` in the `comments` table to optimize comment retrieval for specific posts.
+- Composite indexes on `tags` and `categories` for efficient filtering.
 
-### Optimization
-- **Batch Inserts**: Use batch inserts for adding multiple records at once to reduce the number of transactions.
-- **Pagination**: Implement pagination in queries that return large datasets to improve load times and user experience.
-- **Caching**: Utilize caching strategies for frequently accessed data to reduce database load.
+### 5.2 Optimization Techniques
+- **Batch Inserts**: Use batch inserts for adding multiple records to reduce the number of transactions.
+- **Pagination**: Implement pagination for queries that return large datasets to improve load times and reduce server load.
+- **Caching**: Utilize caching strategies for frequently accessed data to minimize database hits.
 
-This documentation serves as a guide for developers to understand and work with the Supabase database in this project effectively. It is recommended to keep this documentation updated as the database schema evolves.
+## 6. Files with Database Queries
+
+### 6.1 File: `src/app/api/admin/check-schema/route.ts`
+- **Queries**: This file contains API routes that check the current database schema against expected configurations.
+
+### 6.2 File: `docs-improved/database-schema.md`
+- **Queries**: This documentation file outlines the database schema in detail, including tables, relationships, and data types.
+
+### 6.3 File: `supabase/migrations/021_cms_content_schemas.sql`
+- **Queries**: This migration file defines the schema for content management, including the creation of tables and relationships.
+
+### 6.4 File: `supabase/migrations/001_initial_schema.sql`
+- **Queries**: This migration file sets up the initial database schema, creating essential tables and establishing primary keys.
+
+## Conclusion
+This documentation serves as a guide for developers working with the Supabase database in this project. It provides essential information on the architecture, schema, query patterns, data models, and performance considerations necessary for effective database management and application development.
 
 ## Schema
 

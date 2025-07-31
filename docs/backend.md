@@ -2,34 +2,31 @@
 
 # Backend API Documentation
 
-This documentation provides a comprehensive overview of the backend API, including routes, functions, and their interactions with the database. It is structured to assist developers in understanding and utilizing the codebase effectively.
-
----
+This document provides a comprehensive overview of the backend API, including routes, functions, and their interactions with the database. It also includes mappings between UI components and API endpoints for better understanding and navigation.
 
 ## Table of Contents
-
-- [Strapi Publishing Debug & Fix](#strapi-publishing-debug--fix)
-- [Admin Tool API](#admin-tool-api)
-- [Supabase Server Client](#supabase-server-client)
-- [GSC Connection Component](#gsc-connection-component)
-- [API Service](#api-service)
-- [UI Component → API Mapping](#ui-component--api-mapping)
+- [1. Strapi Publishing Debug & Fix](#1-strapi-publishing-debug--fix)
+- [2. Admin Tool API](#2-admin-tool-api)
+- [3. Supabase Server Client](#3-supabase-server-client)
+- [4. GSC Connection Component](#4-gsc-connection-component)
+- [5. API Service](#5-api-service)
+- [6. UI Component → API Mapping](#6-ui-component--api-mapping)
 
 ---
 
-## Strapi Publishing Debug & Fix
+## 1. Strapi Publishing Debug & Fix
 
 ### Issues Identified & Fixed ✅
 
-#### 1. CMS Manager Database Schema Mismatch
-- **Problem**: Mismatch between the CMS Manager's modern schema and the legacy database schema.
+#### 1.1 CMS Manager Database Schema Mismatch
+- **Problem**: The CMS Manager was using modern schema (`user_id`, `is_active`) while the database had a legacy schema (`user_token`, `status`).
 - **Error**: `400 Bad Request` when querying the `cms_connections` table.
 - **Fixed**: Updated `/src/lib/cms/cms-manager.ts` to use correct column names:
   - `user_id` → `user_token`
   - `is_active` → `status = 'active'`
   - Updated `dbRecordToConnection()` to map legacy schema properly.
 
-#### 2. Created Supabase Edge Function
+#### 1.2 Created Supabase Edge Function
 - **File**: `/supabase/functions/publish-article/index.ts`
 - **Purpose**: Replace Vercel Edge Functions with Supabase Edge Functions.
 - **Features**:
@@ -46,7 +43,7 @@ This documentation provides a comprehensive overview of the backend API, includi
 
 ---
 
-## Admin Tool API
+## 2. Admin Tool API
 
 ### Routes
 - **GET** `/api/health`
@@ -58,27 +55,28 @@ This documentation provides a comprehensive overview of the backend API, includi
 - **GET** `/api/env`
 - **GET** `/`
 
-### Example Code
-```javascript
+### Functions
+- **Health Check**: Returns the health status of the API.
+- **Get Websites**: Retrieves all websites with associated user information.
+
+### Example Route Implementation
+```typescript
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 ```
 
-### Purpose
-Provides health check and management functionalities for websites and users.
-
-### Error Handling
-- Standard HTTP error codes (e.g., `404 Not Found`, `500 Internal Server Error`).
-
 ---
 
-## Supabase Server Client
+## 3. Supabase Server Client
 
-### File
-- **Path**: `/src/lib/supabase-server.ts`
+### Functionality
+- **Function**: `createServerSupabaseClient`
+- **Purpose**: Creates a Supabase client for server-side rendering.
+- **Parameters**: None.
+- **Returns**: A Supabase client instance.
 
-### Example Code
+### Example Implementation
 ```typescript
 export const createServerSupabaseClient = () => {
   const cookieStore = cookies();
@@ -103,70 +101,62 @@ export const createServerSupabaseClient = () => {
 };
 ```
 
-### Purpose
-Creates a Supabase client for server-side operations, managing cookies for authentication.
-
 ---
 
-## GSC Connection Component
+## 4. GSC Connection Component
 
 ### Routes
 - **GET** `gsc_connected`
 - **GET** `error`
 - **GET** `details`
 
-### Example Code
-```javascript
+### Function
+- **Function**: `GSCConnection(param)`
+- **Purpose**: Manages the connection status with Google Search Console (GSC).
+
+### Example Implementation
+```typescript
 export default function GSCConnection({ onConnectionChange }: GSCConnectionProps) {
-  const { user } = useAuth();
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ connected: false });
-  // Additional state management...
+  // Component logic here...
 }
 ```
 
-### Purpose
-Handles the connection status and properties for Google Search Console (GSC).
-
-### Parameters
-- **GSCConnectionProps**: Optional callback for connection changes.
-
-### Response
-- Connection status and properties related to GSC.
-
 ---
 
-## API Service
+## 5. API Service
 
 ### Routes
 - **GET** `/`
 
-### Example Code
-```javascript
+### Functions
+- **Purpose**: Entry point for the API service, handling various routes through imported route files.
+
+### Example Route Implementation
+```typescript
 const app = express();
-app.use(helmet());
-app.use(cors());
+app.use('/api/auth', authRoutes);
+app.use('/api/gsc', gscRoutes);
+app.use('/api/cms', cmsRoutes);
+app.use('/api/articles', articlesRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/seo', seoRoutes);
+app.use('/api/health', healthRoutes);
 ```
 
-### Purpose
-Main entry point for the API service, setting up middleware and routes.
+---
 
-### Error Handling
-- Utilizes custom error handling middleware.
+## 6. UI Component → API Mapping
+
+| **Slug**          | **Service Function**       | **Linked Components** | **Purpose**                              | **Parameters**                      | **Response**                      | **Error Handling**                | **Database Operations**           |
+|-------------------|----------------------------|-----------------------|------------------------------------------|------------------------------------|-----------------------------------|-----------------------------------|-----------------------------------|
+| `get-health`      | `GET /api/health`         | -                     | Returns the health status of the API.   | None                               | `{ status: 'ok', timestamp: '...'}` | `500 Internal Server Error`       | None                              |
+| `get-websites`    | `GET /api/websites`       | -                     | Retrieves all websites.                  | None                               | `[{ id: 1, name: 'Website 1' }]` | `404 Not Found`                   | Select from `websites`           |
+| `post-websites`   | `POST /api/websites`      | -                     | Creates a new website.                   | `{ name: string, url: string }`   | `{ id: 1, name: 'Website 1' }`   | `400 Bad Request`                 | Insert into `websites`           |
+| `gsc_connected`    | `GET gsc_connected`       | `GSCConnection`       | Checks GSC connection status.            | None                               | `{ connected: true, ... }`       | `401 Unauthorized`                 | None                              |
 
 ---
 
-## UI Component → API Mapping
-
-| **Slug**          | **Service Function**          | **Linked Components** | **Purpose**                                   | **Parameters**                     | **Response**                               | **Error Handling**                      | **Database Operations**              |
-|-------------------|-------------------------------|-----------------------|-----------------------------------------------|------------------------------------|--------------------------------------------|----------------------------------------|--------------------------------------|
-| `get-health`      | `app.get('/api/health')`     | N/A                   | Check API health status                      | None                               | `{ status: 'ok', timestamp: '...' }`     | `500 Internal Server Error`            | None                                 |
-| `get-websites`    | `app.get('/api/websites')`   | N/A                   | Retrieve all websites                        | None                               | Array of website objects                   | `404 Not Found`, `500 Internal Server Error` | Fetches from `websites` table       |
-| `post-websites`   | `app.post('/api/websites')`   | N/A                   | Create a new website                         | Website data in request body       | Created website object                     | `400 Bad Request`, `500 Internal Server Error` | Inserts into `websites` table       |
-| `gsc-connection`  | `GSCConnection`               | GSCConnection         | Manage GSC connection status                 | Connection parameters               | Connection status and properties           | `401 Unauthorized`, `500 Internal Server Error` | None                                 |
-
----
-
-This documentation serves as a guide for developers to understand the backend API's structure, functionalities, and how to interact with it effectively. For further assistance, please refer to the specific sections or contact the development team.
+This documentation serves as a reference for developers to understand the backend API structure, its routes, and how they relate to the UI components. For further details on specific implementations, please refer to the respective code files.
 
 ## API Endpoints
 
@@ -408,91 +398,6 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 
 ---
 
-### GET SUPABASE_URL {#get-supabase-url}
-
-GET endpoint for SUPABASE_URL
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
-### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
-
-GET endpoint for SUPABASE_SERVICE_ROLE_KEY
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
-### GET token {#get-token}
-
-GET endpoint for token
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
-### GET SUPABASE_URL {#get-supabase-url}
-
-GET endpoint for SUPABASE_URL
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
-### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
-
-GET endpoint for SUPABASE_SERVICE_ROLE_KEY
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
 ### GET Authorization {#get-authorization}
 
 GET endpoint for Authorization
@@ -544,6 +449,91 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 
 ---
 
+### GET SUPABASE_URL {#get-supabase-url}
+
+GET endpoint for SUPABASE_URL
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET token {#get-token}
+
+GET endpoint for token
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET SUPABASE_URL {#get-supabase-url}
+
+GET endpoint for SUPABASE_URL
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
 ### GET token {#get-token}
 
 GET endpoint for token
@@ -612,57 +602,6 @@ GET endpoint for OPENAI_API_KEY
 
 ---
 
-### GET SUPABASE_URL {#get-supabase-url}
-
-GET endpoint for SUPABASE_URL
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
-### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
-
-GET endpoint for SUPABASE_SERVICE_ROLE_KEY
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
-### GET OPENAI_API_KEY {#get-openai-api-key}
-
-GET endpoint for OPENAI_API_KEY
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
 ### GET OPENAI_API_KEY {#get-openai-api-key}
 
 GET endpoint for OPENAI_API_KEY
@@ -717,6 +656,57 @@ GET endpoint for SUPABASE_URL
 ### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
 
 GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET SUPABASE_URL {#get-supabase-url}
+
+GET endpoint for SUPABASE_URL
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET OPENAI_API_KEY {#get-openai-api-key}
+
+GET endpoint for OPENAI_API_KEY
 
 **Service Function:** `handler`
 
@@ -1652,6 +1642,23 @@ GET endpoint for limit
 ### GET offset {#get-offset}
 
 GET endpoint for offset
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET userToken {#get-usertoken}
+
+GET endpoint for userToken
 
 **Service Function:** `handler`
 

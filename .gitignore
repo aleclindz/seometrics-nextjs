@@ -44,3 +44,7 @@ __MACOSX/
 # admin tool - don't deploy to production
 admin-tool/
 admin-tool.zip
+
+# documentation - keep out of production
+docs/
+docs.backup*/

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function LandingFooter() {
   return (
@@ -9,13 +10,15 @@ export default function LandingFooter() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="col-span-1 md:col-span-1">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold">SEOAgent</span>
+            <div className="flex items-center mb-4">
+              <Image 
+                src="/assets/SEOAgent_logo.png" 
+                alt="SEOAgent" 
+                width={140}
+                height={36}
+                style={{ height: '36px', width: 'auto' }}
+                className="brightness-0 invert"
+              />
             </div>
             <p className="text-gray-400 text-sm mb-4">
               Put your SEO on auto-pilot with automated technical SEO, content writing, and strategic optimization.

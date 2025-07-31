@@ -19,14 +19,13 @@ The Upgrade Badge page provides user interface and functionality for upgrade bad
 
 The Protected Route page provides user interface and functionality for protected route related features.
 
-**Interactive Components**: 2
 
 ### Feature Gate
 **Route**: `/unknown`
 
 The Feature Gate page provides user interface and functionality for feature gate related features.
 
-**Interactive Components**: 4
+**Interactive Components**: 2
 - ⚡ Upgrade Now, ← Back to Dashboard
 
 ### App
@@ -34,7 +33,6 @@ The Feature Gate page provides user interface and functionality for feature gate
 
 The App page provides user interface and functionality for app related features.
 
-**Interactive Components**: 5
 
 ### Layout
 **Route**: `/layout.tsx`
@@ -42,13 +40,14 @@ The App page provides user interface and functionality for app related features.
 The Layout page provides user interface and functionality for layout related features.
 
 **Interactive Components**: 5
+- link, link, link, link, link
 
 ### Terms
 **Route**: `/terms`
 
 The Terms page provides user interface and functionality for terms related features.
 
-**Interactive Components**: 6
+**Interactive Components**: 1
 - legal@seoagent.com
 
 ### Strategy
@@ -56,7 +55,7 @@ The Terms page provides user interface and functionality for terms related featu
 
 The Strategy page provides user interface and functionality for strategy related features.
 
-**Interactive Components**: 14
+**Interactive Components**: 2
 - input, Join Waitlist
 
 ### Privacy
@@ -64,7 +63,7 @@ The Strategy page provides user interface and functionality for strategy related
 
 The Privacy page provides user interface and functionality for privacy related features.
 
-**Interactive Components**: 6
+**Interactive Components**: 1
 - privacy@seoagent.com
 
 ### Login
@@ -72,7 +71,7 @@ The Privacy page provides user interface and functionality for privacy related f
 
 The Login page provides user interface and functionality for login related features.
 
-**Interactive Components**: 13
+**Interactive Components**: 6
 - form, input, input, button, button, LoginForm
 
 ### Keywords
@@ -80,14 +79,13 @@ The Login page provides user interface and functionality for login related featu
 
 The Keywords page provides user interface and functionality for keywords related features.
 
-**Interactive Components**: 7
 
 ### Debug Seo
 **Route**: `/debug-seo`
 
 The Debug Seo page provides user interface and functionality for debug seo related features.
 
-**Interactive Components**: 17
+**Interactive Components**: 3
 - Back to Dashboard, Run All Tests, Run
 
 ### Dashboard
@@ -95,14 +93,13 @@ The Debug Seo page provides user interface and functionality for debug seo relat
 
 The Dashboard page provides user interface and functionality for dashboard related features.
 
-**Interactive Components**: 2
 
 ### Content Writer
 **Route**: `/content-writer`
 
 The Content Writer page provides user interface and functionality for content writer related features.
 
-**Interactive Components**: 57
+**Interactive Components**: 17
 - button, Set Up CMS Connection, Create New Article, form, input, select, select, input, Cancel, button, select, button, button, button, View Live Article, Edit in Strapi, button
 
 ### Cms Connections
@@ -110,7 +107,7 @@ The Content Writer page provides user interface and functionality for content wr
 
 The Cms Connections page provides user interface and functionality for cms connections related features.
 
-**Interactive Components**: 19
+**Interactive Components**: 4
 - Connect CMS, Cancel, Try Again, Get Started
 
 ### Chat
@@ -118,14 +115,13 @@ The Cms Connections page provides user interface and functionality for cms conne
 
 The Chat page provides user interface and functionality for chat related features.
 
-**Interactive Components**: 2
 
 ### Autopilot
 **Route**: `/autopilot`
 
 The Autopilot page provides user interface and functionality for autopilot related features.
 
-**Interactive Components**: 11
+**Interactive Components**: 1
 - Get Tracking Script
 
 ### Article Writer
@@ -133,7 +129,7 @@ The Autopilot page provides user interface and functionality for autopilot relat
 
 The Article Writer page provides user interface and functionality for article writer related features.
 
-**Interactive Components**: 57
+**Interactive Components**: 17
 - button, Set Up CMS Connection, Create New Article, form, input, select, select, input, Cancel, button, select, button, button, button, View Live Article, Edit in Strapi, button
 
 ### Add Website
@@ -141,7 +137,7 @@ The Article Writer page provides user interface and functionality for article wr
 
 The Add Website page provides user interface and functionality for add website related features.
 
-**Interactive Components**: 29
+**Interactive Components**: 10
 - textarea, Copy Code, Done, form, input, select, input, input, Cancel, button
 
 ### Account
@@ -149,7 +145,7 @@ The Add Website page provides user interface and functionality for add website r
 
 The Account page provides user interface and functionality for account related features.
 
-**Interactive Components**: 15
+**Interactive Components**: 4
 - input, input, input, Sign Out
 
 ### [website Id]
@@ -157,7 +153,7 @@ The Account page provides user interface and functionality for account related f
 
 The [website Id] page provides user interface and functionality for [website id] related features.
 
-**Interactive Components**: 40
+**Interactive Components**: 5
 - Return to Dashboard, Dashboard, button, button
 
 ### [token]
@@ -165,7 +161,7 @@ The [website Id] page provides user interface and functionality for [website id]
 
 The [token] page provides user interface and functionality for [token] related features.
 
-**Interactive Components**: 39
+**Interactive Components**: 4
 - Back to Dashboard, a, Edit, Delete
 
 ### [token]
@@ -173,7 +169,7 @@ The [token] page provides user interface and functionality for [token] related f
 
 The [token] page provides user interface and functionality for [token] related features.
 
-**Interactive Components**: 40
+**Interactive Components**: 4
 - Back to Dashboard, a, Edit, Delete
 
 ### Cms Connection
@@ -181,7 +177,7 @@ The [token] page provides user interface and functionality for [token] related f
 
 The Cms Connection page provides user interface and functionality for cms connection related features.
 
-**Interactive Components**: 27
+**Interactive Components**: 5
 - Return to Dashboard, Dashboard, button, Disconnect
 
 ## Navigation Flow
@@ -203,40 +199,39 @@ The application provides seamless navigation between pages through:
 
 # Frontend Architecture Overview
 
-This React application consists of **23 pages** with **418 components** (85 interactive).
+This React application consists of **23 pages** with **92 components** (90 interactive).
 
 ## Pages Structure
 
 - **[Upgrade Badge](#upgrade-badge)** (`/unknown`) - 1 components
-- **[Protected Route](#protected-route)** (`/unknown`) - 2 components
-- **[Feature Gate](#feature-gate)** (`/unknown`) - 4 components
-- **[App](#app)** (`/`) - 5 components
+- **[Protected Route](#protected-route)** (`/unknown`) - 0 components
+- **[Feature Gate](#feature-gate)** (`/unknown`) - 2 components
+- **[App](#app)** (`/`) - 0 components
 - **[Layout](#layout)** (`/layout.tsx`) - 5 components
-- **[Terms](#terms)** (`/terms`) - 6 components
-- **[Strategy](#strategy)** (`/strategy`) - 14 components
-- **[Privacy](#privacy)** (`/privacy`) - 6 components
-- **[Login](#login)** (`/login`) - 13 components
-- **[Keywords](#keywords)** (`/keywords`) - 7 components
-- **[Debug Seo](#debug-seo)** (`/debug-seo`) - 17 components
-- **[Dashboard](#dashboard)** (`/dashboard`) - 2 components
-- **[Content Writer](#content-writer)** (`/content-writer`) - 57 components
-- **[Cms Connections](#cms-connections)** (`/cms-connections`) - 19 components
-- **[Chat](#chat)** (`/chat`) - 2 components
-- **[Autopilot](#autopilot)** (`/autopilot`) - 11 components
-- **[Article Writer](#article-writer)** (`/article-writer`) - 57 components
-- **[Add Website](#add-website)** (`/add-website`) - 29 components
-- **[Account](#account)** (`/account`) - 15 components
-- **[[website Id]](#website-id)** (`/website/[websiteId]`) - 40 components
-- **[[token]](#token)** (`/meta-tags/[token]`) - 39 components
-- **[[token]](#token)** (`/alt-tags/[token]`) - 40 components
-- **[Cms Connection](#cms-connection)** (`/website/[websiteId]/cms-connection`) - 27 components
+- **[Terms](#terms)** (`/terms`) - 1 components
+- **[Strategy](#strategy)** (`/strategy`) - 2 components
+- **[Privacy](#privacy)** (`/privacy`) - 1 components
+- **[Login](#login)** (`/login`) - 6 components
+- **[Keywords](#keywords)** (`/keywords`) - 0 components
+- **[Debug Seo](#debug-seo)** (`/debug-seo`) - 3 components
+- **[Dashboard](#dashboard)** (`/dashboard`) - 0 components
+- **[Content Writer](#content-writer)** (`/content-writer`) - 17 components
+- **[Cms Connections](#cms-connections)** (`/cms-connections`) - 4 components
+- **[Chat](#chat)** (`/chat`) - 0 components
+- **[Autopilot](#autopilot)** (`/autopilot`) - 1 components
+- **[Article Writer](#article-writer)** (`/article-writer`) - 17 components
+- **[Add Website](#add-website)** (`/add-website`) - 10 components
+- **[Account](#account)** (`/account`) - 4 components
+- **[[website Id]](#website-id)** (`/website/[websiteId]`) - 5 components
+- **[[token]](#token)** (`/meta-tags/[token]`) - 4 components
+- **[[token]](#token)** (`/alt-tags/[token]`) - 4 components
+- **[Cms Connection](#cms-connection)** (`/website/[websiteId]/cms-connection`) - 5 components
 
 ## Component Distribution
 
-- **Other Components**: 331
 - **Buttons & Actions**: 45
 - **Input Fields**: 21
-- **Navigation Links**: 14
+- **Navigation Links**: 19
 - **Forms & Input**: 5
 - **Navigation Components**: 2
 
@@ -262,46 +257,6 @@ Interactive button labeled "⚡" that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks ⚡
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Protected Route page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Protected Route page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Feature Gate page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Feature Gate page
-
 
 
 ### button {#button}
@@ -330,153 +285,53 @@ Interactive button labeled "← Back to Dashboard" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks ← Back to Dashboard
 
 
-### svg {#svg}
+### link {#link}
 
-svg component
+Navigation link that takes users to different pages
 
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in App page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in App page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in App page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in App page
-
-
-
-### LandingPage {#landingpage}
-
-LandingPage component
-
-**Props:** 
-
-**Usage:** Used in App page
-
-
-
-### html {#html}
-
-html component
-
-**Props:** lang: string
+**Props:** rel: string, href: string, sizes: string
 
 **Usage:** Used in Layout page
 
 
 
-### body {#body}
+### link {#link}
 
-body component
+Navigation link that takes users to different pages
 
-**Props:** className: string
-
-**Usage:** Used in Layout page
-
-
-
-### AuthProvider {#authprovider}
-
-AuthProvider component
-
-**Props:** 
+**Props:** rel: string, href: string, sizes: string, type: string
 
 **Usage:** Used in Layout page
 
 
 
-### Script {#script}
+### link {#link}
 
-Script component
+Navigation link that takes users to different pages
 
-**Props:** src: string, strategy: string
-
-**Usage:** Used in Layout page
-
-
-
-### Script {#script}
-
-Script component
-
-**Props:** id: string, strategy: string
+**Props:** rel: string, href: string, sizes: string, type: string
 
 **Usage:** Used in Layout page
 
 
 
-### ul {#ul}
+### link {#link}
 
-ul component
+Navigation link that takes users to different pages
 
-**Props:** 
+**Props:** rel: string, href: string
 
-**Usage:** Used in Terms page
-
-
-
-### li {#li}
-
-li component labeled "Use the service for any unlawful purpose or to solicit unlawful activity"
-
-**Props:** 
-
-**Usage:** Used in Terms page
+**Usage:** Used in Layout page
 
 
 
-### li {#li}
+### link {#link}
 
-li component labeled "Attempt to gain unauthorized access to our systems"
+Navigation link that takes users to different pages
 
-**Props:** 
+**Props:** rel: string, href: string
 
-**Usage:** Used in Terms page
-
-
-
-### li {#li}
-
-li component labeled "Interfere with or disrupt the service or servers"
-
-**Props:** 
-
-**Usage:** Used in Terms page
-
-
-
-### li {#li}
-
-li component labeled "Use the service to spam or send unsolicited messages"
-
-**Props:** 
-
-**Usage:** Used in Terms page
+**Usage:** Used in Layout page
 
 
 
@@ -487,126 +342,6 @@ Navigation link labeled "legal@seoagent.com" that takes users to different pages
 **Props:** href: string, className: string
 
 **Usage:** Used in Terms page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Strategy page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Strategy page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Strategy page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Strategy page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Strategy page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Strategy page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Strategy page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Strategy page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Strategy page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Strategy page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Strategy page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Strategy page
 
 
 
@@ -630,56 +365,6 @@ Interactive button labeled "Join Waitlist" that triggers user actions
 
 
 
-### ul {#ul}
-
-ul component
-
-**Props:** 
-
-**Usage:** Used in Privacy page
-
-
-
-### li {#li}
-
-li component labeled "Provide, maintain, and improve our SEO automation services"
-
-**Props:** 
-
-**Usage:** Used in Privacy page
-
-
-
-### li {#li}
-
-li component labeled "Process transactions and send related information"
-
-**Props:** 
-
-**Usage:** Used in Privacy page
-
-
-
-### li {#li}
-
-li component labeled "Send technical notices and support messages"
-
-**Props:** 
-
-**Usage:** Used in Privacy page
-
-
-
-### li {#li}
-
-li component labeled "Respond to your comments and questions"
-
-**Props:** 
-
-**Usage:** Used in Privacy page
-
-
-
 ### a {#a}
 
 Navigation link labeled "privacy@seoagent.com" that takes users to different pages
@@ -687,26 +372,6 @@ Navigation link labeled "privacy@seoagent.com" that takes users to different pag
 **Props:** href: string, className: string
 
 **Usage:** Used in Privacy page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Login page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Login page
 
 
 
@@ -720,31 +385,11 @@ Form component for user input and data submission
 
 
 
-### label {#label}
-
-label component labeled "Email address"
-
-**Props:** htmlFor: string, className: string
-
-**Usage:** Used in Login page
-
-
-
 ### input {#input}
 
 Input field for user data entry
 
 **Props:** id: string, name: string, type: string, autoComplete: string, required: unknown, value: expression, onChange: expression, className: string
-
-**Usage:** Used in Login page
-
-
-
-### label {#label}
-
-label component labeled "Password"
-
-**Props:** htmlFor: string, className: string
 
 **Usage:** Used in Login page
 
@@ -783,36 +428,6 @@ Interactive button that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
-### Suspense {#suspense}
-
-Suspense component
-
-**Props:** fallback: expression
-
-**Usage:** Used in Login page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Login page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Login page
-
-
-
 ### LoginForm {#loginform}
 
 Form component for user input and data submission
@@ -823,131 +438,11 @@ Form component for user input and data submission
 
 
 
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Keywords page
-
-
-
-### FeatureGate {#featuregate}
-
-FeatureGate component
-
-**Props:** feature: string
-
-**Usage:** Used in Keywords page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Keywords page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Keywords page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Keywords page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Keywords page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Keywords page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Debug Seo page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Debug Seo page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
 ### a {#a}
 
 Navigation link labeled "Back to Dashboard" that takes users to different pages
 
 **Props:** href: string, className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
 
 **Usage:** Used in Debug Seo page
 
@@ -966,76 +461,6 @@ Interactive button labeled "Run All Tests" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Run All Tests
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### label {#label}
-
-label component labeled "Website Token"
-
-**Props:** className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### label {#label}
-
-label component labeled "Current URL"
-
-**Props:** className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### label {#label}
-
-label component labeled "Images Found"
-
-**Props:** className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### label {#label}
-
-label component labeled "Current Meta Title"
-
-**Props:** className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### header {#header}
-
-header component
-
-**Props:** className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
 ### button {#button}
 
 Interactive button labeled "Run" that triggers user actions
@@ -1047,116 +472,6 @@ Interactive button labeled "Run" that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Run
-
-
-### pre {#pre}
-
-pre component
-
-**Props:** className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### header {#header}
-
-header component
-
-**Props:** className: string
-
-**Usage:** Used in Debug Seo page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Dashboard page
-
-
-
-### Dashboard {#dashboard}
-
-Dashboard component
-
-**Props:** 
-
-**Usage:** Used in Dashboard page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Content Writer page
-
-
-
-### FeatureGate {#featuregate}
-
-FeatureGate component
-
-**Props:** feature: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Content Writer page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Content Writer page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
 
 
 ### button {#button}
@@ -1172,71 +487,11 @@ Interactive button that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
-
-
 ### a {#a}
 
 Navigation link labeled "Set Up CMS Connection" that takes users to different pages
 
 **Props:** href: string, className: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
 
 **Usage:** Used in Content Writer page
 
@@ -1255,41 +510,11 @@ Interactive button labeled "Create New Article" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Create New Article
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
-
-
 ### form {#form}
 
 Form component for user input and data submission
 
 **Props:** onSubmit: expression, className: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### label {#label}
-
-label component labeled "Article Title *"
-
-**Props:** className: string
 
 **Usage:** Used in Content Writer page
 
@@ -1305,16 +530,6 @@ Input field for user data entry
 
 
 
-### label {#label}
-
-label component labeled "Website *"
-
-**Props:** className: string
-
-**Usage:** Used in Content Writer page
-
-
-
 ### select {#select}
 
 Input field for user data entry
@@ -1325,71 +540,11 @@ Input field for user data entry
 
 
 
-### option {#option}
-
-option component labeled "Select website..."
-
-**Props:** value: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### option {#option}
-
-option component
-
-**Props:** key: expression, value: expression
-
-**Usage:** Used in Content Writer page
-
-
-
-### label {#label}
-
-label component labeled "CMS Connection"
-
-**Props:** className: string
-
-**Usage:** Used in Content Writer page
-
-
-
 ### select {#select}
 
 Input field for user data entry
 
 **Props:** value: expression, onChange: expression, className: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### option {#option}
-
-option component labeled "Select CMS connection..."
-
-**Props:** value: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### option {#option}
-
-option component labeled "(  )"
-
-**Props:** key: expression, value: expression
-
-**Usage:** Used in Content Writer page
-
-
-
-### label {#label}
-
-label component labeled "Target Keywords"
-
-**Props:** className: string
 
 **Usage:** Used in Content Writer page
 
@@ -1428,16 +583,6 @@ Interactive button that triggers user actions
 
 
 
-### label {#label}
-
-label component labeled "Filter by website:"
-
-**Props:** className: string
-
-**Usage:** Used in Content Writer page
-
-
-
 ### select {#select}
 
 Input field for user data entry
@@ -1448,44 +593,17 @@ Input field for user data entry
 
 
 
-### option {#option}
+### button {#button}
 
-option component labeled "All Websites"
+Interactive button that triggers user actions
 
-**Props:** value: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### option {#option}
-
-option component
-
-**Props:** key: expression, value: expression
+**Props:** onClick: expression, disabled: expression, className: string
 
 **Usage:** Used in Content Writer page
 
 
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
 ### button {#button}
@@ -1501,26 +619,6 @@ Interactive button that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
-
-
 ### button {#button}
 
 Interactive button that triggers user actions
@@ -1532,59 +630,6 @@ Interactive button that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### button {#button}
-
-Interactive button that triggers user actions
-
-**Props:** onClick: expression, disabled: expression, className: string
-
-**Usage:** Used in Content Writer page
-
-
-**Events → Backend:**
-- `click` ➜ [undefined](backend.md#undefined) - User clicks button
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
 
 
 ### a {#a}
@@ -1592,26 +637,6 @@ path component
 Navigation link labeled "View Live Article" that takes users to different pages
 
 **Props:** href: expression, target: string, rel: string, className: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
 
 **Usage:** Used in Content Writer page
 
@@ -1627,26 +652,6 @@ Navigation link labeled "Edit in Strapi" that takes users to different pages
 
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
-
-
 ### button {#button}
 
 Interactive button that triggers user actions
@@ -1658,76 +663,6 @@ Interactive button that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Content Writer page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Cms Connections page
-
-
-
-### FeatureGate {#featuregate}
-
-FeatureGate component
-
-**Props:** feature: string
-
-**Usage:** Used in Cms Connections page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Cms Connections page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Cms Connections page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Cms Connections page
-
 
 
 ### button {#button}
@@ -1743,36 +678,6 @@ Interactive button labeled "Connect CMS" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Connect CMS
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Cms Connections page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Cms Connections page
-
-
-
-### OneClickCMSConnection {#oneclickcmsconnection}
-
-OneClickCMSConnection component
-
-**Props:** onConnectionComplete: expression, className: string
-
-**Usage:** Used in Cms Connections page
-
-
-
 ### button {#button}
 
 Interactive button labeled "Cancel" that triggers user actions
@@ -1784,26 +689,6 @@ Interactive button labeled "Cancel" that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Cancel
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Cms Connections page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Cms Connections page
-
 
 
 ### button {#button}
@@ -1819,26 +704,6 @@ Interactive button labeled "Try Again" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Try Again
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Cms Connections page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Cms Connections page
-
-
-
 ### button {#button}
 
 Interactive button labeled "Get Started" that triggers user actions
@@ -1852,136 +717,6 @@ Interactive button labeled "Get Started" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Get Started
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Cms Connections page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Cms Connections page
-
-
-
-### CMSConnectionsList {#cmsconnectionslist}
-
-CMSConnectionsList component
-
-**Props:** connections: expression, onConnectionDeleted: expression, onConnectionUpdated: expression
-
-**Usage:** Used in Cms Connections page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Chat page
-
-
-
-### ChatInterface {#chatinterface}
-
-ChatInterface component
-
-**Props:** 
-
-**Usage:** Used in Chat page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Autopilot page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Autopilot page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Autopilot page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Autopilot page
-
-
-
-### GSCConnection {#gscconnection}
-
-GSCConnection component
-
-**Props:** onConnectionChange: expression
-
-**Usage:** Used in Autopilot page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, viewBox: string
-
-**Usage:** Used in Autopilot page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** d: string
-
-**Usage:** Used in Autopilot page
-
-
-
-### code {#code}
-
-code component labeled "<script src=“https://agent.seoagent.com/smart.js” data-site-id=“your-site-id”></script>"
-
-**Props:** className: string
-
-**Usage:** Used in Autopilot page
-
-
-
 ### button {#button}
 
 Interactive button labeled "Get Tracking Script" that triggers user actions
@@ -1989,96 +724,6 @@ Interactive button labeled "Get Tracking Script" that triggers user actions
 **Props:** className: string
 
 **Usage:** Used in Autopilot page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Autopilot page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Autopilot page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Article Writer page
-
-
-
-### FeatureGate {#featuregate}
-
-FeatureGate component
-
-**Props:** feature: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Article Writer page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Article Writer page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
 
 
 
@@ -2095,71 +740,11 @@ Interactive button that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
-
-
 ### a {#a}
 
 Navigation link labeled "Set Up CMS Connection" that takes users to different pages
 
 **Props:** href: string, className: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
 
 **Usage:** Used in Article Writer page
 
@@ -2178,41 +763,11 @@ Interactive button labeled "Create New Article" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Create New Article
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
-
-
 ### form {#form}
 
 Form component for user input and data submission
 
 **Props:** onSubmit: expression, className: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### label {#label}
-
-label component labeled "Article Title *"
-
-**Props:** className: string
 
 **Usage:** Used in Article Writer page
 
@@ -2228,16 +783,6 @@ Input field for user data entry
 
 
 
-### label {#label}
-
-label component labeled "Website *"
-
-**Props:** className: string
-
-**Usage:** Used in Article Writer page
-
-
-
 ### select {#select}
 
 Input field for user data entry
@@ -2248,71 +793,11 @@ Input field for user data entry
 
 
 
-### option {#option}
-
-option component labeled "Select website..."
-
-**Props:** value: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### option {#option}
-
-option component
-
-**Props:** key: expression, value: expression
-
-**Usage:** Used in Article Writer page
-
-
-
-### label {#label}
-
-label component labeled "CMS Connection"
-
-**Props:** className: string
-
-**Usage:** Used in Article Writer page
-
-
-
 ### select {#select}
 
 Input field for user data entry
 
 **Props:** value: expression, onChange: expression, className: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### option {#option}
-
-option component labeled "Select CMS connection..."
-
-**Props:** value: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### option {#option}
-
-option component labeled "(  )"
-
-**Props:** key: expression, value: expression
-
-**Usage:** Used in Article Writer page
-
-
-
-### label {#label}
-
-label component labeled "Target Keywords"
-
-**Props:** className: string
 
 **Usage:** Used in Article Writer page
 
@@ -2351,16 +836,6 @@ Interactive button that triggers user actions
 
 
 
-### label {#label}
-
-label component labeled "Filter by website:"
-
-**Props:** className: string
-
-**Usage:** Used in Article Writer page
-
-
-
 ### select {#select}
 
 Input field for user data entry
@@ -2371,44 +846,17 @@ Input field for user data entry
 
 
 
-### option {#option}
+### button {#button}
 
-option component labeled "All Websites"
+Interactive button that triggers user actions
 
-**Props:** value: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### option {#option}
-
-option component
-
-**Props:** key: expression, value: expression
+**Props:** onClick: expression, disabled: expression, className: string
 
 **Usage:** Used in Article Writer page
 
 
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
 ### button {#button}
@@ -2424,26 +872,6 @@ Interactive button that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
-
-
 ### button {#button}
 
 Interactive button that triggers user actions
@@ -2455,59 +883,6 @@ Interactive button that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### button {#button}
-
-Interactive button that triggers user actions
-
-**Props:** onClick: expression, disabled: expression, className: string
-
-**Usage:** Used in Article Writer page
-
-
-**Events → Backend:**
-- `click` ➜ [undefined](backend.md#undefined) - User clicks button
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
 
 
 ### a {#a}
@@ -2515,26 +890,6 @@ path component
 Navigation link labeled "View Live Article" that takes users to different pages
 
 **Props:** href: expression, target: string, rel: string, className: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
 
 **Usage:** Used in Article Writer page
 
@@ -2550,26 +905,6 @@ Navigation link labeled "Edit in Strapi" that takes users to different pages
 
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
-
-
 ### button {#button}
 
 Interactive button that triggers user actions
@@ -2581,76 +916,6 @@ Interactive button that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Article Writer page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Add Website page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Add Website page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Add Website page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Add Website page
-
-
-
-### strong {#strong}
-
-strong component labeled "</body>"
-
-**Props:** 
-
-**Usage:** Used in Add Website page
-
 
 
 ### textarea {#textarea}
@@ -2686,61 +951,11 @@ Navigation link labeled "Done" that takes users to different pages
 
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** xmlns: string, width: string, height: string, viewBox: string, fill: string, stroke: string, strokeWidth: string, strokeLinecap: string, strokeLinejoin: string, className: string
-
-**Usage:** Used in Add Website page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** d: string
-
-**Usage:** Used in Add Website page
-
-
-
 ### form {#form}
 
 Form component for user input and data submission
 
 **Props:** onSubmit: expression, className: string
-
-**Usage:** Used in Add Website page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, viewBox: string, fill: string
-
-**Usage:** Used in Add Website page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** fillRule: string, d: string, clipRule: string
-
-**Usage:** Used in Add Website page
-
-
-
-### label {#label}
-
-label component labeled "Domain Name"
-
-**Props:** htmlFor: string, className: string
 
 **Usage:** Used in Add Website page
 
@@ -2756,16 +971,6 @@ Input field for user data entry
 
 
 
-### label {#label}
-
-label component labeled "Language"
-
-**Props:** htmlFor: string, className: string
-
-**Usage:** Used in Add Website page
-
-
-
 ### select {#select}
 
 Input field for user data entry
@@ -2776,16 +981,6 @@ Input field for user data entry
 
 
 
-### option {#option}
-
-option component
-
-**Props:** key: expression, value: expression
-
-**Usage:** Used in Add Website page
-
-
-
 ### input {#input}
 
 Input field for user data entry
@@ -2796,31 +991,11 @@ Input field for user data entry
 
 
 
-### label {#label}
-
-label component labeled "Enable AI Meta Tags"
-
-**Props:** htmlFor: string, className: string
-
-**Usage:** Used in Add Website page
-
-
-
 ### input {#input}
 
 Input field for user data entry
 
 **Props:** id: string, type: string, checked: expression, onChange: expression, className: string
-
-**Usage:** Used in Add Website page
-
-
-
-### label {#label}
-
-label component labeled "Enable AI Image Alt-Tags"
-
-**Props:** htmlFor: string, className: string
 
 **Usage:** Used in Add Website page
 
@@ -2849,111 +1024,11 @@ Interactive button that triggers user actions
 
 
 
-### svg {#svg}
+### input {#input}
 
-svg component
+Input field for user data entry
 
-**Props:** className: string, xmlns: string, fill: string, viewBox: string
-
-**Usage:** Used in Add Website page
-
-
-
-### circle {#circle}
-
-circle component
-
-**Props:** className: string, cx: string, cy: string, r: string, stroke: string, strokeWidth: string
-
-**Usage:** Used in Add Website page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** className: string, fill: string, d: string
-
-**Usage:** Used in Add Website page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in Add Website page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in Add Website page
-
-
-
-### ProtectedRoute {#protectedroute}
-
-ProtectedRoute component
-
-**Props:** 
-
-**Usage:** Used in Account page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Account page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Account page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Account page
-
-
-
-### header {#header}
-
-header component
-
-**Props:** className: string
-
-**Usage:** Used in Account page
-
-
-
-### label {#label}
-
-label component labeled "Email"
-
-**Props:** className: string
+**Props:** type: string, value: expression, disabled: unknown, className: string
 
 **Usage:** Used in Account page
 
@@ -2969,51 +1044,11 @@ Input field for user data entry
 
 
 
-### label {#label}
-
-label component labeled "User ID"
-
-**Props:** className: string
-
-**Usage:** Used in Account page
-
-
-
 ### input {#input}
 
 Input field for user data entry
 
 **Props:** type: string, value: expression, disabled: unknown, className: string
-
-**Usage:** Used in Account page
-
-
-
-### label {#label}
-
-label component labeled "Account Created"
-
-**Props:** className: string
-
-**Usage:** Used in Account page
-
-
-
-### input {#input}
-
-Input field for user data entry
-
-**Props:** type: string, value: expression, disabled: unknown, className: string
-
-**Usage:** Used in Account page
-
-
-
-### header {#header}
-
-header component
-
-**Props:** className: string
 
 **Usage:** Used in Account page
 
@@ -3032,86 +1067,6 @@ Interactive button labeled "Sign Out" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Sign Out
 
 
-### WebsiteManagement {#websitemanagement}
-
-WebsiteManagement component
-
-**Props:** 
-
-**Usage:** Used in Account page
-
-
-
-### SubscriptionManager {#subscriptionmanager}
-
-SubscriptionManager component
-
-**Props:** 
-
-**Usage:** Used in Account page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [website Id] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [website Id] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [website Id] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [website Id] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [website Id] page
-
-
-
 ### button {#button}
 
 Interactive button labeled "Return to Dashboard" that triggers user actions
@@ -3125,61 +1080,11 @@ Interactive button labeled "Return to Dashboard" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Return to Dashboard
 
 
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [website Id] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [website Id] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [website Id] page
-
-
-
 ### nav {#nav}
 
 Navigation component for site/app navigation
 
 **Props:** className: string, aria-label: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### ol {#ol}
-
-ol component
-
-**Props:** className: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### li {#li}
-
-li component
-
-**Props:** className: string
 
 **Usage:** Used in [website Id] page
 
@@ -3196,166 +1101,6 @@ Interactive button labeled "Dashboard" that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Dashboard
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### li {#li}
-
-li component
-
-**Props:** 
-
-**Usage:** Used in [website Id] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** fillRule: string, d: string, clipRule: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
 
 
 ### button {#button}
@@ -3371,46 +1116,6 @@ Interactive button that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
 ### button {#button}
 
 Interactive button that triggers user actions
@@ -3424,176 +1129,6 @@ Interactive button that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### code {#code}
-
-code component
-
-**Props:** className: string
-
-**Usage:** Used in [website Id] page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [token] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [token] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [token] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [token] page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [token] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [token] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [token] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [token] page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [token] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [token] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
 ### a {#a}
 
 Navigation link labeled "Back to Dashboard" that takes users to different pages
@@ -3604,231 +1139,11 @@ Navigation link labeled "Back to Dashboard" that takes users to different pages
 
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [token] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [token] page
-
-
-
-### header {#header}
-
-header component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### table {#table}
-
-table component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### thead {#thead}
-
-thead component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### tr {#tr}
-
-tr component
-
-**Props:** 
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### tbody {#tbody}
-
-tbody component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### tr {#tr}
-
-tr component
-
-**Props:** 
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** colSpan: expression, className: string
-
-**Usage:** Used in [token] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [token] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [token] page
-
-
-
-### tr {#tr}
-
-tr component
-
-**Props:** key: expression
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
 ### a {#a}
 
 Navigation link that takes users to different pages
 
 **Props:** href: expression, target: string, rel: string, className: string
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
 
 **Usage:** Used in [token] page
 
@@ -3854,136 +1169,6 @@ Interactive button labeled "Delete" that triggers user actions
 
 
 
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [token] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [token] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [token] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [token] page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [token] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [token] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [token] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [token] page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in [token] page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in [token] page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
 ### a {#a}
 
 Navigation link labeled "Back to Dashboard" that takes users to different pages
@@ -3994,241 +1179,11 @@ Navigation link labeled "Back to Dashboard" that takes users to different pages
 
 
 
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [token] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [token] page
-
-
-
-### header {#header}
-
-header component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### table {#table}
-
-table component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### thead {#thead}
-
-thead component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### tr {#tr}
-
-tr component
-
-**Props:** 
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### th {#th}
-
-th component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### tbody {#tbody}
-
-tbody component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### tr {#tr}
-
-tr component
-
-**Props:** 
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** colSpan: expression, className: string
-
-**Usage:** Used in [token] page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, stroke: string, viewBox: string
-
-**Usage:** Used in [token] page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** strokeLinecap: string, strokeLinejoin: string, strokeWidth: expression, d: string
-
-**Usage:** Used in [token] page
-
-
-
-### tr {#tr}
-
-tr component
-
-**Props:** key: expression
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### Image {#image}
-
-Image component
-
-**Props:** src: expression, alt: expression, width: expression, height: expression, className: string, onError: expression
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
 ### a {#a}
 
 Navigation link that takes users to different pages
 
 **Props:** href: expression, target: string, rel: string, className: string
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
-
-**Usage:** Used in [token] page
-
-
-
-### td {#td}
-
-td component
-
-**Props:** className: string
 
 **Usage:** Used in [token] page
 
@@ -4251,66 +1206,6 @@ Interactive button labeled "Delete" that triggers user actions
 **Props:** className: string
 
 **Usage:** Used in [token] page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Cms Connection page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Cms Connection page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Cms Connection page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Cms Connection page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Cms Connection page
 
 
 
@@ -4327,61 +1222,11 @@ Interactive button labeled "Return to Dashboard" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Return to Dashboard
 
 
-### Sidebar {#sidebar}
-
-Sidebar component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression, sidebarExpanded: expression, setSidebarExpanded: expression
-
-**Usage:** Used in Cms Connection page
-
-
-
-### Header {#header}
-
-Header component
-
-**Props:** sidebarOpen: expression, setSidebarOpen: expression
-
-**Usage:** Used in Cms Connection page
-
-
-
-### main {#main}
-
-main component
-
-**Props:** className: string
-
-**Usage:** Used in Cms Connection page
-
-
-
 ### nav {#nav}
 
 Navigation component for site/app navigation
 
 **Props:** className: string, aria-label: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### ol {#ol}
-
-ol component
-
-**Props:** className: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### li {#li}
-
-li component
-
-**Props:** className: string
 
 **Usage:** Used in Cms Connection page
 
@@ -4400,36 +1245,6 @@ Interactive button labeled "Dashboard" that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Dashboard
 
 
-### li {#li}
-
-li component
-
-**Props:** 
-
-**Usage:** Used in Cms Connection page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, viewBox: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** fillRule: string, d: string, clipRule: string
-
-**Usage:** Used in Cms Connection page
-
-
-
 ### button {#button}
 
 Interactive button that triggers user actions
@@ -4443,76 +1258,6 @@ Interactive button that triggers user actions
 - `click` ➜ [undefined](backend.md#undefined) - User clicks button
 
 
-### li {#li}
-
-li component
-
-**Props:** 
-
-**Usage:** Used in Cms Connection page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, viewBox: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** fillRule: string, d: string, clipRule: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, viewBox: string, fill: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** fillRule: string, d: string, clipRule: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### svg {#svg}
-
-svg component
-
-**Props:** className: string, fill: string, viewBox: string
-
-**Usage:** Used in Cms Connection page
-
-
-
-### path {#path}
-
-path component
-
-**Props:** d: string
-
-**Usage:** Used in Cms Connection page
-
-
-
 ### button {#button}
 
 Interactive button labeled "Disconnect" that triggers user actions
@@ -4524,14 +1269,4 @@ Interactive button labeled "Disconnect" that triggers user actions
 
 **Events → Backend:**
 - `click` ➜ [undefined](backend.md#undefined) - User clicks Disconnect
-
-
-### OneClickCMSConnection {#oneclickcmsconnection}
-
-OneClickCMSConnection component
-
-**Props:** onConnectionComplete: expression
-
-**Usage:** Used in Cms Connection page
-
 

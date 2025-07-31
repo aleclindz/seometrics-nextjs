@@ -9,14 +9,14 @@ GET endpoint for /api/health
 
 ## GET /api/websites
 
-GET endpoint for /api/websites
+List websites managed by the user
 
 **Parameters:**
 
 
 ## GET /api/websites/:token
 
-GET endpoint for /api/websites/:token
+List websites managed by the user
 
 **Parameters:**
 
@@ -30,14 +30,14 @@ POST endpoint for /api/test-endpoints/:token
 
 ## POST /api/websites
 
-POST endpoint for /api/websites
+Add new website to management
 
 **Parameters:**
 
 
 ## GET /api/users
 
-GET endpoint for /api/users
+Retrieve user account information
 
 **Parameters:**
 
@@ -98,41 +98,6 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 **Parameters:**
 
 
-## GET SUPABASE_URL
-
-GET endpoint for SUPABASE_URL
-
-**Parameters:**
-
-
-## GET SUPABASE_SERVICE_ROLE_KEY
-
-GET endpoint for SUPABASE_SERVICE_ROLE_KEY
-
-**Parameters:**
-
-
-## GET token
-
-GET endpoint for token
-
-**Parameters:**
-
-
-## GET SUPABASE_URL
-
-GET endpoint for SUPABASE_URL
-
-**Parameters:**
-
-
-## GET SUPABASE_SERVICE_ROLE_KEY
-
-GET endpoint for SUPABASE_SERVICE_ROLE_KEY
-
-**Parameters:**
-
-
 ## GET Authorization
 
 GET endpoint for Authorization
@@ -154,6 +119,41 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 **Parameters:**
 
 
+## GET SUPABASE_URL
+
+GET endpoint for SUPABASE_URL
+
+**Parameters:**
+
+
+## GET SUPABASE_SERVICE_ROLE_KEY
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Parameters:**
+
+
+## GET token
+
+GET endpoint for token
+
+**Parameters:**
+
+
+## GET SUPABASE_URL
+
+GET endpoint for SUPABASE_URL
+
+**Parameters:**
+
+
+## GET SUPABASE_SERVICE_ROLE_KEY
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Parameters:**
+
+
 ## GET token
 
 GET endpoint for token
@@ -182,27 +182,6 @@ GET endpoint for OPENAI_API_KEY
 **Parameters:**
 
 
-## GET SUPABASE_URL
-
-GET endpoint for SUPABASE_URL
-
-**Parameters:**
-
-
-## GET SUPABASE_SERVICE_ROLE_KEY
-
-GET endpoint for SUPABASE_SERVICE_ROLE_KEY
-
-**Parameters:**
-
-
-## GET OPENAI_API_KEY
-
-GET endpoint for OPENAI_API_KEY
-
-**Parameters:**
-
-
 ## GET OPENAI_API_KEY
 
 GET endpoint for OPENAI_API_KEY
@@ -227,6 +206,27 @@ GET endpoint for SUPABASE_URL
 ## GET SUPABASE_SERVICE_ROLE_KEY
 
 GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Parameters:**
+
+
+## GET SUPABASE_URL
+
+GET endpoint for SUPABASE_URL
+
+**Parameters:**
+
+
+## GET SUPABASE_SERVICE_ROLE_KEY
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Parameters:**
+
+
+## GET OPENAI_API_KEY
+
+GET endpoint for OPENAI_API_KEY
 
 **Parameters:**
 
@@ -282,14 +282,14 @@ GET endpoint for /usage
 
 ## GET /websites
 
-GET endpoint for /websites
+List websites managed by the user
 
 **Parameters:**
 
 
 ## POST /websites
 
-POST endpoint for /websites
+Add new website to management
 
 **Parameters:**
 
@@ -612,6 +612,13 @@ GET endpoint for limit
 ## GET offset
 
 GET endpoint for offset
+
+**Parameters:**
+
+
+## GET userToken
+
+GET endpoint for userToken
 
 **Parameters:**
 

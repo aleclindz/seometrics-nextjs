@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/contexts/auth'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -55,10 +56,14 @@ function LoginForm() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+          <div className="w-16 h-16 rounded-lg flex items-center justify-center">
+            <Image 
+              src="/assets/agent_icon.png" 
+              alt="SEOAgent" 
+              width={64}
+              height={64}
+              style={{ height: '64px', width: '64px' }}
+            />
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
@@ -163,10 +168,14 @@ export default function LoginPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
-            <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center animate-pulse">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+            <div className="w-16 h-16 rounded-lg flex items-center justify-center animate-pulse">
+              <Image 
+                src="/assets/agent_icon.png" 
+                alt="SEOAgent" 
+                width={64}
+                height={64}
+                style={{ height: '64px', width: '64px' }}
+              />
             </div>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">

@@ -1,47 +1,67 @@
-# Project Documentation
+# Project Overview for seoagent-nextjs
 
-> Regenerate docs anytime with `ai-documentor`.
-> View in your browser with `ai-documentor view`.
+> **Project Overview for seoagent-nextjs** - ## What This Application Does
 
-## 🚀 Quick Start
+## 🚀 Quick Navigation
 
-1. **User Workflows** – understand how to use this application
-     - [Landing Page](user-flows.md#landing-page)
-     - [Dashboard](user-flows.md#dashboard)
-     - [Login Page](user-flows.md#login-page)
-     - [Website Management Page](user-flows.md#website-management)
-     - [Terms Page](user-flows.md#terms-page)
-     - [Privacy Page](user-flows.md#privacy-page)
-     - [Debug SEO Page](user-flows.md#debug-seo-page)
+### For Users
+- [**User Guide**](user-guide.md) - Complete guide to using Project Overview for seoagent-nextjs
+- [**Getting Started**](getting-started.md) - Setup and first steps
+- [**User Workflows**](user-flows.md) - Step-by-step task guides
 
-2. **Frontend** – user interface components and interactions
-   - [Frontend Documentation](frontend.md)
+### For Developers
+- [**API Reference**](api.md) - Complete API documentation
+- [**Database Schema**](database.md) - Data structure and relationships
+- [**Architecture Overview**](architecture.md) - System design and components
+- [**Frontend Guide**](frontend.md) - UI components and pages
+- [**Backend Services**](backend.md) - Server-side functionality
 
-3. **Backend** – server-side APIs and business logic  
-   - [Backend Documentation](backend.md)
+### Reference
+- [**Troubleshooting**](troubleshooting.md) - Common issues and solutions
+- [**Deployment**](deployment.md) - Production deployment guide
 
-4. **Database** – data storage and schema
-   - [Database Documentation](database.md)
+## 📖 Documentation Overview
 
-5. **API Reference** – detailed endpoint documentation
-   - [API Documentation](api.md)
+This documentation is organized around user workflows and developer needs:
 
-6. **Architecture** – system design and component relationships
-   - [Architecture Diagram](architecture.md)
+### User-Focused Documentation
+- **Pages & Features** - What users see and can do on each page
+- **Workflows** - Step-by-step guides for common tasks  
+- **Feature Explanations** - How each feature works from the user's perspective
 
-7. **Deployment** – how to deploy and run the application
-   - [Deployment Guide](deployment.md)
+### Developer-Focused Documentation
+- **API Endpoints** - Complete request/response documentation with examples
+- **Component Architecture** - How UI components interact with backend services
+- **Database Operations** - Table structures and data flow
+- **Integration Guides** - External service connections and configurations
 
-8. **Troubleshooting** – common issues and solutions
-   - [Troubleshooting Guide](troubleshooting.md)
+## 🔗 Cross-Reference System
 
-## 📖 CLI Commands
+This documentation includes extensive cross-linking between:
+- User actions → UI components → API endpoints → Database operations
+- Frontend features → Backend services → Data storage
+- User workflows → Technical implementation → Database queries
+
+Navigate by clicking on any linked component, API, or database reference to jump directly to its documentation.
+
+## 📝 Key Features Documented
+
+### Frontend Features
+- **23 Pages** - Complete user interface documentation
+- **Interactive Components** - Buttons, forms, and user interactions mapped to backend services
+
+### API Features  
+- **124 Endpoints** - Complete API reference with examples
+- **Authentication** - Security and access control documentation
+
+### User Workflows
+- **7 Workflows** - Step-by-step user journey documentation
+
+## 🛠️ CLI Commands
 
 - `ai-documentor` - Generate fresh documentation from your codebase
-- `ai-documentor --force` - Force regeneration even if docs exist  
-- `ai-documentor view` - Start local server to browse documentation
-- `ai-documentor update` - Update existing documentation
-- `ai-documentor --help` - Show all available options
+- `ai-documentor view` - Start documentation server and view in browser
+- `ai-documentor --force` - Regenerate without prompts
 
 ## 🔗 Cross-References
 
