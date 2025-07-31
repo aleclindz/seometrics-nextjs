@@ -13,7 +13,7 @@ const nextConfig = {
   },
   experimental: {
     outputFileTracingExcludes: {
-      '*': ['./supabase/**/*'],
+      '*': ['./supabase/**/*', './strapi-cms/**/*'],
     },
   },
 }

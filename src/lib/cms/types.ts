@@ -3,14 +3,16 @@
 export type CMSType = 'wordpress' | 'webflow' | 'shopify' | 'strapi';
 
 export interface CMSCredentials {
-  type: CMSType;
   accessToken: string;
   refreshToken?: string;
   siteUrl?: string; // For WordPress
   siteId?: string; // For Webflow
   shopDomain?: string; // For Shopify
+  strapiUrl?: string; // For Strapi
   username?: string; // For WordPress
   expiresAt?: Date;
+  scope?: string;
+  tokenType?: string;
   scopes?: string[];
 }
 
@@ -33,13 +35,24 @@ export interface CMSArticle {
   slug?: string;
   status: 'draft' | 'published';
   publishedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
   tags?: string[];
+  categories?: string[];
   author?: string;
   excerpt?: string;
-  featuredImage?: string;
-  meta?: {
+  featuredImage?: {
+    url: string;
+    alt?: string;
+  };
+  seo?: {
     title?: string;
     description?: string;
+    keywords?: string[];
+  };
+  url?: string;
+  customFields?: {
+    [key: string]: any;
   };
 }
 

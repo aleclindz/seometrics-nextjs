@@ -2,6 +2,7 @@ import { CMSProvider, CMSType, CMSCredentials, CMSConnection, CMSIntegrationResu
 import { WordPressProvider } from './providers/wordpress';
 import { WebflowProvider } from './providers/webflow';
 import { ShopifyProvider } from './providers/shopify';
+import { StrapiProvider } from './providers/strapi';
 import { createClient } from '@supabase/supabase-js';
 
 export class CMSManager {
@@ -16,6 +17,11 @@ export class CMSManager {
 
     // Initialize providers
     this.providers.set('wordpress', new WordPressProvider());
+    
+    // Always initialize Strapi for internal use
+    this.providers.set('strapi', new StrapiProvider(
+      process.env.STRAPI_URL || 'http://localhost:1337'
+    ));
     
     if (process.env.WEBFLOW_CLIENT_ID && process.env.WEBFLOW_CLIENT_SECRET) {
       this.providers.set('webflow', new WebflowProvider(

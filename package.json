@@ -5,8 +5,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:strapi": "cd strapi-cms && npm run develop",
+    "dev:both": "concurrently \"npm run dev\" \"npm run dev:strapi\"",
     "build": "next build",
+    "build:strapi": "cd strapi-cms && npm run build",
     "start": "next start",
+    "start:strapi": "cd strapi-cms && npm run start",
+    "start:both": "concurrently \"npm run start\" \"npm run start:strapi\"",
     "lint": "next lint",
     "audit-db": "node scripts/audit-database.js",
     "init-seoagent": "node scripts/init-seoagent-website.js",

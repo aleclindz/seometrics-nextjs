@@ -57,14 +57,25 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
               <path d="M10.7 18.7l1.4-1.4L7.8 13H20v-2H7.8l4.3-4.3-1.4-1.4L4 12z" />
             </svg>
           </button>
-          {/* Logo */}
+          {/* Logo/Icon */}
           <Link className="block" href="/">
+            {/* Full logo for expanded sidebar */}
             <Image 
               src="/assets/SEOAgent_logo.png" 
               alt="SEOAgent" 
               width={120}
               height={32}
               style={{ height: '32px', width: 'auto' }}
+              className={`lg:hidden ${sidebarExpanded ? 'lg:block' : ''} 2xl:block`}
+            />
+            {/* Icon for narrow sidebar */}
+            <Image 
+              src="/assets/agent_icon.png" 
+              alt="SEOAgent" 
+              width={32}
+              height={32}
+              style={{ height: '32px', width: '32px' }}
+              className={`hidden lg:block ${sidebarExpanded ? 'lg:hidden' : ''} 2xl:hidden`}
             />
           </Link>
         </div>
