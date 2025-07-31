@@ -1,0 +1,4364 @@
+{
+  "overview": "# Project Overview for seoagent-nextjs\n\n## What This Application Does\nThe **seoagent-nextjs** application is designed to help businesses and individuals enhance their online presence through effective search engine optimization (SEO). It addresses the common challenge of improving website visibility, making it easier for users to find your content online. With this application, users can analyze their website's performance, optimize content for search engines, and track their SEO progress over time. Whether you're a small business owner, a digital marketer, or a content creator, this tool provides valuable insights and actionable recommendations to boost your online visibility. What sets this application apart is its user-friendly interface and powerful integration with advanced technologies that simplify the SEO process.\n\n## How It Works (Simple Explanation)\nWhen you use the **seoagent-nextjs** application, you start by entering your website's URL. The application then analyzes various aspects of your site, such as keyword usage, content quality, and technical performance. You receive a comprehensive report that highlights areas for improvement and offers suggestions on how to enhance your SEO strategy. The user experience is designed to be intuitive, guiding you through the analysis and providing clear, actionable steps. Information flows seamlessly through the system, from data collection to analysis, ensuring you have the insights you need at your fingertips.\n\n## Key Features & Capabilities\n- **SEO Analysis**: Get detailed reports on your website's SEO performance, including keyword rankings and content effectiveness.\n- **Content Optimization**: Receive tailored recommendations to improve your website content for better search engine rankings.\n- **Progress Tracking**: Monitor your SEO improvements over time with easy-to-understand metrics and visualizations.\n- **User-Friendly Interface**: Navigate the application effortlessly, even if you have little to no technical background.\n- **Integration with Popular Tools**: Leverage APIs from Google and OpenAI to enhance your SEO strategies and content creation.\n\n## Technology Overview (Friendly)\nThe **seoagent-nextjs** application is built using modern web technologies, including **React** and **Next.js** for the frontend, and **Express** for the backend. React allows for a dynamic and responsive user interface, while Next.js enhances performance and SEO capabilities out of the box. The application also utilizes **Supabase** for database management and **Google APIs** for data analysis, ensuring that users have access to reliable and powerful tools. These technologies were chosen for their ability to provide a seamless user experience, fast loading times, and robust functionality, making the application both effective and enjoyable to use. Together, these components create a cohesive system that empowers users to optimize their online presence with ease.",
+  "frontend": {
+    "overview": "# Frontend Architecture Overview\n\nThis document provides a comprehensive overview of the frontend architecture for the application, detailing the architectural philosophy, component organization, state management, styling methodology, and key UI patterns and conventions employed in the codebase.\n\n## 1. Architecture Philosophy and Patterns Used\n\nThe frontend architecture is primarily based on the following philosophies and design patterns:\n\n### 1.1 Component-Based Architecture\nThe application is built using a component-based architecture, leveraging React as the primary framework. This approach promotes reusability, maintainability, and separation of concerns. Each component encapsulates its logic, rendering, and styling, making it easier to manage and test.\n\n### 1.2 Functional Programming\nReact encourages a functional programming style, where components are treated as pure functions of their props and state. This leads to predictable and testable components, reducing side effects and improving code quality.\n\n### 1.3 Atomic Design Principles\nThe component structure follows the principles of Atomic Design, which breaks down the UI into five distinct levels:\n- **Atoms**: Basic building blocks (e.g., buttons, inputs).\n- **Molecules**: Combinations of atoms (e.g., form groups).\n- **Organisms**: Groups of molecules that form a distinct section of the UI (e.g., header, footer).\n- **Templates**: Page-level structures that define the layout.\n- **Pages**: Specific instances of templates with real content.\n\n## 2. Component Hierarchy and Organization\n\nThe application consists of **54 components** organized in a hierarchical structure. The organization is as follows:\n\n### 2.1 Directory Structure\n```\n/src\n  /components\n    /atoms\n      Button.jsx\n      Input.jsx\n    /molecules\n      FormGroup.jsx\n      Card.jsx\n    /organisms\n      Header.jsx\n      Footer.jsx\n    /templates\n      MainTemplate.jsx\n    /pages\n      HomePage.jsx\n      AboutPage.jsx\n```\n\n### 2.2 Component Types\n- **Atoms**: These are the smallest components that cannot be broken down further. They are typically stateless and reusable.\n- **Molecules**: Composed of multiple atoms, these components handle simple logic and state management.\n- **Organisms**: More complex components that can contain both molecules and atoms. They often manage their own state.\n- **Templates**: Define the layout and structure of pages, serving as a blueprint for how organisms and molecules fit together.\n- **Pages**: Specific instances of templates that render content based on application state.\n\n## 3. State Management Approach\n\nThe application employs a combination of local component state and a global state management solution:\n\n### 3.1 Local State Management\nEach component manages its own local state using React's `useState` and `useEffect` hooks. This is suitable for components that require internal state management without affecting the global state.\n\n### 3.2 Global State Management\nFor shared state across multiple components, the application utilizes **Context API** combined with **useReducer** for more complex state logic. This allows for:\n- Centralized state management.\n- Prop drilling avoidance by providing global access to state.\n- Improved performance through selective re-renders.\n\n### 3.3 State Structure\nThe global state is structured into slices, each responsible for a specific domain of the application (e.g., user authentication, theme settings).\n\n## 4. Styling Methodology\n\nThe application employs a hybrid styling methodology using both CSS and SCSS:\n\n### 4.1 CSS and SCSS Usage\n- **CSS**: Basic styling is applied through standard CSS files for global styles and resets.\n- **SCSS**: SCSS is used for component-specific styles, allowing for nested rules, variables, and mixins. This enhances maintainability and reduces redundancy.\n\n### 4.2 BEM Naming Convention\nThe application follows the **BEM (Block Element Modifier)** naming convention for class names, which improves readability and helps maintain a clear structure in styles:\n- **Block**: Represents a standalone entity (e.g., `.button`).\n- **Element**: A part of a block (e.g., `.button__icon`).\n- **Modifier**: A different state or variation of a block or element (e.g., `.button--primary`).\n\n### 4.3 Responsive Design\nMedia queries are utilized within SCSS to ensure a responsive design, adapting the layout and styles based on the viewport size.\n\n## 5. Key UI Patterns and Conventions\n\nThe application incorporates several key UI patterns and conventions to enhance user experience and maintainability:\n\n### 5.1 Form Handling\nForms are handled using controlled components, where the form elements' values are managed by React state. Validation is performed on submission, and error messages are displayed inline.\n\n### 5.2 Routing\nReact Router is used for client-side routing, allowing for dynamic navigation between pages without full page reloads. Route configuration is centralized for better manageability.\n\n### 5.3 Accessibility\nAccessibility (a11y) best practices are followed, including semantic HTML elements, ARIA attributes, and keyboard navigation support to ensure the application is usable by all users.\n\n### 5.4 Component Documentation\nEach component is documented using JSDoc comments, providing clear descriptions of props, state, and usage examples. This aids in onboarding new developers and maintaining the codebase.\n\n## Conclusion\n\nThis frontend architecture overview outlines the key components and methodologies employed in the application. By adhering to best practices and established design patterns, the architecture promotes scalability, maintainability, and a positive user experience. Developers are encouraged to follow these guidelines as they work with the codebase to ensure consistency and quality throughout the application.",
+    "featuresAndFunctionality": "# Frontend Features & Functionality Analysis\n\nThis documentation provides a comprehensive overview of the frontend features and functionality of the application, focusing on user interactions and experiences. \n\n## 1. Core Features Overview\n\n### What can users do with this application?\nUsers can manage their websites, monitor usage statistics, upgrade their subscriptions, and customize their experience through theme settings. The application is designed to streamline website management and provide insights into website performance.\n\n### Main Features and Capabilities\n- **Website Management**: Users can add, edit, and delete websites they own.\n- **Usage Dashboard**: Users can view detailed statistics about their website usage, helping them understand traffic patterns and user engagement.\n- **Subscription Management**: Users can manage their subscription plans, including upgrades and downgrades.\n- **Social Proof**: Users can display testimonials or usage statistics to enhance credibility.\n- **Theme Customization**: Users can toggle between different themes to personalize their interface.\n\n### Problems Solved for Users\n- Simplifies website management tasks.\n- Provides clear insights into website performance.\n- Offers flexibility in subscription management.\n- Enhances user engagement through customizable themes.\n\n## 2. User Interface Components\n\n### Interactive Elements\n- **Buttons**: \n  - **Add Website**: Initiates the process to add a new website.\n  - **Upgrade Subscription**: Allows users to upgrade their current plan.\n  - **Toggle Theme**: Switches between light and dark themes.\n  \n- **Forms**:\n  - **Website Details Form**: Collects information about the website being added or edited.\n  - **Subscription Form**: Allows users to input payment information for subscription upgrades.\n\n- **Modals**:\n  - **Snippet Modal**: Displays code snippets for users to copy and implement on their websites.\n\n### User Interaction with UI Components\n- Users click buttons to perform actions like adding a website or upgrading their subscription.\n- Forms require users to input specific information, which is then submitted for processing.\n- Modals provide additional information without navigating away from the current page.\n\n## 3. User Workflows & Interactions\n\n### Typical User Journeys\n1. **Adding a Website**:\n   - Navigate to the Website Management section.\n   - Click the \"Add Website\" button.\n   - Fill out the website details form and submit.\n\n2. **Monitoring Usage**:\n   - Access the Usage Dashboard from the main menu.\n   - View graphs and statistics that display website performance metrics.\n\n3. **Upgrading Subscription**:\n   - Go to the Subscription Manager.\n   - Select the desired subscription plan and click \"Upgrade\".\n   - Complete the payment form to finalize the upgrade.\n\n### Steps to Complete Common Tasks\n- **To Edit a Website**:\n  - Select the website from the list in Website Management.\n  - Click the \"Edit\" button.\n  - Update the necessary fields and save changes.\n\n- **To Change Theme**:\n  - Click on the Theme Toggle button located in the settings.\n  - Choose between light and dark themes.\n\n## 4. Data & Information Display\n\n### Information Shown to Users\n- **Website Management**: Lists all websites with options to edit or delete each entry.\n- **Usage Dashboard**: Displays graphs and statistics, such as visitor counts, page views, and user engagement metrics.\n- **Subscription Details**: Shows current plan, usage limits, and options for upgrading.\n\n### Data Organization and Presentation\n- Information is organized into sections, such as Website Management and Usage Dashboard, making it easy for users to find what they need.\n- Data is presented visually through charts and graphs for quick comprehension.\n\n### User Actions with Displayed Information\n- Users can click on data points in the Usage Dashboard for more detailed views.\n- Users can manage their websites directly from the list, including editing or deleting entries.\n\n## 5. Navigation & User Experience\n\n### Moving Between Sections\n- Users can navigate using a sidebar menu that lists all major sections of the application, such as Website Management, Usage Dashboard, and Subscription Manager.\n\n### Navigation Patterns\n- The application employs a consistent sidebar for primary navigation, allowing users to easily switch between different functionalities.\n- Breadcrumbs may be used to indicate the current location within the application.\n\n### Optimizing User Experience\n- The interface is designed to be intuitive, with clear labels and prompts guiding users through tasks.\n- Responsive design ensures that the application is usable on various devices, enhancing accessibility.\n\nThis documentation serves as a guide for users to understand the capabilities and functionalities of the application, ensuring they can effectively navigate and utilize its features.",
+    "components": [
+      {
+        "name": "AuthProvider",
+        "slug": "authprovider",
+        "purpose": "AuthProvider component",
+        "props": [],
+        "usage": "Used in src/contexts/auth.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/contexts/auth.tsx"
+      },
+      {
+        "name": "WebsiteManagement",
+        "slug": "websitemanagement",
+        "purpose": "WebsiteManagement component",
+        "props": [],
+        "usage": "Used in src/components/WebsiteManagement.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/WebsiteManagement.tsx"
+      },
+      {
+        "name": "UsageDashboard",
+        "slug": "usagedashboard",
+        "purpose": "UsageDashboard component",
+        "props": [],
+        "usage": "Used in src/components/UsageDashboard.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/UsageDashboard.tsx"
+      },
+      {
+        "name": "UpgradeBadge",
+        "slug": "upgradebadge",
+        "purpose": "UpgradeBadge component",
+        "props": [],
+        "usage": "Used in src/components/UpgradeBadge.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/UpgradeBadge.tsx"
+      },
+      {
+        "name": "ThemeToggle",
+        "slug": "themetoggle",
+        "purpose": "ThemeToggle component",
+        "props": [],
+        "usage": "Used in src/components/ThemeToggle.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/ThemeToggle.tsx"
+      },
+      {
+        "name": "SubscriptionManager",
+        "slug": "subscriptionmanager",
+        "purpose": "SubscriptionManager component",
+        "props": [],
+        "usage": "Used in src/components/SubscriptionManager.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/SubscriptionManager.tsx"
+      },
+      {
+        "name": "SocialProof",
+        "slug": "socialproof",
+        "purpose": "SocialProof component",
+        "props": [],
+        "usage": "Used in src/components/SocialProof.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/SocialProof.tsx"
+      },
+      {
+        "name": "SnippetModal",
+        "slug": "snippetmodal",
+        "purpose": "SnippetModal component",
+        "props": [],
+        "usage": "Used in src/components/SnippetModal.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/SnippetModal.tsx"
+      },
+      {
+        "name": "Sidebar",
+        "slug": "sidebar",
+        "purpose": "Sidebar component",
+        "props": [],
+        "usage": "Used in src/components/Sidebar.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/Sidebar.tsx"
+      },
+      {
+        "name": "ProtectedRoute",
+        "slug": "protectedroute",
+        "purpose": "ProtectedRoute component",
+        "props": [],
+        "usage": "Used in src/components/ProtectedRoute.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/ProtectedRoute.tsx"
+      },
+      {
+        "name": "OneClickCMSConnection",
+        "slug": "oneclickcmsconnection",
+        "purpose": "OneClickCMSConnection component",
+        "props": [],
+        "usage": "Used in src/components/OneClickCMSConnection.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/OneClickCMSConnection.tsx"
+      },
+      {
+        "name": "OnboardingFlow",
+        "slug": "onboardingflow",
+        "purpose": "OnboardingFlow component",
+        "props": [],
+        "usage": "Used in src/components/OnboardingFlow.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/OnboardingFlow.tsx"
+      },
+      {
+        "name": "LandingPage",
+        "slug": "landingpage",
+        "purpose": "LandingPage component",
+        "props": [],
+        "usage": "Used in src/components/LandingPage.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/LandingPage.tsx"
+      },
+      {
+        "name": "LandingHeader",
+        "slug": "landingheader",
+        "purpose": "LandingHeader component",
+        "props": [],
+        "usage": "Used in src/components/LandingHeader.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/LandingHeader.tsx"
+      },
+      {
+        "name": "LandingFooter",
+        "slug": "landingfooter",
+        "purpose": "LandingFooter component",
+        "props": [],
+        "usage": "Used in src/components/LandingFooter.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/LandingFooter.tsx"
+      },
+      {
+        "name": "HeroSection",
+        "slug": "herosection",
+        "purpose": "HeroSection component",
+        "props": [],
+        "usage": "Used in src/components/HeroSection.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/HeroSection.tsx"
+      },
+      {
+        "name": "Header",
+        "slug": "header",
+        "purpose": "Header component",
+        "props": [],
+        "usage": "Used in src/components/Header.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/Header.tsx"
+      },
+      {
+        "name": "GSCConnection",
+        "slug": "gscconnection",
+        "purpose": "GSCConnection component",
+        "props": [],
+        "usage": "Used in src/components/GSCConnection.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/GSCConnection.tsx"
+      },
+      {
+        "name": "GEOSection",
+        "slug": "geosection",
+        "purpose": "GEOSection component",
+        "props": [],
+        "usage": "Used in src/components/GEOSection.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/GEOSection.tsx"
+      },
+      {
+        "name": "FeatureGate",
+        "slug": "featuregate",
+        "purpose": "FeatureGate component",
+        "props": [],
+        "usage": "Used in src/components/FeatureGate.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/FeatureGate.tsx"
+      },
+      {
+        "name": "FeatureCards",
+        "slug": "featurecards",
+        "purpose": "FeatureCards component",
+        "props": [],
+        "usage": "Used in src/components/FeatureCards.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/FeatureCards.tsx"
+      },
+      {
+        "name": "Dashboard",
+        "slug": "dashboard",
+        "purpose": "Dashboard component",
+        "props": [],
+        "usage": "Used in src/components/Dashboard.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/Dashboard.tsx"
+      },
+      {
+        "name": "ChatInterface",
+        "slug": "chatinterface",
+        "purpose": "ChatInterface component",
+        "props": [],
+        "usage": "Used in src/components/ChatInterface.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/ChatInterface.tsx"
+      },
+      {
+        "name": "CMSConnectionsList",
+        "slug": "cmsconnectionslist",
+        "purpose": "CMSConnectionsList component",
+        "props": [],
+        "usage": "Used in src/components/CMSConnectionsList.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/CMSConnectionsList.tsx"
+      },
+      {
+        "name": "CMSConnectionWizard",
+        "slug": "cmsconnectionwizard",
+        "purpose": "CMSConnectionWizard component",
+        "props": [],
+        "usage": "Used in src/components/CMSConnectionWizard.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/CMSConnectionWizard.tsx"
+      },
+      {
+        "name": "CMSConnectionForm",
+        "slug": "cmsconnectionform",
+        "purpose": "CMSConnectionForm component",
+        "props": [],
+        "usage": "Used in src/components/CMSConnectionForm.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/CMSConnectionForm.tsx"
+      },
+      {
+        "name": "Home",
+        "slug": "home",
+        "purpose": "Home component",
+        "props": [],
+        "usage": "Used in src/app/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/page.tsx"
+      },
+      {
+        "name": "RootLayout",
+        "slug": "rootlayout",
+        "purpose": "RootLayout component",
+        "props": [],
+        "usage": "Used in src/app/layout.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/layout.tsx"
+      },
+      {
+        "name": "InterfaceToggle",
+        "slug": "interfacetoggle",
+        "purpose": "InterfaceToggle component",
+        "props": [],
+        "usage": "Used in src/components/navigation/InterfaceToggle.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/navigation/InterfaceToggle.tsx"
+      },
+      {
+        "name": "StatusIndicator",
+        "slug": "statusindicator",
+        "purpose": "StatusIndicator component",
+        "props": [],
+        "usage": "Used in src/components/chat/StatusIndicator.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/chat/StatusIndicator.tsx"
+      },
+      {
+        "name": "SiteCard",
+        "slug": "sitecard",
+        "purpose": "SiteCard component",
+        "props": [],
+        "usage": "Used in src/components/chat/SiteCard.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/chat/SiteCard.tsx"
+      },
+      {
+        "name": "MessageList",
+        "slug": "messagelist",
+        "purpose": "MessageList component",
+        "props": [],
+        "usage": "Used in src/components/chat/MessageList.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/chat/MessageList.tsx"
+      },
+      {
+        "name": "MessageInput",
+        "slug": "messageinput",
+        "purpose": "MessageInput component",
+        "props": [],
+        "usage": "Used in src/components/chat/MessageInput.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/chat/MessageInput.tsx"
+      },
+      {
+        "name": "ChatSidebar",
+        "slug": "chatsidebar",
+        "purpose": "ChatSidebar component",
+        "props": [],
+        "usage": "Used in src/components/chat/ChatSidebar.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/chat/ChatSidebar.tsx"
+      },
+      {
+        "name": "ChatInterface",
+        "slug": "chatinterface",
+        "purpose": "ChatInterface component",
+        "props": [],
+        "usage": "Used in src/components/chat/ChatInterface.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/components/chat/ChatInterface.tsx"
+      },
+      {
+        "name": "TermsPage",
+        "slug": "termspage",
+        "purpose": "TermsPage component",
+        "props": [],
+        "usage": "Used in src/app/terms/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/terms/page.tsx"
+      },
+      {
+        "name": "Strategy",
+        "slug": "strategy",
+        "purpose": "Strategy component",
+        "props": [],
+        "usage": "Used in src/app/strategy/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/strategy/page.tsx"
+      },
+      {
+        "name": "PrivacyPage",
+        "slug": "privacypage",
+        "purpose": "PrivacyPage component",
+        "props": [],
+        "usage": "Used in src/app/privacy/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/privacy/page.tsx"
+      },
+      {
+        "name": "LoginForm",
+        "slug": "loginform",
+        "purpose": "LoginForm component",
+        "props": [],
+        "usage": "Used in src/app/login/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/login/page.tsx"
+      },
+      {
+        "name": "LoginPage",
+        "slug": "loginpage",
+        "purpose": "LoginPage component",
+        "props": [],
+        "usage": "Used in src/app/login/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/login/page.tsx"
+      },
+      {
+        "name": "Keywords",
+        "slug": "keywords",
+        "purpose": "Keywords component",
+        "props": [],
+        "usage": "Used in src/app/keywords/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/keywords/page.tsx"
+      },
+      {
+        "name": "DebugSeoPage",
+        "slug": "debugseopage",
+        "purpose": "DebugSeoPage component",
+        "props": [],
+        "usage": "Used in src/app/debug-seo/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/debug-seo/page.tsx"
+      },
+      {
+        "name": "DashboardPage",
+        "slug": "dashboardpage",
+        "purpose": "DashboardPage component",
+        "props": [],
+        "usage": "Used in src/app/dashboard/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/dashboard/page.tsx"
+      },
+      {
+        "name": "ArticleWriter",
+        "slug": "articlewriter",
+        "purpose": "ArticleWriter component",
+        "props": [],
+        "usage": "Used in src/app/content-writer/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/content-writer/page.tsx"
+      },
+      {
+        "name": "CMSConnections",
+        "slug": "cmsconnections",
+        "purpose": "CMSConnections component",
+        "props": [],
+        "usage": "Used in src/app/cms-connections/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/cms-connections/page.tsx"
+      },
+      {
+        "name": "ChatPage",
+        "slug": "chatpage",
+        "purpose": "ChatPage component",
+        "props": [],
+        "usage": "Used in src/app/chat/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/chat/page.tsx"
+      },
+      {
+        "name": "Autopilot",
+        "slug": "autopilot",
+        "purpose": "Autopilot component",
+        "props": [],
+        "usage": "Used in src/app/autopilot/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/autopilot/page.tsx"
+      },
+      {
+        "name": "ArticleWriter",
+        "slug": "articlewriter",
+        "purpose": "ArticleWriter component",
+        "props": [],
+        "usage": "Used in src/app/article-writer/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/article-writer/page.tsx"
+      },
+      {
+        "name": "AddWebsite",
+        "slug": "addwebsite",
+        "purpose": "AddWebsite component",
+        "props": [],
+        "usage": "Used in src/app/add-website/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/add-website/page.tsx"
+      },
+      {
+        "name": "Account",
+        "slug": "account",
+        "purpose": "Account component",
+        "props": [],
+        "usage": "Used in src/app/account/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/account/page.tsx"
+      },
+      {
+        "name": "WebsitePage",
+        "slug": "websitepage",
+        "purpose": "WebsitePage component",
+        "props": [],
+        "usage": "Used in src/app/website/[websiteId]/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/website/[websiteId]/page.tsx"
+      },
+      {
+        "name": "MetaTagsPage",
+        "slug": "metatagspage",
+        "purpose": "MetaTagsPage component",
+        "props": [],
+        "usage": "Used in src/app/meta-tags/[token]/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/meta-tags/[token]/page.tsx"
+      },
+      {
+        "name": "AltTagsPage",
+        "slug": "alttagspage",
+        "purpose": "AltTagsPage component",
+        "props": [],
+        "usage": "Used in src/app/alt-tags/[token]/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/alt-tags/[token]/page.tsx"
+      },
+      {
+        "name": "WebsiteCMSConnection",
+        "slug": "websitecmsconnection",
+        "purpose": "WebsiteCMSConnection component",
+        "props": [],
+        "usage": "Used in src/app/website/[websiteId]/cms-connection/page.tsx",
+        "interactions": "User interactions to be documented",
+        "filePath": "src/app/website/[websiteId]/cms-connection/page.tsx"
+      }
+    ],
+    "pages": [],
+    "styling": "CSS/SCSS styling system",
+    "stateManagement": "React State"
+  },
+  "backend": {
+    "overview": "# Backend API Documentation\n\nThis documentation provides a comprehensive overview of the backend API, including routes, functions, and their corresponding UI components. Each API endpoint is detailed with its purpose, parameters, response structure, error handling, and database operations.\n\n## Table of Contents\n- [1. Strapi Publishing Debug & Fix](#strapi-publishing-debug--fix)\n- [2. Admin Tool API](#admin-tool-api)\n- [3. Supabase Server Client](#supabase-server-client)\n- [4. GSC Connection Component](#gsc-connection-component)\n- [5. API Service](#api-service)\n- [6. UI Component → API Mapping](#ui-component--api-mapping)\n\n---\n\n## 1. Strapi Publishing Debug & Fix\n\n### Issues Identified & Fixed\n- **CMS Manager Database Schema Mismatch**\n  - **Error**: `400 Bad Request` when querying `cms_connections` table.\n  - **Fix**: Updated column mappings in `/src/lib/cms/cms-manager.ts`.\n  \n- **Created Supabase Edge Function**\n  - **File**: `/supabase/functions/publish-article/index.ts`\n  - **Purpose**: Replace Vercel Edge Functions with Supabase Edge Functions.\n\n### Current Strapi Publishing Error Analysis\n- **Error Message**: `\"Method not allowed for endpoint: api::blog-post.blog-post\"`\n\n---\n\n## 2. Admin Tool API\n\n### Routes\n- **GET /api/health**\n  - **Purpose**: Check the health status of the API.\n  - **Response**: `{ status: 'ok', timestamp: '2023-10-01T12:00:00Z' }`\n\n- **GET /api/websites**\n  - **Purpose**: Retrieve all websites.\n  - **Response**: List of websites with associated users.\n\n- **GET /api/websites/:token**\n  - **Purpose**: Retrieve a specific website by token.\n  - **Parameters**: `token` (string) - Unique identifier for the website.\n\n- **POST /api/websites**\n  - **Purpose**: Create a new website.\n  - **Request Body**: `{ name: string, url: string }`\n  - **Response**: Newly created website object.\n\n### Error Handling\n- **Error Codes**: \n  - `404 Not Found`: When a website with the specified token does not exist.\n  - `400 Bad Request`: When the request body is invalid.\n\n---\n\n## 3. Supabase Server Client\n\n### Function\n- **createServerSupabaseClient**\n  - **Purpose**: Create a Supabase client instance for server-side operations.\n  - **Parameters**: None.\n  - **Returns**: Supabase client instance.\n\n### Usage\n- This function is used to interact with the Supabase database in server-side rendering contexts.\n\n---\n\n## 4. GSC Connection Component\n\n### Routes\n- **GET gsc_connected**\n  - **Purpose**: Check if the connection to Google Search Console (GSC) is established.\n  \n- **GET error**\n  - **Purpose**: Retrieve any connection errors.\n\n- **GET details**\n  - **Purpose**: Fetch connection details.\n\n### Component\n- **GSCConnection**\n  - **Props**: \n    - `onConnectionChange?: (connected: boolean) => void`\n  - **State**: \n    - `connectionStatus`, `properties`, `loading`, `connecting`, `syncing`, `error`.\n\n### Error Handling\n- Handles connection errors and updates the UI accordingly.\n\n---\n\n## 5. API Service\n\n### Routes\n- **GET /** (Root)\n  - **Purpose**: Entry point for the API service.\n\n### Middleware\n- **Security Middleware**: Uses `helmet` for security enhancements.\n- **CORS Configuration**: Allows requests from specified origins.\n\n### Error Handling\n- Centralized error handling through middleware.\n\n---\n\n## 6. UI Component → API Mapping\n\n| Slug             | Service Function             | Linked Components | Purpose                                    | Parameters                            | Response Structure                       | Error Handling                     | Database Operations                     |\n|------------------|------------------------------|-------------------|--------------------------------------------|---------------------------------------|-----------------------------------------|-------------------------------------|-----------------------------------------|\n| `get-health`     | `app.get('/api/health')`    | N/A               | Check API health status                    | N/A                                   | `{ status: 'ok', timestamp: string }`  | `500 Internal Server Error`        | N/A                                     |\n| `get-websites`   | `app.get('/api/websites')`  | N/A               | Retrieve all websites                      | N/A                                   | Array of website objects                | `404 Not Found`, `400 Bad Request` | Read from `websites` table             |\n| `post-websites`  | `app.post('/api/websites')` | N/A               | Create a new website                       | `{ name: string, url: string }`      | Newly created website object            | `400 Bad Request`                   | Insert into `websites` table           |\n| `gsc-connected`   | `GET gsc_connected`          | `GSCConnection`    | Check GSC connection status                | N/A                                   | `{ connected: boolean, connection: object }` | `404 Not Found`                     | N/A                                     |\n\n---\n\nThis documentation serves as a guide for developers to understand the API structure, endpoints, and their interactions with the UI components. For further details on specific functions or components, please refer to the respective sections above.",
+    "apis": [
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "slug": "get-api-health",
+        "purpose": "GET endpoint for /api/health",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "admin-tool/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/api/websites",
+        "slug": "get-api-websites",
+        "purpose": "GET endpoint for /api/websites",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "admin-tool/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/api/websites/:token",
+        "slug": "get-api-websites-token",
+        "purpose": "GET endpoint for /api/websites/:token",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "admin-tool/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/api/test-endpoints/:token",
+        "slug": "post-api-test-endpoints-token",
+        "purpose": "POST endpoint for /api/test-endpoints/:token",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "admin-tool/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/api/websites",
+        "slug": "post-api-websites",
+        "purpose": "POST endpoint for /api/websites",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "admin-tool/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/api/users",
+        "slug": "get-api-users",
+        "purpose": "GET endpoint for /api/users",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "admin-tool/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/api/env",
+        "slug": "get-api-env",
+        "purpose": "GET endpoint for /api/env",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "admin-tool/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/",
+        "slug": "get",
+        "purpose": "GET endpoint for /",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "admin-tool/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "gsc_connected",
+        "slug": "get-gsc-connected",
+        "purpose": "GET endpoint for gsc_connected",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/components/GSCConnection.tsx",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "error",
+        "slug": "get-error",
+        "purpose": "GET endpoint for error",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/components/GSCConnection.tsx",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "details",
+        "slug": "get-details",
+        "purpose": "GET endpoint for details",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/components/GSCConnection.tsx",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/",
+        "slug": "get",
+        "purpose": "GET endpoint for /",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/server.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_URL",
+        "slug": "get-supabase-url",
+        "purpose": "GET endpoint for SUPABASE_URL",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/websites/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_SERVICE_ROLE_KEY",
+        "slug": "get-supabase-service-role-key",
+        "purpose": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/websites/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "Authorization",
+        "slug": "get-authorization",
+        "purpose": "GET endpoint for Authorization",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/websites/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_URL",
+        "slug": "get-supabase-url",
+        "purpose": "GET endpoint for SUPABASE_URL",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/publish-article/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_SERVICE_ROLE_KEY",
+        "slug": "get-supabase-service-role-key",
+        "purpose": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/publish-article/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_URL",
+        "slug": "get-supabase-url",
+        "purpose": "GET endpoint for SUPABASE_URL",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/get-meta-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_SERVICE_ROLE_KEY",
+        "slug": "get-supabase-service-role-key",
+        "purpose": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/get-meta-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "token",
+        "slug": "get-token",
+        "purpose": "GET endpoint for token",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/get-meta-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_URL",
+        "slug": "get-supabase-url",
+        "purpose": "GET endpoint for SUPABASE_URL",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/get-alt-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_SERVICE_ROLE_KEY",
+        "slug": "get-supabase-service-role-key",
+        "purpose": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/get-alt-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "token",
+        "slug": "get-token",
+        "purpose": "GET endpoint for token",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/get-alt-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_URL",
+        "slug": "get-supabase-url",
+        "purpose": "GET endpoint for SUPABASE_URL",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-meta-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_SERVICE_ROLE_KEY",
+        "slug": "get-supabase-service-role-key",
+        "purpose": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-meta-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "OPENAI_API_KEY",
+        "slug": "get-openai-api-key",
+        "purpose": "GET endpoint for OPENAI_API_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-meta-tags/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_URL",
+        "slug": "get-supabase-url",
+        "purpose": "GET endpoint for SUPABASE_URL",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-image-alt/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_SERVICE_ROLE_KEY",
+        "slug": "get-supabase-service-role-key",
+        "purpose": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-image-alt/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "OPENAI_API_KEY",
+        "slug": "get-openai-api-key",
+        "purpose": "GET endpoint for OPENAI_API_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-image-alt/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "OPENAI_API_KEY",
+        "slug": "get-openai-api-key",
+        "purpose": "GET endpoint for OPENAI_API_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-image-alt/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "OPENAI_API_KEY",
+        "slug": "get-openai-api-key",
+        "purpose": "GET endpoint for OPENAI_API_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-article/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_URL",
+        "slug": "get-supabase-url",
+        "purpose": "GET endpoint for SUPABASE_URL",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-article/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "SUPABASE_SERVICE_ROLE_KEY",
+        "slug": "get-supabase-service-role-key",
+        "purpose": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "supabase/functions/generate-article/index.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "content-type",
+        "slug": "get-content-type",
+        "purpose": "GET endpoint for content-type",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/lib/cms/base-provider.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "mode",
+        "slug": "get-mode",
+        "purpose": "GET endpoint for mode",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/login/page.tsx",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/manage",
+        "slug": "get-manage",
+        "purpose": "GET endpoint for /manage",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/subscriptions.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/manage",
+        "slug": "post-manage",
+        "purpose": "POST endpoint for /manage",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/subscriptions.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/create-checkout-session",
+        "slug": "post-create-checkout-session",
+        "purpose": "POST endpoint for /create-checkout-session",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/subscriptions.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/webhook",
+        "slug": "post-webhook",
+        "purpose": "POST endpoint for /webhook",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/subscriptions.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/usage",
+        "slug": "get-usage",
+        "purpose": "GET endpoint for /usage",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/subscriptions.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/websites",
+        "slug": "get-websites",
+        "purpose": "GET endpoint for /websites",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/seo.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/websites",
+        "slug": "post-websites",
+        "purpose": "POST endpoint for /websites",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/seo.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/audit/:websiteId",
+        "slug": "get-audit-websiteid",
+        "purpose": "GET endpoint for /audit/:websiteId",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/seo.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/crawl/:websiteId",
+        "slug": "get-crawl-websiteid",
+        "purpose": "GET endpoint for /crawl/:websiteId",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/seo.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/issues/:websiteId",
+        "slug": "get-issues-websiteid",
+        "purpose": "GET endpoint for /issues/:websiteId",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/seo.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/",
+        "slug": "get",
+        "purpose": "GET endpoint for /",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/health.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/detailed",
+        "slug": "get-detailed",
+        "purpose": "GET endpoint for /detailed",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/health.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/ready",
+        "slug": "get-ready",
+        "purpose": "GET endpoint for /ready",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/health.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/alive",
+        "slug": "get-alive",
+        "purpose": "GET endpoint for /alive",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/health.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/connection",
+        "slug": "get-connection",
+        "purpose": "GET endpoint for /connection",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/gsc.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/oauth/start",
+        "slug": "get-oauth-start",
+        "purpose": "GET endpoint for /oauth/start",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/gsc.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/oauth/callback",
+        "slug": "get-oauth-callback",
+        "purpose": "GET endpoint for /oauth/callback",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/gsc.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/oauth/refresh",
+        "slug": "post-oauth-refresh",
+        "purpose": "POST endpoint for /oauth/refresh",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/gsc.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/properties",
+        "slug": "get-properties",
+        "purpose": "GET endpoint for /properties",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/gsc.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/sync",
+        "slug": "post-sync",
+        "purpose": "POST endpoint for /sync",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/gsc.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/performance",
+        "slug": "get-performance",
+        "purpose": "GET endpoint for /performance",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/gsc.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/connections",
+        "slug": "get-connections",
+        "purpose": "GET endpoint for /connections",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/cms.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/connections",
+        "slug": "post-connections",
+        "purpose": "POST endpoint for /connections",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/cms.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/connections/:id",
+        "slug": "get-connections-id",
+        "purpose": "GET endpoint for /connections/:id",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/cms.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "DELETE",
+        "path": "/connections/:id",
+        "slug": "delete-connections-id",
+        "purpose": "DELETE endpoint for /connections/:id",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/cms.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/oauth/start",
+        "slug": "get-oauth-start",
+        "purpose": "GET endpoint for /oauth/start",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/cms.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/oauth/callback/:type",
+        "slug": "get-oauth-callback-type",
+        "purpose": "GET endpoint for /oauth/callback/:type",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/cms.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/test-connection",
+        "slug": "post-test-connection",
+        "purpose": "POST endpoint for /test-connection",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/cms.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/login",
+        "slug": "post-login",
+        "purpose": "POST endpoint for /login",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/auth.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/register",
+        "slug": "post-register",
+        "purpose": "POST endpoint for /register",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/auth.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/refresh",
+        "slug": "post-refresh",
+        "purpose": "POST endpoint for /refresh",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/auth.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/me",
+        "slug": "get-me",
+        "purpose": "GET endpoint for /me",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/auth.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/",
+        "slug": "get",
+        "purpose": "GET endpoint for /",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/articles.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/generate",
+        "slug": "post-generate",
+        "purpose": "POST endpoint for /generate",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/articles.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "POST",
+        "path": "/publish",
+        "slug": "post-publish",
+        "purpose": "POST endpoint for /publish",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/articles.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "/:id",
+        "slug": "get-id",
+        "purpose": "GET endpoint for /:id",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/articles.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "PUT",
+        "path": "/:id",
+        "slug": "put-id",
+        "purpose": "PUT endpoint for /:id",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/articles.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "DELETE",
+        "path": "/:id",
+        "slug": "delete-id",
+        "purpose": "DELETE endpoint for /:id",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/routes/articles.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "User-Agent",
+        "slug": "get-user-agent",
+        "purpose": "GET endpoint for User-Agent",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/middleware/logger.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "User-Agent",
+        "slug": "get-user-agent",
+        "purpose": "GET endpoint for User-Agent",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "api-service/src/middleware/errorHandler.js",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "site_url",
+        "slug": "get-site-url",
+        "purpose": "GET endpoint for site_url",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/lib/cms/providers/wordpress.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "user_login",
+        "slug": "get-user-login",
+        "purpose": "GET endpoint for user_login",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/lib/cms/providers/wordpress.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "password",
+        "slug": "get-password",
+        "purpose": "GET endpoint for password",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/lib/cms/providers/wordpress.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "shop",
+        "slug": "get-shop",
+        "purpose": "GET endpoint for shop",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/lib/cms/providers/shopify.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/websites/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/websites/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/websites/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "websiteId",
+        "slug": "get-websiteid",
+        "purpose": "GET endpoint for websiteId",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/websites/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "websiteUrl",
+        "slug": "get-websiteurl",
+        "purpose": "GET endpoint for websiteUrl",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "status",
+        "slug": "get-status",
+        "purpose": "GET endpoint for status",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "limit",
+        "slug": "get-limit",
+        "purpose": "GET endpoint for limit",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "offset",
+        "slug": "get-offset",
+        "purpose": "GET endpoint for offset",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/articles/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "stripe-signature",
+        "slug": "get-stripe-signature",
+        "purpose": "GET endpoint for stripe-signature",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/subscription/webhook/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/subscription/manage/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/gsc/properties/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/gsc/connection/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/gsc/connection/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/debug/tables/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/debug/gsc-test/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "authorization",
+        "slug": "get-authorization",
+        "purpose": "GET endpoint for authorization",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cron/gsc-sync/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/connections/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/connections/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "connectionId",
+        "slug": "get-connectionid",
+        "purpose": "GET endpoint for connectionId",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/connections/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/chat/threads/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "siteId",
+        "slug": "get-siteid",
+        "purpose": "GET endpoint for siteId",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/chat/threads/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/chat/sites/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/chat/messages/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "threadId",
+        "slug": "get-threadid",
+        "purpose": "GET endpoint for threadId",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/chat/messages/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "authUserId",
+        "slug": "get-authuserid",
+        "purpose": "GET endpoint for authUserId",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/auth/get-token/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/start/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/[auditId]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/[auditId]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/audits/[auditId]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/gsc/oauth/start/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "userToken",
+        "slug": "get-usertoken",
+        "purpose": "GET endpoint for userToken",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/gsc/oauth/refresh/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "code",
+        "slug": "get-code",
+        "purpose": "GET endpoint for code",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/gsc/oauth/callback/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "state",
+        "slug": "get-state",
+        "purpose": "GET endpoint for state",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/gsc/oauth/callback/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "error",
+        "slug": "get-error",
+        "purpose": "GET endpoint for error",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/gsc/oauth/callback/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "origin",
+        "slug": "get-origin",
+        "purpose": "GET endpoint for origin",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/oauth/start/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "code",
+        "slug": "get-code",
+        "purpose": "GET endpoint for code",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/oauth/callback/[type]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "state",
+        "slug": "get-state",
+        "purpose": "GET endpoint for state",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/oauth/callback/[type]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "error",
+        "slug": "get-error",
+        "purpose": "GET endpoint for error",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/oauth/callback/[type]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "user_id",
+        "slug": "get-user-id",
+        "purpose": "GET endpoint for user_id",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/oauth/callback/[type]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "site_url",
+        "slug": "get-site-url",
+        "purpose": "GET endpoint for site_url",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/oauth/callback/[type]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "user_login",
+        "slug": "get-user-login",
+        "purpose": "GET endpoint for user_login",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/oauth/callback/[type]/route.ts",
+        "serviceFunction": "handler"
+      },
+      {
+        "method": "GET",
+        "path": "password",
+        "slug": "get-password",
+        "purpose": "GET endpoint for password",
+        "parameters": [],
+        "response": "JSON response",
+        "errorHandling": "Standard HTTP error codes",
+        "filePath": "src/app/api/cms/oauth/callback/[type]/route.ts",
+        "serviceFunction": "handler"
+      }
+    ],
+    "services": [],
+    "middleware": [],
+    "authentication": "Custom"
+  },
+  "database": {
+    "overview": "# Database Documentation\n\n## 1. Database Architecture\n\n### Type\nThe project utilizes **Supabase** as its database solution. Supabase is an open-source backend-as-a-service that provides a PostgreSQL database, real-time subscriptions, authentication, and storage.\n\n### Hosting\nSupabase is hosted on its cloud platform, which provides automatic scaling and management of the PostgreSQL database. The hosting environment is designed to ensure high availability and performance.\n\n### Connection Details\nTo connect to the Supabase database, the following parameters are typically required:\n\n- **URL**: The unique endpoint for the Supabase project (e.g., `https://your-project.supabase.co`)\n- **Public API Key**: A key used for client-side access to the Supabase services.\n- **Database URL**: The connection string for PostgreSQL, which includes the database name, username, password, and host.\n\nExample connection string:\n```\npostgres://username:password@host:port/database\n```\n\n### Dependencies\nThis project relies on the following dependencies for interacting with Supabase:\n\n- `@supabase/ssr`: A library for server-side rendering with Supabase.\n- `@supabase/supabase-js`: The official JavaScript client library for Supabase, used for interacting with the database and other Supabase services.\n\n## 2. Schema Overview\n\nThe database schema is defined through SQL migration files. Below is an overview of the key migrations and their roles:\n\n### File: `supabase/migrations/001_initial_schema.sql`\nThis migration file sets up the initial database schema. It includes the creation of essential tables and their relationships. \n\n**Key Tables:**\n- **Users**: Stores user information and authentication details.\n- **Posts**: Contains content created by users, including titles, body text, and timestamps.\n- **Comments**: Stores comments made on posts, linking back to both the `Users` and `Posts` tables.\n\n### File: `supabase/migrations/021_cms_content_schemas.sql`\nThis migration file expands the schema to include additional content management structures. \n\n**Key Additions:**\n- **Categories**: A table for categorizing posts.\n- **Tags**: A table for tagging posts with multiple keywords.\n- **Post_Categories**: A join table to establish a many-to-many relationship between `Posts` and `Categories`.\n\n### Relationships\n- **Users** to **Posts**: One-to-Many (A user can have multiple posts).\n- **Posts** to **Comments**: One-to-Many (A post can have multiple comments).\n- **Posts** to **Categories**: Many-to-Many (A post can belong to multiple categories through the `Post_Categories` join table).\n\n## 3. Query Patterns\n\nData access and modification in this project are primarily executed through the Supabase client library. Below are common query patterns:\n\n### Data Retrieval\n- **Fetching Posts**: \n  ```javascript\n  const { data, error } = await supabase\n    .from('posts')\n    .select('*')\n    .order('created_at', { ascending: false });\n  ```\n\n- **Fetching Comments for a Post**:\n  ```javascript\n  const { data, error } = await supabase\n    .from('comments')\n    .select('*')\n    .eq('post_id', postId);\n  ```\n\n### Data Insertion\n- **Creating a New Post**:\n  ```javascript\n  const { data, error } = await supabase\n    .from('posts')\n    .insert([{ title: 'New Post', body: 'Post content here', user_id: userId }]);\n  ```\n\n- **Adding a Comment**:\n  ```javascript\n  const { data, error } = await supabase\n    .from('comments')\n    .insert([{ body: 'Great post!', post_id: postId, user_id: userId }]);\n  ```\n\n### Data Updates\n- **Updating a Post**:\n  ```javascript\n  const { data, error } = await supabase\n    .from('posts')\n    .update({ title: 'Updated Title' })\n    .eq('id', postId);\n  ```\n\n### Data Deletion\n- **Deleting a Comment**:\n  ```javascript\n  const { data, error } = await supabase\n    .from('comments')\n    .delete()\n    .eq('id', commentId);\n  ```\n\n## 4. Data Models\n\n### Users Table\n- **Fields**:\n  - `id`: UUID (Primary Key)\n  - `email`: String (Unique)\n  - `password`: String (Hashed)\n  - `created_at`: Timestamp\n\n### Posts Table\n- **Fields**:\n  - `id`: UUID (Primary Key)\n  - `title`: String (Not Null)\n  - `body`: Text (Not Null)\n  - `user_id`: UUID (Foreign Key referencing Users)\n  - `created_at`: Timestamp\n\n### Comments Table\n- **Fields**:\n  - `id`: UUID (Primary Key)\n  - `body`: Text (Not Null)\n  - `post_id`: UUID (Foreign Key referencing Posts)\n  - `user_id`: UUID (Foreign Key referencing Users)\n  - `created_at`: Timestamp\n\n### Categories Table\n- **Fields**:\n  - `id`: UUID (Primary Key)\n  - `name`: String (Unique, Not Null)\n\n### Tags Table\n- **Fields**:\n  - `id`: UUID (Primary Key)\n  - `name`: String (Unique, Not Null)\n\n### Post_Categories Table\n- **Fields**:\n  - `post_id`: UUID (Foreign Key referencing Posts)\n  - `category_id`: UUID (Foreign Key referencing Categories)\n\n## 5. Performance Considerations\n\n### Indexing\nTo optimize query performance, it is recommended to create indexes on frequently queried fields, such as:\n- `user_id` in the `posts` and `comments` tables.\n- `post_id` in the `comments` table.\n- `category_id` in the `post_categories` table.\n\n### Optimization Strategies\n- **Batch Inserts**: Use batch inserts for adding multiple records at once to reduce the number of database transactions.\n- **Pagination**: Implement pagination for retrieving large datasets to improve load times and reduce memory usage.\n- **Caching**: Utilize caching strategies for frequently accessed data to minimize database load.\n\nBy following these guidelines and understanding the database structure, developers can effectively work with the Supabase database in this project.",
+    "schema": [],
+    "queries": [],
+    "relationships": "Database relationships to be documented"
+  },
+  "userFlows": [
+    {
+      "name": "Landing Page",
+      "slug": "landing-page",
+      "description": "Main entry point for users to learn about the application",
+      "steps": [
+        {
+          "action": "Get Started Button",
+          "component": "Landing Page",
+          "componentSlug": "landing-page",
+          "event": "onClick",
+          "apiEndpoint": "/api/auth/register",
+          "serviceFunction": "createAccount",
+          "result": "Navigate to signup page"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "slug": "dashboard",
+      "description": "Main user interface after successful login",
+      "steps": [
+        {
+          "action": "View Profile",
+          "component": "Dashboard",
+          "componentSlug": "dashboard",
+          "event": "onClick",
+          "apiEndpoint": "/api/user/profile",
+          "serviceFunction": "getUserProfile",
+          "result": "Display user profile information"
+        }
+      ]
+    }
+  ],
+  "architectureDiagram": "\ngraph TB\n    %% Frontend Layer\n    subgraph \"Frontend Layer\"\n        FE0[\"AuthProvider\"]\n        FE1[\"WebsiteManagement\"]\n        FE2[\"UsageDashboard\"]\n        FE3[\"UpgradeBadge\"]\n        FE4[\"ThemeToggle\"]\n        FE5[\"SubscriptionManager\"]\n        FE6[\"SocialProof\"]\n        FE7[\"SnippetModal\"]\n    end\n    \n    %% Backend Layer\n    subgraph \"Backend Layer\"\n        BE0[\"server\"]\n        BE1[\"GSCConnection\"]\n        BE2[\"index\"]\n        BE3[\"base-provider\"]\n        BE4[\"page\"]\n        BE5[\"subscriptions\"]\n    end\n    \n    %% Database Layer\n    subgraph \"Database Layer\"\n        DB0[\"Supabase\"]\n    end\n    \n    %% External Services\n    subgraph \"External Services\"\n        EXT0[\"@supabase/ssr\"]\n        EXT1[\"@supabase/supabase-js\"]\n        EXT2[\"stripe\"]\n    end\n    \n    %% Connections\n    FE0 --> BE0\n    FE1 --> BE1\n    FE2 --> BE2\n    FE3 --> BE3\n    FE4 --> BE4\n    FE5 --> BE5\n    FE6 --> BE0\n    FE7 --> BE1\n    BE0 --> DB0\n    BE1 --> DB0\n    BE2 --> DB0\n    BE3 --> DB0\n    BE4 --> DB0\n    BE5 --> DB0\n    BE0 --> EXT0\n    BE0 --> EXT1\n    BE0 --> EXT2\n    BE1 --> EXT0\n    BE1 --> EXT1\n    BE1 --> EXT2\n    BE2 --> EXT0\n    BE2 --> EXT1\n    BE2 --> EXT2\n    \n    %% Styling\n    classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px\n    classDef backend fill:#f3e5f5,stroke:#4a148c,stroke-width:2px\n    classDef database fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px\n    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px\n    \n    class FE0 frontend\n    class FE1 frontend\n    class FE2 frontend\n    class FE3 frontend\n    class FE4 frontend\n    class FE5 frontend\n    class FE6 frontend\n    class FE7 frontend\n    class BE0 backend\n    class BE1 backend\n    class BE2 backend\n    class BE3 backend\n    class BE4 backend\n    class BE5 backend\n    class DB0 database\n    class EXT0 external\n    class EXT1 external\n    class EXT2 external\n",
+  "apiDocumentation": [
+    {
+      "endpoint": "/api/health",
+      "method": "GET",
+      "description": "GET endpoint for /api/health",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /api/health",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/websites",
+      "method": "GET",
+      "description": "GET endpoint for /api/websites",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /api/websites",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/websites/:token",
+      "method": "GET",
+      "description": "GET endpoint for /api/websites/:token",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /api/websites/:token",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/test-endpoints/:token",
+      "method": "POST",
+      "description": "POST endpoint for /api/test-endpoints/:token",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /api/test-endpoints/:token",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/websites",
+      "method": "POST",
+      "description": "POST endpoint for /api/websites",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /api/websites",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/users",
+      "method": "GET",
+      "description": "GET endpoint for /api/users",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /api/users",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/env",
+      "method": "GET",
+      "description": "GET endpoint for /api/env",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /api/env",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/",
+      "method": "GET",
+      "description": "GET endpoint for /",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "gsc_connected",
+      "method": "GET",
+      "description": "GET endpoint for gsc_connected",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET gsc_connected",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "error",
+      "method": "GET",
+      "description": "GET endpoint for error",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET error",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "details",
+      "method": "GET",
+      "description": "GET endpoint for details",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET details",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/",
+      "method": "GET",
+      "description": "GET endpoint for /",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_URL",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_URL",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_URL",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_SERVICE_ROLE_KEY",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_SERVICE_ROLE_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "Authorization",
+      "method": "GET",
+      "description": "GET endpoint for Authorization",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET Authorization",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_URL",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_URL",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_URL",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_SERVICE_ROLE_KEY",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_SERVICE_ROLE_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_URL",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_URL",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_URL",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_SERVICE_ROLE_KEY",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_SERVICE_ROLE_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "token",
+      "method": "GET",
+      "description": "GET endpoint for token",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET token",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_URL",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_URL",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_URL",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_SERVICE_ROLE_KEY",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_SERVICE_ROLE_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "token",
+      "method": "GET",
+      "description": "GET endpoint for token",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET token",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_URL",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_URL",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_URL",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_SERVICE_ROLE_KEY",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_SERVICE_ROLE_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "OPENAI_API_KEY",
+      "method": "GET",
+      "description": "GET endpoint for OPENAI_API_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET OPENAI_API_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_URL",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_URL",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_URL",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_SERVICE_ROLE_KEY",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_SERVICE_ROLE_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "OPENAI_API_KEY",
+      "method": "GET",
+      "description": "GET endpoint for OPENAI_API_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET OPENAI_API_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "OPENAI_API_KEY",
+      "method": "GET",
+      "description": "GET endpoint for OPENAI_API_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET OPENAI_API_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "OPENAI_API_KEY",
+      "method": "GET",
+      "description": "GET endpoint for OPENAI_API_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET OPENAI_API_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_URL",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_URL",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_URL",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "SUPABASE_SERVICE_ROLE_KEY",
+      "method": "GET",
+      "description": "GET endpoint for SUPABASE_SERVICE_ROLE_KEY",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET SUPABASE_SERVICE_ROLE_KEY",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "content-type",
+      "method": "GET",
+      "description": "GET endpoint for content-type",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET content-type",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "mode",
+      "method": "GET",
+      "description": "GET endpoint for mode",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET mode",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/manage",
+      "method": "GET",
+      "description": "GET endpoint for /manage",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /manage",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/manage",
+      "method": "POST",
+      "description": "POST endpoint for /manage",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /manage",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/create-checkout-session",
+      "method": "POST",
+      "description": "POST endpoint for /create-checkout-session",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /create-checkout-session",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/webhook",
+      "method": "POST",
+      "description": "POST endpoint for /webhook",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /webhook",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/usage",
+      "method": "GET",
+      "description": "GET endpoint for /usage",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /usage",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/websites",
+      "method": "GET",
+      "description": "GET endpoint for /websites",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /websites",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/websites",
+      "method": "POST",
+      "description": "POST endpoint for /websites",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /websites",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/audit/:websiteId",
+      "method": "GET",
+      "description": "GET endpoint for /audit/:websiteId",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /audit/:websiteId",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/crawl/:websiteId",
+      "method": "GET",
+      "description": "GET endpoint for /crawl/:websiteId",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /crawl/:websiteId",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/issues/:websiteId",
+      "method": "GET",
+      "description": "GET endpoint for /issues/:websiteId",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /issues/:websiteId",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/",
+      "method": "GET",
+      "description": "GET endpoint for /",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/detailed",
+      "method": "GET",
+      "description": "GET endpoint for /detailed",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /detailed",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/ready",
+      "method": "GET",
+      "description": "GET endpoint for /ready",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /ready",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/alive",
+      "method": "GET",
+      "description": "GET endpoint for /alive",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /alive",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/connection",
+      "method": "GET",
+      "description": "GET endpoint for /connection",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /connection",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/oauth/start",
+      "method": "GET",
+      "description": "GET endpoint for /oauth/start",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /oauth/start",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/oauth/callback",
+      "method": "GET",
+      "description": "GET endpoint for /oauth/callback",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /oauth/callback",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/oauth/refresh",
+      "method": "POST",
+      "description": "POST endpoint for /oauth/refresh",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /oauth/refresh",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/properties",
+      "method": "GET",
+      "description": "GET endpoint for /properties",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /properties",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/sync",
+      "method": "POST",
+      "description": "POST endpoint for /sync",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /sync",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/performance",
+      "method": "GET",
+      "description": "GET endpoint for /performance",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /performance",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/connections",
+      "method": "GET",
+      "description": "GET endpoint for /connections",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /connections",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/connections",
+      "method": "POST",
+      "description": "POST endpoint for /connections",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /connections",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/connections/:id",
+      "method": "GET",
+      "description": "GET endpoint for /connections/:id",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /connections/:id",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/connections/:id",
+      "method": "DELETE",
+      "description": "DELETE endpoint for /connections/:id",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "DELETE /connections/:id",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/oauth/start",
+      "method": "GET",
+      "description": "GET endpoint for /oauth/start",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /oauth/start",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/oauth/callback/:type",
+      "method": "GET",
+      "description": "GET endpoint for /oauth/callback/:type",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /oauth/callback/:type",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/test-connection",
+      "method": "POST",
+      "description": "POST endpoint for /test-connection",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /test-connection",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/login",
+      "method": "POST",
+      "description": "POST endpoint for /login",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /login",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/register",
+      "method": "POST",
+      "description": "POST endpoint for /register",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /register",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/refresh",
+      "method": "POST",
+      "description": "POST endpoint for /refresh",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /refresh",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/me",
+      "method": "GET",
+      "description": "GET endpoint for /me",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /me",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/",
+      "method": "GET",
+      "description": "GET endpoint for /",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/generate",
+      "method": "POST",
+      "description": "POST endpoint for /generate",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /generate",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/publish",
+      "method": "POST",
+      "description": "POST endpoint for /publish",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "POST /publish",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/:id",
+      "method": "GET",
+      "description": "GET endpoint for /:id",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET /:id",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/:id",
+      "method": "PUT",
+      "description": "PUT endpoint for /:id",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "PUT /:id",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "/:id",
+      "method": "DELETE",
+      "description": "DELETE endpoint for /:id",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "DELETE /:id",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "User-Agent",
+      "method": "GET",
+      "description": "GET endpoint for User-Agent",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET User-Agent",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "User-Agent",
+      "method": "GET",
+      "description": "GET endpoint for User-Agent",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET User-Agent",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "site_url",
+      "method": "GET",
+      "description": "GET endpoint for site_url",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET site_url",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "user_login",
+      "method": "GET",
+      "description": "GET endpoint for user_login",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET user_login",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "password",
+      "method": "GET",
+      "description": "GET endpoint for password",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET password",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "shop",
+      "method": "GET",
+      "description": "GET endpoint for shop",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET shop",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "websiteId",
+      "method": "GET",
+      "description": "GET endpoint for websiteId",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET websiteId",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "websiteUrl",
+      "method": "GET",
+      "description": "GET endpoint for websiteUrl",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET websiteUrl",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "status",
+      "method": "GET",
+      "description": "GET endpoint for status",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET status",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "limit",
+      "method": "GET",
+      "description": "GET endpoint for limit",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET limit",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "offset",
+      "method": "GET",
+      "description": "GET endpoint for offset",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET offset",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "stripe-signature",
+      "method": "GET",
+      "description": "GET endpoint for stripe-signature",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET stripe-signature",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "authorization",
+      "method": "GET",
+      "description": "GET endpoint for authorization",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET authorization",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "connectionId",
+      "method": "GET",
+      "description": "GET endpoint for connectionId",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET connectionId",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "siteId",
+      "method": "GET",
+      "description": "GET endpoint for siteId",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET siteId",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "threadId",
+      "method": "GET",
+      "description": "GET endpoint for threadId",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET threadId",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "authUserId",
+      "method": "GET",
+      "description": "GET endpoint for authUserId",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET authUserId",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "userToken",
+      "method": "GET",
+      "description": "GET endpoint for userToken",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET userToken",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "code",
+      "method": "GET",
+      "description": "GET endpoint for code",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET code",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "state",
+      "method": "GET",
+      "description": "GET endpoint for state",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET state",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "error",
+      "method": "GET",
+      "description": "GET endpoint for error",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET error",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "origin",
+      "method": "GET",
+      "description": "GET endpoint for origin",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET origin",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "code",
+      "method": "GET",
+      "description": "GET endpoint for code",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET code",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "state",
+      "method": "GET",
+      "description": "GET endpoint for state",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET state",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "error",
+      "method": "GET",
+      "description": "GET endpoint for error",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET error",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "user_id",
+      "method": "GET",
+      "description": "GET endpoint for user_id",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET user_id",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "site_url",
+      "method": "GET",
+      "description": "GET endpoint for site_url",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET site_url",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "user_login",
+      "method": "GET",
+      "description": "GET endpoint for user_login",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET user_login",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    },
+    {
+      "endpoint": "password",
+      "method": "GET",
+      "description": "GET endpoint for password",
+      "parameters": [],
+      "responses": [
+        {
+          "status": 200,
+          "description": "Success",
+          "schema": "JSON response"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Basic Usage",
+          "request": "GET password",
+          "response": "{ \"status\": \"success\" }"
+        }
+      ]
+    }
+  ],
+  "deploymentGuide": "# Deployment Guide\n\nThis guide provides comprehensive instructions for deploying the project on Vercel and a generic Node.js environment. Follow the steps outlined below to ensure a successful deployment.\n\n## Table of Contents\n\n1. [Prerequisites](#prerequisites)\n2. [Environment Setup](#environment-setup)\n3. [Build Process](#build-process)\n4. [Deployment Steps](#deployment-steps)\n   - [Vercel Deployment](#vercel-deployment)\n   - [Generic Node.js Deployment](#generic-nodejs-deployment)\n5. [Post-Deployment](#post-deployment)\n6. [Troubleshooting](#troubleshooting)\n\n## Prerequisites\n\nBefore deploying the application, ensure you have the following tools and accounts:\n\n- **Node.js**: Version 14.x or later. You can download it from [Node.js official website](https://nodejs.org/).\n- **npm**: Comes bundled with Node.js.\n- **Git**: For version control. Install from [Git official website](https://git-scm.com/).\n- **Vercel Account**: Create an account at [Vercel](https://vercel.com/signup) if deploying to Vercel.\n- **Supabase Account**: Create a Supabase account at [Supabase](https://supabase.io/) for database requirements.\n\n## Environment Setup\n\n### Environment Variables\n\nCreate a `.env` file in the root of your project and populate it with the following variables. Replace placeholder values with your actual configuration:\n\n```plaintext\nSUPABASE_URL=your_supabase_url\nSUPABASE_ANON_KEY=your_supabase_anon_key\nSTRIPE_SECRET_KEY=your_stripe_secret_key\nGOOGLE_API_KEY=your_google_api_key\nOPENAI_API_KEY=your_openai_api_key\n```\n\n### Configuration\n\nEnsure you have installed the required dependencies. Run the following command in your project directory:\n\n```bash\nnpm install @supabase/ssr @supabase/supabase-js dotenv googleapis next openai react react-dom stripe\n```\n\n## Build Process\n\nTo build the application, use the following command:\n\n```bash\nnpm run build\n```\n\nThis command will compile the Next.js application for production.\n\n## Deployment Steps\n\n### Vercel Deployment\n\n1. **Login to Vercel**: Use the command line to log in to your Vercel account.\n\n   ```bash\n   npx vercel login\n   ```\n\n2. **Deploy the Application**: Run the following command to deploy your application.\n\n   ```bash\n   npx vercel\n   ```\n\n   Follow the prompts to select your project settings. Vercel will automatically detect your Next.js application and configure the deployment.\n\n3. **Set Environment Variables on Vercel**: After deployment, go to your Vercel dashboard, select your project, and navigate to the \"Settings\" tab. Under \"Environment Variables,\" add the variables defined in your `.env` file.\n\n### Generic Node.js Deployment\n\n1. **Clone the Repository**: If you haven't already, clone the repository to your server.\n\n   ```bash\n   git clone https://github.com/your-repo.git\n   cd your-repo\n   ```\n\n2. **Install Dependencies**: Install the required dependencies.\n\n   ```bash\n   npm install\n   ```\n\n3. **Set Environment Variables**: Create a `.env` file in the root directory of your application and add the environment variables as described in the Environment Setup section.\n\n4. **Build the Application**: Build the application for production.\n\n   ```bash\n   npm run build\n   ```\n\n5. **Start the Application**: Start the application using the following command.\n\n   ```bash\n   npm run start\n   ```\n\n   Ensure that your server is set up to handle incoming requests on the appropriate port (default is 3000).\n\n## Post-Deployment\n\n### Verification\n\nAfter deployment, verify that your application is running correctly:\n\n- For Vercel, visit the provided URL after deployment.\n- For Node.js, navigate to `http://your-server-ip:3000` in your web browser.\n\n### Monitoring\n\nMonitor your application for errors or performance issues. Use tools like:\n\n- **Vercel Dashboard**: For Vercel deployments, check the dashboard for logs and performance metrics.\n- **Logging**: Implement logging in your Node.js application to capture errors and important events.\n\n## Troubleshooting\n\n### Common Deployment Issues\n\n1. **Environment Variables Not Set**: Ensure all required environment variables are set correctly in your `.env` file or Vercel settings.\n\n2. **Build Failures**: Check the build logs for errors. Common issues include missing dependencies or incorrect configurations.\n\n3. **Application Not Starting**: Ensure that your application is correctly configured to listen on the appropriate port. Check for any runtime errors in the logs.\n\n4. **Database Connection Issues**: Verify that your Supabase credentials are correct and that your database is accessible.\n\n5. **Permission Denied Errors**: Ensure that your server has the necessary permissions to run the application and access required files.\n\nBy following this guide, you should be able to successfully deploy and manage your application on both Vercel and a generic Node.js environment. For further assistance, refer to the documentation of the respective platforms or seek help from the community.",
+  "troubleshooting": "# Troubleshooting Guide for React, Next.js, and Express Project\n\nThis troubleshooting guide is designed to help developers identify, analyze, and resolve common issues encountered while working with a project built using React, Next.js, and Express. The guide is organized into categories based on the type of issue, providing symptoms, root cause analysis, solutions, and prevention strategies.\n\n## Table of Contents\n1. [Common Setup Issues](#common-setup-issues)\n2. [Build Errors](#build-errors)\n3. [Runtime Errors](#runtime-errors)\n4. [Performance Issues](#performance-issues)\n5. [Database Connectivity](#database-connectivity)\n6. [API Integration](#api-integration)\n7. [Deployment Issues](#deployment-issues)\n\n---\n\n## 1. Common Setup Issues\n\n### Symptoms and Error Messages\n- **Error**: `Module not found: Can't resolve 'some-module'`\n- **Error**: `Error: Cannot find module 'dotenv'`\n- **Error**: `npm install failed`\n\n### Root Cause Analysis\n- Missing dependencies in `package.json`.\n- Incorrect Node.js version.\n- Environment variables not set up correctly.\n\n### Step-by-Step Solutions\n1. **Check Node.js Version**:\n   - Ensure you are using the correct version specified in your project. You can check your version with:\n     ```bash\n     node -v\n     ```\n   - If necessary, use a version manager like `nvm` to switch versions.\n\n2. **Install Missing Dependencies**:\n   - Run the following command to install all dependencies:\n     ```bash\n     npm install\n     ```\n\n3. **Set Up Environment Variables**:\n   - Create a `.env` file in the root directory and define necessary variables:\n     ```\n     SUPABASE_URL=your_supabase_url\n     SUPABASE_ANON_KEY=your_supabase_anon_key\n     STRIPE_SECRET_KEY=your_stripe_secret_key\n     ```\n\n### Prevention Strategies\n- Use a `.nvmrc` file to specify the Node.js version for the project.\n- Regularly update your `package.json` and lock file to ensure all dependencies are up to date.\n\n---\n\n## 2. Build Errors\n\n### Symptoms and Error Messages\n- **Error**: `Error: Cannot find module 'next'`\n- **Error**: `Failed to compile.`\n- **Error**: `Unexpected token` in JavaScript files.\n\n### Root Cause Analysis\n- Syntax errors in JavaScript or TypeScript files.\n- Missing or incompatible dependencies.\n- Incorrect configuration in `next.config.js`.\n\n### Step-by-Step Solutions\n1. **Check for Syntax Errors**:\n   - Review the files mentioned in the error messages for any syntax issues. Use a linter or formatter to help identify problems.\n\n2. **Verify Dependencies**:\n   - Ensure all required dependencies are installed and compatible. You can check for outdated packages using:\n     ```bash\n     npm outdated\n     ```\n\n3. **Review Configuration**:\n   - Check `next.config.js` for any misconfigurations. Ensure that any custom Webpack configurations are correctly set.\n\n### Prevention Strategies\n- Use TypeScript for type safety and to catch errors at compile time.\n- Implement continuous integration (CI) to catch build errors early.\n\n---\n\n## 3. Runtime Errors\n\n### Symptoms and Error Messages\n- **Error**: `TypeError: Cannot read property 'x' of undefined`\n- **Error**: `Unhandled Promise Rejection`\n- **Error**: Application crashes on specific routes.\n\n### Root Cause Analysis\n- Issues with state management or props in React components.\n- Unhandled asynchronous operations.\n- Incorrect API responses or data structures.\n\n### Step-by-Step Solutions\n1. **Debugging**:\n   - Use `console.log` statements to trace the flow of data and identify where the error occurs.\n   - Utilize React Developer Tools to inspect component states and props.\n\n2. **Handle Promises**:\n   - Ensure all asynchronous calls are properly handled with `try/catch` blocks or `.catch()` methods.\n\n3. **Check API Responses**:\n   - Validate the structure of data returned from APIs. Adjust your code to handle unexpected formats.\n\n### Prevention Strategies\n- Implement error boundaries in React to catch and handle errors gracefully.\n- Write unit tests to cover critical components and functions.\n\n---\n\n## 4. Performance Issues\n\n### Symptoms and Error Messages\n- **Symptoms**: Slow loading times, high memory usage.\n- **Error**: `Warning: Too many re-renders.`\n- **Error**: `Warning: A component is changing an uncontrolled input to be controlled.`\n\n### Root Cause Analysis\n- Inefficient rendering due to unnecessary re-renders.\n- Large bundle sizes or unoptimized assets.\n- Memory leaks from improperly managed state or event listeners.\n\n### Step-by-Step Solutions\n1. **Optimize Rendering**:\n   - Use `React.memo` to prevent unnecessary re-renders of components.\n   - Implement `useCallback` and `useMemo` hooks for functions and values that do not change frequently.\n\n2. **Analyze Bundle Size**:\n   - Use tools like `webpack-bundle-analyzer` to identify large dependencies and optimize them.\n\n3. **Check for Memory Leaks**:\n   - Ensure that event listeners and subscriptions are properly cleaned up in `useEffect` hooks.\n\n### Prevention Strategies\n- Regularly profile your application using Chrome DevTools to identify performance bottlenecks.\n- Use lazy loading for components and images to improve initial load times.\n\n---\n\n## 5. Database Connectivity\n\n### Symptoms and Error Messages\n- **Error**: `Error: Connection refused`\n- **Error**: `Query failed: ...`\n- **Symptoms**: Slow database queries.\n\n### Root Cause Analysis\n- Incorrect database connection settings.\n- Network issues or database server downtime.\n- Inefficient queries or missing indexes.\n\n### Step-by-Step Solutions\n1. **Verify Connection Settings**:\n   - Check your database connection string in the environment variables. Ensure it is correctly formatted.\n\n2. **Test Database Connectivity**:\n   - Use a database client (like Postman or DBeaver) to test the connection with the same credentials.\n\n3. **Optimize Queries**:\n   - Analyze slow queries using the database's query analysis tools. Add indexes where necessary.\n\n### Prevention Strategies\n- Implement connection pooling to manage database connections efficiently.\n- Regularly review and optimize database schema and queries.\n\n---\n\n## 6. API Integration\n\n### Symptoms and Error Messages\n- **Error**: `Error: Request failed with status code 404`\n- **Error**: `Error: Network Error`\n- **Symptoms**: Delays in API responses.\n\n### Root Cause Analysis\n- Incorrect API endpoints or parameters.\n- Network issues or CORS policy restrictions.\n- Rate limiting by the API provider.\n\n### Step-by-Step Solutions\n1. **Check API Endpoints**:\n   - Verify that the API endpoints are correct and accessible. Test them using tools like Postman.\n\n2. **Handle CORS Issues**:\n   - Ensure that the server allows requests from your frontend domain. Configure CORS settings in your Express app:\n     ```javascript\n     const cors = require('cors');\n     app.use(cors());\n     ```\n\n3. **Implement Retry Logic**:\n   - For rate-limited APIs, implement exponential backoff retry logic for failed requests.\n\n### Prevention Strategies\n- Maintain documentation for API endpoints and expected responses.\n- Monitor API usage to stay within rate limits.\n\n---\n\n## 7. Deployment Issues\n\n### Symptoms and Error Messages\n- **Error**: `Error: Cannot find module 'next'`\n- **Error**: `Build failed with errors`\n- **Symptoms**: Application not accessible after deployment.\n\n### Root Cause Analysis\n- Missing environment variables in the production environment.\n- Incorrect build configurations.\n- Issues with server setup or permissions.\n\n### Step-by-Step Solutions\n1. **Verify Environment Variables**:\n   - Ensure all necessary environment variables are set in the production environment.\n\n2. **Check Build Configuration**:\n   - Review your deployment scripts and configurations. Ensure that the build command is correctly specified:\n     ```bash\n     npm run build\n     ```\n\n3. **Inspect Server Logs**:\n   - Check server logs for any errors during the deployment process. This can provide insight into what went wrong.\n\n### Prevention Strategies\n- Use a CI/CD pipeline to automate the deployment process and catch errors early.\n- Regularly test the deployment process in a staging environment before going live.\n\n---\n\nBy following this troubleshooting guide, developers can effectively diagnose and resolve common issues encountered in a React, Next.js, and Express project. Regular maintenance and proactive strategies will help prevent many of these issues from arising in the first place."
+}

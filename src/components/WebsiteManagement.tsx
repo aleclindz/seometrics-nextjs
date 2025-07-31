@@ -19,17 +19,26 @@ export default function WebsiteManagement() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [userPlan, setUserPlan] = useState<{ plan_id: string; maxSites: number }>({ plan_id: 'free', maxSites: 1 });
   const [error, setError] = useState<string | null>(null);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [switchTarget, setSwitchTarget] = useState<{ websiteId: string; domain: string } | null>(null);
+  const [switchInfo, setSwitchInfo] = useState<{
+    canSwitch: boolean;
+    cooldownEndsAt: string | null;
+    reason: string;
+    accountAge: number;
+  } | null>(null);
 
   const planLimits = {
-    free: 1,
-    starter: 1,
-    pro: 5,
-    enterprise: -1
+    free: 0, // Free plan: view only, no managed websites
+    starter: 1, // Starter plan: 1 managed website
+    pro: 5, // Pro plan: 5 managed websites
+    enterprise: -1 // Enterprise: unlimited
   };
 
   useEffect(() => {
     fetchWebsites();
     fetchUserPlan();
+    fetchSwitchInfo();
   }, [user]);
 
   const fetchUserPlan = async () => {
@@ -46,6 +55,26 @@ export default function WebsiteManagement() {
       }
     } catch (error) {
       console.error('Error fetching user plan:', error);
+    }
+  };
+
+  const fetchSwitchInfo = async () => {
+    if (!user?.token) return;
+
+    try {
+      const response = await fetch(`/api/websites/switch-info?userToken=${user.token}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setSwitchInfo({
+          canSwitch: data.canSwitch,
+          cooldownEndsAt: data.cooldownEndsAt,
+          reason: data.reason,
+          accountAge: data.accountAge
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching switch info:', error);
     }
   };
 
@@ -77,11 +106,22 @@ export default function WebsiteManagement() {
     }
   };
 
-  const switchManagedWebsite = async (newWebsiteId: string) => {
-    if (!user?.token) return;
+  const handleSwitchRequest = (websiteId: string, domain: string) => {
+    if (!switchInfo?.canSwitch) {
+      setError(`Cannot switch websites at this time. ${getSwitchRestrictionMessage()}`);
+      return;
+    }
 
-    setUpdating(newWebsiteId);
+    setSwitchTarget({ websiteId, domain });
+    setShowSwitchModal(true);
+  };
+
+  const confirmWebsiteSwitch = async () => {
+    if (!user?.token || !switchTarget) return;
+
+    setUpdating(switchTarget.websiteId);
     setError(null);
+    setShowSwitchModal(false);
 
     try {
       // First, unmanage all currently managed websites
@@ -111,7 +151,7 @@ export default function WebsiteManagement() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          websiteId: newWebsiteId,
+          websiteId: switchTarget.websiteId,
           is_managed: true
         })
       });
@@ -119,11 +159,28 @@ export default function WebsiteManagement() {
       const data = await response.json();
 
       if (data.success) {
+        // Record the switch in the database
+        await fetch(`/api/websites/record-switch`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userToken: user.token,
+            fromWebsiteToken: currentlyManagedWebsites[0]?.website_token || null,
+            toWebsiteToken: switchTarget.websiteId,
+            reason: 'user_switch'
+          })
+        });
+
         // Update local state: unmanage all others, manage the selected one
         setWebsites(prev => prev.map(w => ({
           ...w,
-          is_managed: w.website_token === newWebsiteId
+          is_managed: w.website_token === switchTarget.websiteId
         })));
+
+        // Refresh switch info to update cooldown
+        await fetchSwitchInfo();
       } else {
         setError(data.error || 'Failed to switch managed website');
       }
@@ -132,6 +189,24 @@ export default function WebsiteManagement() {
       setError('Failed to switch managed website');
     } finally {
       setUpdating(null);
+      setSwitchTarget(null);
+    }
+  };
+
+  const getSwitchRestrictionMessage = () => {
+    if (!switchInfo) return '';
+    
+    switch (switchInfo.reason) {
+      case 'new_user_grace_period':
+        return `You can switch freely during your first 7 days (${Math.ceil(7 - switchInfo.accountAge)} days remaining).`;
+      case 'cooldown_active':
+        const cooldownDate = switchInfo.cooldownEndsAt ? new Date(switchInfo.cooldownEndsAt).toLocaleDateString() : '';
+        return `You can switch again on ${cooldownDate} (30-day cooldown after last switch).`;
+      case 'cooldown_expired':
+      case 'no_previous_switches':
+        return 'You can switch your managed website now.';
+      default:
+        return '';
     }
   };
 
@@ -140,12 +215,12 @@ export default function WebsiteManagement() {
 
     const newManagedState = !currentlyManaged;
     
-    // For single-website plans (starter), handle switching logic
+    // For single-website plans (starter), use switching logic with confirmation
     if (newManagedState && userPlan.maxSites === 1) {
       const currentManagedCount = websites.filter(w => w.is_managed).length;
       if (currentManagedCount >= 1) {
-        // Switch: first unmanage all other websites, then manage this one
-        await switchManagedWebsite(websiteId);
+        const websiteDomain = websites.find(w => w.website_token === websiteId)?.domain || '';
+        handleSwitchRequest(websiteId, websiteDomain);
         return;
       }
     }
@@ -301,25 +376,30 @@ export default function WebsiteManagement() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {userPlan.plan_id === 'starter' || userPlan.maxSites === 1 ? (
-                    // Radio button for single selection plans
-                    <input
-                      type="radio"
-                      checked={website.is_managed}
-                      onChange={() => handleManageToggle(website.website_token, website.is_managed)}
-                      disabled={updating === website.website_token}
-                      className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300"
-                      name="managed-website"
-                    />
+                  {website.is_managed ? (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded-full font-medium">
+                        Currently Managed
+                      </span>
+                      {userPlan.maxSites === 1 && (
+                        <button
+                          onClick={() => handleSwitchRequest(website.website_token, website.domain)}
+                          disabled={updating === website.website_token || !switchInfo?.canSwitch}
+                          className="text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-1 rounded font-medium"
+                          title={switchInfo?.canSwitch ? "Switch to different website" : getSwitchRestrictionMessage()}
+                        >
+                          {updating === website.website_token ? 'Switching...' : 'Switch'}
+                        </button>
+                      )}
+                    </div>
                   ) : (
-                    // Checkbox for multi-selection plans
-                    <input
-                      type="checkbox"
-                      checked={website.is_managed}
-                      onChange={() => handleManageToggle(website.website_token, website.is_managed)}
+                    <button
+                      onClick={() => handleManageToggle(website.website_token, website.is_managed)}
                       disabled={updating === website.website_token}
-                      className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
-                    />
+                      className="text-xs bg-violet-600 hover:bg-violet-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-1 rounded font-medium"
+                    >
+                      {updating === website.website_token ? 'Managing...' : 'Manage'}
+                    </button>
                   )}
                   
                   <button
@@ -365,6 +445,68 @@ export default function WebsiteManagement() {
           </div>
         </div>
       </div>
+
+      {/* Website Switch Confirmation Modal */}
+      {showSwitchModal && switchTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Switch Managed Website
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  This will change which website SEOAgent optimizes
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">What happens when you switch:</h4>
+                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                  <li>• Your current managed website will stop receiving SEO optimization</li>
+                  <li>• <strong>{switchTarget.domain}</strong> will become your actively managed website</li>
+                  <li>• You won&apos;t be able to switch again for 30 days</li>
+                  <li>• All generated content and optimization data will be preserved</li>
+                </ul>
+              </div>
+
+              {switchInfo && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Switch Status:</strong> {getSwitchRestrictionMessage()}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowSwitchModal(false);
+                  setSwitchTarget(null);
+                }}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmWebsiteSwitch}
+                disabled={updating === switchTarget.websiteId}
+                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium"
+              >
+                {updating === switchTarget.websiteId ? 'Switching...' : 'Confirm Switch'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

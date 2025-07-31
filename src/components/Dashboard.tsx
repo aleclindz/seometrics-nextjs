@@ -9,11 +9,12 @@ import { useAuth } from '@/contexts/auth';
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
-  const [gscWebsites, setGscWebsites] = useState<Array<{
+  const [managedWebsites, setManagedWebsites] = useState<Array<{
     id: string;
     domain: string;
-    gscStatus: string;
-    lastSync?: Date;
+    website_token: string;
+    is_managed: boolean;
+    created_at: string;
     metrics?: {
       clicks: number;
       impressions: number;
@@ -49,24 +50,28 @@ export default function Dashboard() {
         setGscConnected(gscData.connected || false);
         setCheckingGsc(false);
         
-        // If GSC is connected, fetch websites
+        // If GSC is connected, fetch managed websites
         if (gscData.connected) {
-          const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
-          if (sitesResponse.ok) {
-            const sitesData = await sitesResponse.json();
+          const websitesResponse = await fetch(`/api/websites?userToken=${userToken}`);
+          if (websitesResponse.ok) {
+            const websitesData = await websitesResponse.json();
             
-            if (sitesData.success && sitesData.sites) {
-              console.log('GSC websites data:', sitesData.sites);
+            if (websitesData.success && websitesData.websites) {
+              console.log('Managed websites data:', websitesData.websites);
               
-              const formattedWebsites = sitesData.sites.map((site: any) => ({
-                id: site.id,
-                domain: site.url,
-                gscStatus: site.gscStatus,
-                lastSync: site.lastSync ? new Date(site.lastSync) : undefined,
-                metrics: site.metrics
-              }));
+              // Filter for only managed websites and format for dashboard
+              const managedOnly = websitesData.websites
+                .filter((website: any) => website.is_managed)
+                .map((website: any) => ({
+                  id: website.id,
+                  domain: website.domain,
+                  website_token: website.website_token,
+                  is_managed: website.is_managed,
+                  created_at: website.created_at,
+                  metrics: undefined // TODO: Fetch GSC metrics for managed websites
+                }));
 
-              setGscWebsites(formattedWebsites);
+              setManagedWebsites(managedOnly);
             }
           }
         }
@@ -92,7 +97,7 @@ export default function Dashboard() {
     }
   };
 
-  const refreshGscData = async () => {
+  const refreshManagedWebsitesData = async () => {
     if (!user || !user.token) return;
     
     setRefreshing(true);
@@ -101,34 +106,30 @@ export default function Dashboard() {
       // Use token from auth context
       const userToken = user.token;
       
-      // Trigger GSC properties refresh
-      const propertiesResponse = await fetch(`/api/gsc/properties?userToken=${userToken}`, {
-        method: 'POST'
-      });
-      
-      if (!propertiesResponse.ok) {
-        throw new Error('Failed to refresh GSC properties');
+      // Refresh managed websites data
+      const websitesResponse = await fetch(`/api/websites?userToken=${userToken}`);
+      if (!websitesResponse.ok) {
+        throw new Error('Failed to fetch updated website data');
       }
       
-      // Refresh the dashboard data
-      const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
-      if (!sitesResponse.ok) {
-        throw new Error('Failed to fetch updated site data');
-      }
-      
-      const sitesData = await sitesResponse.json();
-      if (sitesData.success && sitesData.sites) {
-        const formattedWebsites = sitesData.sites.map((site: any) => ({
-          id: site.id,
-          domain: site.url,
-          gscStatus: site.gscStatus,
-          lastSync: site.lastSync ? new Date(site.lastSync) : undefined,
-          metrics: site.metrics
-        }));
-        setGscWebsites(formattedWebsites);
+      const websitesData = await websitesResponse.json();
+      if (websitesData.success && websitesData.websites) {
+        // Filter for only managed websites and format for dashboard
+        const managedOnly = websitesData.websites
+          .filter((website: any) => website.is_managed)
+          .map((website: any) => ({
+            id: website.id,
+            domain: website.domain,
+            website_token: website.website_token,
+            is_managed: website.is_managed,
+            created_at: website.created_at,
+            metrics: undefined // TODO: Fetch GSC metrics for managed websites
+          }));
+
+        setManagedWebsites(managedOnly);
       }
     } catch (error) {
-      console.error('Error refreshing GSC data:', error);
+      console.error('Error refreshing managed websites data:', error);
       alert(`Failed to refresh data: ${error instanceof Error ? error.message : 'Please try again.'}`);
     } finally {
       setRefreshing(false);
@@ -198,7 +199,7 @@ export default function Dashboard() {
                 </div>
                 <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
                   <button
-                    onClick={refreshGscData}
+                    onClick={refreshManagedWebsitesData}
                     disabled={refreshing}
                     className="btn bg-gray-200 hover:bg-gray-300 disabled:bg-gray-300 disabled:cursor-not-allowed text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-600 dark:text-gray-200"
                   >
@@ -212,7 +213,7 @@ export default function Dashboard() {
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        Refresh GSC
+                        Refresh Data
                       </>
                     )}
                   </button>
@@ -226,24 +227,22 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* GSC Websites */}
+              {/* Managed Websites */}
               {!checkingGsc && gscConnected && (
                 <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
                   <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
                     <div className="flex justify-between items-center mb-2">
-                      <h2 className="font-semibold text-gray-800 dark:text-gray-100">Your Websites from Google Search Console</h2>
+                      <h2 className="font-semibold text-gray-800 dark:text-gray-100">Your Managed Websites</h2>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {gscWebsites.length} website{gscWebsites.length !== 1 ? 's' : ''} found
+                        {managedWebsites.length} website{managedWebsites.length !== 1 ? 's' : ''} managed
                       </div>
                     </div>
-                    {gscWebsites.length > 0 && gscWebsites[0].metrics?.dateStart && gscWebsites[0].metrics?.dateEnd && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Performance data: {new Date(gscWebsites[0].metrics.dateStart).toLocaleDateString()} - {new Date(gscWebsites[0].metrics.dateEnd).toLocaleDateString()}
-                      </div>
-                    )}
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      These are the websites currently being optimized by SEOAgent
+                    </div>
                   </header>
                   <div className="p-3">
-                    {gscWebsites.length > 0 ? (
+                    {managedWebsites.length > 0 ? (
                       <div className="overflow-x-auto">
                         <table className="table-auto w-full dark:text-gray-300">
                           <thead className="text-xs uppercase text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700 dark:bg-opacity-50 rounded-sm">
@@ -252,22 +251,10 @@ export default function Dashboard() {
                                 <div className="font-semibold text-left">Domain</div>
                               </th>
                               <th className="p-2">
-                                <div className="font-semibold text-center" title="Google Search Console connection status">GSC Status</div>
+                                <div className="font-semibold text-center">Status</div>
                               </th>
                               <th className="p-2">
-                                <div className="font-semibold text-center">Clicks</div>
-                              </th>
-                              <th className="p-2">
-                                <div className="font-semibold text-center">Impressions</div>
-                              </th>
-                              <th className="p-2">
-                                <div className="font-semibold text-center">CTR</div>
-                              </th>
-                              <th className="p-2">
-                                <div className="font-semibold text-center">Position</div>
-                              </th>
-                              <th className="p-2">
-                                <div className="font-semibold text-center">Last Sync</div>
+                                <div className="font-semibold text-center">Managed Since</div>
                               </th>
                               <th className="p-2">
                                 <div className="font-semibold text-center">Actions</div>
@@ -275,8 +262,8 @@ export default function Dashboard() {
                             </tr>
                           </thead>
                           <tbody className="text-sm font-medium divide-y divide-gray-100 dark:divide-gray-700/60">
-                            {gscWebsites.map((website, index) => (
-                              <tr key={index}>
+                            {managedWebsites.map((website, index) => (
+                              <tr key={website.website_token}>
                                 <td className="p-2">
                                   <div className="text-left">
                                     <div className="font-medium text-gray-900 dark:text-gray-100">
@@ -286,49 +273,23 @@ export default function Dashboard() {
                                 </td>
                                 <td className="p-2">
                                   <div className="text-center">
-                                    {website.gscStatus === 'connected' ? (
-                                      <div className="text-xs inline-flex font-medium bg-green-500/20 text-green-700 rounded-full text-center px-2.5 py-1">
-                                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                        </svg>
-                                        Connected
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs inline-flex font-medium bg-gray-500/20 text-gray-700 rounded-full text-center px-2.5 py-1">
-                                        Not Connected
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="p-2">
-                                  <div className="text-center text-gray-900 dark:text-gray-100">
-                                    {website.metrics?.clicks?.toLocaleString() || '-'}
-                                  </div>
-                                </td>
-                                <td className="p-2">
-                                  <div className="text-center text-gray-900 dark:text-gray-100">
-                                    {website.metrics?.impressions?.toLocaleString() || '-'}
-                                  </div>
-                                </td>
-                                <td className="p-2">
-                                  <div className="text-center text-gray-900 dark:text-gray-100">
-                                    {website.metrics?.ctr ? `${website.metrics.ctr.toFixed(2)}%` : '-'}
-                                  </div>
-                                </td>
-                                <td className="p-2">
-                                  <div className="text-center text-gray-900 dark:text-gray-100">
-                                    {website.metrics?.position ? website.metrics.position.toFixed(1) : '-'}
+                                    <div className="text-xs inline-flex font-medium bg-green-500/20 text-green-700 rounded-full text-center px-2.5 py-1">
+                                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                      </svg>
+                                      Actively Managed
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="p-2">
                                   <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
-                                    {website.lastSync ? website.lastSync.toLocaleDateString() : 'Never'}
+                                    {new Date(website.created_at).toLocaleDateString()}
                                   </div>
                                 </td>
                                 <td className="p-2">
                                   <div className="text-center">
                                     <a
-                                      href={`/website/${website.id}`}
+                                      href="/account"
                                       className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
                                     >
                                       Manage
@@ -366,7 +327,7 @@ export default function Dashboard() {
                               Manage Websites
                             </a>
                             <button
-                              onClick={refreshGscData}
+                              onClick={refreshManagedWebsitesData}
                               disabled={refreshing}
                               className="btn bg-gray-200 hover:bg-gray-300 disabled:bg-gray-300 disabled:cursor-not-allowed text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:disabled:bg-gray-600 dark:text-gray-200 inline-flex items-center ml-2"
                             >

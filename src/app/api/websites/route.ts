@@ -106,10 +106,10 @@ export async function PUT(request: NextRequest) {
         .neq('website_token', websiteId); // Exclude current website from count
 
       const planLimits = {
-        free: 1,
-        starter: 1,
-        pro: 5,
-        enterprise: -1
+        free: 0, // Free plan: view only, no managed websites
+        starter: 1, // Starter plan: 1 managed website
+        pro: 5, // Pro plan: 5 managed websites
+        enterprise: -1 // Enterprise: unlimited
       };
 
       const maxAllowed = planLimits[currentPlan as keyof typeof planLimits] || 1;
@@ -182,9 +182,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log('[WEBSITES API] Soft deleting website:', websiteId);
+    console.log('[WEBSITES API] Hard deleting website:', websiteId);
 
-    // Verify the website belongs to the user
+    // Verify the website belongs to the user and get domain for exclusion list
     const { data: website, error: websiteError } = await supabase
       .from('websites')
       .select('id, domain')
@@ -199,29 +199,52 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Soft delete: mark as excluded from sync and remove from managed
-    const { error: updateError } = await supabase
-      .from('websites')
-      .update({ 
-        is_excluded_from_sync: true,
-        is_managed: false
-      })
+    // Start a transaction-like operation
+    // 1. Add domain to excluded_domains table to prevent GSC re-import
+    const { error: excludeError } = await supabase
+      .from('excluded_domains')
+      .insert({
+        user_token: userToken,
+        domain: website.domain
+      });
+
+    // Don't fail if domain already exists in excluded list
+    if (excludeError && !excludeError.code?.includes('23505')) { // 23505 is unique violation
+      console.error('[WEBSITES API] Failed to add to excluded domains:', excludeError);
+    }
+
+    // 2. Delete related articles first (cascade delete)
+    const { error: articlesDeleteError } = await supabase
+      .from('articles')
+      .delete()
       .eq('website_token', websiteId)
       .eq('user_token', userToken);
 
-    if (updateError) {
-      console.error('[WEBSITES API] Delete error:', updateError);
+    if (articlesDeleteError) {
+      console.error('[WEBSITES API] Failed to delete related articles:', articlesDeleteError);
+      // Continue with website deletion even if articles deletion fails
+    }
+
+    // 3. Hard delete the website record
+    const { error: deleteError } = await supabase
+      .from('websites')
+      .delete()
+      .eq('website_token', websiteId)
+      .eq('user_token', userToken);
+
+    if (deleteError) {
+      console.error('[WEBSITES API] Delete error:', deleteError);
       return NextResponse.json(
         { error: 'Failed to remove website' },
         { status: 500 }
       );
     }
 
-    console.log('[WEBSITES API] Website soft deleted successfully');
+    console.log('[WEBSITES API] Website hard deleted successfully');
 
     return NextResponse.json({
       success: true,
-      message: `Website "${website.domain}" removed from SEOAgent. It will not be re-imported from GSC.`,
+      message: `Website "${website.domain}" permanently removed from SEOAgent. It will not be re-imported from GSC.`,
       website: {
         id: websiteId,
         domain: website.domain
