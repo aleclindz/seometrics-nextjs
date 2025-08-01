@@ -14,7 +14,8 @@ import {
   FileText,
   Shield,
   Smartphone,
-  BarChart3
+  BarChart3,
+  Map
 } from 'lucide-react';
 
 interface TechnicalSEOData {
@@ -57,6 +58,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const [selectedSite, setSelectedSite] = useState<string>('');
   const [autoFixInProgress, setAutoFixInProgress] = useState(false);
   const [gscAnalysisInProgress, setGscAnalysisInProgress] = useState(false);
+  const [sitemapGenerationInProgress, setSitemapGenerationInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<'issues' | 'activity'>('issues');
   const [fixSuggestions, setFixSuggestions] = useState<Record<string, string>>({});
 
@@ -112,6 +114,55 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
     } catch (error) {
       console.error('Error getting AI fix suggestion:', error);
       alert('Error getting AI fix suggestion. Please check your connection.');
+    }
+  };
+
+  const generateAndSubmitSitemap = async () => {
+    if (!selectedSite) return;
+    
+    try {
+      setSitemapGenerationInProgress(true);
+      
+      const siteUrlToSend = `https://${selectedSite.replace('sc-domain:', '')}`;
+      console.log('[DASHBOARD] Generating sitemap for:', siteUrlToSend);
+      
+      const response = await fetch('/api/technical-seo/generate-sitemap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          siteUrl: siteUrlToSend,
+          submitToGSC: true
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Sitemap Generation Results:', result);
+        
+        const { urlCount, gscSubmission } = result.data;
+        let message = `✅ Sitemap generated with ${urlCount} URLs`;
+        
+        if (gscSubmission?.success) {
+          message += `\n🚀 Successfully submitted to Google Search Console`;
+        } else if (gscSubmission?.error) {
+          message += `\n⚠️ GSC submission failed: ${gscSubmission.error}`;
+        }
+        
+        alert(message);
+        
+        // Refresh dashboard data
+        await fetchTechnicalSEOData();
+      } else {
+        const errorText = await response.text();
+        console.error('[DASHBOARD] Sitemap generation error:', errorText);
+        alert(`Sitemap generation failed: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error generating sitemap:', error);
+      alert('Error generating sitemap. Please check your connection.');
+    } finally {
+      setSitemapGenerationInProgress(false);
     }
   };
 
@@ -454,6 +505,23 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                   <>
                     <Search className="h-4 w-4" />
                     <span>Run GSC Analysis</span>
+                  </>
+                )}
+              </button>
+              <button 
+                onClick={generateAndSubmitSitemap}
+                disabled={sitemapGenerationInProgress}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
+              >
+                {sitemapGenerationInProgress ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Map className="h-4 w-4" />
+                    <span>Generate Sitemap</span>
                   </>
                 )}
               </button>
