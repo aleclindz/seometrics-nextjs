@@ -56,6 +56,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedSite, setSelectedSite] = useState<string>('');
   const [autoFixInProgress, setAutoFixInProgress] = useState(false);
+  const [gscAnalysisInProgress, setGscAnalysisInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<'issues' | 'activity'>('issues');
 
   useEffect(() => {
@@ -115,6 +116,56 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
       console.error('Error triggering automated fixes:', error);
     } finally {
       setAutoFixInProgress(false);
+    }
+  };
+
+  const triggerGSCAnalysis = async () => {
+    if (!selectedSite) return;
+    
+    try {
+      setGscAnalysisInProgress(true);
+      
+      // First check if we have GSC data
+      const debugResponse = await fetch(`/api/debug/gsc-data?userToken=${userToken}`);
+      const debugData = await debugResponse.json();
+      
+      console.log('GSC Debug Data:', debugData);
+      
+      if (debugData.data?.properties?.length > 0) {
+        // We have GSC connected, now do URL inspection on main pages
+        const mainUrls = [
+          `https://${selectedSite}`,
+          `https://${selectedSite}/`,
+          `https://${selectedSite}/about`,
+          `https://${selectedSite}/contact`,
+          `https://${selectedSite}/pricing`
+        ];
+
+        const response = await fetch('/api/gsc/url-inspection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userToken,
+            siteUrl: `https://${selectedSite}`,
+            urls: mainUrls
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('URL Inspection Results:', result);
+          // Refresh data after analysis
+          await fetchTechnicalSEOData();
+        } else {
+          console.error('URL inspection failed:', await response.text());
+        }
+      } else {
+        alert('Google Search Console not connected. Please connect GSC first.');
+      }
+    } catch (error) {
+      console.error('Error triggering GSC analysis:', error);
+    } finally {
+      setGscAnalysisInProgress(false);
     }
   };
 
@@ -264,23 +315,42 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                 Smart.js is continuously optimizing your website&apos;s technical SEO
               </p>
             </div>
-            <button 
-              onClick={triggerAutomatedFixes}
-              disabled={autoFixInProgress}
-              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
-            >
-              {autoFixInProgress ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span>Applying Fixes...</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4" />
-                  <span>Trigger Fixes</span>
-                </>
-              )}
-            </button>
+            <div className="flex space-x-2">
+              <button 
+                onClick={triggerGSCAnalysis}
+                disabled={gscAnalysisInProgress}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
+              >
+                {gscAnalysisInProgress ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Analyzing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    <span>Run GSC Analysis</span>
+                  </>
+                )}
+              </button>
+              <button 
+                onClick={triggerAutomatedFixes}
+                disabled={autoFixInProgress}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
+              >
+                {autoFixInProgress ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Applying Fixes...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    <span>Trigger Fixes</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
