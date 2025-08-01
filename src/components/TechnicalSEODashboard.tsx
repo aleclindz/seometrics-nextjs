@@ -83,18 +83,26 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
       setLoading(true);
       
       // Fetch URL inspections data
+      const siteUrlToSend = `https://${selectedSite}`;
+      console.log('[DASHBOARD] Fetching technical SEO data for:', siteUrlToSend);
+      console.log('[DASHBOARD] User token:', userToken);
+      
       const inspectionsResponse = await fetch('/api/technical-seo/summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userToken,
-          siteUrl: `https://${selectedSite}`
+          siteUrl: siteUrlToSend
         })
       });
 
       if (inspectionsResponse.ok) {
         const technicalData = await inspectionsResponse.json();
+        console.log('[DASHBOARD] Technical SEO API Response:', technicalData);
         setData(technicalData.data);
+      } else {
+        const errorText = await inspectionsResponse.text();
+        console.error('[DASHBOARD] Technical SEO API Error:', errorText);
       }
     } catch (error) {
       console.error('Error fetching technical SEO data:', error);
