@@ -180,9 +180,15 @@ export async function POST(request: NextRequest) {
         
       } catch (urlError) {
         console.error(`[GSC URL INSPECTION] Error inspecting ${url}:`, urlError);
+        const errorMessage = urlError instanceof Error ? urlError.message : 'Unknown error';
+        console.error(`[GSC URL INSPECTION] Full error details for ${url}:`, {
+          message: errorMessage,
+          stack: urlError instanceof Error ? urlError.stack : undefined,
+          response: (urlError as any)?.response?.data || (urlError as any)?.response || 'No response data'
+        });
         inspectionResults.push({
           url: url,
-          error: urlError instanceof Error ? urlError.message : 'Unknown error',
+          error: errorMessage,
           indexStatus: 'ERROR'
         });
       }
@@ -257,6 +263,11 @@ export async function POST(request: NextRequest) {
     console.log(`[GSC URL INSPECTION] Completed inspection of ${urls.length} URLs`);
     console.log(`[GSC URL INSPECTION] Found ${criticalIssues.length} critical issues`);
     console.log(`[GSC URL INSPECTION] Identified ${automatedFixes.length} automated fixes`);
+    
+    const errors = inspectionResults.filter(r => 'error' in r);
+    if (errors.length > 0) {
+      console.error(`[GSC URL INSPECTION] ${errors.length} URLs failed inspection:`, errors);
+    }
 
     return NextResponse.json({
       success: true,
@@ -273,6 +284,7 @@ export async function POST(request: NextRequest) {
         },
         issues: criticalIssues,
         automatedFixes: automatedFixes,
+        errors: inspectionResults.filter(r => 'error' in r),
         inspectedAt: new Date().toISOString()
       }
     });

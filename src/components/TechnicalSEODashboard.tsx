@@ -195,6 +195,11 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
           console.log('URLs inspected:', result.data?.inspectedUrls);
           console.log('Summary:', result.data?.summary);
           
+          if (result.data?.errors?.length > 0) {
+            console.error('GSC Inspection Errors:', result.data.errors);
+            alert(`GSC Analysis completed with ${result.data.errors.length} errors. Check console for details.`);
+          }
+          
           // Wait a moment for database writes to complete
           await new Promise(resolve => setTimeout(resolve, 1000));
           
