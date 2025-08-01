@@ -26,12 +26,20 @@ export async function GET(request: NextRequest) {
       .order('inspected_at', { ascending: false })
       .limit(10);
 
-    // Get count by site
-    const { data: siteCount, error: siteCountError } = await supabase
+    // Get all inspections to count by site manually
+    const { data: allInspections, error: allInspectionsError } = await supabase
       .from('url_inspections')
-      .select('site_url, count(*)')
-      .eq('user_token', userToken)
-      .group('site_url');
+      .select('site_url')
+      .eq('user_token', userToken);
+
+    // Count by site manually
+    const siteCount = allInspections ? 
+      Object.entries(
+        allInspections.reduce((acc: Record<string, number>, item) => {
+          acc[item.site_url] = (acc[item.site_url] || 0) + 1;
+          return acc;
+        }, {})
+      ).map(([site_url, count]) => ({ site_url, count })) : [];
 
     return NextResponse.json({
       success: true,
@@ -41,7 +49,7 @@ export async function GET(request: NextRequest) {
         totalInspections: inspections?.length || 0,
         errors: {
           inspectionsError: inspectionsError?.message,
-          siteCountError: siteCountError?.message
+          allInspectionsError: allInspectionsError?.message
         }
       }
     });
