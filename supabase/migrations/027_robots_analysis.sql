@@ -1,7 +1,7 @@
 -- Create robots_analyses table for storing robots.txt analysis results
 create table public.robots_analyses (
     id uuid default gen_random_uuid() primary key,
-    user_id uuid references public.users(id) on delete cascade not null,
+    user_id uuid references public.login_users(id) on delete cascade not null,
     user_token text not null,
     site_url text not null,
     exists boolean not null default false,
@@ -35,19 +35,35 @@ alter table public.robots_analyses enable row level security;
 -- Create RLS policies
 create policy "Users can view their own robots analyses"
     on public.robots_analyses for select
-    using (auth.uid() = user_id);
+    using (
+        user_token IN (
+            SELECT token FROM login_users WHERE auth_user_id = auth.uid()
+        )
+    );
 
 create policy "Users can insert their own robots analyses"
     on public.robots_analyses for insert
-    with check (auth.uid() = user_id);
+    with check (
+        user_token IN (
+            SELECT token FROM login_users WHERE auth_user_id = auth.uid()
+        )
+    );
 
 create policy "Users can update their own robots analyses"
     on public.robots_analyses for update
-    using (auth.uid() = user_id);
+    using (
+        user_token IN (
+            SELECT token FROM login_users WHERE auth_user_id = auth.uid()
+        )
+    );
 
 create policy "Users can delete their own robots analyses"
     on public.robots_analyses for delete
-    using (auth.uid() = user_id);
+    using (
+        user_token IN (
+            SELECT token FROM login_users WHERE auth_user_id = auth.uid()
+        )
+    );
 
 -- Create function to automatically update updated_at
 create or replace function public.handle_updated_at()

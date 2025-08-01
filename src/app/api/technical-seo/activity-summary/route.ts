@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
 
     // Get user ID from user_token
     const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, email')
-      .eq('user_token', userToken)
+      .from('login_users')
+      .select('id, email, auth_user_id')
+      .eq('token', userToken)
       .single();
     
     if (userError || !userData) {
