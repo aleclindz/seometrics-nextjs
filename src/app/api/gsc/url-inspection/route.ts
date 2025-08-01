@@ -98,21 +98,31 @@ export async function POST(request: NextRequest) {
     // Create Search Console API client
     const searchconsole = google.searchconsole({ version: 'v1', auth: oauth2Client });
 
-    // Inspect each URL
+    // Inspect each URL with timeout
     const inspectionResults = [];
     
-    for (const url of urls) {
-      try {
-        console.log(`[GSC URL INSPECTION] Inspecting URL: ${url}`);
-        
-        // Call URL Inspection API
-        const inspectionResponse = await searchconsole.urlInspection.index.inspect({
+    // Helper function to add timeout to URL inspection
+    const inspectUrlWithTimeout = async (url: string, siteUrl: string, timeoutMs: number = 10000) => {
+      return Promise.race([
+        searchconsole.urlInspection.index.inspect({
           requestBody: {
             inspectionUrl: url,
             siteUrl: siteUrl,
             languageCode: 'en-US'
           }
-        });
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`URL inspection timeout after ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
+    };
+    
+    for (const url of urls) {
+      try {
+        console.log(`[GSC URL INSPECTION] Inspecting URL: ${url}`);
+        
+        // Call URL Inspection API with timeout
+        const inspectionResponse = await inspectUrlWithTimeout(url, siteUrl, 8000) as any;
 
         const result = inspectionResponse.data.inspectionResult;
         
@@ -176,7 +186,7 @@ export async function POST(request: NextRequest) {
         inspectionResults.push(technicalInfo);
         
         // Add small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
         
       } catch (urlError) {
         console.error(`[GSC URL INSPECTION] Error inspecting ${url}:`, urlError);

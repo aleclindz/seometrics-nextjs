@@ -191,12 +191,10 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         console.log('Selected Site:', selectedSite);
         console.log('Cleaned Domain:', actualDomain);
         
+        // Start with just 2 URLs to avoid timeout
         const mainUrls = [
           `https://${actualDomain}`,
-          `https://${actualDomain}/`,
-          `https://${actualDomain}/about`,
-          `https://${actualDomain}/contact`,
-          `https://${actualDomain}/pricing`
+          `https://${actualDomain}/about`
         ];
         
         console.log('URLs to inspect:', mainUrls);
