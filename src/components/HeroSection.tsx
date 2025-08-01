@@ -17,20 +17,21 @@ export default function HeroSection() {
 
           {/* Main Headline */}
           <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white mb-6">
-            Put your SEO on{' '}
+            Put your{' '}
             <span className="text-violet-600 relative">
-              auto-pilot
+              technical SEO
               <svg className="absolute -bottom-2 left-0 w-full h-3 text-violet-300 dark:text-violet-500" preserveAspectRatio="none" viewBox="0 0 100 10">
                 <path d="M0,8 Q50,0 100,8" stroke="currentColor" strokeWidth="2" fill="none" />
               </svg>
             </span>
+            {' '}on autopilot
           </h1>
 
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-4xl mx-auto">
-            Automated technical SEO, content writing, and strategic optimization that works while you sleep.
+            Automated technical SEO fixes that run 24/7. Google Search Console integration, sitemap generation, schema markup, and AI-powered issue resolution.
             <br className="hidden md:block" />
-            <span className="text-violet-600 dark:text-violet-400 font-semibold">One script. Infinite possibilities.</span>
+            <span className="text-violet-600 dark:text-violet-400 font-semibold">Set it once. Fix it forever.</span>
           </p>
 
           {/* CTAs */}
@@ -57,7 +58,7 @@ export default function HeroSection() {
             14-day free trial • No credit card required
           </div>
 
-          {/* Features Preview */}
+          {/* Technical SEO Features Preview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300">
               <div className="w-6 h-6 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
@@ -65,7 +66,7 @@ export default function HeroSection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="font-medium">Technical SEO</span>
+              <span className="font-medium">GSC Integration</span>
             </div>
             <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300">
               <div className="w-6 h-6 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
@@ -73,7 +74,7 @@ export default function HeroSection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="font-medium">Content Writer</span>
+              <span className="font-medium">Auto-Fixes 24/7</span>
             </div>
             <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300">
               <div className="w-6 h-6 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
@@ -81,7 +82,7 @@ export default function HeroSection() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="font-medium">SEO Strategy</span>
+              <span className="font-medium">AI Fix Suggestions</span>
             </div>
           </div>
         </div>

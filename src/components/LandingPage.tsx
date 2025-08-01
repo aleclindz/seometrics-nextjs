@@ -14,7 +14,7 @@ export default function LandingPage() {
     "@type": "SoftwareApplication",
     "name": "SEOAgent",
     "url": "https://seoagent.com",
-    "description": "Automated technical SEO, content writing, and strategic optimization for indie hackers and bootstrappers",
+    "description": "Put your technical SEO on autopilot with Google Search Console integration, automated fixes, and AI-powered issue resolution for indie hackers",
     "applicationCategory": "SEO Software",
     "operatingSystem": "Web Browser",
     "offers": {
@@ -30,13 +30,13 @@ export default function LandingPage() {
       "url": "https://seoagent.com"
     },
     "featureList": [
-      "Technical SEO Autopilot",
-      "Multi-CMS Content Writer", 
-      "SEO Strategy Intelligence",
       "Google Search Console Integration",
-      "Automated Meta Tags",
-      "AI-Powered Alt Text",
-      "Generative Engine Optimization"
+      "Smart.js Autopilot System",
+      "Automated Sitemap Management",
+      "AI-Powered Fix Suggestions",
+      "Real-Time Technical SEO Dashboard",
+      "Schema Markup Automation",
+      "24/7 Technical SEO Monitoring"
     ],
     "screenshot": "https://seoagent.com/og-image.jpg",
     "aggregateRating": {

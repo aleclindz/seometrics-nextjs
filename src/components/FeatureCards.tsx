@@ -5,42 +5,12 @@ export default function FeatureCards() {
     {
       icon: (
         <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      title: "🤖 Technical SEO Autopilot",
-      description: "Complete technical SEO automation. Meta tags, alt-text, sitemaps, Core Web Vitals monitoring, and fixes—all handled automatically.",
-      benefits: ["Google Search Console sync", "Automated fixes", "Real-time monitoring", "Zero maintenance"]
-    },
-    {
-      icon: (
-        <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-        </svg>
-      ),
-      title: "✍️ Multi-CMS Content Writer",
-      description: "AI-powered article generation with automated publishing to Strapi, WordPress, Webflow, Shopify, and Ghost. SurferSEO only does WordPress!",
-      benefits: ["5+ CMS platforms", "SurferSEO-quality content", "Auto-publishing", "Competitive advantage"]
-    },
-    {
-      icon: (
-        <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-      title: "📊 SEO Strategy Intelligence",
-      description: "Your personal SEO strategist. Automated keyword research, competitor analysis, and dynamic strategy updates based on your performance data.",
-      benefits: ["SERP.dev integration", "Competitor tracking", "Performance-based updates", "Coming soon"]
-    },
-    {
-      icon: (
-        <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-        </svg>
-      ),
-      title: "Future-Proof Your SEO",
-      description: "Get discovered by ChatGPT, Claude, and other AI search engines. Optimize for both traditional search and Generative Engine Optimization (GEO).",
-      benefits: ["AI search optimized", "ChatGPT visibility", "Claude indexing", "Next-gen SEO"]
+      title: "🔍 Google Search Console Integration",
+      description: "Connect your GSC account and get real-time technical SEO analysis. Automatic URL inspection, indexing status monitoring, and issue detection.",
+      benefits: ["1-click GSC connection", "URL inspection API", "Indexing monitoring", "Real-time sync"]
     },
     {
       icon: (
@@ -48,9 +18,29 @@ export default function FeatureCards() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
-      title: "Built for Bootstrappers",
-      description: "Perfect for apps built with Lovable, v0, Create, Replit, GitHub Spark. You&apos;ve built your app—now let it grow with automated SEO.",
-      benefits: ["Zero-config setup", "Affordable pricing", "Indie hacker focused", "Growth automation"]
+      title: "⚡ Smart.js Autopilot System",
+      description: "One lightweight script that runs 24/7 on your website. Automatically fixes schema markup, canonical tags, meta descriptions, and alt text.",
+      benefits: ["24/7 monitoring", "Automatic fixes", "Schema markup", "Meta optimization"]
+    },
+    {
+      icon: (
+        <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+        </svg>
+      ),
+      title: "🗺️ Automated Sitemap Management",
+      description: "Generate XML sitemaps automatically and submit them to Google Search Console. Discovers pages from GSC data and common website patterns.",
+      benefits: ["Auto-generation", "GSC submission", "URL discovery", "XML optimization"]
+    },
+    {
+      icon: (
+        <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+      ),
+      title: "🤖 AI-Powered Fix Suggestions",
+      description: "Get intelligent fix suggestions for complex technical SEO issues that can't be auto-fixed. Copy-paste instructions for developers or AI builders.",
+      benefits: ["AI diagnostics", "Copy-paste fixes", "Developer-ready", "Issue resolution"]
     },
     {
       icon: (
@@ -58,9 +48,19 @@ export default function FeatureCards() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
-      title: "Growth Analytics",
-      description: "Track your SEO improvements with detailed analytics. Monitor automated fixes, content performance, and organic growth.",
-      benefits: ["Real-time tracking", "Growth metrics", "Performance insights", "ROI monitoring"]
+      title: "📊 Real-Time Dashboard",
+      description: "Monitor your technical SEO health with live metrics. Track indexable pages, mobile-friendliness, schema markup coverage, and automated fixes.",
+      benefits: ["Live monitoring", "Technical metrics", "Fix activity", "Issue tracking"]
+    },
+    {
+      icon: (
+        <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100-4m0 4v2m0-6V4" />
+        </svg>
+      ),
+      title: "🚀 Built for Indie Hackers",
+      description: "Perfect for bootstrappers and side projects. Works with any website or framework. Affordable pricing that scales with your growth.",
+      benefits: ["Framework agnostic", "Affordable pricing", "Indie-focused", "Easy setup"]
     }
   ];
 
@@ -70,10 +70,10 @@ export default function FeatureCards() {
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Everything you need for automated SEO
+            Complete Technical SEO Automation
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Stop wasting time on manual SEO tasks. Let our AI handle the heavy lifting while you focus on building your product.
+            Stop manually fixing technical SEO issues. Our automation system monitors, detects, and fixes problems 24/7 while you focus on building.
           </p>
         </div>
 
@@ -120,10 +120,10 @@ export default function FeatureCards() {
         <div className="text-center mt-16">
           <div className="bg-violet-600 text-white rounded-2xl p-8 md:p-12">
             <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              Ready to automate your SEO?
+              Ready to put your technical SEO on autopilot?
             </h3>
             <p className="text-xl text-violet-100 mb-6">
-              Join thousands of indie hackers and bootstrappers who have already put their SEO on auto-pilot.
+              Join indie hackers who have automated their technical SEO and never worry about indexing issues, broken sitemaps, or missing schema markup again.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <a
