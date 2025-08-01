@@ -58,6 +58,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const [autoFixInProgress, setAutoFixInProgress] = useState(false);
   const [gscAnalysisInProgress, setGscAnalysisInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<'issues' | 'activity'>('issues');
+  const [fixSuggestions, setFixSuggestions] = useState<Record<string, string>>({});
 
   const debugUrlInspections = async () => {
     try {
@@ -67,6 +68,50 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
       alert(`Found ${result.data?.totalInspections || 0} URL inspections. Check console for details.`);
     } catch (error) {
       console.error('Debug failed:', error);
+    }
+  };
+
+  const getAIFixSuggestion = async (issue: any) => {
+    try {
+      const issueKey = `${issue.type}-${issue.description}`;
+      
+      if (fixSuggestions[issueKey]) {
+        // Already have suggestion, show it
+        alert(`AI Fix Suggestion:\n\n${fixSuggestions[issueKey]}`);
+        return;
+      }
+
+      const response = await fetch('/api/technical-seo/ai-fix-suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          issueType: issue.type,
+          description: issue.description,
+          url: selectedSite,
+          severity: issue.severity,
+          rawData: issue.rawData || null
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const suggestion = result.data.suggestion;
+        
+        // Store suggestion for future use
+        setFixSuggestions(prev => ({ ...prev, [issueKey]: suggestion }));
+        
+        // Show suggestion in a copyable format
+        navigator.clipboard.writeText(suggestion).then(() => {
+          alert(`AI Fix Suggestion (copied to clipboard):\n\n${suggestion}`);
+        }).catch(() => {
+          alert(`AI Fix Suggestion:\n\n${suggestion}`);
+        });
+      } else {
+        alert('Failed to get AI fix suggestion. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error getting AI fix suggestion:', error);
+      alert('Error getting AI fix suggestion. Please check your connection.');
     }
   };
 
@@ -506,11 +551,19 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                       }`}>
                         {issue.count} pages
                       </span>
-                      {issue.canAutoFix && (
+                      {issue.canAutoFix ? (
                         <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 flex items-center">
                           <Zap className="h-3 w-3 mr-1" />
                           Auto-fixable
                         </span>
+                      ) : (
+                        <button
+                          onClick={() => getAIFixSuggestion(issue)}
+                          className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 flex items-center"
+                        >
+                          <Search className="h-3 w-3 mr-1" />
+                          Get AI Fix
+                        </button>
                       )}
                     </div>
                   </div>
