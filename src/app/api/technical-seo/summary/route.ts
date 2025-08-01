@@ -267,8 +267,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Add robots.txt issues to processed issues
-    if (robotsAnalyses?.[0]?.issues?.length > 0) {
-      robotsAnalyses[0]!.issues!.forEach((robotsIssue: any) => {
+    if (robotsAnalyses?.[0]?.issues?.length && robotsAnalyses[0].issues.length > 0) {
+      robotsAnalyses[0].issues.forEach((robotsIssue: any) => {
         processedIssues.push({
           type: `Robots.txt: ${robotsIssue.type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`,
           severity: robotsIssue.severity,

@@ -470,34 +470,6 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
     setRefreshing(false);
   };
 
-  useEffect(() => {
-    fetchTechnicalSEOData();
-  }, [selectedSite, userToken]);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Technical SEO Dashboard</h2>
-          <div className="flex items-center space-x-2">
-            <RefreshCw className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-gray-600">Loading...</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white p-6 rounded-lg border shadow-sm">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-6 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   // Calculate overall status
   const getOverallStatus = () => {
     if (!data) return { status: 'unknown', message: 'Loading technical SEO data...' };
@@ -538,6 +510,34 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
       };
     }
   };
+
+  useEffect(() => {
+    fetchTechnicalSEOData();
+  }, [selectedSite, userToken]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Technical SEO Dashboard</h2>
+          <div className="flex items-center space-x-2">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span className="text-sm text-gray-600">Loading...</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white p-6 rounded-lg border shadow-sm">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const status = getOverallStatus();
 
@@ -885,56 +885,52 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
           </div>
           
           {data.robots ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className={`text-2xl font-bold ${
-                  data.robots.exists && data.robots.accessible ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {data.robots.exists && data.robots.accessible ? '✓ Found' : '✗ Missing'}
-                </div>
-                <p className="text-sm text-gray-600">robots.txt File</p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{data.robots.size}</div>
-                <p className="text-sm text-gray-600">File Size (bytes)</p>
-              </div>
-              <div className="text-center">
-                <div className={`text-2xl font-bold ${
-                  data.robots.issuesCount === 0 ? 'text-green-600' : 
-                  data.robots.issuesCount <= 2 ? 'text-orange-600' : 'text-red-600'
-                }`}>
-                  {data.robots.issuesCount}
-                </div>
-                <p className="text-sm text-gray-600">Issues Found</p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{data.robots.suggestionsCount}</div>
-                <p className="text-sm text-gray-600">Suggestions</p>
-              </div>
-            </div>
-            
-            {/* Additional robots.txt details */}
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-gray-600">
-                    Analyzed: {new Date(data.robots.analyzedAt).toLocaleDateString()}
+                  <div className={data.robots.exists && data.robots.accessible ? 'text-2xl font-bold text-green-600' : 'text-2xl font-bold text-red-600'}>
+                    {data.robots.exists && data.robots.accessible ? '✓ Found' : '✗ Missing'}
                   </div>
+                  <p className="text-sm text-gray-600">robots.txt File</p>
                 </div>
-                {data.robots.crawlDelay && (
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{data.robots.size}</div>
+                  <p className="text-sm text-gray-600">File Size (bytes)</p>
+                </div>
+                <div className="text-center">
+                  <div className={data.robots.issuesCount === 0 ? 'text-2xl font-bold text-green-600' : data.robots.issuesCount <= 2 ? 'text-2xl font-bold text-orange-600' : 'text-2xl font-bold text-red-600'}>
+                    {data.robots.issuesCount}
+                  </div>
+                  <p className="text-sm text-gray-600">Issues Found</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">{data.robots.suggestionsCount}</div>
+                  <p className="text-sm text-gray-600">Suggestions</p>
+                </div>
+              </div>
+              
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div className="text-center">
                     <div className="text-gray-600">
-                      Crawl Delay: {data.robots.crawlDelay}s
+                      Analyzed: {new Date(data.robots.analyzedAt).toLocaleDateString()}
                     </div>
                   </div>
-                )}
-                <div className="text-center">
-                  <div className="text-gray-600">
-                    Sitemap URLs: {data.robots.sitemapUrls}
+                  {data.robots.crawlDelay && (
+                    <div className="text-center">
+                      <div className="text-gray-600">
+                        Crawl Delay: {data.robots.crawlDelay}s
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <div className="text-gray-600">
+                      Sitemap URLs: {data.robots.sitemapUrls}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           ) : (
             <div className="text-center py-8">
               <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
