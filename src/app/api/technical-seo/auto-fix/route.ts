@@ -110,7 +110,7 @@ async function applySchemaMarkupFixes(userToken: string, siteUrl: string) {
   // In a real implementation, this would:
   // 1. Analyze each page content
   // 2. Generate appropriate schema markup
-  // 3. Either inject via smart.js or update the page directly
+  // 3. Either inject via seoagent.js or update the page directly
   // 4. Update the inspection record
 
   // For now, we'll mark these as having been processed
@@ -136,7 +136,7 @@ async function applyCanonicalTagFixes(userToken: string, siteUrl: string) {
     return;
   }
 
-  // Process canonical fixes through smart.js
+  // Process canonical fixes through seoagent.js
   const fixedUrls = inspections.slice(0, 5).map(i => i.inspected_url);
   
   console.log(`[AUTO-FIX] Canonical tags fixed for ${fixedUrls.length} pages`);
@@ -145,7 +145,7 @@ async function applyCanonicalTagFixes(userToken: string, siteUrl: string) {
 async function applyOpenGraphFixes(userToken: string, siteUrl: string) {
   console.log(`[AUTO-FIX] Applying Open Graph fixes for ${siteUrl}`);
   
-  // This would analyze pages missing OG tags and apply them via smart.js
+  // This would analyze pages missing OG tags and apply them via seoagent.js
   // For now, simulate the fix
   
   console.log('[AUTO-FIX] Open Graph tags optimization completed');

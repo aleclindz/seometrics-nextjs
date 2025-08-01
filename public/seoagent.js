@@ -1,4 +1,4 @@
-// Smart.js - SEO Metrics Auto-tagging System
+// SEOAgent.js - SEO Metrics Auto-tagging System
 // This script automatically generates alt-tags for images and meta-tags for pages
 
 // Configuration - Global scope so functions can access them

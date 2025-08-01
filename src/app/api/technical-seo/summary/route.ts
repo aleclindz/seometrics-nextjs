@@ -139,14 +139,14 @@ export async function POST(request: NextRequest) {
     let mobileFriendly = inspections?.filter(i => i.mobile_usable).length || 0;
     let withSchema = inspections?.filter(i => i.rich_results_items > 0).length || 0;
 
-    // If no GSC data, use smart.js activity as fallback
+    // If no GSC data, use seoagent.js activity as fallback
     if (totalPages === 0 && schemaGenerations?.length) {
       // Count unique pages that had schema markup generated
       const uniquePages = new Set(schemaGenerations.map(sg => sg.page_url));
       totalPages = uniquePages.size;
       withSchema = schemaGenerations.filter(sg => sg.schemas_generated > 0).length;
       
-      // Assume all pages processed by smart.js are indexable and mobile-friendly
+      // Assume all pages processed by seoagent.js are indexable and mobile-friendly
       indexablePages = totalPages;
       mobileFriendly = totalPages;
     }

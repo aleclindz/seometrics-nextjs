@@ -1,9 +1,9 @@
 -- Schema Generations Table
--- Tracks schema markup generations by smart.js
+-- Tracks schema markup generations by seoagent.js
 
 CREATE TABLE IF NOT EXISTS schema_generations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    website_token VARCHAR(255) NOT NULL, -- Website token from smart.js
+    website_token VARCHAR(255) NOT NULL, -- Website token from seoagent.js
     
     -- Page details
     page_url TEXT NOT NULL,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkSmartJSInstallation, getSimpleStatus } from '@/lib/smartjs-detection';
+import { checkSmartJSInstallation, getSimpleStatus } from '@/lib/seoagentjs-detection';
 
 export async function POST(request: NextRequest) {
   try {

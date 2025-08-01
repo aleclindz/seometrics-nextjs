@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getSmartJSStatus } from '@/lib/smart-js-status';
+import { getSmartJSStatus } from '@/lib/seoagent-js-status';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';

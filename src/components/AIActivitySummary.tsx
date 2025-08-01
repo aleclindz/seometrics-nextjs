@@ -26,9 +26,18 @@ interface Props {
   userToken: string;
   siteUrl: string;
   className?: string;
+  websiteStatus?: {
+    gscConnected: boolean;
+    seoagentjsInstalled: boolean;
+    hasAuditScore: boolean;
+    criticalIssues: number;
+    mobileFriendly: number;
+    withSchema: number;
+    totalPages: number;
+  };
 }
 
-export default function AIActivitySummary({ userToken, siteUrl, className = '' }: Props) {
+export default function AIActivitySummary({ userToken, siteUrl, className = '', websiteStatus }: Props) {
   const [data, setData] = useState<ActivitySummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -57,7 +66,8 @@ export default function AIActivitySummary({ userToken, siteUrl, className = '' }
           userToken,
           siteUrl,
           forceRefresh,
-          sinceDays: 7
+          sinceDays: 7,
+          websiteStatus
         })
       });
 

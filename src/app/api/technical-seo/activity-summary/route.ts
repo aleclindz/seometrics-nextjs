@@ -20,13 +20,22 @@ interface SummaryRequest {
   siteUrl: string;
   forceRefresh?: boolean;
   sinceDays?: number;
+  websiteStatus?: {
+    gscConnected: boolean;
+    seoagentjsInstalled: boolean;
+    hasAuditScore: boolean;
+    criticalIssues: number;
+    mobileFriendly: number;
+    withSchema: number;
+    totalPages: number;
+  };
 }
 
 export async function POST(request: NextRequest) {
   try {
     console.log('[ACTIVITY SUMMARY] Starting activity summary generation');
     
-    const { userToken, siteUrl, forceRefresh = false, sinceDays = 7 }: SummaryRequest = await request.json();
+    const { userToken, siteUrl, forceRefresh = false, sinceDays = 7, websiteStatus }: SummaryRequest = await request.json();
     
     if (!userToken || !siteUrl) {
       return NextResponse.json({ 
@@ -88,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Generate AI summary
     console.log('[ACTIVITY SUMMARY] Generating AI summary for', aggregatedActivity.totalCount, 'activities');
-    const aiSummary = await generateAISummary(siteUrl, aggregatedActivity);
+    const aiSummary = await generateAISummary(siteUrl, aggregatedActivity, websiteStatus);
 
     // Cache the summary
     await ActivityAggregator.saveSummary(
@@ -121,14 +130,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateAISummary(siteUrl: string, activity: AggregatedActivity): Promise<string> {
+async function generateAISummary(siteUrl: string, activity: AggregatedActivity, websiteStatus?: SummaryRequest['websiteStatus']): Promise<string> {
   const domainName = extractDomainName(siteUrl);
   const timePeriod = getTimePeriodDescription(activity.periodStart, activity.periodEnd);
   
   // Prepare activity data for AI
   const activitySummary = summarizeActivitiesByType(activity.activities);
   
-  const prompt = `You are SEOAgent's friendly assistant. Create a warm, conversational welcome message summarizing what you've accomplished for ${domainName} ${timePeriod}.
+  // Generate next steps based on website status
+  const nextSteps = generateNextSteps(websiteStatus, domainName);
+  
+  const prompt = `You are SEOAgent's friendly assistant. Create a warm, conversational welcome message summarizing what you've accomplished for ${domainName} ${timePeriod}, then provide actionable next steps.
 
 Website: ${domainName}
 Period: ${timePeriod}
@@ -137,6 +149,9 @@ Total activities: ${activity.totalCount}
 Recent activities:
 ${activitySummary}
 
+Current website status and recommended next steps:
+${nextSteps}
+
 Instructions:
 - Start with "Welcome back!" or similar friendly greeting
 - Use simple, non-technical language that any website owner can understand
@@ -144,11 +159,14 @@ Instructions:
 - Be encouraging and show the value being provided
 - Keep it conversational and personalized to ${domainName}
 - Use bullet points (•) for major accomplishments
-- End with a brief forward-looking statement about continued optimization
-- Maximum 150 words
-- Focus on the most impactful activities first
+- After accomplishments, add a "Next Steps:" section with specific actionable recommendations
+- Prioritize the most important next steps first (GSC connection, SEOAgent.js installation, critical fixes)
+- Maximum 200 words total
+- Focus on the most impactful activities and next steps first
 
-Example tone: "Welcome back! Here's what I've accomplished for ${domainName} this week: • Added schema markup to 5 pages - this helps Google display rich snippets with your business info • Generated a fresh sitemap and submitted it to Google - your new blog posts are now being discovered faster..."`;
+Example tone: "Welcome back! Here's what I've accomplished for ${domainName} this week: • Added schema markup to 5 pages - this helps Google display rich snippets with your business info...
+
+Next Steps: • Connect Google Search Console to track your site's performance in search results • Install SEOAgent.js to enable automated technical SEO fixes • Run your first SEO Health Check to identify critical issues"`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -179,6 +197,54 @@ Example tone: "Welcome back! Here's what I've accomplished for ${domainName} thi
     // Fallback to structured summary
     return generateFallbackSummary(domainName, timePeriod, activity);
   }
+}
+
+function generateNextSteps(websiteStatus?: SummaryRequest['websiteStatus'], domainName?: string): string {
+  if (!websiteStatus) {
+    return `Priority actions needed:
+• Connect Google Search Console to track performance
+• Install SEOAgent.js for automated optimizations
+• Run SEO Health Check to identify issues`;
+  }
+
+  const steps: string[] = [];
+  
+  // Highest priority: Basic connections
+  if (!websiteStatus.gscConnected) {
+    steps.push('• Connect Google Search Console to track your site\'s search performance and get valuable insights');
+  }
+  
+  if (!websiteStatus.seoagentjsInstalled) {
+    steps.push('• Install SEOAgent.js tracking script to enable automated technical SEO fixes');
+  }
+  
+  // Medium priority: Health check and critical issues
+  if (!websiteStatus.hasAuditScore) {
+    steps.push('• Run your first comprehensive SEO Health Check to identify optimization opportunities');
+  } else if (websiteStatus.criticalIssues > 0) {
+    steps.push(`• Address ${websiteStatus.criticalIssues} critical SEO issues to improve search rankings`);
+  }
+  
+  // Lower priority: Technical improvements
+  if (websiteStatus.totalPages > 0) {
+    if (websiteStatus.mobileFriendly < websiteStatus.totalPages) {
+      const mobileIssues = websiteStatus.totalPages - websiteStatus.mobileFriendly;
+      steps.push(`• Fix mobile-friendliness issues on ${mobileIssues} pages for better mobile rankings`);
+    }
+    
+    if (websiteStatus.withSchema < websiteStatus.totalPages) {
+      const schemaNeeded = websiteStatus.totalPages - websiteStatus.withSchema;
+      steps.push(`• Add schema markup to ${schemaNeeded} pages to enhance search result appearance`);
+    }
+  }
+  
+  // If everything is good, suggest advanced optimizations
+  if (steps.length === 0) {
+    steps.push('• Great job! Your SEO setup is solid. Focus on creating quality content and building backlinks');
+    steps.push('• Monitor performance regularly and optimize based on search console data');
+  }
+  
+  return steps.slice(0, 3).join('\n'); // Limit to top 3 recommendations
 }
 
 function generateFallbackSummary(domainName: string, timePeriod: string, activity: AggregatedActivity): string {

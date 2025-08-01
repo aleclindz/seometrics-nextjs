@@ -1,10 +1,10 @@
 /**
- * Smart.js Status Checker
- * Determines if smart.js is active for a given website
+ * SEOAgent.js Status Checker
+ * Determines if seoagent.js is active for a given website
  */
 
 /**
- * Check if smart.js should be considered active for a website
+ * Check if seoagent.js should be considered active for a website
  * This includes both sites with the script installed and the SEOAgent app itself
  */
 export function getSmartJSStatus(websiteUrl: string): 'active' | 'inactive' | 'error' {
@@ -12,7 +12,7 @@ export function getSmartJSStatus(websiteUrl: string): 'active' | 'inactive' | 'e
     // Normalize the URL
     const url = websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
     
-    // SEOAgent domains - we know smart.js is installed
+    // SEOAgent domains - we know seoagent.js is installed
     const seoAgentDomains = [
       'seoagent.com',
       'www.seoagent.com',
@@ -29,13 +29,13 @@ export function getSmartJSStatus(websiteUrl: string): 'active' | 'inactive' | 'e
     return 'inactive';
     
   } catch (error) {
-    console.error('[SMART.JS STATUS] Error checking status for', websiteUrl, ':', error);
+    console.error('[SEOAGENT.JS STATUS] Error checking status for', websiteUrl, ':', error);
     return 'error';
   }
 }
 
 /**
- * Check smart.js status for multiple websites
+ * Check seoagent.js status for multiple websites
  */
 export function getMultipleSmartJSStatus(websites: { id: string; url: string }[]): Map<string, 'active' | 'inactive' | 'error'> {
   const statusMap = new Map<string, 'active' | 'inactive' | 'error'>();
