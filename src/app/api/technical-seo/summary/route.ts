@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
     let inspections = null;
     let inspectionsError = null;
     
+    console.log('[TECHNICAL SEO SUMMARY] Looking for inspections with siteUrl:', siteUrl);
+    
     // Try exact match first
     const { data: inspections1, error: error1 } = await supabase
       .from('url_inspections')
@@ -31,17 +33,23 @@ export async function POST(request: NextRequest) {
       .eq('site_url', siteUrl)
       .order('inspected_at', { ascending: false });
     
+    console.log('[TECHNICAL SEO SUMMARY] Exact match results:', inspections1?.length || 0);
+    
     if (inspections1?.length) {
       inspections = inspections1;
     } else {
       // Try sc-domain format
-      const scDomainUrl = siteUrl.replace('https://', 'sc-domain:').replace('http://', 'sc-domain:');
+      const scDomainUrl = siteUrl.replace('https://', 'sc-domain:').replace('http://', 'sc-domain:').replace('www.', '');
+      console.log('[TECHNICAL SEO SUMMARY] Trying sc-domain format:', scDomainUrl);
+      
       const { data: inspections2, error: error2 } = await supabase
         .from('url_inspections')
         .select('*')
         .eq('user_token', userToken)
         .eq('site_url', scDomainUrl)
         .order('inspected_at', { ascending: false });
+      
+      console.log('[TECHNICAL SEO SUMMARY] SC-domain match results:', inspections2?.length || 0);
       
       inspections = inspections2;
       inspectionsError = error2;
