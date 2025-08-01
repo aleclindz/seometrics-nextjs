@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth';
+import { getSmartJSStatus } from '@/lib/smart-js-status';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 
@@ -113,7 +114,7 @@ export default function WebsitePage() {
           name: currentWebsite.name || currentWebsite.url,
           gscStatus: currentWebsite.gscStatus || 'none',
           cmsStatus: currentWebsite.cmsStatus || 'none',
-          smartjsStatus: 'inactive', // TODO: Implement smart.js status check
+          smartjsStatus: getSmartJSStatus(currentWebsite.url),
           lastSync: currentWebsite.lastSync ? new Date(currentWebsite.lastSync) : undefined,
           metrics: currentWebsite.metrics,
           lastAuditDate: auditData?.completed_at || auditData?.created_at,

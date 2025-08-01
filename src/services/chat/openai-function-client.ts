@@ -507,25 +507,51 @@ class FunctionCaller {
   }
 
   private async checkSmartJSStatus(args: { site_url: string }): Promise<FunctionCallResult> {
-    // TODO: Implement actual Smart.js status check
-    return {
-      success: true,
-      data: {
-        site_url: args.site_url,
-        smartjs_installed: true,
-        features: {
-          auto_meta_tags: true,
-          auto_alt_tags: true,
-          performance_tracking: true
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'}/api/smartjs/check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        last_activity: new Date().toISOString(),
-        performance: {
-          meta_tags_generated: 145,
-          alt_tags_generated: 89,
+        body: JSON.stringify({ websiteUrl: args.site_url }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return {
+          success: false,
+          error: result.error || 'Failed to check Smart.js status'
+        };
+      }
+
+      const status = result.data;
+
+      return {
+        success: true,
+        data: {
+          site_url: args.site_url,
+          smartjs_installed: status.installed,
+          smartjs_active: status.active,
+          script_found: status.scriptFound,
+          idv_found: status.idvFound,
+          features: {
+            auto_meta_tags: status.active,
+            auto_alt_tags: status.active,
+            performance_tracking: status.active
+          },
+          last_checked: status.lastChecked,
+          error: status.error,
+          status: status.status,
           pages_optimized: 23
         }
-      }
-    };
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to check Smart.js status'
+      };
+    }
   }
 
   private async connectCMS(args: { site_url: string; cms_type: string; credentials?: any }): Promise<FunctionCallResult> {

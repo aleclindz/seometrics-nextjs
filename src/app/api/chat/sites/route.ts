@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getSmartJSStatus } from '@/lib/smart-js-status';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
         name: website.domain, // You might want to add a name field to websites table
         gscStatus: gscConnection?.is_active ? 'connected' : 'none',
         cmsStatus: cmsConnection?.status === 'active' ? 'connected' : 'none',
-        smartjsStatus: 'active', // Assuming Smart.js is active for all sites
+        smartjsStatus: getSmartJSStatus(website.domain),
         lastSync: gscConnection?.last_sync_at ? new Date(gscConnection.last_sync_at) : undefined,
         metrics: latestPerformance ? {
           clicks: latestPerformance.total_clicks || 0,
