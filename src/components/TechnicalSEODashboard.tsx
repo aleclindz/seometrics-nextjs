@@ -153,7 +153,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         });
 
         if (!matchingProperty) {
-          alert(`No GSC property found for ${selectedSite}. Available properties: ${debugData.data.properties.map(p => p.site_url).join(', ')}`);
+          alert(`No GSC property found for ${selectedSite}. Available properties: ${debugData.data.properties.map((p: any) => p.site_url).join(', ')}`);
           return;
         }
 
