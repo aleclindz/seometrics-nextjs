@@ -38,8 +38,17 @@ export async function POST(request: NextRequest) {
     if (inspections1?.length) {
       inspections = inspections1;
     } else {
-      // Try sc-domain format
-      const scDomainUrl = siteUrl.replace('https://', 'sc-domain:').replace('http://', 'sc-domain:').replace('www.', '');
+      // Handle different URL formats to match database
+      let scDomainUrl;
+      
+      if (siteUrl.includes('sc-domain:')) {
+        // If already in sc-domain format, remove https:// prefix
+        scDomainUrl = siteUrl.replace('https://', '').replace('http://', '');
+      } else {
+        // Convert regular URL to sc-domain format
+        scDomainUrl = siteUrl.replace('https://', 'sc-domain:').replace('http://', 'sc-domain:').replace('www.', '');
+      }
+      
       console.log('[TECHNICAL SEO SUMMARY] Trying sc-domain format:', scDomainUrl);
       
       const { data: inspections2, error: error2 } = await supabase
