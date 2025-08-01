@@ -222,10 +222,15 @@ export async function POST(request: NextRequest) {
 
     // First, test if sitemap is accessible
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const sitemapCheckResponse = await fetch(sitemapUrl, { 
         method: 'HEAD',
-        timeout: 5000 
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!sitemapCheckResponse.ok) {
         return NextResponse.json({ 

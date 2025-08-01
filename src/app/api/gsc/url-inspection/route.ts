@@ -189,11 +189,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze results for immediate automated fixes
-    const automatedFixes = [];
-    const criticalIssues = [];
+    const automatedFixes: Array<{
+      url: string;
+      type: string;
+      priority: string;
+      description: string;
+      canAutoFix: boolean;
+      fixMethod: string;
+    }> = [];
+    const criticalIssues: Array<{
+      url: string;
+      type: string;
+      severity: string;
+      description: string;
+      suggestedFix: string;
+    }> = [];
     
     inspectionResults.forEach(result => {
-      if (result.error) return;
+      if ('error' in result) return;
       
       // Check for canonical issues
       if (result.userCanonical && result.googleCanonical && result.userCanonical !== result.googleCanonical) {
@@ -252,11 +265,11 @@ export async function POST(request: NextRequest) {
         inspectedUrls: urls.length,
         results: inspectionResults,
         summary: {
-          indexable: inspectionResults.filter(r => r.canBeIndexed).length,
-          blocked: inspectionResults.filter(r => !r.canBeIndexed).length,
-          mobileUsable: inspectionResults.filter(r => r.mobileUsable).length,
-          withRichResults: inspectionResults.filter(r => r.richResultsItems > 0).length,
-          errors: inspectionResults.filter(r => r.error).length
+          indexable: inspectionResults.filter(r => !('error' in r) && r.canBeIndexed).length,
+          blocked: inspectionResults.filter(r => !('error' in r) && !r.canBeIndexed).length,
+          mobileUsable: inspectionResults.filter(r => !('error' in r) && r.mobileUsable).length,
+          withRichResults: inspectionResults.filter(r => !('error' in r) && r.richResultsItems > 0).length,
+          errors: inspectionResults.filter(r => 'error' in r).length
         },
         issues: criticalIssues,
         automatedFixes: automatedFixes,
