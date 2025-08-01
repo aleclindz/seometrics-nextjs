@@ -132,6 +132,21 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
       console.log('GSC Debug Data:', debugData);
       
       if (debugData.data?.properties?.length > 0) {
+        // Find the matching GSC property for this site
+        const matchingProperty = debugData.data.properties.find(prop => 
+          prop.site_url === `sc-domain:${selectedSite}` || 
+          prop.site_url === selectedSite ||
+          prop.site_url === `https://${selectedSite}` ||
+          prop.site_url === `http://${selectedSite}`
+        );
+
+        if (!matchingProperty) {
+          alert(`No GSC property found for ${selectedSite}. Available properties: ${debugData.data.properties.map(p => p.site_url).join(', ')}`);
+          return;
+        }
+
+        console.log('Found matching GSC property:', matchingProperty);
+
         // We have GSC connected, now do URL inspection on main pages
         const mainUrls = [
           `https://${selectedSite}`,
@@ -146,7 +161,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userToken,
-            siteUrl: `https://${selectedSite}`,
+            siteUrl: matchingProperty.site_url, // Use the exact GSC property URL format
             urls: mainUrls
           })
         });

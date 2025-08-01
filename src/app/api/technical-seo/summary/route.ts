@@ -19,13 +19,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameters: userToken, siteUrl' }, { status: 400 });
     }
 
-    // Get URL inspections data
-    const { data: inspections, error: inspectionsError } = await supabase
+    // Get URL inspections data - try multiple URL formats
+    let inspections = null;
+    let inspectionsError = null;
+    
+    // Try exact match first
+    const { data: inspections1, error: error1 } = await supabase
       .from('url_inspections')
       .select('*')
       .eq('user_token', userToken)
       .eq('site_url', siteUrl)
       .order('inspected_at', { ascending: false });
+    
+    if (inspections1?.length) {
+      inspections = inspections1;
+    } else {
+      // Try sc-domain format
+      const scDomainUrl = siteUrl.replace('https://', 'sc-domain:').replace('http://', 'sc-domain:');
+      const { data: inspections2, error: error2 } = await supabase
+        .from('url_inspections')
+        .select('*')
+        .eq('user_token', userToken)
+        .eq('site_url', scDomainUrl)
+        .order('inspected_at', { ascending: false });
+      
+      inspections = inspections2;
+      inspectionsError = error2;
+    }
 
     if (inspectionsError) {
       console.error('[TECHNICAL SEO SUMMARY] Error fetching inspections:', inspectionsError);
