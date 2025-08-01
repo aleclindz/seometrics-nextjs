@@ -130,15 +130,27 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
       const debugData = await debugResponse.json();
       
       console.log('GSC Debug Data:', debugData);
+      console.log('Selected Site:', selectedSite);
+      console.log('Looking for:', `sc-domain:${selectedSite}`);
       
       if (debugData.data?.properties?.length > 0) {
         // Find the matching GSC property for this site
-        const matchingProperty = debugData.data.properties.find(prop => 
-          prop.site_url === `sc-domain:${selectedSite}` || 
-          prop.site_url === selectedSite ||
-          prop.site_url === `https://${selectedSite}` ||
-          prop.site_url === `http://${selectedSite}`
-        );
+        const siteWithoutWww = selectedSite.replace('www.', '');
+        const matchingProperty = debugData.data.properties.find((prop: any) => {
+          console.log('Checking property:', prop.site_url);
+          const propDomain = prop.site_url.replace('sc-domain:', '').replace('https://', '').replace('http://', '').replace('www.', '');
+          const selectedDomain = siteWithoutWww.replace('https://', '').replace('http://', '');
+          
+          return propDomain === selectedDomain ||
+                 prop.site_url === `sc-domain:${selectedSite}` || 
+                 prop.site_url === `sc-domain:${siteWithoutWww}` ||
+                 prop.site_url === selectedSite ||
+                 prop.site_url === siteWithoutWww ||
+                 prop.site_url === `https://${selectedSite}` ||
+                 prop.site_url === `https://${siteWithoutWww}` ||
+                 prop.site_url === `http://${selectedSite}` ||
+                 prop.site_url === `http://${siteWithoutWww}`;
+        });
 
         if (!matchingProperty) {
           alert(`No GSC property found for ${selectedSite}. Available properties: ${debugData.data.properties.map(p => p.site_url).join(', ')}`);
