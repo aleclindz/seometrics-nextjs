@@ -732,46 +732,6 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                 )}
               </button>
               <button 
-                onClick={generateAndSubmitSitemap}
-                disabled={sitemapGenerationInProgress}
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
-              >
-                {sitemapGenerationInProgress ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Generating...</span>
-                  </>
-                ) : (
-                  <>
-                    <Map className="h-4 w-4" />
-                    <span>Generate Sitemap</span>
-                  </>
-                )}
-              </button>
-              <button 
-                onClick={runRobotsAnalysis}
-                disabled={robotsAnalysisInProgress}
-                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
-              >
-                {robotsAnalysisInProgress ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Analyzing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Shield className="h-4 w-4" />
-                    <span>Analyze Robots.txt</span>
-                  </>
-                )}
-              </button>
-              <button 
-                onClick={debugUrlInspections}
-                className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm"
-              >
-                Debug
-              </button>
-              <button 
                 onClick={triggerAutomatedFixes}
                 disabled={autoFixInProgress}
                 className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
@@ -787,6 +747,12 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                     <span>Trigger Fixes</span>
                   </>
                 )}
+              </button>
+              <button 
+                onClick={debugUrlInspections}
+                className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm"
+              >
+                Debug
               </button>
             </div>
           </div>
@@ -820,6 +786,23 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                 XML sitemap generation and Google Search Console submission
               </p>
             </div>
+            <button 
+              onClick={generateAndSubmitSitemap}
+              disabled={sitemapGenerationInProgress}
+              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
+            >
+              {sitemapGenerationInProgress ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <Map className="h-4 w-4" />
+                  <span>Generate Sitemap</span>
+                </>
+              )}
+            </button>
           </div>
           
           {data.sitemap ? (
@@ -882,6 +865,23 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                 robots.txt analysis and crawling directive validation
               </p>
             </div>
+            <button 
+              onClick={runRobotsAnalysis}
+              disabled={robotsAnalysisInProgress}
+              className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
+            >
+              {robotsAnalysisInProgress ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <Shield className="h-4 w-4" />
+                  <span>Analyze Robots.txt</span>
+                </>
+              )}
+            </button>
           </div>
           
           {data.robots ? (
