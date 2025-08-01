@@ -120,6 +120,19 @@ export async function POST(request: NextRequest) {
       console.error('[TECHNICAL SEO SUMMARY] Error fetching sitemap data:', sitemapError);
     }
 
+    // Get robots.txt analysis data
+    const { data: robotsAnalyses, error: robotsError } = await supabase
+      .from('robots_analyses')
+      .select('*')
+      .eq('user_token', userToken)
+      .eq('site_url', siteUrl)
+      .order('analyzed_at', { ascending: false })
+      .limit(1);
+
+    if (robotsError) {
+      console.error('[TECHNICAL SEO SUMMARY] Error fetching robots analysis:', robotsError);
+    }
+
     // Process inspections data (GSC) if available, otherwise use smart.js data
     let totalPages = inspections?.length || 0;
     let indexablePages = inspections?.filter(i => i.can_be_indexed).length || 0;
@@ -253,6 +266,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Add robots.txt issues to processed issues
+    if (robotsAnalyses?.[0]?.issues?.length > 0) {
+      robotsAnalyses[0].issues.forEach((robotsIssue: any) => {
+        processedIssues.push({
+          type: `Robots.txt: ${robotsIssue.type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`,
+          severity: robotsIssue.severity,
+          count: 1,
+          description: robotsIssue.description,
+          canAutoFix: ['syntax_error', 'invalid_crawl_delay', 'add_sitemap', 'create_robots'].includes(robotsIssue.type)
+        });
+      });
+    }
+
     // Calculate fix counts from actual activity
     if (schemaGenerations?.length) {
       automatedFixes = schemaGenerations.reduce((sum, sg) => sum + (sg.schemas_generated || 0), 0);
@@ -294,6 +320,16 @@ export async function POST(request: NextRequest) {
         generatedAt: sitemaps[0].generated_at,
         submittedAt: sitemaps[0].submitted_at,
         sitemapUrl: sitemaps[0].sitemap_url
+      } : null,
+      robots: robotsAnalyses?.[0] ? {
+        exists: robotsAnalyses[0].exists,
+        accessible: robotsAnalyses[0].accessible,
+        size: robotsAnalyses[0].size,
+        issuesCount: robotsAnalyses[0].issues?.length || 0,
+        suggestionsCount: robotsAnalyses[0].suggestions?.length || 0,
+        analyzedAt: robotsAnalyses[0].analyzed_at,
+        crawlDelay: robotsAnalyses[0].crawl_delay,
+        sitemapUrls: robotsAnalyses[0].sitemap_urls?.length || 0
       } : null,
       realtimeActivity,
       issues: processedIssues

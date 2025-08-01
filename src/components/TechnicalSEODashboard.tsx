@@ -39,6 +39,16 @@ interface TechnicalSEOData {
     submittedAt?: string;
     sitemapUrl?: string;
   } | null;
+  robots?: {
+    exists: boolean;
+    accessible: boolean;
+    size: number;
+    issuesCount: number;
+    suggestionsCount: number;
+    analyzedAt: string;
+    crawlDelay?: number;
+    sitemapUrls: number;
+  } | null;
   realtimeActivity: Array<{
     timestamp: string;
     action: string;
@@ -67,6 +77,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const [autoFixInProgress, setAutoFixInProgress] = useState(false);
   const [gscAnalysisInProgress, setGscAnalysisInProgress] = useState(false);
   const [sitemapGenerationInProgress, setSitemapGenerationInProgress] = useState(false);
+  const [robotsAnalysisInProgress, setRobotsAnalysisInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<'issues' | 'activity'>('issues');
   const [fixSuggestions, setFixSuggestions] = useState<Record<string, string>>({});
   const [aiFixModal, setAiFixModal] = useState<{
@@ -167,6 +178,63 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
       suggestion: '',
       isLoading: false
     });
+  };
+
+  const runRobotsAnalysis = async () => {
+    if (!selectedSite) return;
+    
+    try {
+      setRobotsAnalysisInProgress(true);
+      
+      const siteUrlToSend = `https://${selectedSite.replace('sc-domain:', '')}`;
+      console.log('[DASHBOARD] Analyzing robots.txt for:', siteUrlToSend);
+      
+      const response = await fetch('/api/technical-seo/robots-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          siteUrl: siteUrlToSend
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Robots.txt Analysis Results:', result);
+        
+        const { exists, accessible, issuesCount, suggestionsCount } = result.data;
+        
+        let message = exists 
+          ? `✅ robots.txt found and analyzed`
+          : `⚠️ robots.txt not found`;
+        
+        if (exists) {
+          if (issuesCount > 0) {
+            message += `\n🔍 Found ${issuesCount} issue${issuesCount > 1 ? 's' : ''}`;
+          }
+          if (suggestionsCount > 0) {
+            message += `\n💡 ${suggestionsCount} suggestion${suggestionsCount > 1 ? 's' : ''} for improvement`;
+          }
+          if (issuesCount === 0 && suggestionsCount === 0) {
+            message += `\n✨ No issues found - robots.txt looks good!`;
+          }
+        }
+        
+        alert(message);
+        
+        // Refresh dashboard data
+        await fetchTechnicalSEOData();
+      } else {
+        const errorText = await response.text();
+        console.error('[DASHBOARD] Robots analysis error:', errorText);
+        alert(`Robots.txt analysis failed: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error analyzing robots.txt:', error);
+      alert('Error analyzing robots.txt. Please check your connection.');
+    } finally {
+      setRobotsAnalysisInProgress(false);
+    }
   };
 
   const generateAndSubmitSitemap = async () => {
@@ -681,6 +749,23 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                 )}
               </button>
               <button 
+                onClick={runRobotsAnalysis}
+                disabled={robotsAnalysisInProgress}
+                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md flex items-center space-x-2 disabled:opacity-50"
+              >
+                {robotsAnalysisInProgress ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Analyzing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Shield className="h-4 w-4" />
+                    <span>Analyze Robots.txt</span>
+                  </>
+                )}
+              </button>
+              <button 
                 onClick={debugUrlInspections}
                 className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm"
               >
@@ -778,6 +863,84 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
               <p className="text-gray-600 mb-4">No sitemap generated yet</p>
               <p className="text-sm text-gray-500">
                 Click &ldquo;Generate Sitemap&rdquo; to create and submit your XML sitemap to Google Search Console
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Robots.txt Status Section */}
+      {data && (
+        <div className="bg-white p-6 rounded-lg border shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Shield className="h-5 w-5 text-purple-500" />
+                Robots.txt Status
+              </h3>
+              <p className="text-gray-600">
+                robots.txt analysis and crawling directive validation
+              </p>
+            </div>
+          </div>
+          
+          {data.robots ? (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${
+                  data.robots.exists && data.robots.accessible ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {data.robots.exists && data.robots.accessible ? '✓ Found' : '✗ Missing'}
+                </div>
+                <p className="text-sm text-gray-600">robots.txt File</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{data.robots.size}</div>
+                <p className="text-sm text-gray-600">File Size (bytes)</p>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${
+                  data.robots.issuesCount === 0 ? 'text-green-600' : 
+                  data.robots.issuesCount <= 2 ? 'text-orange-600' : 'text-red-600'
+                }`}>
+                  {data.robots.issuesCount}
+                </div>
+                <p className="text-sm text-gray-600">Issues Found</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{data.robots.suggestionsCount}</div>
+                <p className="text-sm text-gray-600">Suggestions</p>
+              </div>
+            </div>
+            
+            {/* Additional robots.txt details */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="text-center">
+                  <div className="text-gray-600">
+                    Analyzed: {new Date(data.robots.analyzedAt).toLocaleDateString()}
+                  </div>
+                </div>
+                {data.robots.crawlDelay && (
+                  <div className="text-center">
+                    <div className="text-gray-600">
+                      Crawl Delay: {data.robots.crawlDelay}s
+                    </div>
+                  </div>
+                )}
+                <div className="text-center">
+                  <div className="text-gray-600">
+                    Sitemap URLs: {data.robots.sitemapUrls}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">No robots.txt analysis yet</p>
+              <p className="text-sm text-gray-500">
+                Click &ldquo;Analyze Robots.txt&rdquo; to check your robots.txt file for issues and get optimization suggestions
               </p>
             </div>
           )}
