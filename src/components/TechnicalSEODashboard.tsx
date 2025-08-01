@@ -31,6 +31,13 @@ interface TechnicalSEOData {
     pending: number;
     errors: number;
   };
+  sitemap?: {
+    urlCount: number;
+    status: string;
+    generatedAt: string;
+    submittedAt?: string;
+    sitemapUrl?: string;
+  } | null;
   realtimeActivity: Array<{
     timestamp: string;
     action: string;
@@ -564,6 +571,68 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
               <p className="text-sm text-gray-600">Errors</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Sitemap Status Section */}
+      {data && (
+        <div className="bg-white p-6 rounded-lg border shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Map className="h-5 w-5 text-green-500" />
+                Sitemap Status
+              </h3>
+              <p className="text-gray-600">
+                XML sitemap generation and Google Search Console submission
+              </p>
+            </div>
+          </div>
+          
+          {data.sitemap ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{data.sitemap.urlCount}</div>
+                <p className="text-sm text-gray-600">URLs in Sitemap</p>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${
+                  data.sitemap.status === 'submitted_to_gsc' ? 'text-green-600' : 'text-orange-600'
+                }`}>
+                  {data.sitemap.status === 'submitted_to_gsc' ? '✓ Submitted' : 'Generated'}
+                </div>
+                <p className="text-sm text-gray-600">GSC Status</p>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">
+                  Generated: {new Date(data.sitemap.generatedAt).toLocaleDateString()}
+                </div>
+                {data.sitemap.submittedAt && (
+                  <div className="text-sm text-gray-600">
+                    Submitted: {new Date(data.sitemap.submittedAt).toLocaleDateString()}
+                  </div>
+                )}
+                {data.sitemap.sitemapUrl && (
+                  <a 
+                    href={data.sitemap.sitemapUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    View Sitemap
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Map className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">No sitemap generated yet</p>
+              <p className="text-sm text-gray-500">
+                Click &ldquo;Generate Sitemap&rdquo; to create and submit your XML sitemap to Google Search Console
+              </p>
+            </div>
+          )}
         </div>
       )}
 

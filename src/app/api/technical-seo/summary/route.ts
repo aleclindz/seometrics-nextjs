@@ -107,6 +107,19 @@ export async function POST(request: NextRequest) {
       console.error('[TECHNICAL SEO SUMMARY] Error fetching schema generations:', schemaError);
     }
 
+    // Get sitemap data
+    const { data: sitemaps, error: sitemapError } = await supabase
+      .from('sitemap_submissions')
+      .select('*')
+      .eq('user_token', userToken)
+      .eq('site_url', siteUrl)
+      .order('generated_at', { ascending: false })
+      .limit(1);
+
+    if (sitemapError) {
+      console.error('[TECHNICAL SEO SUMMARY] Error fetching sitemap data:', sitemapError);
+    }
+
     // Process inspections data (GSC) if available, otherwise use smart.js data
     let totalPages = inspections?.length || 0;
     let indexablePages = inspections?.filter(i => i.can_be_indexed).length || 0;
@@ -275,6 +288,13 @@ export async function POST(request: NextRequest) {
         pending: pendingFixes,
         errors: fixErrors
       },
+      sitemap: sitemaps?.[0] ? {
+        urlCount: sitemaps[0].url_count,
+        status: sitemaps[0].status,
+        generatedAt: sitemaps[0].generated_at,
+        submittedAt: sitemaps[0].submitted_at,
+        sitemapUrl: sitemaps[0].sitemap_url
+      } : null,
       realtimeActivity,
       issues: processedIssues
     };
