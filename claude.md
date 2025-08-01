@@ -118,6 +118,15 @@ SEOAgent.com differentiates from tools like SurferSEO by focusing on **automatio
 - [TODO] Content automation workflows (scheduled publishing)
 - [TODO] Content performance tracking and optimization
 
+#### Answer Engine Optimization (AEO/GEO) for LLMs
+- [TODO] Implement GEO playbook strategies (stored in `/GEO_PLAYBOOK.md`)
+- [TODO] FAQ/HowTo/Article schema markup integration for AI citations
+- [TODO] Reddit content strategy automation for SEO discussions
+- [TODO] AI bot technical setup optimization (GPTbot, Bingbot allowlisting)
+- [TODO] Prompt identification system for SEO automation use cases
+- [TODO] Multi-platform content distribution (Reddit, Medium, Quora)
+- [TODO] Citation-optimized content formatting (stats, comparisons, bullet points)
+
 #### Content Enhancement & Cross-Linking System
 - [TODO] CMS post retrieval system to pull existing articles from connected CMS
 - [TODO] Content analysis system to identify cross-linking opportunities between posts
