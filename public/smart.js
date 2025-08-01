@@ -38,6 +38,15 @@ function initializeSEOMetrics() {
     
     // Process images
     processImages();
+    
+    // Process schema markup
+    processSchemaMarkup();
+    
+    // Process canonical tags
+    processCanonicalTags();
+    
+    // Process Open Graph tags
+    processOpenGraphTags();
 }
 
 // Handle multiple loading scenarios
@@ -249,6 +258,219 @@ function updateMetaTags(title, description) {
             document.head.appendChild(metaDescription);
         }
         metaDescription.setAttribute('content', description);
+    }
+}
+
+async function processSchemaMarkup() {
+    try {
+        console.log('[SEO-METRICS] Starting schema markup processing');
+        
+        if (!API_BASE_URL || !ANON_KEY) {
+            console.error('[SEO-METRICS] API configuration not available');
+            return;
+        }
+        
+        // Check if schema markup already exists
+        const existingSchema = document.querySelectorAll('script[type="application/ld+json"]');
+        console.log(`[SEO-METRICS] Found ${existingSchema.length} existing schema markup blocks`);
+        
+        // Analyze page content for schema opportunities
+        const pageData = {
+            url: window.location.href,
+            title: document.title,
+            description: document.querySelector('meta[name="description"]')?.getAttribute('content') || '',
+            headings: Array.from(document.querySelectorAll('h1, h2, h3')).map(h => h.textContent),
+            images: Array.from(document.getElementsByTagName('img'))
+                .filter(img => !img.src.toLowerCase().endsWith('.svg'))
+                .map(img => img.src),
+            hasContactInfo: !!(document.querySelector('[itemtype*="Organization"]') || 
+                            document.querySelector('address') || 
+                            document.querySelector('[href^="mailto:"]') || 
+                            document.querySelector('[href^="tel:"]')),
+            hasArticleContent: !!(document.querySelector('article') || 
+                               document.querySelector('.post') || 
+                               document.querySelector('.article') ||
+                               document.querySelector('main')),
+            hasBreadcrumbs: !!(document.querySelector('.breadcrumb') || 
+                             document.querySelector('[itemtype*="BreadcrumbList"]')),
+            hasProducts: !!(document.querySelector('.product') || 
+                          document.querySelector('[itemtype*="Product"]')),
+            hasEvents: !!(document.querySelector('.event') || 
+                        document.querySelector('[itemtype*="Event"]')),
+            hasReviews: !!(document.querySelector('.review') || 
+                         document.querySelector('[itemtype*="Review"]'))
+        };
+        
+        console.log('[SEO-METRICS] Page analysis for schema:', pageData);
+        
+        // Call schema generation API
+        const response = await fetch(`${API_BASE_URL}/generate-schema-markup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ANON_KEY}`
+            },
+            body: JSON.stringify({
+                id: idv,
+                pageData: pageData,
+                existingSchemaCount: existingSchema.length
+            })
+        });
+        
+        console.log(`[SEO-METRICS] Schema API response status: ${response.status}`);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[SEO-METRICS] Schema API error: ${response.status} - ${errorText}`);
+            return;
+        }
+        
+        const schemaData = await response.json();
+        console.log('[SEO-METRICS] Schema API response:', schemaData);
+        
+        // Inject schema markup if provided
+        if (schemaData.schemas && schemaData.schemas.length > 0) {
+            schemaData.schemas.forEach((schema, index) => {
+                const scriptElement = document.createElement('script');
+                scriptElement.type = 'application/ld+json';
+                scriptElement.textContent = JSON.stringify(schema, null, 2);
+                scriptElement.setAttribute('data-seoagent', 'auto-generated');
+                document.head.appendChild(scriptElement);
+                
+                console.log(`[SEO-METRICS] Injected schema markup ${index + 1}:`, schema['@type']);
+            });
+            
+            console.log(`[SEO-METRICS] Successfully injected ${schemaData.schemas.length} schema markup blocks`);
+        } else {
+            console.log('[SEO-METRICS] No schema markup to inject');
+        }
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error processing schema markup:', error);
+    }
+}
+
+async function processCanonicalTags() {
+    try {
+        console.log('[SEO-METRICS] Starting canonical tags processing');
+        
+        const currentUrl = window.location.href;
+        const existingCanonical = document.querySelector('link[rel="canonical"]');
+        
+        console.log(`[SEO-METRICS] Current URL: ${currentUrl}`);
+        console.log(`[SEO-METRICS] Existing canonical: ${existingCanonical?.href || 'none'}`);
+        
+        // Check for common URL variations that need canonicalization
+        const urlObj = new URL(currentUrl);
+        const needsCanonical = !!(
+            urlObj.search || // Has query parameters
+            urlObj.hash || // Has fragment
+            currentUrl.includes('://www.') !== currentUrl.includes('://') || // www vs non-www
+            currentUrl.endsWith('/') !== (currentUrl.split('/').length === 3) // Trailing slash issues
+        );
+        
+        if (!existingCanonical && needsCanonical) {
+            // Create clean canonical URL
+            const cleanUrl = `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`;
+            
+            const canonicalLink = document.createElement('link');
+            canonicalLink.rel = 'canonical';
+            canonicalLink.href = cleanUrl;
+            canonicalLink.setAttribute('data-seoagent', 'auto-generated');
+            document.head.appendChild(canonicalLink);
+            
+            console.log(`[SEO-METRICS] Added canonical tag: ${cleanUrl}`);
+        } else if (existingCanonical) {
+            console.log('[SEO-METRICS] Canonical tag already exists');
+        } else {
+            console.log('[SEO-METRICS] No canonical tag needed');
+        }
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error processing canonical tags:', error);
+    }
+}
+
+async function processOpenGraphTags() {
+    try {
+        console.log('[SEO-METRICS] Starting Open Graph tags processing');
+        
+        const existingOgTags = {
+            title: document.querySelector('meta[property="og:title"]'),
+            description: document.querySelector('meta[property="og:description"]'),
+            image: document.querySelector('meta[property="og:image"]'),
+            url: document.querySelector('meta[property="og:url"]'),
+            type: document.querySelector('meta[property="og:type"]'),
+            siteName: document.querySelector('meta[property="og:site_name"]')
+        };
+        
+        console.log('[SEO-METRICS] Existing OG tags:', Object.keys(existingOgTags).filter(key => existingOgTags[key]));
+        
+        // Get page data for OG tag generation
+        const pageTitle = document.title;
+        const pageDescription = document.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+        const firstImage = document.querySelector('img:not([src$=".svg"])')?.src;
+        
+        // Add missing essential OG tags
+        if (!existingOgTags.title && pageTitle) {
+            const ogTitle = document.createElement('meta');
+            ogTitle.setAttribute('property', 'og:title');
+            ogTitle.setAttribute('content', pageTitle);
+            ogTitle.setAttribute('data-seoagent', 'auto-generated');
+            document.head.appendChild(ogTitle);
+            console.log(`[SEO-METRICS] Added og:title: ${pageTitle}`);
+        }
+        
+        if (!existingOgTags.description && pageDescription) {
+            const ogDescription = document.createElement('meta');
+            ogDescription.setAttribute('property', 'og:description');
+            ogDescription.setAttribute('content', pageDescription);
+            ogDescription.setAttribute('data-seoagent', 'auto-generated');
+            document.head.appendChild(ogDescription);
+            console.log(`[SEO-METRICS] Added og:description: ${pageDescription.substring(0, 50)}...`);
+        }
+        
+        if (!existingOgTags.url) {
+            const ogUrl = document.createElement('meta');
+            ogUrl.setAttribute('property', 'og:url');
+            ogUrl.setAttribute('content', window.location.href);
+            ogUrl.setAttribute('data-seoagent', 'auto-generated');
+            document.head.appendChild(ogUrl);
+            console.log(`[SEO-METRICS] Added og:url: ${window.location.href}`);
+        }
+        
+        if (!existingOgTags.type) {
+            const ogType = document.createElement('meta');
+            ogType.setAttribute('property', 'og:type');
+            ogType.setAttribute('content', 'website');
+            ogType.setAttribute('data-seoagent', 'auto-generated');
+            document.head.appendChild(ogType);
+            console.log('[SEO-METRICS] Added og:type: website');
+        }
+        
+        if (!existingOgTags.image && firstImage) {
+            const ogImage = document.createElement('meta');
+            ogImage.setAttribute('property', 'og:image');
+            ogImage.setAttribute('content', firstImage);
+            ogImage.setAttribute('data-seoagent', 'auto-generated');
+            document.head.appendChild(ogImage);
+            console.log(`[SEO-METRICS] Added og:image: ${firstImage}`);
+        }
+        
+        // Add Twitter Card tags for better social sharing
+        if (!document.querySelector('meta[name="twitter:card"]')) {
+            const twitterCard = document.createElement('meta');
+            twitterCard.setAttribute('name', 'twitter:card');
+            twitterCard.setAttribute('content', 'summary_large_image');
+            twitterCard.setAttribute('data-seoagent', 'auto-generated');
+            document.head.appendChild(twitterCard);
+            console.log('[SEO-METRICS] Added twitter:card');
+        }
+        
+        console.log('[SEO-METRICS] Open Graph tags processing completed');
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error processing Open Graph tags:', error);
     }
 }
 
