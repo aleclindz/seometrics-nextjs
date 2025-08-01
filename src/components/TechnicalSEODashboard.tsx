@@ -171,8 +171,26 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         console.log('Found matching GSC property:', matchingProperty);
 
         // We have GSC connected, now do URL inspection on main pages
-        // Use the actual website domain, not the GSC property format
-        const actualDomain = selectedSite.replace('www.', ''); // Remove www if present
+        // Extract the actual domain from GSC property format or clean domain
+        let actualDomain = selectedSite;
+        
+        // Remove sc-domain: prefix if present
+        if (actualDomain.startsWith('sc-domain:')) {
+          actualDomain = actualDomain.replace('sc-domain:', '');
+        }
+        
+        // Remove protocol prefixes if present
+        actualDomain = actualDomain.replace(/^https?:\/\//, '');
+        
+        // Remove www prefix if present
+        actualDomain = actualDomain.replace(/^www\./, '');
+        
+        // Remove trailing slash if present
+        actualDomain = actualDomain.replace(/\/$/, '');
+        
+        console.log('Selected Site:', selectedSite);
+        console.log('Cleaned Domain:', actualDomain);
+        
         const mainUrls = [
           `https://${actualDomain}`,
           `https://${actualDomain}/`,
@@ -180,6 +198,8 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
           `https://${actualDomain}/contact`,
           `https://${actualDomain}/pricing`
         ];
+        
+        console.log('URLs to inspect:', mainUrls);
 
         const response = await fetch('/api/gsc/url-inspection', {
           method: 'POST',
