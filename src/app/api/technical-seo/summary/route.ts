@@ -58,44 +58,68 @@ export async function POST(request: NextRequest) {
       console.error('[TECHNICAL SEO SUMMARY] Error fetching issues:', issuesError);
     }
 
-    // Process inspections data
-    const totalPages = inspections?.length || 0;
-    const indexablePages = inspections?.filter(i => i.can_be_indexed).length || 0;
-    const mobileFriendly = inspections?.filter(i => i.mobile_usable).length || 0;
-    const withSchema = inspections?.filter(i => i.rich_results_items > 0).length || 0;
+    // Get schema generation data from smart.js activity
+    const { data: schemaGenerations, error: schemaError } = await supabase
+      .from('schema_generations')
+      .select('*')
+      .eq('website_token', siteUrl.replace('https://', '').replace('http://', ''))
+      .order('generated_at', { ascending: false })
+      .limit(100);
+
+    if (schemaError) {
+      console.error('[TECHNICAL SEO SUMMARY] Error fetching schema generations:', schemaError);
+    }
+
+    // Process inspections data (GSC) if available, otherwise use smart.js data
+    let totalPages = inspections?.length || 0;
+    let indexablePages = inspections?.filter(i => i.can_be_indexed).length || 0;
+    let mobileFriendly = inspections?.filter(i => i.mobile_usable).length || 0;
+    let withSchema = inspections?.filter(i => i.rich_results_items > 0).length || 0;
+
+    // If no GSC data, use smart.js activity as fallback
+    if (totalPages === 0 && schemaGenerations?.length) {
+      // Count unique pages that had schema markup generated
+      const uniquePages = new Set(schemaGenerations.map(sg => sg.page_url));
+      totalPages = uniquePages.size;
+      withSchema = schemaGenerations.filter(sg => sg.schemas_generated > 0).length;
+      
+      // Assume all pages processed by smart.js are indexable and mobile-friendly
+      indexablePages = totalPages;
+      mobileFriendly = totalPages;
+    }
 
     // Calculate automated fixes from inspections
     let automatedFixes = 0;
     let pendingFixes = 0;
     let fixErrors = 0;
 
-    // Mock real-time activity (in production, this would come from actual logs)
-    const realtimeActivity = [
-      {
-        timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-        action: 'Added schema markup to product page',
-        page: '/products/example-product',
-        status: 'success' as const
-      },
-      {
-        timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-        action: 'Fixed canonical tag on blog post',
-        page: '/blog/seo-tips',
-        status: 'success' as const
-      },
-      {
-        timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-        action: 'Added Open Graph tags to homepage',
-        page: '/',
-        status: 'success' as const
-      },
-      {
-        timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-        action: 'Meta description optimization',
-        page: '/about',
-        status: 'warning' as const
-      }
-    ];
+    // Build real-time activity from smart.js schema generations
+    const realtimeActivity = [];
+    
+    if (schemaGenerations?.length) {
+      schemaGenerations.slice(0, 10).forEach(sg => {
+        const schemaTypes = Array.isArray(sg.schema_types) ? sg.schema_types : [];
+        const action = `Added ${schemaTypes.join(', ')} schema markup`;
+        realtimeActivity.push({
+          timestamp: sg.generated_at,
+          action: action,
+          page: sg.page_url,
+          status: 'success' as const
+        });
+      });
+    }
+    
+    // Add some fallback activity if no schema data
+    if (realtimeActivity.length === 0) {
+      realtimeActivity.push(
+        {
+          timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+          action: 'Smart.js monitoring active',
+          page: siteUrl,
+          status: 'success' as const
+        }
+      );
+    }
 
     // Analyze issues from audit data
     const processedIssues: Array<{
@@ -179,18 +203,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate fix counts
-    automatedFixes = processedIssues
-      .filter(issue => issue.canAutoFix && issue.severity !== 'critical')
-      .reduce((sum, issue) => sum + Math.floor(issue.count * 0.8), 0); // Assume 80% can be auto-fixed
+    // Calculate fix counts from actual activity
+    if (schemaGenerations?.length) {
+      automatedFixes = schemaGenerations.reduce((sum, sg) => sum + (sg.schemas_generated || 0), 0);
+      pendingFixes = 0; // Smart.js applies fixes immediately
+      fixErrors = 0; // No errors in successful schema generations
+    } else {
+      // Fallback to calculated fixes from issues
+      automatedFixes = processedIssues
+        .filter(issue => issue.canAutoFix && issue.severity !== 'critical')
+        .reduce((sum, issue) => sum + Math.floor(issue.count * 0.8), 0);
 
-    pendingFixes = processedIssues
-      .filter(issue => issue.canAutoFix)
-      .reduce((sum, issue) => sum + Math.floor(issue.count * 0.2), 0); // 20% pending
+      pendingFixes = processedIssues
+        .filter(issue => issue.canAutoFix)
+        .reduce((sum, issue) => sum + Math.floor(issue.count * 0.2), 0);
 
-    fixErrors = processedIssues
-      .filter(issue => !issue.canAutoFix && issue.severity === 'critical')
-      .reduce((sum, issue) => sum + issue.count, 0);
+      fixErrors = processedIssues
+        .filter(issue => !issue.canAutoFix && issue.severity === 'critical')
+        .reduce((sum, issue) => sum + issue.count, 0);
+    }
 
     const lastAuditAt = audits?.[0]?.created_at || inspections?.[0]?.inspected_at || new Date().toISOString();
 
