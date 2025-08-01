@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import AIFixModal from '@/components/AIFixModal';
 // Using basic HTML elements since shadcn/ui components are not installed
 import { 
   CheckCircle, 
@@ -68,6 +69,17 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const [sitemapGenerationInProgress, setSitemapGenerationInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<'issues' | 'activity'>('issues');
   const [fixSuggestions, setFixSuggestions] = useState<Record<string, string>>({});
+  const [aiFixModal, setAiFixModal] = useState<{
+    isOpen: boolean;
+    issue: any;
+    suggestion: string;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    issue: null,
+    suggestion: '',
+    isLoading: false
+  });
 
   const debugUrlInspections = async () => {
     try {
@@ -84,9 +96,22 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
     try {
       const issueKey = `${issue.type}-${issue.description}`;
       
+      // Open modal with loading state
+      setAiFixModal({
+        isOpen: true,
+        issue: issue,
+        suggestion: '',
+        isLoading: true
+      });
+      
       if (fixSuggestions[issueKey]) {
         // Already have suggestion, show it
-        alert(`AI Fix Suggestion:\n\n${fixSuggestions[issueKey]}`);
+        setAiFixModal({
+          isOpen: true,
+          issue: issue,
+          suggestion: fixSuggestions[issueKey],
+          isLoading: false
+        });
         return;
       }
 
@@ -109,19 +134,39 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         // Store suggestion for future use
         setFixSuggestions(prev => ({ ...prev, [issueKey]: suggestion }));
         
-        // Show suggestion in a copyable format
-        navigator.clipboard.writeText(suggestion).then(() => {
-          alert(`AI Fix Suggestion (copied to clipboard):\n\n${suggestion}`);
-        }).catch(() => {
-          alert(`AI Fix Suggestion:\n\n${suggestion}`);
+        // Update modal with suggestion
+        setAiFixModal({
+          isOpen: true,
+          issue: issue,
+          suggestion: suggestion,
+          isLoading: false
         });
       } else {
-        alert('Failed to get AI fix suggestion. Please try again.');
+        setAiFixModal({
+          isOpen: true,
+          issue: issue,
+          suggestion: 'Failed to get AI fix suggestion. Please try again.',
+          isLoading: false
+        });
       }
     } catch (error) {
       console.error('Error getting AI fix suggestion:', error);
-      alert('Error getting AI fix suggestion. Please check your connection.');
+      setAiFixModal({
+        isOpen: true,
+        issue: issue,
+        suggestion: 'Error getting AI fix suggestion. Please check your connection.',
+        isLoading: false
+      });
     }
+  };
+
+  const closeAiFixModal = () => {
+    setAiFixModal({
+      isOpen: false,
+      issue: null,
+      suggestion: '',
+      isLoading: false
+    });
   };
 
   const generateAndSubmitSitemap = async () => {
@@ -385,8 +430,60 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
     );
   }
 
+  // Calculate overall status
+  const getOverallStatus = () => {
+    if (!data) return { status: 'unknown', message: 'Loading technical SEO data...' };
+    
+    const criticalIssues = data.issues.filter(issue => issue.severity === 'critical').length;
+    const totalIssues = data.issues.length;
+    const indexabilityRate = data.overview.totalPages > 0 ? (data.overview.indexablePages / data.overview.totalPages) * 100 : 0;
+    
+    if (criticalIssues > 0) {
+      return { 
+        status: 'critical', 
+        message: `${criticalIssues} critical issue${criticalIssues > 1 ? 's' : ''} requiring immediate attention`,
+        color: 'red'
+      };
+    } else if (totalIssues > 0) {
+      return { 
+        status: 'warning', 
+        message: `${totalIssues} issue${totalIssues > 1 ? 's' : ''} detected, but no critical problems`,
+        color: 'orange'
+      };
+    } else if (indexabilityRate >= 95) {
+      return { 
+        status: 'excellent', 
+        message: 'All systems optimal - technical SEO running smoothly!',
+        color: 'green'
+      };
+    } else if (indexabilityRate >= 80) {
+      return { 
+        status: 'good', 
+        message: 'Good technical SEO health with room for improvement',
+        color: 'blue'
+      };
+    } else {
+      return { 
+        status: 'needs-attention', 
+        message: 'Technical SEO needs attention - run analysis to identify issues',
+        color: 'orange'
+      };
+    }
+  };
+
+  const status = getOverallStatus();
+
   return (
     <div className="space-y-6">
+      {/* AI Fix Modal */}
+      <AIFixModal
+        isOpen={aiFixModal.isOpen}
+        onClose={closeAiFixModal}
+        issue={aiFixModal.issue}
+        suggestion={aiFixModal.suggestion}
+        isLoading={aiFixModal.isLoading}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -415,6 +512,57 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
+        </div>
+      </div>
+
+      {/* Status Overview */}
+      <div className={`bg-white p-6 rounded-lg border shadow-sm border-l-4 ${
+        status.color === 'green' ? 'border-l-green-500 bg-green-50' :
+        status.color === 'blue' ? 'border-l-blue-500 bg-blue-50' :
+        status.color === 'orange' ? 'border-l-orange-500 bg-orange-50' :
+        'border-l-red-500 bg-red-50'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            {status.color === 'green' && <CheckCircle className="h-6 w-6 text-green-600" />}
+            {status.color === 'blue' && <CheckCircle className="h-6 w-6 text-blue-600" />}
+            {status.color === 'orange' && <AlertTriangle className="h-6 w-6 text-orange-600" />}
+            {status.color === 'red' && <XCircle className="h-6 w-6 text-red-600" />}
+            <div>
+              <h3 className={`text-lg font-semibold ${
+                status.color === 'green' ? 'text-green-800' :
+                status.color === 'blue' ? 'text-blue-800' :
+                status.color === 'orange' ? 'text-orange-800' :
+                'text-red-800'
+              }`}>
+                Technical SEO Status: {status.status === 'excellent' ? 'Excellent' : 
+                                     status.status === 'good' ? 'Good' :
+                                     status.status === 'warning' ? 'Needs Review' :
+                                     status.status === 'critical' ? 'Critical Issues' : 'Checking...'}
+              </h3>
+              <p className={`text-sm ${
+                status.color === 'green' ? 'text-green-700' :
+                status.color === 'blue' ? 'text-blue-700' :
+                status.color === 'orange' ? 'text-orange-700' :
+                'text-red-700'
+              }`}>
+                {status.message}
+              </p>
+            </div>
+          </div>
+          {data && data.overview.totalPages > 0 && (
+            <div className="text-right">
+              <div className={`text-2xl font-bold ${
+                status.color === 'green' ? 'text-green-600' :
+                status.color === 'blue' ? 'text-blue-600' :
+                status.color === 'orange' ? 'text-orange-600' :
+                'text-red-600'
+              }`}>
+                {Math.round((data.overview.indexablePages / data.overview.totalPages) * 100)}%
+              </div>
+              <p className="text-xs text-gray-600">Indexable</p>
+            </div>
+          )}
         </div>
       </div>
 
