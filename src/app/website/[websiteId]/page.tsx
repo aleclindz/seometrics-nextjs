@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth';
 import { getSmartJSStatus } from '@/lib/smart-js-status';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
+import TechnicalSEODashboard from '@/components/TechnicalSEODashboard';
 
 interface Website {
   id: string;
@@ -688,6 +689,21 @@ export default function WebsitePage() {
                   </div>
                 )}
               </div>
+
+              {/* Technical SEO Dashboard */}
+              {user?.token && website.smartjsStatus === 'active' && (
+                <div className="mt-8">
+                  <TechnicalSEODashboard 
+                    userToken={user.token}
+                    websites={[
+                      { 
+                        domain: website.url.replace(/^https?:\/\//, '').replace(/\/$/, ''), 
+                        website_token: websiteId 
+                      }
+                    ]}
+                  />
+                </div>
+              )}
 
             </div>
           </main>
