@@ -59,6 +59,17 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const [gscAnalysisInProgress, setGscAnalysisInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<'issues' | 'activity'>('issues');
 
+  const debugUrlInspections = async () => {
+    try {
+      const response = await fetch(`/api/debug/url-inspections?userToken=${userToken}`);
+      const result = await response.json();
+      console.log('URL Inspections Debug:', result);
+      alert(`Found ${result.data?.totalInspections || 0} URL inspections. Check console for details.`);
+    } catch (error) {
+      console.error('Debug failed:', error);
+    }
+  };
+
   useEffect(() => {
     if (websites.length > 0 && !selectedSite) {
       setSelectedSite(websites[0].domain);
@@ -181,10 +192,18 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         if (response.ok) {
           const result = await response.json();
           console.log('URL Inspection Results:', result);
+          console.log('URLs inspected:', result.data?.inspectedUrls);
+          console.log('Summary:', result.data?.summary);
+          
+          // Wait a moment for database writes to complete
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
           // Refresh data after analysis
           await fetchTechnicalSEOData();
         } else {
-          console.error('URL inspection failed:', await response.text());
+          const errorText = await response.text();
+          console.error('URL inspection failed:', errorText);
+          alert(`GSC Analysis failed: ${errorText}`);
         }
       } else {
         alert('Google Search Console not connected. Please connect GSC first.');
@@ -359,6 +378,12 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                     <span>Run GSC Analysis</span>
                   </>
                 )}
+              </button>
+              <button 
+                onClick={debugUrlInspections}
+                className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm"
+              >
+                Debug
               </button>
               <button 
                 onClick={triggerAutomatedFixes}
