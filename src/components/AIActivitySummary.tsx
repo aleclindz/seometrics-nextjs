@@ -97,14 +97,14 @@ export default function AIActivitySummary({ userToken, siteUrl, className = '', 
   const formatTimePeriod = () => {
     if (!data) return '';
     
-    const start = new Date(data.periodStart);
-    const end = new Date(data.periodEnd);
-    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    // Use a fixed 7-day period for display since that's what we request from the API
+    // The cached data might have different period dates, but we always request 7 days
+    const sinceDays = 7; // This matches the sinceDays parameter in fetchActivitySummary
     
-    if (diffDays <= 1) return 'today';
-    if (diffDays <= 7) return 'this week';
-    if (diffDays <= 14) return 'the past two weeks';
-    return `the past ${Math.ceil(diffDays / 7)} weeks`;
+    if (sinceDays <= 1) return 'today';
+    if (sinceDays <= 7) return 'this week';
+    if (sinceDays <= 14) return 'the past two weeks';
+    return `the past ${Math.ceil(sinceDays / 7)} weeks`;
   };
 
   const getSummaryIcon = () => {

@@ -420,108 +420,6 @@ export default function WebsitePage() {
                 </div>
               )}
 
-              {/* Performance Overview */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Website Health Overview</h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      Current status and key metrics for {website.name}
-                    </p>
-                  </div>
-                  {website.auditScore !== undefined && (
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        {website.auditScore}/100
-                      </div>
-                      <div className="text-sm text-gray-500">SEO Score</div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                  {/* SEO Health */}
-                  <div className="text-center p-4">
-                    <div className={`text-2xl font-bold ${
-                      website.auditScore && website.auditScore >= 80 ? 'text-green-600' : 
-                      website.auditScore && website.auditScore >= 60 ? 'text-yellow-600' : 
-                      website.auditScore ? 'text-red-600' : 'text-gray-400'
-                    }`}>
-                      {website.auditScore ? `${website.auditScore}/100` : 'Not Checked'}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">SEO Health</p>
-                    {website.criticalIssues && website.criticalIssues > 0 && (
-                      <p className="text-xs text-red-600 mt-1">{website.criticalIssues} critical issues</p>
-                    )}
-                    {!website.auditScore && (
-                      <p className="text-xs text-gray-500 mt-1">Run health check below</p>
-                    )}
-                  </div>
-
-                  {/* Meta Tags */}
-                  <div className="text-center p-4">
-                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {website.metaTagsCount || 0}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Meta Tags</p>
-                  </div>
-
-                  {/* Alt Tags */}
-                  <div className="text-center p-4">
-                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {website.altTagsCount || 0}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Alt Tags</p>
-                  </div>
-
-                  {/* SEOAgent.js Status */}
-                  <div className="text-center p-4">
-                    <div className={`text-sm font-medium ${
-                      website.smartjsStatus === 'active' ? 'text-green-700' : 'text-orange-600'
-                    }`}>
-                      {website.smartjsStatus === 'active' ? 'Active' : 'Not Installed'}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">SEOAgent.js</p>
-                  </div>
-                </div>
-
-                {/* Connection Status Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Google Search Console</span>
-                    <div className="flex items-center">
-                      {website.gscStatus === 'connected' ? (
-                        <>
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                          <span className="text-sm font-medium text-green-700 dark:text-green-400">Connected</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-                          <span className="text-sm font-medium text-gray-500">Not Connected</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">CMS Connection</span>
-                    <div className="flex items-center">
-                      {website.cmsStatus === 'connected' ? (
-                        <>
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                          <span className="text-sm font-medium text-green-700 dark:text-green-400">Connected</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-                          <span className="text-sm font-medium text-gray-500">Not Connected</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* Date Range Header for Metrics */}
               {website.metrics?.dateStart && website.metrics?.dateEnd && (
@@ -586,9 +484,12 @@ export default function WebsitePage() {
                 </div>
               )}
 
-              {/* Website Health Overview - Unified Component */}
+              {/* Website Overview - Unified Component */}
               <WebsiteHealthOverview 
-                website={website}
+                website={{
+                  ...website,
+                  cmsStatus: website.cmsStatus
+                }}
                 latestAudit={latestAudit}
                 auditLoading={auditLoading}
                 onStartAudit={handleStartAudit}

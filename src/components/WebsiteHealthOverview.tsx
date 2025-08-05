@@ -21,6 +21,7 @@ interface WebsiteHealthOverviewProps {
     url: string;
     name: string;
     gscStatus: 'connected' | 'pending' | 'error' | 'none';
+    cmsStatus: 'connected' | 'pending' | 'error' | 'none';
     smartjsStatus: 'active' | 'inactive' | 'error';
     auditScore?: number;
     criticalIssues?: number;
@@ -91,14 +92,14 @@ export default function WebsiteHealthOverview({
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-8">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          Website Health Overview
+          Website Overview
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Monitor and manage your website&apos;s SEO setup and performance
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* SEO Health Check */}
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
@@ -201,6 +202,54 @@ export default function WebsiteHealthOverview({
             >
               <ExternalLink className="w-3 h-3 mr-2" />
               Manage Connection
+            </button>
+          )}
+        </div>
+
+        {/* CMS Connection */}
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center">
+              {website.cmsStatus === 'connected' ? (
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-orange-500" />
+              )}
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 ml-2">
+                CMS Connection
+              </h3>
+            </div>
+            <div className={`text-sm font-medium ${
+              website.cmsStatus === 'connected' ? 'text-green-600' : 'text-orange-500'
+            }`}>
+              {website.cmsStatus === 'connected' ? 'Connected' : 'Not Connected'}
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              {website.cmsStatus === 'connected' 
+                ? 'Ready to publish automated content'
+                : 'Connect your CMS to enable automated content publishing'
+              }
+            </p>
+          </div>
+
+          {website.cmsStatus !== 'connected' ? (
+            <button
+              onClick={() => router.push(`/website/${website.id}/cms-connection`)}
+              className="w-full btn bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center text-sm py-2"
+            >
+              <Globe className="w-3 h-3 mr-2" />
+              Connect CMS
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push(`/website/${website.id}/cms-connection`)}
+              className="w-full btn bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center justify-center text-sm py-2"
+            >
+              <ExternalLink className="w-3 h-3 mr-2" />
+              Manage CMS
             </button>
           )}
         </div>
