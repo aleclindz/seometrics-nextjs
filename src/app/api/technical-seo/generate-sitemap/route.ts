@@ -91,18 +91,21 @@ ${urlList.map(url => {
 }).join('\n')}
 </urlset>`;
 
-    // Step 3: Store sitemap in database
+    // Step 3: Store sitemap in database (using only existing columns)
     const { data: sitemapRecord, error: sitemapError } = await supabase
       .from('sitemap_submissions')
       .upsert({
         user_token: userToken,
         site_url: siteUrl,
-        sitemap_content: sitemapXML,
-        url_count: urlList.length,
+        sitemap_url: `${cleanSiteUrl}/sitemap.xml`,
         status: 'generated',
-        generated_at: new Date().toISOString()
+        submission_method: 'api',
+        warnings: 0,
+        errors: 0,
+        is_pending: false,
+        is_sitemaps_index: false
       }, {
-        onConflict: 'user_token,site_url'
+        onConflict: 'user_token,site_url,sitemap_url'
       })
       .select()
       .single();
@@ -199,10 +202,8 @@ ${urlList.map(url => {
             await supabase
               .from('sitemap_submissions')
               .update({
-                status: 'submitted_to_gsc',
-                sitemap_url: sitemapUrl,
-                gsc_property: gscProperty.site_url,
-                submitted_at: new Date().toISOString()
+                status: 'submitted',
+                sitemap_url: sitemapUrl
               })
               .eq('id', sitemapRecord.id);
 
@@ -232,8 +233,10 @@ ${urlList.map(url => {
         urls: urlList,
         sitemapXML,
         sitemapId: sitemapRecord.id,
+        sitemapUrl: `${cleanSiteUrl}/sitemap.xml`,
         gscSubmission: gscSubmissionResult,
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
+        status: sitemapRecord.status
       }
     });
 
