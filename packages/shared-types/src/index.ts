@@ -687,23 +687,5 @@ export * from './database'
 export * from './api'
 export * from './services'
 
-// Default export for convenience
-export default {
-  // Core types
-  User,
-  Website,
-  Article,
-  GSCConnection,
-  ChatThread,
-  
-  // Response types
-  ApiResponse,
-  PaginatedResponse,
-  
-  // Service configs
-  ServiceConfig,
-  PlatformServiceConfig,
-  ContentServiceConfig,
-  TechnicalSeoServiceConfig,
-  ChatServiceConfig
-}
+// Note: TypeScript interfaces cannot be exported as runtime values
+// All types are available via named exports above
