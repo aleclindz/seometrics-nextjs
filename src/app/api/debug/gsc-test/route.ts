@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       refresh_token: 'test_refresh_token',
       expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
       email: 'test@example.com',
-      scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+      scope: 'https://www.googleapis.com/auth/webmasters',
       is_active: true,
       last_sync_at: null,
       sync_errors: []

@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
       refresh_token: tokens.refresh_token,
       expires_at: expiresAt.toISOString(),
       email: email,
-      scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+      scope: 'https://www.googleapis.com/auth/webmasters',
       is_active: true,
       last_sync_at: null,
       sync_errors: []

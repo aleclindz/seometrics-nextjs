@@ -20,6 +20,28 @@ The authentication system in `/src/contexts/auth.tsx` has been stabilized after 
 - ❌ DO NOT add `onAuthStateChange` listeners (causes focus issues)
 - ❌ DO NOT modify useEffect dependency arrays in auth context
 
+**CRITICAL: DATABASE SCHEMA REFERENCE**
+⚠️ **ALWAYS CHECK `/DATABASE_SCHEMA.md` BEFORE WRITING ANY DATABASE QUERIES OR API CODE** ⚠️
+
+The database schema documentation contains the complete, current structure of all tables including:
+- Exact table names and column names
+- Data types and constraints
+- Which columns exist and which DO NOT exist
+- RLS policies and security model
+- Indexes and relationships
+
+**Before writing any code that interacts with the database:**
+1. Open `/DATABASE_SCHEMA.md`
+2. Verify the table structure
+3. Check that all referenced columns actually exist
+4. Confirm data types and constraints
+
+**Recent schema issues that this prevents:**
+- ❌ Referencing non-existent columns like `generated_at` in `sitemap_submissions`
+- ❌ Using wrong data types or constraints
+- ❌ Assuming columns exist without verification
+- ✅ Always verify schema before coding to prevent deployment failures
+
 **PRIORITY #1: TASK LIST TRACKING**
 Always maintain the feature implementation status below. When working on features:
 1. Mark tasks as `[IN PROGRESS]` when starting

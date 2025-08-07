@@ -121,8 +121,8 @@ export class ActivityAggregator {
         .select('*')
         .eq('user_token', this.userToken)
         .eq('site_url', this.siteUrl)
-        .gte('generated_at', this.sinceDate.toISOString())
-        .order('generated_at', { ascending: false })
+        .gte('created_at', this.sinceDate.toISOString())
+        .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) {
@@ -131,16 +131,16 @@ export class ActivityAggregator {
       }
 
       return (sitemaps || []).map(sitemap => ({
-        timestamp: sitemap.generated_at,
-        action: sitemap.status === 'submitted_to_gsc' 
-          ? `Generated and submitted sitemap with ${sitemap.url_count} URLs to Google Search Console`
-          : `Generated sitemap with ${sitemap.url_count} URLs`,
+        timestamp: sitemap.created_at,
+        action: sitemap.status === 'submitted' 
+          ? `Generated and submitted sitemap to Google Search Console`
+          : `Generated sitemap`,
         type: 'sitemap_submission' as const,
         details: {
-          urlCount: sitemap.url_count,
           status: sitemap.status,
           sitemapUrl: sitemap.sitemap_url,
-          submittedAt: sitemap.submitted_at
+          submittedAt: sitemap.submitted_at,
+          submissionMethod: sitemap.submission_method
         },
         status: 'success' as const,
         impact: 'high' as const
@@ -163,6 +163,11 @@ export class ActivityAggregator {
         .limit(10);
 
       if (error) {
+        // If table doesn't exist yet, just return empty array
+        if (error.code === '42P01') {
+          console.log('robots_analyses table not found, skipping robots analysis activities');
+          return [];
+        }
         console.error('Error fetching robots analyses:', error);
         return [];
       }

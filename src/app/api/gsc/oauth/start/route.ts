@@ -68,9 +68,9 @@ export async function GET(request: NextRequest) {
       redirectUri
     );
 
-    // Define scopes for Search Console readonly access
+    // Define scopes for Search Console full access (needed for sitemap submission)
     const scopes = [
-      'https://www.googleapis.com/auth/webmasters.readonly',
+      'https://www.googleapis.com/auth/webmasters',
       'https://www.googleapis.com/auth/userinfo.email'
     ];
 

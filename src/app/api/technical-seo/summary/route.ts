@@ -113,23 +113,38 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('user_token', userToken)
       .eq('site_url', siteUrl)
-      .order('generated_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (sitemapError) {
       console.error('[TECHNICAL SEO SUMMARY] Error fetching sitemap data:', sitemapError);
     }
 
-    // Get robots.txt analysis data
-    const { data: robotsAnalyses, error: robotsError } = await supabase
-      .from('robots_analyses')
-      .select('*')
-      .eq('user_token', userToken)
-      .eq('site_url', siteUrl)
-      .order('analyzed_at', { ascending: false })
-      .limit(1);
+    // Get robots.txt analysis data (handle case where table doesn't exist)
+    let robotsAnalyses = null;
+    let robotsError = null;
+    
+    try {
+      const result = await supabase
+        .from('robots_analyses')
+        .select('*')
+        .eq('user_token', userToken)
+        .eq('site_url', siteUrl)
+        .order('analyzed_at', { ascending: false })
+        .limit(1);
+      
+      robotsAnalyses = result.data;
+      robotsError = result.error;
+    } catch (error: any) {
+      // If table doesn't exist, just log and continue
+      if (error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] robots_analyses table not found, skipping robots analysis');
+      } else {
+        robotsError = error;
+      }
+    }
 
-    if (robotsError) {
+    if (robotsError && robotsError.code !== '42P01') {
       console.error('[TECHNICAL SEO SUMMARY] Error fetching robots analysis:', robotsError);
     }
 
@@ -315,11 +330,12 @@ export async function POST(request: NextRequest) {
         errors: fixErrors
       },
       sitemap: sitemaps?.[0] ? {
-        urlCount: sitemaps[0].url_count,
         status: sitemaps[0].status,
-        generatedAt: sitemaps[0].generated_at,
+        createdAt: sitemaps[0].created_at,
         submittedAt: sitemaps[0].submitted_at,
-        sitemapUrl: sitemaps[0].sitemap_url
+        sitemapUrl: sitemaps[0].sitemap_url,
+        warnings: sitemaps[0].warnings,
+        errors: sitemaps[0].errors
       } : null,
       robots: robotsAnalyses?.[0] ? {
         exists: robotsAnalyses[0].exists,
