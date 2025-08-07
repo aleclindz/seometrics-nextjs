@@ -1,56 +1,67 @@
 # Deployment Guide
 
-This guide provides comprehensive instructions for deploying the project on Vercel and a Generic Node.js environment. Follow the steps below to ensure a successful deployment.
+This guide provides comprehensive instructions for deploying the project on Vercel and a Generic Node.js environment. Follow the steps outlined below to ensure a successful deployment.
 
 ## 1. Prerequisites
 
-Before deploying the application, ensure you have the following tools and accounts:
+Before deploying the application, ensure you have the following tools and accounts set up:
 
-### Tools
-- **Node.js**: Version 14.x or higher. You can download it from [Node.js Official Website](https://nodejs.org/).
-- **npm**: Comes bundled with Node.js.
-- **Git**: For version control. Install from [Git Official Website](https://git-scm.com/).
+### Required Tools
+- **Node.js**: Ensure you have Node.js (version 14.x or later) installed. You can download it from [Node.js official website](https://nodejs.org/).
+- **npm**: npm is included with Node.js. Verify installation with:
+  ```bash
+  npm -v
+  ```
+- **Git**: Version control system for managing code. Install from [Git official website](https://git-scm.com/).
+- **Concurrently**: This package is used to run multiple commands concurrently. Install it globally if not already installed:
+  ```bash
+  npm install -g concurrently
+  ```
 
-### Accounts
-- **Vercel Account**: Sign up at [Vercel](https://vercel.com/signup) if deploying on Vercel.
-- **Supabase Account**: Create an account at [Supabase](https://supabase.io/) to manage your database.
+### Required Accounts
+- **Supabase**: Create an account at [Supabase](https://supabase.com/) and set up your database.
+- **Vercel**: Create an account at [Vercel](https://vercel.com/) for deploying the application.
 
 ## 2. Environment Setup
 
 ### Environment Variables
-Create a `.env` file in the root of your project and configure the following environment variables:
+Create a `.env` file in the root of your project directory and add the following environment variables. Replace the placeholders with your actual values:
 
 ```plaintext
-SUPABASE_URL=<your_supabase_url>
+DATABASE_URL=<your_supabase_database_url>
 SUPABASE_ANON_KEY=<your_supabase_anon_key>
-STRIPE_SECRET_KEY=<your_stripe_secret_key>
+SUPABASE_SERVICE_ROLE_KEY=<your_supabase_service_role_key>
 GOOGLE_API_KEY=<your_google_api_key>
-OPENAI_API_KEY=<your_openai_api_key>
+STRIPE_SECRET_KEY=<your_stripe_secret_key>
 ```
 
-> **Note**: Replace `<your_supabase_url>`, `<your_supabase_anon_key>`, etc., with your actual credentials.
+Ensure that you do not commit this file to version control by adding it to your `.gitignore`.
 
 ### Configuration
-Ensure that your Supabase database is set up correctly and that you have the necessary tables and schemas in place.
+- Install the necessary dependencies by running:
+  ```bash
+  npm install
+  ```
 
 ## 3. Build Process
 
-To build the application, use the following commands:
+To build the application, run the following commands:
 
-1. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Run Linting** (optional but recommended):
-   ```bash
-   npm run lint
-   ```
-
-3. **Build the Application**:
+### Build Commands
+1. **Build Next.js Application**:
    ```bash
    npm run build
    ```
+2. **Build Strapi CMS**:
+   ```bash
+   cd strapi-cms && npm run build
+   ```
+
+### Run Migrations
+If your application requires database migrations, run:
+```bash
+npm run run-migration
+```
 
 ## 4. Deployment Steps
 
@@ -58,91 +69,80 @@ To build the application, use the following commands:
 
 1. **Login to Vercel**:
    ```bash
-   npx vercel login
+   vercel login
    ```
 
-2. **Deploy the Application**:
+2. **Initialize Vercel**:
+   Run the following command in your project root:
    ```bash
-   npx vercel
+   vercel
    ```
 
-   Follow the prompts to select your project and configure the deployment settings. Vercel will automatically detect your framework and set up the necessary configurations.
+3. **Configure Environment Variables in Vercel**:
+   Go to your Vercel dashboard, select your project, and navigate to the **Settings** > **Environment Variables** section. Add the same environment variables defined in your `.env` file.
 
-3. **Set Environment Variables in Vercel**:
-   After deployment, go to your Vercel dashboard, select your project, and navigate to the "Settings" tab. Under "Environment Variables", add the variables defined in your `.env` file.
+4. **Deploy**:
+   After configuration, you can deploy your application with:
+   ```bash
+   vercel --prod
+   ```
 
 ### B. Deploying on Generic Node.js
 
 1. **Clone the Repository**:
+   If you haven't already, clone the repository:
    ```bash
-   git clone <repository-url>
-   cd <repository-name>
+   git clone <repository_url>
+   cd <repository_name>
    ```
 
 2. **Install Dependencies**:
+   Ensure all dependencies are installed:
    ```bash
    npm install
    ```
 
-3. **Run Database Migrations**:
+3. **Start the Application**:
+   Run the following command to start the application:
    ```bash
-   npm run run-migration
+   npm run start
    ```
 
-4. **Start the Application**:
+4. **Start Strapi CMS**:
+   In a separate terminal, navigate to the Strapi CMS directory and run:
    ```bash
-   npm start
+   cd strapi-cms && npm run start
    ```
-
-   Ensure that your server is running on the desired port (default is 3000).
 
 ## 5. Post-Deployment
 
 ### Verification
-After deployment, verify that the application is running correctly:
-
-- **Vercel**: Visit the URL provided by Vercel after deployment.
-- **Node.js**: Open a browser and navigate to `http://localhost:3000` (or the port you specified).
+- Access the application via the URL provided by Vercel or your server's IP address for Node.js.
+- Verify that the application is running correctly by checking the logs and ensuring there are no errors.
 
 ### Monitoring
 - Use tools like [LogRocket](https://logrocket.com/) or [Sentry](https://sentry.io/) for monitoring application performance and error tracking.
-- Check the Supabase dashboard for database activity and logs.
 
 ## 6. Troubleshooting
 
 ### Common Deployment Issues
 
-- **Environment Variables Not Set**: Ensure all required environment variables are correctly set in your deployment platform.
-- **Database Connection Errors**: Verify your Supabase credentials and ensure the database is accessible.
-- **Build Failures**: Check the build logs for errors. Common issues include missing dependencies or incorrect configurations.
-- **Application Not Starting**: Ensure that the correct start script is being used and that no other processes are using the same port.
+1. **Environment Variables Not Set**:
+   Ensure that all environment variables are correctly set in your `.env` file or in the Vercel dashboard.
 
-### Additional Commands
-- **Run Database Audit**:
-   ```bash
-   npm run audit-db
-   ```
+2. **Build Failures**:
+   - Check for any syntax errors in your code.
+   - Ensure all dependencies are correctly installed.
 
-- **Initialize SEO Agent**:
-   ```bash
-   npm run init-seoagent
-   ```
+3. **Database Connection Issues**:
+   - Verify that your Supabase database is running and accessible.
+   - Check your `DATABASE_URL` and keys for correctness.
 
-- **Setup Stripe Products**:
-   ```bash
-   npm run setup-stripe
-   ```
+4. **Application Not Starting**:
+   - Ensure that the correct Node.js version is being used.
+   - Check the logs for any error messages that can provide insight into the issue.
 
-- **Test Webhook**:
-   ```bash
-   npm run test-webhook
-   ```
+5. **CORS Issues**:
+   If you encounter CORS errors, ensure that your Supabase settings allow requests from your application's domain.
 
-- **Admin Tool Setup**:
-   ```bash
-   cd admin-tool
-   npm install
-   npm start
-   ```
-
-By following this guide, you should be able to successfully deploy and manage your application on both Vercel and a Generic Node.js environment. For further assistance, refer to the documentation of the respective platforms or reach out to the community forums.
+By following this guide, you should be able to successfully deploy and run your application on both Vercel and a Generic Node.js environment. For further assistance, consult the documentation for the specific tools and services you are using.

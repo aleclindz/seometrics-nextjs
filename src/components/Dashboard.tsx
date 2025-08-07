@@ -256,9 +256,6 @@ export default function Dashboard() {
                               <th className="p-2">
                                 <div className="font-semibold text-center">Managed Since</div>
                               </th>
-                              <th className="p-2">
-                                <div className="font-semibold text-center">Actions</div>
-                              </th>
                             </tr>
                           </thead>
                           <tbody className="text-sm font-medium divide-y divide-gray-100 dark:divide-gray-700/60">
@@ -287,16 +284,6 @@ export default function Dashboard() {
                                 <td className="p-2">
                                   <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
                                     {new Date(website.created_at).toLocaleDateString()}
-                                  </div>
-                                </td>
-                                <td className="p-2">
-                                  <div className="text-center">
-                                    <a
-                                      href={`/website/${website.website_token}`}
-                                      className="btn bg-violet-600 hover:bg-violet-700 text-white text-sm"
-                                    >
-                                      View Status
-                                    </a>
                                   </div>
                                 </td>
                               </tr>

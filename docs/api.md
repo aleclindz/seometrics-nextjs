@@ -175,6 +175,41 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 **Parameters:**
 
 
+## GET SUPABASE_URL
+
+GET endpoint for SUPABASE_URL
+
+**Parameters:**
+
+
+## GET SUPABASE_SERVICE_ROLE_KEY
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Parameters:**
+
+
+## GET OPENAI_API_KEY
+
+GET endpoint for OPENAI_API_KEY
+
+**Parameters:**
+
+
+## GET SUPABASE_URL
+
+GET endpoint for SUPABASE_URL
+
+**Parameters:**
+
+
+## GET SUPABASE_SERVICE_ROLE_KEY
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Parameters:**
+
+
 ## GET OPENAI_API_KEY
 
 GET endpoint for OPENAI_API_KEY
@@ -210,23 +245,625 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 **Parameters:**
 
 
-## GET SUPABASE_URL
+## GET Location
 
-GET endpoint for SUPABASE_URL
-
-**Parameters:**
-
-
-## GET SUPABASE_SERVICE_ROLE_KEY
-
-GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+GET endpoint for Location
 
 **Parameters:**
 
 
-## GET OPENAI_API_KEY
+## GET Location
 
-GET endpoint for OPENAI_API_KEY
+GET endpoint for Location
+
+**Parameters:**
+
+
+## DELETE index
+
+DELETE endpoint for index
+
+**Parameters:**
+
+
+## GET Content-Type
+
+GET endpoint for Content-Type
+
+**Parameters:**
+
+
+## GET Location
+
+GET endpoint for Location
+
+**Parameters:**
+
+
+## DELETE index
+
+DELETE endpoint for index
+
+**Parameters:**
+
+
+## DELETE Content-Type
+
+DELETE endpoint for Content-Type
+
+**Parameters:**
+
+
+## DELETE Content-Type
+
+DELETE endpoint for Content-Type
+
+**Parameters:**
+
+
+## GET content-type
+
+GET endpoint for content-type
+
+**Parameters:**
+
+
+## GET content-length
+
+GET endpoint for content-length
+
+**Parameters:**
+
+
+## GET field
+
+GET endpoint for field
+
+**Parameters:**
+
+
+## GET redirectTo
+
+GET endpoint for redirectTo
+
+**Parameters:**
+
+
+## GET info
+
+GET endpoint for info
+
+**Parameters:**
+
+
+## GET registrationToken
+
+GET endpoint for registrationToken
+
+**Parameters:**
+
+
+## GET code
+
+GET endpoint for code
+
+**Parameters:**
+
+
+## GET code
+
+GET endpoint for code
+
+**Parameters:**
+
+
+## GET field
+
+GET endpoint for field
+
+**Parameters:**
+
+
+## GET region
+
+GET endpoint for region
+
+**Parameters:**
+
+
+## GET vertical
+
+GET endpoint for vertical
+
+**Parameters:**
+
+
+## GET line
+
+GET endpoint for line
+
+**Parameters:**
+
+
+## GET lineAlign
+
+GET endpoint for lineAlign
+
+**Parameters:**
+
+
+## GET snapToLines
+
+GET endpoint for snapToLines
+
+**Parameters:**
+
+
+## GET size
+
+GET endpoint for size
+
+**Parameters:**
+
+
+## GET align
+
+GET endpoint for align
+
+**Parameters:**
+
+
+## GET position
+
+GET endpoint for position
+
+**Parameters:**
+
+
+## GET age
+
+GET endpoint for age
+
+**Parameters:**
+
+
+## GET Content-Range
+
+GET endpoint for Content-Range
+
+**Parameters:**
+
+
+## GET Content-Length
+
+GET endpoint for Content-Length
+
+**Parameters:**
+
+
+## GET CMCD
+
+GET endpoint for CMCD
+
+**Parameters:**
+
+
+## GET media-gesture-receiver
+
+GET endpoint for media-gesture-receiver
+
+**Parameters:**
+
+
+## GET media-container
+
+GET endpoint for media-container
+
+**Parameters:**
+
+
+## GET #xywh
+
+GET endpoint for #xywh
+
+**Parameters:**
+
+
+## GET media-controller
+
+GET endpoint for media-controller
+
+**Parameters:**
+
+
+## GET media-chrome-button
+
+GET endpoint for media-chrome-button
+
+**Parameters:**
+
+
+## GET media-airplay-button
+
+GET endpoint for media-airplay-button
+
+**Parameters:**
+
+
+## GET media-captions-button
+
+GET endpoint for media-captions-button
+
+**Parameters:**
+
+
+## GET media-cast-button
+
+GET endpoint for media-cast-button
+
+**Parameters:**
+
+
+## GET media-chrome-dialog
+
+GET endpoint for media-chrome-dialog
+
+**Parameters:**
+
+
+## GET media-chrome-range
+
+GET endpoint for media-chrome-range
+
+**Parameters:**
+
+
+## GET media-control-bar
+
+GET endpoint for media-control-bar
+
+**Parameters:**
+
+
+## GET media-text-display
+
+GET endpoint for media-text-display
+
+**Parameters:**
+
+
+## GET media-duration-display
+
+GET endpoint for media-duration-display
+
+**Parameters:**
+
+
+## GET media-fullscreen-button
+
+GET endpoint for media-fullscreen-button
+
+**Parameters:**
+
+
+## GET media-live-button
+
+GET endpoint for media-live-button
+
+**Parameters:**
+
+
+## GET media-loading-indicator
+
+GET endpoint for media-loading-indicator
+
+**Parameters:**
+
+
+## GET media-mute-button
+
+GET endpoint for media-mute-button
+
+**Parameters:**
+
+
+## GET media-pip-button
+
+GET endpoint for media-pip-button
+
+**Parameters:**
+
+
+## GET media-playback-rate-button
+
+GET endpoint for media-playback-rate-button
+
+**Parameters:**
+
+
+## GET media-play-button
+
+GET endpoint for media-play-button
+
+**Parameters:**
+
+
+## GET media-poster-image
+
+GET endpoint for media-poster-image
+
+**Parameters:**
+
+
+## GET media-preview-chapter-display
+
+GET endpoint for media-preview-chapter-display
+
+**Parameters:**
+
+
+## GET media-preview-thumbnail
+
+GET endpoint for media-preview-thumbnail
+
+**Parameters:**
+
+
+## GET media-preview-time-display
+
+GET endpoint for media-preview-time-display
+
+**Parameters:**
+
+
+## GET media-seek-backward-button
+
+GET endpoint for media-seek-backward-button
+
+**Parameters:**
+
+
+## GET media-seek-forward-button
+
+GET endpoint for media-seek-forward-button
+
+**Parameters:**
+
+
+## GET media-time-display
+
+GET endpoint for media-time-display
+
+**Parameters:**
+
+
+## GET media-time-range
+
+GET endpoint for media-time-range
+
+**Parameters:**
+
+
+## GET media-tooltip
+
+GET endpoint for media-tooltip
+
+**Parameters:**
+
+
+## GET media-volume-range
+
+GET endpoint for media-volume-range
+
+**Parameters:**
+
+
+## DELETE muted
+
+DELETE endpoint for muted
+
+**Parameters:**
+
+
+## GET token
+
+GET endpoint for token
+
+**Parameters:**
+
+
+## GET token
+
+GET endpoint for token
+
+**Parameters:**
+
+
+## GET mux-video
+
+GET endpoint for mux-video
+
+**Parameters:**
+
+
+## GET media-theme
+
+GET endpoint for media-theme
+
+**Parameters:**
+
+
+## GET media-chrome-menu
+
+GET endpoint for media-chrome-menu
+
+**Parameters:**
+
+
+## GET media-chrome-menu-item
+
+GET endpoint for media-chrome-menu-item
+
+**Parameters:**
+
+
+## GET media-settings-menu
+
+GET endpoint for media-settings-menu
+
+**Parameters:**
+
+
+## GET media-settings-menu-item
+
+GET endpoint for media-settings-menu-item
+
+**Parameters:**
+
+
+## GET media-chrome-menu-button
+
+GET endpoint for media-chrome-menu-button
+
+**Parameters:**
+
+
+## GET media-settings-menu-button
+
+GET endpoint for media-settings-menu-button
+
+**Parameters:**
+
+
+## GET media-audio-track-menu
+
+GET endpoint for media-audio-track-menu
+
+**Parameters:**
+
+
+## GET media-audio-track-menu-button
+
+GET endpoint for media-audio-track-menu-button
+
+**Parameters:**
+
+
+## GET media-captions-menu
+
+GET endpoint for media-captions-menu
+
+**Parameters:**
+
+
+## GET media-captions-menu-button
+
+GET endpoint for media-captions-menu-button
+
+**Parameters:**
+
+
+## GET media-playback-rate-menu
+
+GET endpoint for media-playback-rate-menu
+
+**Parameters:**
+
+
+## GET media-playback-rate-menu-button
+
+GET endpoint for media-playback-rate-menu-button
+
+**Parameters:**
+
+
+## GET media-rendition-menu
+
+GET endpoint for media-rendition-menu
+
+**Parameters:**
+
+
+## GET media-rendition-menu-button
+
+GET endpoint for media-rendition-menu-button
+
+**Parameters:**
+
+
+## GET media-dialog
+
+GET endpoint for media-dialog
+
+**Parameters:**
+
+
+## GET mxp-dialog
+
+GET endpoint for mxp-dialog
+
+**Parameters:**
+
+
+## GET media-theme-gerwig
+
+GET endpoint for media-theme-gerwig
+
+**Parameters:**
+
+
+## GET mux-player
+
+GET endpoint for mux-player
+
+**Parameters:**
+
+
+## GET content-type
+
+GET endpoint for content-type
+
+**Parameters:**
+
+
+## GET content-type
+
+GET endpoint for content-type
+
+**Parameters:**
+
+
+## GET /content-type-builder/schema
+
+GET endpoint for /content-type-builder/schema
+
+**Parameters:**
+
+
+## GET /content-type-builder/reserved-names
+
+GET endpoint for /content-type-builder/reserved-names
+
+**Parameters:**
+
+
+## POST /content-type-builder/update-schema
+
+POST endpoint for /content-type-builder/update-schema
+
+**Parameters:**
+
+
+## DELETE 
+
+DELETE endpoint for 
+
+**Parameters:**
+
+
+## GET logo-url
+
+GET endpoint for logo-url
 
 **Parameters:**
 
@@ -644,6 +1281,55 @@ GET endpoint for userToken
 **Parameters:**
 
 
+## GET url
+
+GET endpoint for url
+
+**Parameters:**
+
+
+## GET siteUrl
+
+GET endpoint for siteUrl
+
+**Parameters:**
+
+
+## GET userToken
+
+GET endpoint for userToken
+
+**Parameters:**
+
+
+## GET userToken
+
+GET endpoint for userToken
+
+**Parameters:**
+
+
+## GET userToken
+
+GET endpoint for userToken
+
+**Parameters:**
+
+
+## GET userToken
+
+GET endpoint for userToken
+
+**Parameters:**
+
+
+## GET userToken
+
+GET endpoint for userToken
+
+**Parameters:**
+
+
 ## GET userToken
 
 GET endpoint for userToken
@@ -731,13 +1417,6 @@ GET endpoint for threadId
 ## GET authUserId
 
 GET endpoint for authUserId
-
-**Parameters:**
-
-
-## GET userToken
-
-GET endpoint for userToken
 
 **Parameters:**
 

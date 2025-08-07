@@ -9,6 +9,8 @@ import Header from '@/components/Header';
 import TechnicalSEODashboard from '@/components/TechnicalSEODashboard';
 import AIActivitySummary from '@/components/AIActivitySummary';
 import WebsiteHealthOverview from '@/components/WebsiteHealthOverview';
+import GSCConnectionModal from '@/components/GSCConnectionModal';
+import GSCAnalytics from '@/components/GSCAnalytics';
 
 interface Website {
   id: string;
@@ -60,6 +62,7 @@ export default function WebsitePage() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [latestAudit, setLatestAudit] = useState<Audit | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [gscModalOpen, setGscModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchWebsite = async () => {
@@ -217,6 +220,15 @@ export default function WebsitePage() {
       clearInterval(pollInterval);
       setAuditLoading(false);
     }, 300000);
+  };
+
+  const handleGscConnectionChange = (connected: boolean) => {
+    if (website) {
+      setWebsite(prev => prev ? {
+        ...prev,
+        gscStatus: connected ? 'connected' : 'none'
+      } : null);
+    }
   };
 
   if (loading) {
@@ -407,7 +419,7 @@ export default function WebsitePage() {
                           </p>
                           <div className="mt-3">
                             <button
-                              onClick={() => router.push('/add-website')}
+                              onClick={() => setGscModalOpen(true)}
                               className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200"
                             >
                               Connect GSC
@@ -495,6 +507,14 @@ export default function WebsitePage() {
                 onStartAudit={handleStartAudit}
               />
 
+              {/* GSC Analytics */}
+              {user?.token && website.gscStatus === 'connected' && (
+                <GSCAnalytics 
+                  siteUrl={website.url}
+                  className="mb-8"
+                />
+              )}
+
               {/* Technical SEO Dashboard */}
               {user?.token && website.smartjsStatus === 'active' && (
                 <div className="mt-8">
@@ -514,6 +534,13 @@ export default function WebsitePage() {
           </main>
         </div>
       </div>
+
+      {/* GSC Connection Modal */}
+      <GSCConnectionModal 
+        isOpen={gscModalOpen}
+        onClose={() => setGscModalOpen(false)}
+        onConnectionChange={handleGscConnectionChange}
+      />
     </div>
   );
 }

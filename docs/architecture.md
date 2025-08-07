@@ -3,13 +3,13 @@ graph TB
     %% Frontend Layer
     subgraph "Frontend Layer"
         FE0["AuthProvider"]
-        FE1["WebsiteManagement"]
-        FE2["UsageDashboard"]
-        FE3["UpgradeBadge"]
-        FE4["ThemeToggle"]
-        FE5["SubscriptionManager"]
-        FE6["SocialProof"]
-        FE7["SnippetModal"]
+        FE1["Home"]
+        FE2["RootLayout"]
+        FE3["WebsiteManagement"]
+        FE4["WebsiteHealthOverview"]
+        FE5["UsageDashboard"]
+        FE6["UpgradeBadge"]
+        FE7["ThemeToggle"]
     end
     
     %% Backend Layer
@@ -17,9 +17,9 @@ graph TB
         BE0["server"]
         BE1["GSCConnection"]
         BE2["index"]
-        BE3["base-provider"]
-        BE4["page"]
-        BE5["subscriptions"]
+        BE3["strapi-BzxSP0n3"]
+        BE4["index-BTp6pMEF"]
+        BE5["MarketplacePage-CyKHKP18"]
     end
     
     %% Database Layer

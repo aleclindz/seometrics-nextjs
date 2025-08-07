@@ -2,25 +2,23 @@
 
 # Backend API Documentation
 
-This document provides a comprehensive overview of the backend API, including routes, functions, and their interactions with the database. It also includes mappings between UI components and API endpoints for better understanding and navigation.
+This documentation provides a comprehensive overview of the backend API, including routes, functions, and error handling. Each section is designed to help developers understand and effectively utilize the API.
 
 ## Table of Contents
-- [1. Strapi Publishing Debug & Fix](#1-strapi-publishing-debug--fix)
+- [1. Strapi Publishing Debug & Fix Summary](#1-strapi-publishing-debug--fix-summary)
 - [2. Admin Tool API](#2-admin-tool-api)
-- [3. Supabase Server Client](#3-supabase-server-client)
-- [4. GSC Connection Component](#4-gsc-connection-component)
-- [5. API Service](#5-api-service)
-- [6. UI Component → API Mapping](#6-ui-component--api-mapping)
+- [3. Strapi CMS Configuration](#3-strapi-cms-configuration)
+- [4. UI Component → API Mapping](#4-ui-component--api-mapping)
 
 ---
 
-## 1. Strapi Publishing Debug & Fix
+## 1. Strapi Publishing Debug & Fix Summary
 
 ### Issues Identified & Fixed ✅
 
 #### 1.1 CMS Manager Database Schema Mismatch
-- **Problem**: The CMS Manager was using modern schema (`user_id`, `is_active`) while the database had a legacy schema (`user_token`, `status`).
-- **Error**: `400 Bad Request` when querying the `cms_connections` table.
+- **Problem**: CMS Manager was using modern schema (`user_id`, `is_active`) but the database has a legacy schema (`user_token`, `status`).
+- **Error**: `400 Bad Request` when querying `cms_connections` table.
 - **Fixed**: Updated `/src/lib/cms/cms-manager.ts` to use correct column names:
   - `user_id` → `user_token`
   - `is_active` → `status = 'active'`
@@ -36,28 +34,26 @@ This document provides a comprehensive overview of the backend API, including ro
   - CORS support for frontend calls.
 
 ### Current Strapi Publishing Error Analysis
-- **Error Message**: 
-  ```
-  "Method not allowed for endpoint: api::blog-post.blog-post"
-  ```
+The error you're seeing:
+```
+"Method not allowed for endpoint: api::blog-post.blog-post"
+```
 
 ---
 
 ## 2. Admin Tool API
 
-### Routes
-- **GET** `/api/health`
-- **GET** `/api/websites`
-- **GET** `/api/websites/:token`
-- **POST** `/api/test-endpoints/:token`
-- **POST** `/api/websites`
-- **GET** `/api/users`
-- **GET** `/api/env`
-- **GET** `/`
-
-### Functions
-- **Health Check**: Returns the health status of the API.
-- **Get Websites**: Retrieves all websites with associated user information.
+### Routes Overview
+| HTTP Method | Route                          | Description                          |
+|-------------|--------------------------------|--------------------------------------|
+| GET         | `/api/health`                 | Check the health of the API         |
+| GET         | `/api/websites`               | Retrieve all websites                |
+| GET         | `/api/websites/:token`        | Retrieve a specific website          |
+| POST        | `/api/test-endpoints/:token`   | Test specific endpoints              |
+| POST        | `/api/websites`               | Create a new website                 |
+| GET         | `/api/users`                  | Retrieve all users                   |
+| GET         | `/api/env`                    | Get environment variables            |
+| GET         | `/`                            | Root endpoint                        |
 
 ### Example Route Implementation
 ```typescript
@@ -66,97 +62,49 @@ app.get('/api/health', (req, res) => {
 });
 ```
 
+### Error Handling
+- **Common Errors**:
+  - `404 Not Found`: When the requested resource does not exist.
+  - `500 Internal Server Error`: For unexpected server errors.
+
 ---
 
-## 3. Supabase Server Client
+## 3. Strapi CMS Configuration
 
-### Functionality
-- **Function**: `createServerSupabaseClient`
-- **Purpose**: Creates a Supabase client for server-side rendering.
-- **Parameters**: None.
-- **Returns**: A Supabase client instance.
+### Configuration Files Overview
 
-### Example Implementation
+#### 3.1 Server Configuration
+- **File**: `strapi-cms/config/server.ts`
 ```typescript
-export const createServerSupabaseClient = () => {
-  const cookieStore = cookies();
-  
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: any) {
-          cookieStore.set({ name, value: '', ...options });
-        },
-      },
-    }
-  );
-};
+export default ({ env }: { env: any }) => ({
+  host: env('HOST', '0.0.0.0'),
+  port: env.int('PORT', 1337),
+  app: {
+    keys: env.array('APP_KEYS'),
+  },
+});
+```
+
+#### 3.2 Plugin Configuration
+- **File**: `strapi-cms/config/plugins.ts`
+```typescript
+export default () => ({});
 ```
 
 ---
 
-## 4. GSC Connection Component
+## 4. UI Component → API Mapping
 
-### Routes
-- **GET** `gsc_connected`
-- **GET** `error`
-- **GET** `details`
-
-### Function
-- **Function**: `GSCConnection(param)`
-- **Purpose**: Manages the connection status with Google Search Console (GSC).
-
-### Example Implementation
-```typescript
-export default function GSCConnection({ onConnectionChange }: GSCConnectionProps) {
-  // Component logic here...
-}
-```
+| Slug           | Service Function                | Linked Components       | Purpose                                   | Parameters                                   | Response                                     | Error Handling                             | Database Operations                      |
+|----------------|----------------------------------|-------------------------|-------------------------------------------|----------------------------------------------|----------------------------------------------|-------------------------------------------|------------------------------------------|
+| `get-health`   | `GET /api/health`               | HealthCheckComponent     | Check API health                          | None                                         | `{ status: 'ok', timestamp: 'ISOString' }` | `500 Internal Server Error`               | None                                     |
+| `get-websites` | `GET /api/websites`             | WebsiteListComponent     | Retrieve all websites                     | None                                         | `[{ id: 1, name: 'Website 1' }, ...]`     | `404 Not Found`                           | Read from `websites` table              |
+| `post-websites`| `POST /api/websites`            | WebsiteFormComponent     | Create a new website                      | `{ name: string, url: string }`             | `{ id: 1, name: 'New Website' }`           | `400 Bad Request`, `500 Internal Server Error` | Insert into `websites` table            |
+| `get-users`    | `GET /api/users`                | UserListComponent        | Retrieve all users                        | None                                         | `[{ id: 1, email: 'user@example.com' }, ...]` | `404 Not Found`                           | Read from `users` table                 |
 
 ---
 
-## 5. API Service
-
-### Routes
-- **GET** `/`
-
-### Functions
-- **Purpose**: Entry point for the API service, handling various routes through imported route files.
-
-### Example Route Implementation
-```typescript
-const app = express();
-app.use('/api/auth', authRoutes);
-app.use('/api/gsc', gscRoutes);
-app.use('/api/cms', cmsRoutes);
-app.use('/api/articles', articlesRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-app.use('/api/seo', seoRoutes);
-app.use('/api/health', healthRoutes);
-```
-
----
-
-## 6. UI Component → API Mapping
-
-| **Slug**          | **Service Function**       | **Linked Components** | **Purpose**                              | **Parameters**                      | **Response**                      | **Error Handling**                | **Database Operations**           |
-|-------------------|----------------------------|-----------------------|------------------------------------------|------------------------------------|-----------------------------------|-----------------------------------|-----------------------------------|
-| `get-health`      | `GET /api/health`         | -                     | Returns the health status of the API.   | None                               | `{ status: 'ok', timestamp: '...'}` | `500 Internal Server Error`       | None                              |
-| `get-websites`    | `GET /api/websites`       | -                     | Retrieves all websites.                  | None                               | `[{ id: 1, name: 'Website 1' }]` | `404 Not Found`                   | Select from `websites`           |
-| `post-websites`   | `POST /api/websites`      | -                     | Creates a new website.                   | `{ name: string, url: string }`   | `{ id: 1, name: 'Website 1' }`   | `400 Bad Request`                 | Insert into `websites`           |
-| `gsc_connected`    | `GET gsc_connected`       | `GSCConnection`       | Checks GSC connection status.            | None                               | `{ connected: true, ... }`       | `401 Unauthorized`                 | None                              |
-
----
-
-This documentation serves as a reference for developers to understand the backend API structure, its routes, and how they relate to the UI components. For further details on specific implementations, please refer to the respective code files.
+This documentation serves as a guide for developers to understand the backend API's structure, functionality, and error handling. For any further questions or clarifications, please refer to the codebase or reach out to the development team.
 
 ## API Endpoints
 
@@ -585,6 +533,91 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 
 ---
 
+### GET SUPABASE_URL {#get-supabase-url}
+
+GET endpoint for SUPABASE_URL
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET OPENAI_API_KEY {#get-openai-api-key}
+
+GET endpoint for OPENAI_API_KEY
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET SUPABASE_URL {#get-supabase-url}
+
+GET endpoint for SUPABASE_URL
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
+
+GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
 ### GET OPENAI_API_KEY {#get-openai-api-key}
 
 GET endpoint for OPENAI_API_KEY
@@ -670,26 +703,9 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 
 ---
 
-### GET SUPABASE_URL {#get-supabase-url}
+### GET Location {#get-location}
 
-GET endpoint for SUPABASE_URL
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
-### GET SUPABASE_SERVICE_ROLE_KEY {#get-supabase-service-role-key}
-
-GET endpoint for SUPABASE_SERVICE_ROLE_KEY
+GET endpoint for Location
 
 **Service Function:** `handler`
 
@@ -704,9 +720,1488 @@ GET endpoint for SUPABASE_SERVICE_ROLE_KEY
 
 ---
 
-### GET OPENAI_API_KEY {#get-openai-api-key}
+### GET Location {#get-location}
 
-GET endpoint for OPENAI_API_KEY
+GET endpoint for Location
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### DELETE index {#delete-index}
+
+DELETE endpoint for index
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET Content-Type {#get-content-type}
+
+GET endpoint for Content-Type
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET Location {#get-location}
+
+GET endpoint for Location
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### DELETE index {#delete-index}
+
+DELETE endpoint for index
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### DELETE Content-Type {#delete-content-type}
+
+DELETE endpoint for Content-Type
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### DELETE Content-Type {#delete-content-type}
+
+DELETE endpoint for Content-Type
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET content-type {#get-content-type}
+
+GET endpoint for content-type
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET content-length {#get-content-length}
+
+GET endpoint for content-length
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET field {#get-field}
+
+GET endpoint for field
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET redirectTo {#get-redirectto}
+
+GET endpoint for redirectTo
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET info {#get-info}
+
+GET endpoint for info
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET registrationToken {#get-registrationtoken}
+
+GET endpoint for registrationToken
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET code {#get-code}
+
+GET endpoint for code
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET code {#get-code}
+
+GET endpoint for code
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET field {#get-field}
+
+GET endpoint for field
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET region {#get-region}
+
+GET endpoint for region
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET vertical {#get-vertical}
+
+GET endpoint for vertical
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET line {#get-line}
+
+GET endpoint for line
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET lineAlign {#get-linealign}
+
+GET endpoint for lineAlign
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET snapToLines {#get-snaptolines}
+
+GET endpoint for snapToLines
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET size {#get-size}
+
+GET endpoint for size
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET align {#get-align}
+
+GET endpoint for align
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET position {#get-position}
+
+GET endpoint for position
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET age {#get-age}
+
+GET endpoint for age
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET Content-Range {#get-content-range}
+
+GET endpoint for Content-Range
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET Content-Length {#get-content-length}
+
+GET endpoint for Content-Length
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET CMCD {#get-cmcd}
+
+GET endpoint for CMCD
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-gesture-receiver {#get-media-gesture-receiver}
+
+GET endpoint for media-gesture-receiver
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-container {#get-media-container}
+
+GET endpoint for media-container
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET #xywh {#get-xywh}
+
+GET endpoint for #xywh
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-controller {#get-media-controller}
+
+GET endpoint for media-controller
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-chrome-button {#get-media-chrome-button}
+
+GET endpoint for media-chrome-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-airplay-button {#get-media-airplay-button}
+
+GET endpoint for media-airplay-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-captions-button {#get-media-captions-button}
+
+GET endpoint for media-captions-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-cast-button {#get-media-cast-button}
+
+GET endpoint for media-cast-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-chrome-dialog {#get-media-chrome-dialog}
+
+GET endpoint for media-chrome-dialog
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-chrome-range {#get-media-chrome-range}
+
+GET endpoint for media-chrome-range
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-control-bar {#get-media-control-bar}
+
+GET endpoint for media-control-bar
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-text-display {#get-media-text-display}
+
+GET endpoint for media-text-display
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-duration-display {#get-media-duration-display}
+
+GET endpoint for media-duration-display
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-fullscreen-button {#get-media-fullscreen-button}
+
+GET endpoint for media-fullscreen-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-live-button {#get-media-live-button}
+
+GET endpoint for media-live-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-loading-indicator {#get-media-loading-indicator}
+
+GET endpoint for media-loading-indicator
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-mute-button {#get-media-mute-button}
+
+GET endpoint for media-mute-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-pip-button {#get-media-pip-button}
+
+GET endpoint for media-pip-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-playback-rate-button {#get-media-playback-rate-button}
+
+GET endpoint for media-playback-rate-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-play-button {#get-media-play-button}
+
+GET endpoint for media-play-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-poster-image {#get-media-poster-image}
+
+GET endpoint for media-poster-image
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-preview-chapter-display {#get-media-preview-chapter-display}
+
+GET endpoint for media-preview-chapter-display
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-preview-thumbnail {#get-media-preview-thumbnail}
+
+GET endpoint for media-preview-thumbnail
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-preview-time-display {#get-media-preview-time-display}
+
+GET endpoint for media-preview-time-display
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-seek-backward-button {#get-media-seek-backward-button}
+
+GET endpoint for media-seek-backward-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-seek-forward-button {#get-media-seek-forward-button}
+
+GET endpoint for media-seek-forward-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-time-display {#get-media-time-display}
+
+GET endpoint for media-time-display
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-time-range {#get-media-time-range}
+
+GET endpoint for media-time-range
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-tooltip {#get-media-tooltip}
+
+GET endpoint for media-tooltip
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-volume-range {#get-media-volume-range}
+
+GET endpoint for media-volume-range
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### DELETE muted {#delete-muted}
+
+DELETE endpoint for muted
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET token {#get-token}
+
+GET endpoint for token
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET token {#get-token}
+
+GET endpoint for token
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET mux-video {#get-mux-video}
+
+GET endpoint for mux-video
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-theme {#get-media-theme}
+
+GET endpoint for media-theme
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-chrome-menu {#get-media-chrome-menu}
+
+GET endpoint for media-chrome-menu
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-chrome-menu-item {#get-media-chrome-menu-item}
+
+GET endpoint for media-chrome-menu-item
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-settings-menu {#get-media-settings-menu}
+
+GET endpoint for media-settings-menu
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-settings-menu-item {#get-media-settings-menu-item}
+
+GET endpoint for media-settings-menu-item
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-chrome-menu-button {#get-media-chrome-menu-button}
+
+GET endpoint for media-chrome-menu-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-settings-menu-button {#get-media-settings-menu-button}
+
+GET endpoint for media-settings-menu-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-audio-track-menu {#get-media-audio-track-menu}
+
+GET endpoint for media-audio-track-menu
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-audio-track-menu-button {#get-media-audio-track-menu-button}
+
+GET endpoint for media-audio-track-menu-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-captions-menu {#get-media-captions-menu}
+
+GET endpoint for media-captions-menu
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-captions-menu-button {#get-media-captions-menu-button}
+
+GET endpoint for media-captions-menu-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-playback-rate-menu {#get-media-playback-rate-menu}
+
+GET endpoint for media-playback-rate-menu
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-playback-rate-menu-button {#get-media-playback-rate-menu-button}
+
+GET endpoint for media-playback-rate-menu-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-rendition-menu {#get-media-rendition-menu}
+
+GET endpoint for media-rendition-menu
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-rendition-menu-button {#get-media-rendition-menu-button}
+
+GET endpoint for media-rendition-menu-button
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-dialog {#get-media-dialog}
+
+GET endpoint for media-dialog
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET mxp-dialog {#get-mxp-dialog}
+
+GET endpoint for mxp-dialog
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET media-theme-gerwig {#get-media-theme-gerwig}
+
+GET endpoint for media-theme-gerwig
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET mux-player {#get-mux-player}
+
+GET endpoint for mux-player
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET content-type {#get-content-type}
+
+GET endpoint for content-type
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET content-type {#get-content-type}
+
+GET endpoint for content-type
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET /content-type-builder/schema {#get-content-type-builder-schema}
+
+GET endpoint for /content-type-builder/schema
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET /content-type-builder/reserved-names {#get-content-type-builder-reserved-names}
+
+GET endpoint for /content-type-builder/reserved-names
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### POST /content-type-builder/update-schema {#post-content-type-builder-update-schema}
+
+POST endpoint for /content-type-builder/update-schema
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### DELETE  {#delete}
+
+DELETE endpoint for 
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET logo-url {#get-logo-url}
+
+GET endpoint for logo-url
 
 **Service Function:** `handler`
 
@@ -1724,6 +3219,125 @@ GET endpoint for userToken
 
 ---
 
+### GET url {#get-url}
+
+GET endpoint for url
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET siteUrl {#get-siteurl}
+
+GET endpoint for siteUrl
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET userToken {#get-usertoken}
+
+GET endpoint for userToken
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET userToken {#get-usertoken}
+
+GET endpoint for userToken
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET userToken {#get-usertoken}
+
+GET endpoint for userToken
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET userToken {#get-usertoken}
+
+GET endpoint for userToken
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
+### GET userToken {#get-usertoken}
+
+GET endpoint for userToken
+
+**Service Function:** `handler`
+
+
+
+**Parameters:**
+
+
+**Response:** JSON response
+
+**Error Handling:** Standard HTTP error codes
+
+---
+
 ### GET userToken {#get-usertoken}
 
 GET endpoint for userToken
@@ -1931,23 +3545,6 @@ GET endpoint for threadId
 ### GET authUserId {#get-authuserid}
 
 GET endpoint for authUserId
-
-**Service Function:** `handler`
-
-
-
-**Parameters:**
-
-
-**Response:** JSON response
-
-**Error Handling:** Standard HTTP error codes
-
----
-
-### GET userToken {#get-usertoken}
-
-GET endpoint for userToken
 
 **Service Function:** `handler`
 

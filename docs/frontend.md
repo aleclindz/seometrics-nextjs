@@ -2,9 +2,31 @@
 
 # Frontend Features & Functionality
 
-This React application provides a comprehensive user interface with 23 distinct pages and interactive components.
+This React application provides a comprehensive user interface with 25 distinct pages and interactive components.
 
 ## Pages Overview
+
+### App
+**Route**: `/`
+
+The App page provides user interface and functionality for app related features.
+
+
+### Layout
+**Route**: `/layout.tsx`
+
+The Layout page provides user interface and functionality for layout related features.
+
+**Interactive Components**: 5
+- link, link, link, link, link
+
+### Website Health Overview
+**Route**: `/unknown`
+
+The Website Health Overview page provides user interface and functionality for website health overview related features.
+
+**Interactive Components**: 7
+- button, Connect Now, Manage Connection, Connect CMS, Manage CMS, button, Installation Complete
 
 ### Upgrade Badge
 **Route**: `/unknown`
@@ -28,19 +50,11 @@ The Feature Gate page provides user interface and functionality for feature gate
 **Interactive Components**: 2
 - ⚡ Upgrade Now, ← Back to Dashboard
 
-### App
-**Route**: `/`
+### Strapi Bzx SP0n3
+**Route**: `/unknown`
 
-The App page provides user interface and functionality for app related features.
+The Strapi Bzx SP0n3 page provides user interface and functionality for strapi bzx sp0n3 related features.
 
-
-### Layout
-**Route**: `/layout.tsx`
-
-The Layout page provides user interface and functionality for layout related features.
-
-**Interactive Components**: 5
-- link, link, link, link, link
 
 ### Terms
 **Route**: `/terms`
@@ -154,7 +168,7 @@ The Account page provides user interface and functionality for account related f
 The [website Id] page provides user interface and functionality for [website id] related features.
 
 **Interactive Components**: 5
-- Return to Dashboard, Dashboard, button, button
+- Return to Dashboard, Dashboard, View installation instructions →, Connect GSC
 
 ### [token]
 **Route**: `/meta-tags/[token]`
@@ -199,15 +213,17 @@ The application provides seamless navigation between pages through:
 
 # Frontend Architecture Overview
 
-This React application consists of **23 pages** with **92 components** (90 interactive).
+This React application consists of **25 pages** with **99 components** (97 interactive).
 
 ## Pages Structure
 
+- **[App](#app)** (`/`) - 0 components
+- **[Layout](#layout)** (`/layout.tsx`) - 5 components
+- **[Website Health Overview](#website-health-overview)** (`/unknown`) - 7 components
 - **[Upgrade Badge](#upgrade-badge)** (`/unknown`) - 1 components
 - **[Protected Route](#protected-route)** (`/unknown`) - 0 components
 - **[Feature Gate](#feature-gate)** (`/unknown`) - 2 components
-- **[App](#app)** (`/`) - 0 components
-- **[Layout](#layout)** (`/layout.tsx`) - 5 components
+- **[Strapi Bzx SP0n3](#strapi-bzx-sp0n3)** (`/unknown`) - 0 components
 - **[Terms](#terms)** (`/terms`) - 1 components
 - **[Strategy](#strategy)** (`/strategy`) - 2 components
 - **[Privacy](#privacy)** (`/privacy`) - 1 components
@@ -229,7 +245,7 @@ This React application consists of **23 pages** with **92 components** (90 inter
 
 ## Component Distribution
 
-- **Buttons & Actions**: 45
+- **Buttons & Actions**: 52
 - **Input Fields**: 21
 - **Navigation Links**: 19
 - **Forms & Input**: 5
@@ -245,45 +261,6 @@ The application uses a combination of:
 Click on any page below to see its components and navigation details.
 
 ## Components
-
-### button {#button}
-
-Interactive button labeled "⚡" that triggers user actions
-
-**Props:** onClick: expression, className: expression, title: expression
-
-**Usage:** Used in Upgrade Badge page
-
-
-**Events → Backend:**
-- `click` ➜ [undefined](backend.md#undefined) - User clicks ⚡
-
-
-### button {#button}
-
-Interactive button labeled "⚡ Upgrade Now" that triggers user actions
-
-**Props:** onClick: expression, className: string
-
-**Usage:** Used in Feature Gate page
-
-
-**Events → Backend:**
-- `click` ➜ [undefined](backend.md#undefined) - User clicks ⚡ Upgrade Now
-
-
-### button {#button}
-
-Interactive button labeled "← Back to Dashboard" that triggers user actions
-
-**Props:** onClick: expression, className: string
-
-**Usage:** Used in Feature Gate page
-
-
-**Events → Backend:**
-- `click` ➜ [undefined](backend.md#undefined) - User clicks ← Back to Dashboard
-
 
 ### link {#link}
 
@@ -333,6 +310,133 @@ Navigation link that takes users to different pages
 
 **Usage:** Used in Layout page
 
+
+
+### button {#button}
+
+Interactive button that triggers user actions
+
+**Props:** onClick: expression, disabled: expression, className: string
+
+**Usage:** Used in Website Health Overview page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks button
+
+
+### button {#button}
+
+Interactive button labeled "Connect Now" that triggers user actions
+
+**Props:** onClick: expression, className: string
+
+**Usage:** Used in Website Health Overview page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks Connect Now
+
+
+### button {#button}
+
+Interactive button labeled "Manage Connection" that triggers user actions
+
+**Props:** onClick: expression, className: string
+
+**Usage:** Used in Website Health Overview page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks Manage Connection
+
+
+### button {#button}
+
+Interactive button labeled "Connect CMS" that triggers user actions
+
+**Props:** onClick: expression, className: string
+
+**Usage:** Used in Website Health Overview page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks Connect CMS
+
+
+### button {#button}
+
+Interactive button labeled "Manage CMS" that triggers user actions
+
+**Props:** onClick: expression, className: string
+
+**Usage:** Used in Website Health Overview page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks Manage CMS
+
+
+### button {#button}
+
+Interactive button that triggers user actions
+
+**Props:** onClick: expression, className: string, title: string
+
+**Usage:** Used in Website Health Overview page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks button
+
+
+### button {#button}
+
+Interactive button labeled "Installation Complete" that triggers user actions
+
+**Props:** className: string, disabled: unknown
+
+**Usage:** Used in Website Health Overview page
+
+
+
+### button {#button}
+
+Interactive button labeled "⚡" that triggers user actions
+
+**Props:** onClick: expression, className: expression, title: expression
+
+**Usage:** Used in Upgrade Badge page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks ⚡
+
+
+### button {#button}
+
+Interactive button labeled "⚡ Upgrade Now" that triggers user actions
+
+**Props:** onClick: expression, className: string
+
+**Usage:** Used in Feature Gate page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks ⚡ Upgrade Now
+
+
+### button {#button}
+
+Interactive button labeled "← Back to Dashboard" that triggers user actions
+
+**Props:** onClick: expression, className: string
+
+**Usage:** Used in Feature Gate page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks ← Back to Dashboard
 
 
 ### a {#a}
@@ -1105,20 +1209,7 @@ Interactive button labeled "Dashboard" that triggers user actions
 
 ### button {#button}
 
-Interactive button that triggers user actions
-
-**Props:** onClick: expression, disabled: expression, className: string
-
-**Usage:** Used in [website Id] page
-
-
-**Events → Backend:**
-- `click` ➜ [undefined](backend.md#undefined) - User clicks button
-
-
-### button {#button}
-
-Interactive button that triggers user actions
+Interactive button labeled "View installation instructions →" that triggers user actions
 
 **Props:** onClick: expression, className: string
 
@@ -1126,7 +1217,20 @@ Interactive button that triggers user actions
 
 
 **Events → Backend:**
-- `click` ➜ [undefined](backend.md#undefined) - User clicks button
+- `click` ➜ [undefined](backend.md#undefined) - User clicks View installation instructions →
+
+
+### button {#button}
+
+Interactive button labeled "Connect GSC" that triggers user actions
+
+**Props:** onClick: expression, className: string
+
+**Usage:** Used in [website Id] page
+
+
+**Events → Backend:**
+- `click` ➜ [undefined](backend.md#undefined) - User clicks Connect GSC
 
 
 ### a {#a}

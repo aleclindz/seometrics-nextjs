@@ -37,68 +37,44 @@
    
    - **Result:** Navigate to profile-settings
 
-2. **Manage Websites**
+2. **View Websites**
    - **UI Component:** [dashboard](frontend.md#dashboard)
    - **Event:** `onClick`
    
    
    
-   - **Result:** Navigate to website-management
+   - **Result:** Navigate to website-page
 
 
 ---
 
-## Login Page {#login-page}
+## Website Page {#website-page}
 
-**Description:** Page for users to log into their existing accounts
-
-**Steps:**
-1. **Submit Login**
-   - **UI Component:** [login-page](frontend.md#login-page)
-   - **Event:** `onSubmit`
-   - **API Call:** [authenticate-user-function](backend.md#authenticate-user-function)
-   - **Service:** `authenticateUser`
-   - **Database:** `users`
-   - **Result:** Navigate to dashboard
-
-2. **Forgot Password Link**
-   - **UI Component:** [login-page](frontend.md#login-page)
-   - **Event:** `onClick`
-   
-   
-   
-   - **Result:** Navigate to forgot-password
-
-
----
-
-## Website Management Page {#website-management}
-
-**Description:** Interface for users to manage their websites and SEO settings
+**Description:** Page where users can manage their websites and SEO settings
 
 **Steps:**
-1. **Add New Website**
-   - **UI Component:** [website-management](frontend.md#website-management)
+1. **Add Website Button**
+   - **UI Component:** [website-page](frontend.md#website-page)
    - **Event:** `onClick`
    - **API Call:** [add-website-function](backend.md#add-website-function)
    - **Service:** `addWebsite`
    - **Database:** `websites`
-   - **Result:** Navigate to add-website
+   - **Result:** Navigate to add-website-page
 
-2. **Edit Website**
-   - **UI Component:** [website-management](frontend.md#website-management)
+2. **Edit Website Button**
+   - **UI Component:** [website-page](frontend.md#website-page)
    - **Event:** `onClick`
-   
-   
-   
-   - **Result:** Navigate to edit-website
+   - **API Call:** [edit-website-function](backend.md#edit-website-function)
+   - **Service:** `editWebsite`
+   - **Database:** `websites`
+   - **Result:** Navigate to edit-website-page
 
 
 ---
 
 ## Terms Page {#terms-page}
 
-**Description:** Page displaying the terms of service for the application
+**Description:** Page displaying the terms and conditions of using the application
 
 **Steps:**
 
@@ -107,25 +83,34 @@
 
 ## Privacy Page {#privacy-page}
 
-**Description:** Page detailing the privacy policy of the application
+**Description:** Page displaying the privacy policy of the application
 
 **Steps:**
 
 
 ---
 
-## Debug SEO Page {#debug-seo-page}
+## Login Page {#login-page}
 
-**Description:** Page for users to test and debug SEO settings
+**Description:** Page for users to log into their accounts
 
 **Steps:**
-1. **Test SEO Settings**
-   - **UI Component:** [debug-seo-page](frontend.md#debug-seo-page)
-   - **Event:** `onClick`
-   - **API Call:** [test-seo-settings-function](backend.md#test-seo-settings-function)
-   - **Service:** `testSeoSettings`
-   - **Database:** `websites`
-   - **Result:** Navigate to debug-results
+1. **Submit Login Form**
+   - **UI Component:** [login-page](frontend.md#login-page)
+   - **Event:** `onSubmit`
+   - **API Call:** [authenticate-user-function](backend.md#authenticate-user-function)
+   - **Service:** `authenticateUser`
+   - **Database:** `users`
+   - **Result:** Navigate to dashboard
+
+
+---
+
+## Debug SEO Page {#debug-seo-page}
+
+**Description:** Page for users to analyze and debug SEO issues
+
+**Steps:**
 
 
 ---
