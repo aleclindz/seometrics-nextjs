@@ -1,0 +1,601 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/auth';
+
+interface WebsiteSetupModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  website: {
+    id: string;
+    url: string;
+    name: string;
+    gscStatus: 'connected' | 'pending' | 'error' | 'none';
+    cmsStatus: 'connected' | 'pending' | 'error' | 'none';
+    smartjsStatus: 'active' | 'inactive' | 'error';
+  };
+  onStatusUpdate?: (updates: {
+    gscStatus?: 'connected' | 'pending' | 'error' | 'none';
+    cmsStatus?: 'connected' | 'pending' | 'error' | 'none';
+    smartjsStatus?: 'active' | 'inactive' | 'error';
+  }) => void;
+}
+
+type SetupTab = 'gsc' | 'cms' | 'smartjs';
+
+interface GSCConnectionStatus {
+  connected: boolean;
+  connection?: {
+    id: string;
+    email: string;
+    connected_at: string;
+    last_sync_at: string | null;
+    expires_at: string;
+    is_expired: boolean;
+    properties_count: number;
+    sync_errors: any[];
+  };
+}
+
+interface CMSConnection {
+  id: number;
+  cms_type: string;
+  connection_name: string;
+  base_url: string;
+  status: 'active' | 'error' | 'pending';
+  content_type?: string;
+  created_at: string;
+  last_used_at?: string;
+}
+
+export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUpdate }: WebsiteSetupModalProps) {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<SetupTab>('gsc');
+  
+  // GSC State
+  const [gscStatus, setGscStatus] = useState<GSCConnectionStatus>({ connected: false });
+  const [gscLoading, setGscLoading] = useState(false);
+  const [gscConnecting, setGscConnecting] = useState(false);
+  const [gscError, setGscError] = useState<string | null>(null);
+  
+  // CMS State
+  const [cmsConnections, setCmsConnections] = useState<CMSConnection[]>([]);
+  const [cmsLoading, setCmsLoading] = useState(false);
+  const [cmsError, setCmsError] = useState<string | null>(null);
+  
+  // Smart.js State
+  const [smartjsInstallCode, setSmartjsInstallCode] = useState('');
+  const [smartjsLoading, setSmartjsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Load data for all tabs when modal opens
+      checkGSCStatus();
+      fetchCMSConnections();
+      generateSmartJSCode();
+      
+      // Set initial tab based on what needs setup
+      if (website.gscStatus !== 'connected') {
+        setActiveTab('gsc');
+      } else if (website.smartjsStatus !== 'active') {
+        setActiveTab('smartjs');
+      } else if (website.cmsStatus !== 'connected') {
+        setActiveTab('cms');
+      }
+    }
+  }, [isOpen, website]);
+
+  // GSC Functions
+  const checkGSCStatus = async () => {
+    if (!user?.token) return;
+
+    try {
+      setGscLoading(true);
+      const response = await fetch(`/api/gsc/connection?userToken=${user.token}`);
+      const data = await response.json();
+      setGscStatus(data);
+    } catch (error) {
+      console.error('Error checking GSC connection:', error);
+      setGscError('Failed to check connection status');
+    } finally {
+      setGscLoading(false);
+    }
+  };
+
+  const handleGSCConnect = async () => {
+    if (!user?.token) return;
+
+    try {
+      setGscConnecting(true);
+      setGscError(null);
+      
+      const response = await fetch(`/api/gsc/oauth/start?userToken=${user.token}`);
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        setGscError('Failed to start OAuth process');
+      }
+    } catch (error) {
+      console.error('Error starting OAuth:', error);
+      setGscError('Failed to connect to Google Search Console');
+    } finally {
+      setGscConnecting(false);
+    }
+  };
+
+  const handleGSCDisconnect = async () => {
+    if (!user?.token) return;
+    
+    if (!confirm('Are you sure you want to disconnect Google Search Console?')) {
+      return;
+    }
+
+    try {
+      setGscLoading(true);
+      const response = await fetch(`/api/gsc/connection?userToken=${user.token}`, { method: 'DELETE' });
+      
+      if (response.ok) {
+        setGscStatus({ connected: false });
+        onStatusUpdate?.({ gscStatus: 'none' });
+      }
+    } catch (error) {
+      console.error('Error disconnecting GSC:', error);
+      setGscError('Failed to disconnect');
+    } finally {
+      setGscLoading(false);
+    }
+  };
+
+  // CMS Functions  
+  const fetchCMSConnections = async () => {
+    if (!user?.token) return;
+
+    try {
+      setCmsLoading(true);
+      const response = await fetch(`/api/cms/connections?userToken=${user.token}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        // Filter connections for this website
+        const websiteConnections = data.connections.filter((conn: any) => 
+          conn.website_id === parseInt(website.id) || !conn.website_id
+        );
+        setCmsConnections(websiteConnections);
+      }
+    } catch (error) {
+      console.error('Error fetching CMS connections:', error);
+      setCmsError('Failed to fetch CMS connections');
+    } finally {
+      setCmsLoading(false);
+    }
+  };
+
+  const handleCMSConnect = (cmsType: string) => {
+    // Navigate to CMS connection page
+    window.open(`/website/${website.id}/cms-connection?type=${cmsType}`, '_blank');
+  };
+
+  // Smart.js Functions
+  const generateSmartJSCode = () => {
+    setSmartjsInstallCode(`<!-- SEOAgent Smart.js -->
+<script>
+  // Define your website token
+  const idv = "${website.id}";
+</script>
+<script src="https://seoagent.com/seoagent.js" defer></script>
+<!-- End SEOAgent Smart.js -->`);
+  };
+
+  const copyInstallCode = async () => {
+    try {
+      await navigator.clipboard.writeText(smartjsInstallCode);
+      // You might want to show a toast notification here
+    } catch (error) {
+      console.error('Failed to copy code:', error);
+    }
+  };
+
+  const testSmartJSInstallation = async () => {
+    if (!user?.token) return;
+
+    try {
+      setSmartjsLoading(true);
+      const response = await fetch('/api/smartjs/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteUrl: website.url })
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.data.active) {
+        onStatusUpdate?.({ smartjsStatus: 'active' });
+      }
+    } catch (error) {
+      console.error('Error testing Smart.js:', error);
+    } finally {
+      setSmartjsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'connected':
+      case 'active':
+        return 'text-green-600 bg-green-100';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'error':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'connected':
+      case 'active':
+        return (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        );
+      case 'pending':
+        return (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+        );
+      case 'error':
+        return (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+        );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Setup & Connections
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {website.name}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Connection Status Overview */}
+          <div className="flex items-center space-x-4 mt-4">
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(website.gscStatus)}`}>
+              {getStatusIcon(website.gscStatus)}
+              <span>Search Console</span>
+            </div>
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(website.smartjsStatus)}`}>
+              {getStatusIcon(website.smartjsStatus)}
+              <span>SEOAgent.js</span>
+            </div>
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(website.cmsStatus)}`}>
+              {getStatusIcon(website.cmsStatus)}
+              <span>CMS</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('gsc')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'gsc'
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              Google Search Console
+            </button>
+            <button
+              onClick={() => setActiveTab('smartjs')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'smartjs'
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              SEOAgent.js
+            </button>
+            <button
+              onClick={() => setActiveTab('cms')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'cms'
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              CMS Integration
+            </button>
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="px-6 py-6 max-h-[60vh] overflow-y-auto">
+          
+          {/* Google Search Console Tab */}
+          {activeTab === 'gsc' && (
+            <div className="space-y-6">
+              {gscLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+                </div>
+              ) : gscStatus.connected ? (
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        Connected to Google Search Console
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {gscStatus.connection?.email} • {gscStatus.connection?.properties_count} properties
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+                    <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">Connection Details</h4>
+                    <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
+                      <p>Connected: {new Date(gscStatus.connection?.connected_at || '').toLocaleDateString()}</p>
+                      <p>Last Sync: {gscStatus.connection?.last_sync_at ? new Date(gscStatus.connection.last_sync_at).toLocaleDateString() : 'Never'}</p>
+                      <p>Expires: {new Date(gscStatus.connection?.expires_at || '').toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={handleGSCDisconnect}
+                    className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 dark:bg-red-900/10 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-center py-6">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                      Connect Google Search Console
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                      Connect your Google Search Console to access performance data, submit sitemaps, and enable advanced SEO monitoring.
+                    </p>
+                    
+                    {gscError && (
+                      <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 text-sm text-red-700 dark:text-red-300">
+                        {gscError}
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={handleGSCConnect}
+                      disabled={gscConnecting}
+                      className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {gscConnecting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                          </svg>
+                          Connect Google Search Console
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SEOAgent.js Tab */}
+          {activeTab === 'smartjs' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                  SEOAgent.js Installation
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                  Add this script to your website&apos;s HTML to enable automated SEO optimizations including meta tags, alt tags, and schema markup.
+                </p>
+                
+                <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-400">HTML</span>
+                    <button
+                      onClick={copyInstallCode}
+                      className="text-xs text-gray-400 hover:text-white"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <pre className="text-sm text-green-400 overflow-x-auto">
+                    <code>{smartjsInstallCode}</code>
+                  </pre>
+                </div>
+                
+                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Installation Instructions</h4>
+                  <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2 list-decimal list-inside">
+                    <li>Copy the code above</li>
+                    <li>Paste it into your website&apos;s HTML, preferably in the &lt;head&gt; section</li>
+                    <li>Deploy your website</li>
+                    <li>Click &ldquo;Test Installation&rdquo; below to verify it&apos;s working</li>
+                  </ol>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={testSmartJSInstallation}
+                    disabled={smartjsLoading}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
+                  >
+                    {smartjsLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Testing...
+                      </>
+                    ) : (
+                      'Test Installation'
+                    )}
+                  </button>
+                  
+                  {website.smartjsStatus === 'active' && (
+                    <div className="flex items-center space-x-2 text-green-600">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-sm font-medium">Active & Working</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CMS Integration Tab */}
+          {activeTab === 'cms' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                  CMS Integration
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                  Connect your Content Management System to enable automated article publishing and content management.
+                </p>
+                
+                {cmsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+                  </div>
+                ) : cmsConnections.length > 0 ? (
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">Connected CMS</h4>
+                    {cmsConnections.map((connection) => (
+                      <div key={connection.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="font-medium text-gray-900 dark:text-gray-100 capitalize">
+                              {connection.cms_type}
+                            </h5>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {connection.connection_name}
+                            </p>
+                          </div>
+                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(connection.status)}`}>
+                            {connection.status}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      {/* CMS Options */}
+                      {[
+                        { type: 'wordpress', name: 'WordPress', icon: '📝' },
+                        { type: 'strapi', name: 'Strapi', icon: '🚀' },
+                        { type: 'webflow', name: 'Webflow', icon: '🌊' },
+                        { type: 'shopify', name: 'Shopify', icon: '🛒' },
+                      ].map((cms) => (
+                        <div key={cms.type} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <span className="text-2xl">{cms.icon}</span>
+                            <h4 className="font-medium text-gray-900 dark:text-gray-100">{cms.name}</h4>
+                          </div>
+                          <button
+                            onClick={() => handleCMSConnect(cms.type)}
+                            className="w-full inline-flex items-center justify-center px-4 py-2 border border-violet-300 text-sm font-medium rounded-md text-violet-700 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/10 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-900/20"
+                          >
+                            Connect {cms.name}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Benefits of CMS Integration</h4>
+                      <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                        <li>Automated article publishing</li>
+                        <li>Content synchronization</li>
+                        <li>SEO metadata management</li>
+                        <li>Bulk content operations</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+                
+                {cmsError && (
+                  <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
+                    {cmsError}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  );
+}

@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import TechnicalSEODashboard from '@/components/TechnicalSEODashboard';
 import AIActivitySummary from '@/components/AIActivitySummary';
 import WebsiteHealthOverview from '@/components/WebsiteHealthOverview';
-import GSCConnectionModal from '@/components/GSCConnectionModal';
+import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import GSCAnalytics from '@/components/GSCAnalytics';
 
 interface Website {
@@ -62,7 +62,7 @@ export default function WebsitePage() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [latestAudit, setLatestAudit] = useState<Audit | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
-  const [gscModalOpen, setGscModalOpen] = useState(false);
+  const [setupModalOpen, setSetupModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchWebsite = async () => {
@@ -222,11 +222,15 @@ export default function WebsitePage() {
     }, 300000);
   };
 
-  const handleGscConnectionChange = (connected: boolean) => {
+  const handleStatusUpdate = (updates: {
+    gscStatus?: 'connected' | 'pending' | 'error' | 'none';
+    cmsStatus?: 'connected' | 'pending' | 'error' | 'none';
+    smartjsStatus?: 'active' | 'inactive' | 'error';
+  }) => {
     if (website) {
       setWebsite(prev => prev ? {
         ...prev,
-        gscStatus: connected ? 'connected' : 'none'
+        ...updates
       } : null);
     }
   };
@@ -352,6 +356,20 @@ export default function WebsitePage() {
                   </h1>
                   <p className="text-gray-600 dark:text-gray-400 mt-1">{website.url}</p>
                 </div>
+                
+                {/* Setup Button */}
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setSetupModalOpen(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Manage Setup
+                  </button>
+                </div>
               </div>
 
               {/* AI Activity Summary - Top Priority */}
@@ -372,63 +390,33 @@ export default function WebsitePage() {
                 />
               )}
 
-              {/* Critical Setup Alerts */}
+              {/* Setup Status Alert */}
               {(website.gscStatus !== 'connected' || website.smartjsStatus !== 'active' || website.cmsStatus !== 'connected') && (
-                <div className="space-y-4 mb-8">
-                  {website.smartjsStatus !== 'active' && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-sm font-medium text-orange-800">SEOAgent.js Not Installed</h3>
-                          <p className="text-sm text-orange-700 mt-1">
-                            Install the SEOAgent.js tracking script to enable automated SEO optimizations and technical monitoring.
-                          </p>
-                          <div className="mt-3">
-                            <button 
-                              onClick={() => {
-                                const element = document.getElementById('seoagentjs-installation');
-                                element?.scrollIntoView({ behavior: 'smooth' });
-                              }}
-                              className="text-sm font-medium text-orange-800 hover:text-orange-900"
-                            >
-                              View installation instructions →
-                            </button>
-                          </div>
-                        </div>
+                <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-8">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Setup Required</h3>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        Complete your website setup to unlock the full potential of SEOAgent. 
+                        {website.gscStatus !== 'connected' && ' Connect Google Search Console for performance data.'}
+                        {website.smartjsStatus !== 'active' && ' Install SEOAgent.js for automated optimizations.'}
+                        {website.cmsStatus !== 'connected' && ' Connect your CMS for content management.'}
+                      </p>
+                      <div className="mt-3">
+                        <button
+                          onClick={() => setSetupModalOpen(true)}
+                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-yellow-800 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-900/20 hover:bg-yellow-200 dark:hover:bg-yellow-900/30"
+                        >
+                          Complete Setup →
+                        </button>
                       </div>
                     </div>
-                  )}
-
-                  {website.gscStatus !== 'connected' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-sm font-medium text-blue-800">Google Search Console Not Connected</h3>
-                          <p className="text-sm text-blue-700 mt-1">
-                            Connect Google Search Console to access performance data and enable advanced SEO analysis.
-                          </p>
-                          <div className="mt-3">
-                            <button
-                              onClick={() => setGscModalOpen(true)}
-                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200"
-                            >
-                              Connect GSC
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
 
@@ -535,11 +523,12 @@ export default function WebsitePage() {
         </div>
       </div>
 
-      {/* GSC Connection Modal */}
-      <GSCConnectionModal 
-        isOpen={gscModalOpen}
-        onClose={() => setGscModalOpen(false)}
-        onConnectionChange={handleGscConnectionChange}
+      {/* Website Setup Modal */}
+      <WebsiteSetupModal 
+        isOpen={setupModalOpen}
+        onClose={() => setSetupModalOpen(false)}
+        website={website}
+        onStatusUpdate={handleStatusUpdate}
       />
     </div>
   );
