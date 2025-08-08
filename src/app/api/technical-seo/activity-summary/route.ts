@@ -82,10 +82,14 @@ export async function POST(request: NextRequest) {
 
     if (aggregatedActivity.totalCount === 0) {
       console.log('[ACTIVITY SUMMARY] No activity found, returning default message');
+      
+      // Generate contextual welcome message based on current setup status
+      const welcomeMessage = generateWelcomeMessage(websiteStatus, extractDomainName(siteUrl));
+      
       return NextResponse.json({
         success: true,
         data: {
-          summary: `Welcome to ${extractDomainName(siteUrl)}! I'm SEOAgent, your automated SEO assistant. Once you install the Smart.js tracking script and connect Google Search Console, I'll start optimizing your website automatically and provide personalized activity summaries here.`,
+          summary: welcomeMessage,
           periodStart: aggregatedActivity.periodStart,
           periodEnd: aggregatedActivity.periodEnd,
           activityCount: 0,
@@ -308,4 +312,50 @@ function getTimePeriodDescription(startDate: string, endDate: string): string {
   if (diffDays <= 14) return 'the past two weeks';
   if (diffDays <= 30) return 'this month';
   return `the past ${Math.ceil(diffDays / 7)} weeks`;
+}
+
+function generateWelcomeMessage(websiteStatus?: SummaryRequest['websiteStatus'], domainName?: string): string {
+  // Use generic greeting instead of domain-specific welcome
+  let message = "Hi! I'm SEOAgent, your automated SEO assistant. ";
+  
+  if (!websiteStatus) {
+    // Fallback when we don't have status information
+    message += "Once you connect Google Search Console and install SEOAgent.js, I'll start optimizing your website automatically and provide personalized activity summaries here.";
+    return message;
+  }
+  
+  const isFullySetup = websiteStatus.gscConnected && websiteStatus.seoagentjsInstalled;
+  
+  if (isFullySetup) {
+    // Everything is connected, explain why there's no activity yet
+    message += "Your setup looks great! I'm monitoring your website and will show optimization activities here once I detect opportunities to improve your SEO.";
+    
+    if (websiteStatus.hasAuditScore && websiteStatus.criticalIssues > 0) {
+      message += ` I've found ${websiteStatus.criticalIssues} issues that need attention - I'll start working on those soon.`;
+    } else if (!websiteStatus.hasAuditScore) {
+      message += " Consider running an SEO health check to discover optimization opportunities.";
+    }
+  } else {
+    // Still need setup
+    message += "To get started, I need you to:";
+    const setupSteps = [];
+    
+    if (!websiteStatus.gscConnected) {
+      setupSteps.push("Connect Google Search Console to track your site's performance");
+    }
+    
+    if (!websiteStatus.seoagentjsInstalled) {
+      setupSteps.push("Install SEOAgent.js to enable automated technical SEO fixes");
+    }
+    
+    if (setupSteps.length === 1) {
+      message += ` ${setupSteps[0]}.`;
+    } else if (setupSteps.length === 2) {
+      message += ` ${setupSteps[0]} and ${setupSteps[1]}.`;
+    }
+    
+    message += " Once connected, I'll start optimizing your website automatically!";
+  }
+  
+  return message;
 }
