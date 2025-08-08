@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     // Get memory growth over time
     let memoryQuery = supabase
       .from('agent_memory')
-      .select('memory_type, created_at, last_updated')
+      .select('memory_type, created_at, last_updated, metadata')
       .gte('created_at', dateFrom)
       .order('created_at', { ascending: true });
 
@@ -114,7 +114,11 @@ export async function GET(request: NextRequest) {
     };
 
     // Get top performing websites (if not filtered by websiteToken)
-    let websitePerformance = [];
+    let websitePerformance: Array<{
+      website_token: string;
+      success_rate: number;
+      total_actions: number;
+    }> = [];
     if (!websiteToken) {
       const websiteStats = (learningData || []).reduce((acc, entry) => {
         const website = entry.website_token;
