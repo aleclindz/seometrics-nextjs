@@ -710,7 +710,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                 Automated Fixes
               </h3>
               <p className="text-gray-600">
-                Smart.js is continuously optimizing your website&apos;s technical SEO
+                SEOAgent.js is continuously optimizing your website&apos;s technical SEO
               </p>
             </div>
             <div className="flex space-x-2">

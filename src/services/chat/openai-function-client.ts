@@ -116,14 +116,14 @@ export class OpenAIFunctionClient {
         }
       },
       {
-        name: 'check_smartjs_status',
-        description: 'Check Smart.js installation and performance status',
+        name: 'check_seoagentjs_status',
+        description: 'Check SEOAgent.js installation and performance status',
         parameters: {
           type: 'object',
           properties: {
             site_url: { 
               type: 'string', 
-              description: 'Website to check Smart.js status for' 
+              description: 'Website to check SEOAgent.js status for' 
             }
           },
           required: ['site_url']
@@ -231,6 +231,62 @@ export class OpenAIFunctionClient {
               type: 'string',
               enum: ['quick', 'detailed', 'competitor'],
               description: 'Type of SEO report to generate'
+            }
+          },
+          required: ['site_url']
+        }
+      },
+      {
+        name: 'get_technical_seo_status',
+        description: 'Get current technical SEO dashboard data including issues, fixes, and overall health',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: { 
+              type: 'string', 
+              description: 'Website to get technical SEO status for' 
+            }
+          },
+          required: ['site_url']
+        }
+      },
+      {
+        name: 'get_seo_tags_status',
+        description: 'Get status of alt tags and meta tags managed by SEOAgent.js',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: { 
+              type: 'string', 
+              description: 'Website to get SEO tags status for' 
+            }
+          },
+          required: ['site_url']
+        }
+      },
+      {
+        name: 'get_audit_results',
+        description: 'Get latest audit results and issue status for a website',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: { 
+              type: 'string', 
+              description: 'Website to get audit results for' 
+            }
+          },
+          required: ['site_url']
+        }
+      },
+      {
+        name: 'check_fix_status',
+        description: 'Check what technical SEO issues have been auto-fixed vs still pending',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: { 
+              type: 'string', 
+              description: 'Website to check fix status for' 
             }
           },
           required: ['site_url']
@@ -393,13 +449,13 @@ export class OpenAIFunctionClient {
 
 1. **Google Search Console Integration**: Connect websites, sync performance data, analyze search metrics
 2. **Content Optimization**: Generate SEO articles, analyze content gaps, optimize existing pages
-3. **Technical SEO**: Monitor Smart.js performance, check website health, provide recommendations
+3. **Technical SEO**: Monitor SEOAgent.js performance, check website health, provide recommendations
 4. **CMS Management**: Connect WordPress, Webflow, and other platforms for content publishing
 5. **Performance Analytics**: Track rankings, traffic, and conversion metrics
 
 **Available Functions**: You have access to powerful functions to help users. When a user asks to do something, use the appropriate function rather than just explaining how to do it.
 
-**Smart.js Integration**: The user's websites use Smart.js for automatic meta tags and alt text generation. You can check its status and performance.
+**SEOAgent.js Integration**: The user's websites use SEOAgent.js for automatic meta tags and alt text generation. You can check its status and performance.
 
 **Communication Style**: 
 - Be helpful, concise, and action-oriented
@@ -482,8 +538,16 @@ class FunctionCaller {
           return await this.getSitePerformance(args);
         case 'generate_article':
           return await this.generateArticle(args);
-        case 'check_smartjs_status':
-          return await this.checkSmartJSStatus(args);
+        case 'check_seoagentjs_status':
+          return await this.checkSEOAgentJSStatus(args);
+        case 'get_technical_seo_status':
+          return await this.getTechnicalSEOStatus(args);
+        case 'get_seo_tags_status':
+          return await this.getSEOTagsStatus(args);
+        case 'get_audit_results':
+          return await this.getAuditResults(args);
+        case 'check_fix_status':
+          return await this.checkFixStatus(args);
         case 'connect_cms':
           return await this.connectCMS(args);
         case 'list_sites':
@@ -585,7 +649,7 @@ class FunctionCaller {
     }
   }
 
-  private async checkSmartJSStatus(args: { site_url: string }): Promise<FunctionCallResult> {
+  private async checkSEOAgentJSStatus(args: { site_url: string }): Promise<FunctionCallResult> {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'}/api/smartjs/check`, {
         method: 'POST',
@@ -600,7 +664,7 @@ class FunctionCaller {
       if (!result.success) {
         return {
           success: false,
-          error: result.error || 'Failed to check Smart.js status'
+          error: result.error || 'Failed to check SEOAgent.js status'
         };
       }
 
@@ -628,7 +692,7 @@ class FunctionCaller {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to check Smart.js status'
+        error: error instanceof Error ? error.message : 'Failed to check SEOAgent.js status'
       };
     }
   }
@@ -946,7 +1010,7 @@ class FunctionCaller {
     }
 
     if (site.smartjsStatus !== 'active') {
-      recommendations.push('Activate Smart.js for automatic SEO optimization');
+      recommendations.push('Activate SEOAgent.js for automatic SEO optimization');
     }
 
     if (site.metrics && site.metrics.position > 10) {
@@ -974,7 +1038,7 @@ class FunctionCaller {
     if (site.smartjsStatus !== 'active') {
       actions.push({
         priority: 'medium',
-        action: 'Install and activate Smart.js snippet',
+        action: 'Install and activate SEOAgent.js snippet',
         category: 'technical'
       });
     }
@@ -1018,13 +1082,374 @@ class FunctionCaller {
       actions.push('Connect Google Search Console');
     }
     if (site.smartjsStatus !== 'active') {
-      actions.push('Install Smart.js snippet');
+      actions.push('Install SEOAgent.js snippet');
     }
     if (site.cmsStatus !== 'connected') {
       actions.push('Connect your CMS platform');
     }
     if (site.gscStatus === 'connected' && (!site.lastSync || new Date().getTime() - new Date(site.lastSync).getTime() > 86400000)) {
       actions.push('Sync latest GSC data');
+    }
+
+    return actions;
+  }
+
+  // New Agent Intelligence Functions for Technical SEO Integration
+
+  private async getTechnicalSEOStatus(args: { site_url: string }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      // Get website data to find the website ID
+      const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
+      if (!sitesResponse.ok) {
+        return { success: false, error: 'Failed to fetch site data' };
+      }
+
+      const { sites } = await sitesResponse.json();
+      const site = sites.find((s: any) => s.url === args.site_url || s.url === args.site_url.replace(/^https?:\/\//, ''));
+
+      if (!site) {
+        return { success: false, error: `Site ${args.site_url} not found in your account` };
+      }
+
+      // Fetch technical SEO data from the Technical SEO Dashboard API
+      const response = await fetch('/api/technical-seo/dashboard', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userToken,
+          websites: [{ 
+            domain: site.url.replace(/^https?:\/\//, '').replace(/\/$/, ''), 
+            website_token: site.id 
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        return { success: false, error: 'Failed to fetch technical SEO data' };
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error || 'Failed to get technical SEO status' };
+      }
+
+      return {
+        success: true,
+        data: {
+          site_url: args.site_url,
+          technical_status: result.data,
+          timestamp: new Date().toISOString(),
+          summary: {
+            total_issues: result.data.reduce((acc: number, website: any) => 
+              acc + (website.issues ? website.issues.length : 0), 0
+            ),
+            auto_fixable_issues: result.data.reduce((acc: number, website: any) => 
+              acc + (website.issues ? website.issues.filter((issue: any) => issue.auto_fixable).length : 0), 0
+            ),
+            critical_issues: result.data.reduce((acc: number, website: any) => 
+              acc + (website.issues ? website.issues.filter((issue: any) => issue.severity === 'critical').length : 0), 0
+            )
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Get technical SEO status error:', error);
+      return { success: false, error: 'Failed to get technical SEO status' };
+    }
+  }
+
+  private async getSEOTagsStatus(args: { site_url: string }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      // Get website data to find the website ID
+      const sitesResponse = await fetch(`/api/chat/sites?userToken=${userToken}`);
+      if (!sitesResponse.ok) {
+        return { success: false, error: 'Failed to fetch site data' };
+      }
+
+      const { sites } = await sitesResponse.json();
+      const site = sites.find((s: any) => s.url === args.site_url || s.url === args.site_url.replace(/^https?:\/\//, ''));
+
+      if (!site) {
+        return { success: false, error: `Site ${args.site_url} not found in your account` };
+      }
+
+      // Fetch SEO tags stats from the website stats API
+      const statsResponse = await fetch(`/api/websites/${site.id}/stats?userToken=${userToken}`);
+      
+      if (!statsResponse.ok) {
+        return { success: false, error: 'Failed to fetch SEO tags data' };
+      }
+
+      const statsData = await statsResponse.json();
+
+      if (!statsData.success) {
+        return { success: false, error: statsData.error || 'Failed to get SEO tags status' };
+      }
+
+      // Also get SEOAgent.js status
+      const smartjsStatus = await this.checkSEOAgentJSStatus({ site_url: args.site_url });
+
+      return {
+        success: true,
+        data: {
+          site_url: args.site_url,
+          seoagent_js_status: smartjsStatus.success ? smartjsStatus.data : null,
+          tags_managed: {
+            meta_tags: {
+              count: statsData.stats.metaTagsCount,
+              auto_generated: smartjsStatus.success && smartjsStatus.data?.smartjs_active
+            },
+            alt_tags: {
+              count: statsData.stats.altTagsCount,
+              auto_generated: smartjsStatus.success && smartjsStatus.data?.smartjs_active
+            }
+          },
+          last_updated: new Date().toISOString(),
+          recommendations: this.generateTagRecommendations(statsData.stats, smartjsStatus.data)
+        }
+      };
+    } catch (error) {
+      console.error('Get SEO tags status error:', error);
+      return { success: false, error: 'Failed to get SEO tags status' };
+    }
+  }
+
+  private async getAuditResults(args: { site_url: string }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      // Fetch latest audit data for the website
+      const auditResponse = await fetch(`/api/audits?userToken=${userToken}&websiteUrl=${encodeURIComponent(args.site_url)}&limit=5`);
+      
+      if (!auditResponse.ok) {
+        return { success: false, error: 'Failed to fetch audit data' };
+      }
+
+      const auditResult = await auditResponse.json();
+
+      if (!auditResult.success) {
+        return { success: false, error: auditResult.error || 'Failed to get audit results' };
+      }
+
+      const audits = auditResult.audits || [];
+      const latestAudit = audits[0] || null;
+
+      return {
+        success: true,
+        data: {
+          site_url: args.site_url,
+          latest_audit: latestAudit,
+          audit_history: audits.slice(1, 5), // Last 4 previous audits
+          summary: latestAudit ? {
+            overall_score: latestAudit.overall_score,
+            total_issues: latestAudit.total_issues,
+            critical_issues: latestAudit.critical_issues,
+            warning_issues: latestAudit.warning_issues,
+            info_issues: latestAudit.info_issues,
+            status: latestAudit.status,
+            completed_at: latestAudit.completed_at,
+            progress_percentage: latestAudit.progress_percentage
+          } : null,
+          recommendations: latestAudit ? this.generateAuditRecommendations(latestAudit) : []
+        }
+      };
+    } catch (error) {
+      console.error('Get audit results error:', error);
+      return { success: false, error: 'Failed to get audit results' };
+    }
+  }
+
+  private async checkFixStatus(args: { site_url: string }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      // Get technical SEO status and audit results
+      const technicalStatus = await this.getTechnicalSEOStatus(args);
+      const auditResults = await this.getAuditResults(args);
+      const seoTagsStatus = await this.getSEOTagsStatus(args);
+
+      if (!technicalStatus.success && !auditResults.success) {
+        return { success: false, error: 'Failed to get fix status data' };
+      }
+
+      const fixes = {
+        auto_fixed: [] as any[],
+        pending_auto_fix: [] as any[],
+        manual_fixes_needed: [] as any[],
+        completed_fixes: [] as any[]
+      };
+
+      // Analyze technical SEO issues
+      if (technicalStatus.success && technicalStatus.data?.technical_status) {
+        technicalStatus.data.technical_status.forEach((website: any) => {
+          if (website.issues) {
+            website.issues.forEach((issue: any) => {
+              if (issue.auto_fixable && issue.status === 'fixed') {
+                fixes.auto_fixed.push({
+                  type: 'technical_seo',
+                  issue: issue.type,
+                  description: issue.description,
+                  fixed_at: issue.fixed_at
+                });
+              } else if (issue.auto_fixable && issue.status === 'pending') {
+                fixes.pending_auto_fix.push({
+                  type: 'technical_seo',
+                  issue: issue.type,
+                  description: issue.description,
+                  estimated_fix_time: '5-10 minutes'
+                });
+              } else if (!issue.auto_fixable) {
+                fixes.manual_fixes_needed.push({
+                  type: 'technical_seo',
+                  issue: issue.type,
+                  description: issue.description,
+                  recommendation: issue.recommendation,
+                  priority: issue.severity
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Analyze SEO tags status
+      if (seoTagsStatus.success && seoTagsStatus.data) {
+        const tagsData = seoTagsStatus.data;
+        
+        if (tagsData.seoagent_js_status?.smartjs_active) {
+          fixes.auto_fixed.push({
+            type: 'seo_tags',
+            issue: 'meta_tags_automation',
+            description: `SEOAgent.js is actively managing ${tagsData.tags_managed.meta_tags.count} meta tags`,
+            fixed_at: 'ongoing'
+          });
+          fixes.auto_fixed.push({
+            type: 'seo_tags',
+            issue: 'alt_tags_automation',
+            description: `SEOAgent.js is actively managing ${tagsData.tags_managed.alt_tags.count} alt tags`,
+            fixed_at: 'ongoing'
+          });
+        } else {
+          fixes.manual_fixes_needed.push({
+            type: 'seo_tags',
+            issue: 'seoagent_js_installation',
+            description: 'SEOAgent.js is not active - meta and alt tags are not being auto-generated',
+            recommendation: 'Install and activate SEOAgent.js snippet on your website',
+            priority: 'high'
+          });
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          site_url: args.site_url,
+          fix_status_summary: {
+            total_auto_fixed: fixes.auto_fixed.length,
+            pending_auto_fixes: fixes.pending_auto_fix.length,
+            manual_fixes_needed: fixes.manual_fixes_needed.length,
+            automation_health: fixes.auto_fixed.length > 0 ? 'active' : 'inactive'
+          },
+          fixes,
+          last_checked: new Date().toISOString(),
+          next_actions: this.getFixStatusNextActions(fixes)
+        }
+      };
+    } catch (error) {
+      console.error('Check fix status error:', error);
+      return { success: false, error: 'Failed to check fix status' };
+    }
+  }
+
+  // Helper methods for the new agent functions
+
+  private generateTagRecommendations(stats: any, smartjsData: any): string[] {
+    const recommendations = [];
+
+    if (!smartjsData?.smartjs_active) {
+      recommendations.push('Install SEOAgent.js to automatically generate missing meta and alt tags');
+    }
+
+    if (stats.metaTagsCount < 10) {
+      recommendations.push('Consider adding more meta descriptions to improve search snippets');
+    }
+
+    if (stats.altTagsCount < 5) {
+      recommendations.push('Add alt text to images for better accessibility and SEO');
+    }
+
+    if (smartjsData?.smartjs_active && stats.metaTagsCount > 0) {
+      recommendations.push('Great! SEOAgent.js is actively optimizing your meta and alt tags');
+    }
+
+    return recommendations;
+  }
+
+  private generateAuditRecommendations(audit: any): string[] {
+    const recommendations = [];
+
+    if (audit.critical_issues > 0) {
+      recommendations.push(`Address ${audit.critical_issues} critical SEO issues immediately`);
+    }
+
+    if (audit.warning_issues > 5) {
+      recommendations.push(`Review ${audit.warning_issues} warning-level issues to improve SEO health`);
+    }
+
+    if (audit.overall_score < 70) {
+      recommendations.push('Consider running a comprehensive SEO audit to identify improvement opportunities');
+    }
+
+    if (audit.overall_score > 85) {
+      recommendations.push('Excellent SEO health! Continue monitoring and maintaining current practices');
+    }
+
+    return recommendations;
+  }
+
+  private getFixStatusNextActions(fixes: any): string[] {
+    const actions = [];
+
+    if (fixes.pending_auto_fix.length > 0) {
+      actions.push(`${fixes.pending_auto_fix.length} issues can be auto-fixed - trigger automatic fixes`);
+    }
+
+    if (fixes.manual_fixes_needed.length > 0) {
+      const highPriorityManual = fixes.manual_fixes_needed.filter((fix: any) => fix.priority === 'critical' || fix.priority === 'high');
+      if (highPriorityManual.length > 0) {
+        actions.push(`Address ${highPriorityManual.length} high-priority manual fixes first`);
+      }
+    }
+
+    if (fixes.auto_fixed.length === 0) {
+      actions.push('Set up SEOAgent.js automation to enable automatic SEO fixes');
+    }
+
+    if (fixes.auto_fixed.length > 0 && fixes.pending_auto_fix.length === 0 && fixes.manual_fixes_needed.length === 0) {
+      actions.push('SEO automation is working well - monitor and maintain current setup');
     }
 
     return actions;

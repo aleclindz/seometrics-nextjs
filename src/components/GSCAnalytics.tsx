@@ -59,6 +59,13 @@ export default function GSCAnalytics({ siteUrl, className = '' }: GSCAnalyticsPr
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
     endDate: new Date().toISOString().split('T')[0] // Today
   });
+  
+  // New state for enhanced functionality
+  const [activeTab, setActiveTab] = useState<'queries' | 'pages' | 'countries' | 'devices'>('queries');
+  const [querySearch, setQuerySearch] = useState('');
+  const [pageSearch, setPageSearch] = useState('');
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchAnalytics = async () => {
     if (!user?.token) return;
@@ -99,9 +106,62 @@ export default function GSCAnalytics({ siteUrl, className = '' }: GSCAnalyticsPr
     }
   };
 
+  // Helper functions for filtering and pagination
+  const getFilteredData = () => {
+    if (!data) return [];
+    
+    let items: any[] = [];
+    let searchTerm = '';
+    
+    switch (activeTab) {
+      case 'queries':
+        items = data.topQueries;
+        searchTerm = querySearch.toLowerCase();
+        return items.filter(item => 
+          searchTerm === '' || item.query.toLowerCase().includes(searchTerm)
+        );
+      case 'pages':
+        items = data.topPages;
+        searchTerm = pageSearch.toLowerCase();
+        return items.filter(item => 
+          searchTerm === '' || item.page.toLowerCase().includes(searchTerm)
+        );
+      case 'countries':
+        return data.topCountries;
+      case 'devices':
+        return data.deviceData;
+      default:
+        return [];
+    }
+  };
+
+  const getPaginatedData = () => {
+    const filtered = getFilteredData();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    const filtered = getFilteredData();
+    return Math.ceil(filtered.length / itemsPerPage);
+  };
+
+  // Reset pagination when tab changes
+  const handleTabChange = (tab: 'queries' | 'pages' | 'countries' | 'devices') => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    setQuerySearch('');
+    setPageSearch('');
+  };
+
   useEffect(() => {
     fetchAnalytics();
   }, [user?.token, siteUrl, dateRange]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [querySearch, pageSearch, itemsPerPage]);
 
   if (!user?.token) {
     return null;
@@ -194,136 +254,326 @@ export default function GSCAnalytics({ siteUrl, className = '' }: GSCAnalyticsPr
               </div>
             </div>
 
-            {/* Top Queries */}
+            {/* Enhanced Tabbed Interface */}
             <div>
-              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-                Top Queries
-              </h4>
-              <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Query
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Clicks
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Impressions
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        CTR
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Position
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {data.topQueries.slice(0, 10).map((query, index) => (
-                      <tr key={index}>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
-                          {query.query}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-right">
-                          {query.clicks.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-right">
-                          {query.impressions.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-right">
-                          {(query.ctr * 100).toFixed(1)}%
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-right">
-                          {query.position.toFixed(1)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Top Pages */}
-            <div>
-              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-                Top Pages
-              </h4>
-              <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Page
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Clicks
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Impressions
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        CTR
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {data.topPages.slice(0, 10).map((page, index) => (
-                      <tr key={index}>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
-                          <a 
-                            href={page.page} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-violet-600 hover:text-violet-700 dark:text-violet-400"
-                          >
-                            {page.page.replace(siteUrl, '')}
-                          </a>
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-right">
-                          {page.clicks.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-right">
-                          {page.impressions.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-right">
-                          {(page.ctr * 100).toFixed(1)}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Device Breakdown */}
-            {data.deviceData.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-                  Device Performance
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {data.deviceData.map((device, index) => (
-                    <div key={index} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="text-lg font-semibold text-gray-900 dark:text-gray-100 capitalize">
-                        {device.device}
-                      </div>
-                      <div className="mt-2 space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Clicks:</span>
-                          <span className="text-gray-900 dark:text-gray-100">{device.clicks.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">CTR:</span>
-                          <span className="text-gray-900 dark:text-gray-100">{(device.ctr * 100).toFixed(1)}%</span>
-                        </div>
-                      </div>
-                    </div>
+              {/* Tab Navigation */}
+              <div className="flex flex-wrap items-center justify-between mb-4">
+                <div className="flex space-x-1 border-b border-gray-200 dark:border-gray-700">
+                  {[
+                    { id: 'queries', label: 'Queries', count: data.topQueries.length },
+                    { id: 'pages', label: 'Pages', count: data.topPages.length },
+                    { id: 'countries', label: 'Countries', count: data.topCountries.length },
+                    { id: 'devices', label: 'Devices', count: data.deviceData.length }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleTabChange(tab.id as any)}
+                      className={`px-3 py-2 text-sm font-medium border-b-2 ${
+                        activeTab === tab.id
+                          ? 'text-violet-600 border-violet-600'
+                          : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      {tab.label}
+                      <span className="ml-1 text-xs bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-0.5">
+                        {tab.count}
+                      </span>
+                    </button>
                   ))}
                 </div>
+
+                {/* Items per page selector */}
+                <div className="flex items-center space-x-2 text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Show:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-gray-600 dark:text-gray-400">items</span>
+                </div>
               </div>
-            )}
+
+              {/* Search and Filters */}
+              <div className="mb-4">
+                {(activeTab === 'queries' || activeTab === 'pages') && (
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder={`Search ${activeTab}...`}
+                        value={activeTab === 'queries' ? querySearch : pageSearch}
+                        onChange={(e) => 
+                          activeTab === 'queries' 
+                            ? setQuerySearch(e.target.value)
+                            : setPageSearch(e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200 text-sm"
+                      />
+                    </div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {getFilteredData().length} results
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Data Table */}
+              <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
+                {activeTab === 'queries' && (
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Query
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Clicks
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Impressions
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          CTR
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Position
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {getPaginatedData().map((query: any, index) => (
+                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 max-w-sm">
+                            <div className="truncate" title={query.query}>
+                              {query.query}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 text-right font-medium">
+                            {query.clicks.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-right">
+                            {query.impressions.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right">
+                            <span className={`font-medium ${
+                              query.ctr > 0.05 ? 'text-green-600' : 
+                              query.ctr > 0.02 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {(query.ctr * 100).toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right">
+                            <span className={`font-medium ${
+                              query.position <= 3 ? 'text-green-600' : 
+                              query.position <= 10 ? 'text-yellow-600' : 'text-gray-600'
+                            }`}>
+                              {query.position.toFixed(1)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {activeTab === 'pages' && (
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Page
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Clicks
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Impressions
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          CTR
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Position
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {getPaginatedData().map((page: any, index) => (
+                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-4 py-3 text-sm max-w-sm">
+                            <a 
+                              href={page.page} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-violet-600 hover:text-violet-700 dark:text-violet-400 truncate block"
+                              title={page.page}
+                            >
+                              {page.page.replace(siteUrl, '') || '/'}
+                            </a>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 text-right font-medium">
+                            {page.clicks.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-right">
+                            {page.impressions.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right">
+                            <span className={`font-medium ${
+                              page.ctr > 0.05 ? 'text-green-600' : 
+                              page.ctr > 0.02 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {(page.ctr * 100).toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right">
+                            <span className={`font-medium ${
+                              page.position <= 3 ? 'text-green-600' : 
+                              page.position <= 10 ? 'text-yellow-600' : 'text-gray-600'
+                            }`}>
+                              {page.position?.toFixed(1) || 'N/A'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {activeTab === 'countries' && (
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Country
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Clicks
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Impressions
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          CTR
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Position
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {getPaginatedData().map((country: any, index) => (
+                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 font-medium">
+                            {country.country}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 text-right font-medium">
+                            {country.clicks.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-right">
+                            {country.impressions.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 text-right">
+                            {(country.ctr * 100).toFixed(1)}%
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 text-right">
+                            {country.position.toFixed(1)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {activeTab === 'devices' && (
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {getPaginatedData().map((device: any, index) => (
+                        <div key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                          <div className="text-lg font-semibold text-gray-900 dark:text-gray-100 capitalize mb-3">
+                            {device.device}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Clicks:</span>
+                              <span className="text-gray-900 dark:text-gray-100 font-medium">
+                                {device.clicks.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Impressions:</span>
+                              <span className="text-gray-900 dark:text-gray-100">
+                                {device.impressions.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">CTR:</span>
+                              <span className="text-gray-900 dark:text-gray-100 font-medium">
+                                {(device.ctr * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Avg Position:</span>
+                              <span className="text-gray-900 dark:text-gray-100">
+                                {device.position.toFixed(1)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Pagination */}
+              {getTotalPages() > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, getFilteredData().length)} of {getFilteredData().length} results
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    
+                    {Array.from({ length: Math.min(5, getTotalPages()) }, (_, i) => {
+                      const pageNum = Math.max(1, Math.min(getTotalPages() - 4, currentPage - 2)) + i;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-1 text-sm border rounded ${
+                            currentPage === pageNum
+                              ? 'bg-violet-600 text-white border-violet-600'
+                              : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPage(Math.min(getTotalPages(), currentPage + 1))}
+                      disabled={currentPage === getTotalPages()}
+                      className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
               Data from {new Date(data.dateRange.startDate).toLocaleDateString()} to {new Date(data.dateRange.endDate).toLocaleDateString()} • 

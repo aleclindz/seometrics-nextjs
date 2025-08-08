@@ -63,7 +63,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [cmsLoading, setCmsLoading] = useState(false);
   const [cmsError, setCmsError] = useState<string | null>(null);
   
-  // Smart.js State
+  // SEOAgent.js State
   const [smartjsInstallCode, setSmartjsInstallCode] = useState('');
   const [smartjsLoading, setSmartjsLoading] = useState(false);
 
@@ -177,15 +177,15 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     window.open(`/website/${website.id}/cms-connection?type=${cmsType}`, '_blank');
   };
 
-  // Smart.js Functions
+  // SEOAgent.js Functions
   const generateSmartJSCode = () => {
-    setSmartjsInstallCode(`<!-- SEOAgent Smart.js -->
+    setSmartjsInstallCode(`<!-- SEOAgent.js -->
 <script>
   // Define your website token
   const idv = "${website.id}";
 </script>
 <script src="https://seoagent.com/seoagent.js" defer></script>
-<!-- End SEOAgent Smart.js -->`);
+<!-- End SEOAgent.js -->`);
   };
 
   const copyInstallCode = async () => {
@@ -214,7 +214,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         onStatusUpdate?.({ smartjsStatus: 'active' });
       }
     } catch (error) {
-      console.error('Error testing Smart.js:', error);
+      console.error('Error testing SEOAgent.js:', error);
     } finally {
       setSmartjsLoading(false);
     }

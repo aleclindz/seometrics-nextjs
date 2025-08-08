@@ -106,7 +106,7 @@ export function SiteCard({ site, isSelected, onClick }: SiteCardProps) {
         <StatusIndicator 
           type="smartjs" 
           status={site.smartjsStatus} 
-          tooltip="Smart.js Status" 
+          tooltip="SEOAgent.js Status" 
         />
       </div>
 

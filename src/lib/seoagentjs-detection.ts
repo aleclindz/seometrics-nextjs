@@ -1,6 +1,6 @@
 /**
- * Smart.js Detection Utility
- * Checks if smart.js is properly installed and functioning on a website
+ * SEOAgent.js Detection Utility
+ * Checks if SEOAgent.js is properly installed and functioning on a website
  */
 
 export interface SmartJSStatus {

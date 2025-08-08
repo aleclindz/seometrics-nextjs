@@ -50,7 +50,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
     'Show me the performance of my website',
     'Generate an SEO article about [topic]',
     'Sync my GSC data',
-    'Check Smart.js status for my site',
+    'Check SEOAgent.js status for my site',
     'Help me optimize my content'
   ];
 

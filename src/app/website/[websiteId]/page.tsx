@@ -8,7 +8,6 @@ import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import TechnicalSEODashboard from '@/components/TechnicalSEODashboard';
 import AIActivitySummary from '@/components/AIActivitySummary';
-import WebsiteHealthOverview from '@/components/WebsiteHealthOverview';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import GSCAnalytics from '@/components/GSCAnalytics';
 
@@ -484,16 +483,6 @@ export default function WebsitePage() {
                 </div>
               )}
 
-              {/* Website Overview - Unified Component */}
-              <WebsiteHealthOverview 
-                website={{
-                  ...website,
-                  cmsStatus: website.cmsStatus
-                }}
-                latestAudit={latestAudit}
-                auditLoading={auditLoading}
-                onStartAudit={handleStartAudit}
-              />
 
               {/* GSC Analytics */}
               {user?.token && website.gscStatus === 'connected' && (
