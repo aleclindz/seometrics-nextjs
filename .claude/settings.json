@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "task_completed": {
+      "command": "afplay /System/Library/Sounds/Funk.aiff"
+    },
+    "build_success": {
+      "command": "node scripts/notify.js \"Build completed successfully! ✅\" \"Claude Code\" \"Ping\" && afplay /System/Library/Sounds/Funk.aiff"
+    },
+    "test_passed": {
+      "command": "node scripts/notify.js \"Tests passed! ✅\" \"Claude Code\" \"Ping\" && afplay /System/Library/Sounds/Funk.aiff"
+    },
+    "migration_complete": {
+      "command": "node scripts/notify.js \"Database migration completed! 🗄️\" \"Claude Code\" \"Ping\" && afplay /System/Library/Sounds/Funk.aiff"
+    },
+    "deployment_ready": {
+      "command": "node scripts/notify.js \"Deployment ready! 🚀\" \"Claude Code\" \"Ping\" && afplay /System/Library/Sounds/Funk.aiff"
+    },
+    "response_completed": {
+      "command": "afplay /System/Library/Sounds/Funk.aiff"
+    }
+  }
+}

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { ConversationAnalyzer } from '@/services/agent/conversation-analyzer';
+import { AgentMemory } from '@/services/agent/agent-memory';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -81,6 +83,50 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('[CHAT MESSAGES] Error creating message:', error);
       return NextResponse.json({ error: 'Failed to create chat message' }, { status: 500 });
+    }
+
+    // Trigger conversation analysis for user messages
+    if (type === 'user') {
+      try {
+        // Get website token from thread
+        const { data: thread } = await supabase
+          .from('chat_threads')
+          .select('site_id')
+          .eq('id', threadId)
+          .eq('user_token', userToken)
+          .single();
+
+        if (thread?.site_id) {
+          // Get recent messages for analysis context
+          const { data: recentMessages } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('thread_id', threadId)
+            .order('created_at', { ascending: true })
+            .limit(20);
+
+          if (recentMessages && recentMessages.length > 1) {
+            // Initialize conversation analyzer
+            const agentMemory = new AgentMemory(thread.site_id, userToken);
+            const analyzer = new ConversationAnalyzer(thread.site_id, userToken, agentMemory);
+
+            // Analyze conversation asynchronously (don't block response)
+            analyzer.analyzeAndUpdateMemory(recentMessages)
+              .then(result => {
+                if (result.appliedCount > 0) {
+                  console.log(`[CONVERSATION ANALYZER] Applied ${result.appliedCount} insights from conversation analysis`);
+                }
+              })
+              .catch(error => {
+                console.error('[CONVERSATION ANALYZER] Background analysis error:', error);
+              });
+          }
+        }
+      } catch (analysisError) {
+        // Don't fail the message creation if analysis fails
+        console.error('[CONVERSATION ANALYZER] Error during conversation analysis:', analysisError);
+      }
     }
 
     return NextResponse.json({

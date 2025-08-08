@@ -4,9 +4,10 @@
   "description": "SEOAgent.com - Automated SEO Agent for Technical SEO, Content Generation, and Strategy",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-with-browser.js",
+    "dev:next": "next dev",
     "dev:strapi": "cd strapi-cms && npm run develop",
-    "dev:both": "concurrently \"npm run dev\" \"npm run dev:strapi\"",
+    "dev:both": "concurrently \"npm run dev:next\" \"npm run dev:strapi\"",
     "build": "next build",
     "build:strapi": "cd strapi-cms && npm run build",
     "start": "next start",
@@ -20,7 +21,12 @@
     "setup-subscription-db": "node scripts/create-subscription-tables.js",
     "test-webhook": "node scripts/test-webhook.js",
     "admin-tool": "cd admin-tool && npm install && npm start",
-    "admin-setup": "cd admin-tool && npm install"
+    "admin-setup": "cd admin-tool && npm install",
+    "notify": "node scripts/notify.js",
+    "open-app": "node scripts/open-app.js",
+    "open-login": "node scripts/open-login.js",
+    "open-test": "node scripts/open-test.js",
+    "check-tables": "node scripts/check-agent-tables.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
@@ -41,6 +47,8 @@
     "autoprefixer": "^10.4.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.0",
+    "node-notifier": "^10.0.1",
+    "open": "^10.2.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.5.0"

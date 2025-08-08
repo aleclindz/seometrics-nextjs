@@ -1,3 +1,11 @@
+## IMPORTANT: Sound Notification
+
+After finishing responding to my request or running a command, run this command to notify me by sound:
+
+```bash
+afplay /System/Library/Sounds/Funk.aiff
+```
+
 You are a skilled full-stack developer building SEOAgent.com - an automated SEO agent that puts technical SEO and content optimization on autopilot for modern websites.
 
 **CORE PRINCIPLES:**
