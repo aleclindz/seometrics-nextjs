@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { AgentMemory, WebsiteContext } from '../agent/agent-memory';
 
 interface ChatContext {
   history: Array<{
@@ -10,6 +11,7 @@ interface ChatContext {
     selectedSite?: string;
     userSites?: Array<{ id: string; url: string; name: string; }>;
   };
+  userToken?: string; // Add user token for memory access
 }
 
 interface FunctionCallResult {
@@ -21,10 +23,18 @@ interface FunctionCallResult {
 export class OpenAIFunctionClient {
   private openai: OpenAI;
   private functionCaller: FunctionCaller;
+  private agentMemory?: AgentMemory;
 
   constructor(apiKey: string) {
     this.openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
     this.functionCaller = new FunctionCaller();
+  }
+
+  // Initialize agent memory for a specific website
+  private initializeMemory(websiteToken: string, userToken: string) {
+    if (!this.agentMemory || this.agentMemory['websiteToken'] !== websiteToken) {
+      this.agentMemory = new AgentMemory(websiteToken, userToken);
+    }
   }
 
   private getFunctionSchemas() {
@@ -277,7 +287,7 @@ export class OpenAIFunctionClient {
     };
   }> {
     try {
-      const systemPrompt = this.buildSystemPrompt(context);
+      const systemPrompt = await this.buildSystemPrompt(context);
       
       // Use the new Responses API with tools (function calling)
       const response = await this.openai.chat.completions.create({
@@ -309,8 +319,29 @@ export class OpenAIFunctionClient {
           
           console.log(`Executing function: ${functionName}`, functionArgs);
           
-          // Execute the function
+          // Execute the function with memory recording
+          const startTime = Date.now();
           const result = await this.functionCaller.executeFunction(functionName, functionArgs);
+          const executionTime = Date.now() - startTime;
+          
+          // Record the action in memory if available
+          if (this.agentMemory) {
+            try {
+              const outcome = result.success ? 'success' : 'failure';
+              await this.agentMemory.recordAction(
+                functionName,
+                functionArgs,
+                outcome,
+                {
+                  successMetrics: result.success ? result.data : undefined,
+                  errorDetails: result.error,
+                  executionTimeMs: executionTime
+                }
+              );
+            } catch (memoryError) {
+              console.error('[AGENT MEMORY] Error recording action:', memoryError);
+            }
+          }
           
           // Generate a follow-up response with the function result
           const followUpResponse = await this.openai.chat.completions.create({
@@ -357,7 +388,7 @@ export class OpenAIFunctionClient {
     }
   }
 
-  private buildSystemPrompt(context: ChatContext): string {
+  private async buildSystemPrompt(context: ChatContext): Promise<string> {
     let prompt = `You are an expert SEO assistant for SEOAgent.com. You help users with:
 
 1. **Google Search Console Integration**: Connect websites, sync performance data, analyze search metrics
@@ -385,6 +416,54 @@ export class OpenAIFunctionClient {
 
     if (context.siteContext?.selectedSite) {
       prompt += `\n**Currently Selected Site**: ${context.siteContext.selectedSite}`;
+    }
+
+    // Add memory context if available
+    if (context.siteContext?.selectedSite && context.userToken) {
+      this.initializeMemory(context.siteContext.selectedSite, context.userToken);
+      
+      try {
+        const websiteContext = await this.agentMemory?.getWebsiteContext();
+        if (websiteContext && Object.keys(websiteContext).length > 0) {
+          prompt += `\n\n**Website Context & Memory**:\n`;
+          
+          if (websiteContext.seo_focus?.length) {
+            prompt += `- SEO Focus Areas: ${websiteContext.seo_focus.join(', ')}\n`;
+          }
+          
+          if (websiteContext.content_style) {
+            prompt += `- Content Style: ${websiteContext.content_style}\n`;
+          }
+          
+          if (websiteContext.successful_keywords?.length) {
+            prompt += `- Successful Keywords: ${websiteContext.successful_keywords.slice(0, 5).join(', ')}\n`;
+          }
+          
+          if (websiteContext.target_audience) {
+            prompt += `- Target Audience: ${websiteContext.target_audience}\n`;
+          }
+          
+          if (websiteContext.business_type) {
+            prompt += `- Business Type: ${websiteContext.business_type}\n`;
+          }
+          
+          if (websiteContext.successful_strategies?.length) {
+            prompt += `- Proven Strategies: ${websiteContext.successful_strategies.join(', ')}\n`;
+          }
+          
+          if (websiteContext.failed_approaches?.length) {
+            prompt += `- Avoid These Approaches: ${websiteContext.failed_approaches.join(', ')}\n`;
+          }
+          
+          if (websiteContext.preferred_article_length) {
+            prompt += `- Preferred Article Length: ${websiteContext.preferred_article_length} words\n`;
+          }
+          
+          prompt += `\n**Important**: Use this context to provide personalized recommendations. Avoid previously failed approaches and leverage successful strategies.`;
+        }
+      } catch (error) {
+        console.error('[AGENT MEMORY] Error loading website context for prompt:', error);
+      }
     }
 
     return prompt;

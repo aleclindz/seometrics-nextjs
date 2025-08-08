@@ -24,9 +24,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create OpenAI client and send message
+    // Create OpenAI client and send message with memory context
     const openaiClient = new OpenAIFunctionClient(apiKey);
-    const response = await openaiClient.sendMessage(message, chatContext);
+    
+    // Add userToken to chat context for memory access
+    const contextWithMemory = {
+      ...chatContext,
+      userToken
+    };
+    
+    const response = await openaiClient.sendMessage(message, contextWithMemory);
 
     return NextResponse.json({
       content: response.content,
