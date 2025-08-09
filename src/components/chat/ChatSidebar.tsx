@@ -45,10 +45,7 @@ export function ChatSidebar({
     site.url.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleNewSite = () => {
-    // TODO: Implement new site addition flow
-    console.log('Add new site');
-  };
+  // Removed add site functionality for simplified SEO-focused experience
 
   if (collapsed) {
     return (
@@ -109,18 +106,7 @@ export function ChatSidebar({
         </div>
       </div>
 
-      {/* New Site Button */}
-      <div className="p-4">
-        <button 
-          onClick={handleNewSite}
-          className="w-full bg-[#5E6AD2] hover:bg-[#5E6AD2]/90 text-white py-2 px-4 rounded-md flex items-center justify-center transition-colors"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Add Site
-        </button>
-      </div>
+      {/* Removed Add Site button for simplified interface */}
 
       {/* Search */}
       <div className="px-4 pb-4">
@@ -180,30 +166,7 @@ export function ChatSidebar({
         )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="border-t border-white/10 p-4">
-        <div className="text-xs font-medium text-gray-400 uppercase mb-3">Quick Actions</div>
-        <div className="space-y-2">
-          <button className="w-full flex items-center py-2 px-3 rounded-md hover:bg-white/10 transition-colors text-left">
-            <svg className="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <span className="text-sm">Analytics Dashboard</span>
-          </button>
-          <button className="w-full flex items-center py-2 px-3 rounded-md hover:bg-white/10 transition-colors text-left">
-            <svg className="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span className="text-sm">Sync All Sites</span>
-          </button>
-          <button className="w-full flex items-center py-2 px-3 rounded-md hover:bg-white/10 transition-colors text-left">
-            <svg className="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span className="text-sm">Generate Report</span>
-          </button>
-        </div>
-      </div>
+      {/* Removed Quick Actions section for simplified interface */}
     </div>
   );
 }

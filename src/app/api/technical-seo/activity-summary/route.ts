@@ -83,8 +83,8 @@ export async function POST(request: NextRequest) {
     if (aggregatedActivity.totalCount === 0) {
       console.log('[ACTIVITY SUMMARY] No activity found, returning default message');
       
-      // Generate contextual welcome message based on current setup status
-      const welcomeMessage = generateWelcomeMessage(websiteStatus, extractDomainName(siteUrl));
+      // Generate contextual welcome message based on current setup status and real technical data
+      const welcomeMessage = await generateWelcomeMessage(websiteStatus, extractDomainName(siteUrl), userToken, siteUrl);
       
       return NextResponse.json({
         success: true,
@@ -99,9 +99,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Generate AI summary
+    // Generate AI summary with technical SEO context
     console.log('[ACTIVITY SUMMARY] Generating AI summary for', aggregatedActivity.totalCount, 'activities');
-    const aiSummary = await generateAISummary(siteUrl, aggregatedActivity, websiteStatus);
+    const aiSummary = await generateAISummary(siteUrl, aggregatedActivity, websiteStatus, userToken);
 
     // Cache the summary
     await ActivityAggregator.saveSummary(
@@ -134,13 +134,36 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateAISummary(siteUrl: string, activity: AggregatedActivity, websiteStatus?: SummaryRequest['websiteStatus']): Promise<string> {
+async function generateAISummary(siteUrl: string, activity: AggregatedActivity, websiteStatus?: SummaryRequest['websiteStatus'], userToken?: string): Promise<string> {
   const domainName = extractDomainName(siteUrl);
   const timePeriod = getTimePeriodDescription(activity.periodStart, activity.periodEnd);
   
   // Prepare activity data for AI
   const activitySummary = summarizeActivitiesByType(activity.activities);
   
+  // Get current technical SEO status for context
+  let technicalContext = '';
+  if (userToken) {
+    try {
+      const technicalStatus = await fetchTechnicalSEOStatus(userToken, siteUrl);
+      if (technicalStatus && technicalStatus.issues) {
+        const totalIssues = technicalStatus.issues.length;
+        const criticalIssues = technicalStatus.issues.filter((issue: any) => issue.severity === 'critical').length;
+        const autoFixableIssues = technicalStatus.issues.filter((issue: any) => issue.canAutoFix).length;
+        
+        technicalContext = `\nCurrent Technical SEO Status:
+- Total issues detected: ${totalIssues}
+- Critical issues: ${criticalIssues}
+- Auto-fixable issues: ${autoFixableIssues}
+- Issue types: ${technicalStatus.issues.map((issue: any) => `${issue.type} (${issue.severity})`).join(', ')}
+- Automated fixes: ${technicalStatus.fixes?.automated || 0}
+- Error fixes: ${technicalStatus.fixes?.errors || 0}`;
+      }
+    } catch (error) {
+      console.log('[AI SUMMARY] Could not fetch technical context:', error);
+    }
+  }
+
   // Generate next steps based on website status
   const nextSteps = generateNextSteps(websiteStatus, domainName);
   
@@ -151,7 +174,7 @@ Period: ${timePeriod}
 Total activities: ${activity.totalCount}
 
 Recent activities:
-${activitySummary}
+${activitySummary}${technicalContext}
 
 Current website status and recommended next steps:
 ${nextSteps}
@@ -314,7 +337,7 @@ function getTimePeriodDescription(startDate: string, endDate: string): string {
   return `the past ${Math.ceil(diffDays / 7)} weeks`;
 }
 
-function generateWelcomeMessage(websiteStatus?: SummaryRequest['websiteStatus'], domainName?: string): string {
+async function generateWelcomeMessage(websiteStatus: SummaryRequest['websiteStatus'], domainName: string, userToken: string, siteUrl: string): Promise<string> {
   // Use generic greeting instead of domain-specific welcome
   let message = "Hi! I'm SEOAgent, your automated SEO assistant. ";
   
@@ -327,13 +350,39 @@ function generateWelcomeMessage(websiteStatus?: SummaryRequest['websiteStatus'],
   const isFullySetup = websiteStatus.gscConnected && websiteStatus.seoagentjsInstalled;
   
   if (isFullySetup) {
-    // Everything is connected, explain why there's no activity yet
-    message += "Your setup looks great! I'm monitoring your website and will show optimization activities here once I detect opportunities to improve your SEO.";
-    
-    if (websiteStatus.hasAuditScore && websiteStatus.criticalIssues > 0) {
-      message += ` I've found ${websiteStatus.criticalIssues} issues that need attention - I'll start working on those soon.`;
-    } else if (!websiteStatus.hasAuditScore) {
-      message += " Consider running an SEO health check to discover optimization opportunities.";
+    // Get real technical SEO status using agent intelligence
+    try {
+      const technicalStatus = await fetchTechnicalSEOStatus(userToken, siteUrl);
+      
+      if (technicalStatus && technicalStatus.issues && technicalStatus.issues.length > 0) {
+        const totalIssues = technicalStatus.issues.length;
+        const criticalIssues = technicalStatus.issues.filter((issue: any) => issue.severity === 'critical').length;
+        const autoFixableIssues = technicalStatus.issues.filter((issue: any) => issue.canAutoFix).length;
+        
+        message += `I'm actively monitoring ${domainName} and I've detected ${totalIssues} SEO opportunities. `;
+        
+        if (criticalIssues > 0) {
+          message += `${criticalIssues} require immediate attention. `;
+        }
+        
+        if (autoFixableIssues > 0) {
+          message += `The good news is that ${autoFixableIssues} of these can be fixed automatically. `;
+        }
+        
+        // Mention specific issue types
+        const issueTypes = technicalStatus.issues.slice(0, 2).map((issue: any) => issue.type).join(', ');
+        if (issueTypes) {
+          message += `Priority issues include: ${issueTypes}.`;
+        }
+        
+        return message;
+      } else {
+        message += "Your setup looks great! I'm monitoring your website and haven't detected any critical issues. ";
+        message += "I'll continue watching for optimization opportunities.";
+      }
+    } catch (error) {
+      console.error('[WELCOME MESSAGE] Error fetching technical status:', error);
+      message += "Your setup looks great! I'm monitoring your website and will show optimization activities here once I detect opportunities to improve your SEO.";
     }
   } else {
     // Still need setup
@@ -358,4 +407,38 @@ function generateWelcomeMessage(websiteStatus?: SummaryRequest['websiteStatus'],
   }
   
   return message;
+}
+
+// Helper function to fetch technical SEO status
+async function fetchTechnicalSEOStatus(userToken: string, siteUrl: string) {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/technical-seo/dashboard`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userToken,
+        websites: [{ 
+          domain: siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''), 
+          website_token: 'temp' // We'll get this from the sites API if needed
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch technical SEO data');
+    }
+
+    const result = await response.json();
+    
+    if (result.success && result.data && result.data.length > 0) {
+      return result.data[0]; // Return first website's data
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching technical SEO status:', error);
+    return null;
+  }
 }

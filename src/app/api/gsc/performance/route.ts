@@ -93,22 +93,71 @@ export async function POST(request: NextRequest) {
     // Create Search Console API client
     const webmasters = google.webmasters({ version: 'v3', auth: oauth2Client });
 
-    // Query performance data
-    const performanceRequest = {
+    // Make separate API calls for each dimension to get more comprehensive data
+    console.log('[GSC PERFORMANCE] Making separate API calls for each dimension');
+    
+    // Queries dimension
+    const queriesRequest = {
       siteUrl: siteUrl,
       requestBody: {
         startDate: startDate,
         endDate: endDate,
-        dimensions: ['query', 'page', 'country', 'device'],
-        rowLimit: 25000, // Maximum allowed
+        dimensions: ['query'],
+        rowLimit: 25000,
+        startRow: 0
+      }
+    };
+    
+    // Pages dimension
+    const pagesRequest = {
+      siteUrl: siteUrl,
+      requestBody: {
+        startDate: startDate,
+        endDate: endDate,
+        dimensions: ['page'],
+        rowLimit: 25000,
+        startRow: 0
+      }
+    };
+    
+    // Countries dimension
+    const countriesRequest = {
+      siteUrl: siteUrl,
+      requestBody: {
+        startDate: startDate,
+        endDate: endDate,
+        dimensions: ['country'],
+        rowLimit: 1000,
+        startRow: 0
+      }
+    };
+    
+    // Devices dimension
+    const devicesRequest = {
+      siteUrl: siteUrl,
+      requestBody: {
+        startDate: startDate,
+        endDate: endDate,
+        dimensions: ['device'],
+        rowLimit: 10,
         startRow: 0
       }
     };
 
-    const performanceResponse = await webmasters.searchanalytics.query(performanceRequest);
-    const rows = performanceResponse.data.rows || [];
+    // Execute all requests in parallel
+    const [queriesResponse, pagesResponse, countriesResponse, devicesResponse] = await Promise.all([
+      webmasters.searchanalytics.query(queriesRequest),
+      webmasters.searchanalytics.query(pagesRequest),
+      webmasters.searchanalytics.query(countriesRequest),
+      webmasters.searchanalytics.query(devicesRequest)
+    ]);
 
-    // Aggregate data by dimension
+    const queriesRows = queriesResponse.data.rows || [];
+    const pagesRows = pagesResponse.data.rows || [];
+    const countriesRows = countriesResponse.data.rows || [];
+    const devicesRows = devicesResponse.data.rows || [];
+
+    // Initialize aggregated data structure
     const aggregated = {
       total: {
         clicks: 0,
@@ -122,63 +171,80 @@ export async function POST(request: NextRequest) {
       devices: {} as Record<string, any>
     };
 
-    // Process rows
-    rows.forEach(row => {
-      if (!row.keys || !row.clicks || !row.impressions) return;
+    // Process queries data
+    queriesRows.forEach(row => {
+      if (!row.keys || row.keys.length === 0) return;
       
-      const [query, page, country, device] = row.keys;
+      const query = row.keys[0];
       const clicks = row.clicks || 0;
       const impressions = row.impressions || 0;
       const ctr = row.ctr || 0;
       const position = row.position || 0;
 
-      // Update totals
+      aggregated.queries[query] = {
+        clicks,
+        impressions,
+        ctr,
+        position
+      };
+
+      // Update totals from queries (most comprehensive)
       aggregated.total.clicks += clicks;
       aggregated.total.impressions += impressions;
+    });
 
-      // Aggregate by query
-      if (query) {
-        if (!aggregated.queries[query]) {
-          aggregated.queries[query] = { clicks: 0, impressions: 0, ctr: 0, position: 0 };
-        }
-        aggregated.queries[query].clicks += clicks;
-        aggregated.queries[query].impressions += impressions;
-        aggregated.queries[query].ctr = aggregated.queries[query].clicks / aggregated.queries[query].impressions;
-        aggregated.queries[query].position = position; // Take last position (simplified)
-      }
+    // Process pages data
+    pagesRows.forEach(row => {
+      if (!row.keys || row.keys.length === 0) return;
+      
+      const page = row.keys[0];
+      const clicks = row.clicks || 0;
+      const impressions = row.impressions || 0;
+      const ctr = row.ctr || 0;
+      const position = row.position || 0;
 
-      // Aggregate by page
-      if (page) {
-        if (!aggregated.pages[page]) {
-          aggregated.pages[page] = { clicks: 0, impressions: 0, ctr: 0, position: 0 };
-        }
-        aggregated.pages[page].clicks += clicks;
-        aggregated.pages[page].impressions += impressions;
-        aggregated.pages[page].ctr = aggregated.pages[page].clicks / aggregated.pages[page].impressions;
-        aggregated.pages[page].position = position;
-      }
+      aggregated.pages[page] = {
+        clicks,
+        impressions,
+        ctr,
+        position
+      };
+    });
 
-      // Aggregate by country
-      if (country) {
-        if (!aggregated.countries[country]) {
-          aggregated.countries[country] = { clicks: 0, impressions: 0, ctr: 0, position: 0 };
-        }
-        aggregated.countries[country].clicks += clicks;
-        aggregated.countries[country].impressions += impressions;
-        aggregated.countries[country].ctr = aggregated.countries[country].clicks / aggregated.countries[country].impressions;
-        aggregated.countries[country].position = position;
-      }
+    // Process countries data
+    countriesRows.forEach(row => {
+      if (!row.keys || row.keys.length === 0) return;
+      
+      const country = row.keys[0];
+      const clicks = row.clicks || 0;
+      const impressions = row.impressions || 0;
+      const ctr = row.ctr || 0;
+      const position = row.position || 0;
 
-      // Aggregate by device
-      if (device) {
-        if (!aggregated.devices[device]) {
-          aggregated.devices[device] = { clicks: 0, impressions: 0, ctr: 0, position: 0 };
-        }
-        aggregated.devices[device].clicks += clicks;
-        aggregated.devices[device].impressions += impressions;
-        aggregated.devices[device].ctr = aggregated.devices[device].clicks / aggregated.devices[device].impressions;
-        aggregated.devices[device].position = position;
-      }
+      aggregated.countries[country] = {
+        clicks,
+        impressions,
+        ctr,
+        position
+      };
+    });
+
+    // Process devices data
+    devicesRows.forEach(row => {
+      if (!row.keys || row.keys.length === 0) return;
+      
+      const device = row.keys[0];
+      const clicks = row.clicks || 0;
+      const impressions = row.impressions || 0;
+      const ctr = row.ctr || 0;
+      const position = row.position || 0;
+
+      aggregated.devices[device] = {
+        clicks,
+        impressions,
+        ctr,
+        position
+      };
     });
 
     // Calculate overall averages
@@ -226,7 +292,10 @@ export async function POST(request: NextRequest) {
         onConflict: 'property_id,date_start,date_end'
       });
 
+    const totalRowCount = queriesRows.length + pagesRows.length + countriesRows.length + devicesRows.length;
+    
     console.log('[GSC PERFORMANCE] Successfully fetched performance data for:', siteUrl);
+    console.log(`[GSC PERFORMANCE] Retrieved ${queriesRows.length} queries, ${pagesRows.length} pages, ${countriesRows.length} countries, ${devicesRows.length} devices`);
 
     return NextResponse.json({
       success: true,
@@ -237,7 +306,13 @@ export async function POST(request: NextRequest) {
         topPages,
         topCountries,
         deviceData,
-        rawRowCount: rows.length
+        rawRowCount: totalRowCount,
+        breakdown: {
+          queries: queriesRows.length,
+          pages: pagesRows.length,
+          countries: countriesRows.length,
+          devices: devicesRows.length
+        }
       }
     });
 
