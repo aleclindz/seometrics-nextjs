@@ -4,9 +4,9 @@ import "./globals.css";
 import { AuthProvider } from '@/contexts/auth';
 
 export const metadata: Metadata = {
-  title: "SEOAgent.com - Put Your SEO on Auto-Pilot | AI SEO Automation for Bootstrappers",
-  description: "Automated technical SEO, content writing, and strategic optimization for indie hackers. Built for apps made with Lovable, v0, Create, Replit. Multi-CMS support beats SurferSEO&apos;s WordPress-only limitation.",
-  keywords: ["SEO automation", "AI SEO", "technical SEO", "content writer", "multi-CMS", "indie hackers", "bootstrappers", "Lovable", "v0", "Create", "Replit", "SurferSEO alternative"],
+  title: "SEOAgent — AI SEO Agent that Fixes the Boring Stuff",
+  description: "Auto-audits, instant on-page fixes, and indexation guardrails. Set it and forget it in 3 minutes.",
+  keywords: ["AI SEO agent", "automated SEO fixes", "technical SEO", "indexing guardrails", "on-page optimization", "SEO automation", "indie hackers", "bootstrappers"],
   authors: [{ name: "SEOAgent" }],
   creator: "SEOAgent",
   publisher: "SEOAgent",
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
     canonical: "https://seoagent.com",
   },
   openGraph: {
-    title: "SEOAgent.com - Put Your SEO on Auto-Pilot",
-    description: "Automated technical SEO, content writing, and strategic optimization for indie hackers and bootstrappers. Multi-CMS support for Strapi, WordPress, Webflow, Shopify, Ghost.",
+    title: "SEOAgent — AI SEO Agent that Fixes the Boring Stuff",
+    description: "Set it and forget it: auto-audits, instant on-page fixes, and indexation guardrails—so your content actually ranks.",
     url: "https://seoagent.com",
     siteName: "SEOAgent",
     type: "website",
@@ -26,13 +26,13 @@ export const metadata: Metadata = {
       url: "/og-image.jpg",
       width: 1200,
       height: 630,
-      alt: "SEOAgent - AI SEO Automation for Bootstrappers"
+      alt: "SEOAgent - AI SEO Agent that Fixes the Boring Stuff"
     }]
   },
   twitter: {
     card: "summary_large_image",
-    title: "SEOAgent.com - Put Your SEO on Auto-Pilot",
-    description: "Automated technical SEO, content writing, and strategic optimization for indie hackers. Multi-CMS support beats SurferSEO&apos;s WordPress-only limitation.",
+    title: "SEOAgent — AI SEO Agent that Fixes the Boring Stuff",
+    description: "Set it and forget it: auto-audits, instant on-page fixes, and indexation guardrails—so your content actually ranks.",
     images: ["/og-image.jpg"],
     creator: "@seoagent"
   },
