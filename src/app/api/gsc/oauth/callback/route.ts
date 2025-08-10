@@ -12,7 +12,7 @@ const supabase = createClient(
 
 // Helper function to get the correct base URL
 function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  return process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
 }
 
 export async function GET(request: NextRequest) {
