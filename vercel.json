@@ -12,6 +12,17 @@
   ],
   "redirects": [
     {
+      "source": "/api/gsc/oauth/callback",
+      "has": [
+        {
+          "type": "host",
+          "value": "seometrics.ai"
+        }
+      ],
+      "destination": "https://seoagent.com/api/gsc/oauth/callback",
+      "permanent": false
+    },
+    {
       "source": "/(.*)",
       "has": [
         {
