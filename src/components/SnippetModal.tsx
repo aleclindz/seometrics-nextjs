@@ -80,6 +80,28 @@ const idv = '${websiteToken}';
                 </div>
               </div>
             </div>
+            
+            {/* Attribution Notice */}
+            <div className="bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                    Professional Attribution
+                  </h4>
+                  <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    <p>
+                      A subtle &ldquo;SEO by SEOAgent&rdquo; link will appear in your website&apos;s footer. 
+                      This professional attribution helps other website owners discover our SEO automation services while supporting our platform&apos;s growth.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Code snippet */}

@@ -9,6 +9,7 @@ interface Website {
   website_token: string;
   is_managed: boolean;
   is_excluded_from_sync: boolean;
+  attribution_enabled: boolean;
   created_at: string;
 }
 
@@ -267,6 +268,42 @@ export default function WebsiteManagement() {
     }
   };
 
+  const handleAttributionToggle = async (websiteId: string, currentEnabled: boolean) => {
+    if (!user?.token) return;
+
+    setUpdating(websiteId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/websites?userToken=${user.token}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          websiteId,
+          attribution_enabled: !currentEnabled
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update local state
+        setWebsites(prev => prev.map(w => 
+          w.website_token === websiteId ? { ...w, attribution_enabled: !currentEnabled } : w
+        ));
+      } else {
+        setError(data.error || 'Failed to update attribution setting');
+      }
+    } catch (error) {
+      console.error('Error updating attribution:', error);
+      setError('Failed to update attribution setting');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const handleRemoveWebsite = async (websiteId: string, domain: string) => {
     if (!user?.token) return;
 
@@ -375,43 +412,64 @@ export default function WebsiteManagement() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  {website.is_managed ? (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded-full font-medium">
-                        Currently Managed
-                      </span>
-                      {userPlan.maxSites === 1 && (
-                        <button
-                          onClick={() => handleSwitchRequest(website.website_token, website.domain)}
-                          disabled={updating === website.website_token || !switchInfo?.canSwitch}
-                          className="text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-1 rounded font-medium"
-                          title={switchInfo?.canSwitch ? "Switch to different website" : getSwitchRestrictionMessage()}
-                        >
-                          {updating === website.website_token ? 'Switching...' : 'Switch'}
-                        </button>
-                      )}
-                    </div>
-                  ) : (
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
+                    {website.is_managed ? (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded-full font-medium">
+                          Currently Managed
+                        </span>
+                        {userPlan.maxSites === 1 && (
+                          <button
+                            onClick={() => handleSwitchRequest(website.website_token, website.domain)}
+                            disabled={updating === website.website_token || !switchInfo?.canSwitch}
+                            className="text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-1 rounded font-medium"
+                            title={switchInfo?.canSwitch ? "Switch to different website" : getSwitchRestrictionMessage()}
+                          >
+                            {updating === website.website_token ? 'Switching...' : 'Switch'}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleManageToggle(website.website_token, website.is_managed)}
+                        disabled={updating === website.website_token}
+                        className="text-xs bg-violet-600 hover:bg-violet-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-1 rounded font-medium"
+                      >
+                        {updating === website.website_token ? 'Managing...' : 'Manage'}
+                      </button>
+                    )}
+                    
                     <button
-                      onClick={() => handleManageToggle(website.website_token, website.is_managed)}
+                      onClick={() => handleRemoveWebsite(website.website_token, website.domain)}
                       disabled={updating === website.website_token}
-                      className="text-xs bg-violet-600 hover:bg-violet-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-1 rounded font-medium"
+                      className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
+                      title="Remove website permanently"
                     >
-                      {updating === website.website_token ? 'Managing...' : 'Manage'}
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
-                  )}
-                  
-                  <button
-                    onClick={() => handleRemoveWebsite(website.website_token, website.domain)}
-                    disabled={updating === website.website_token}
-                    className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
-                    title="Remove website permanently"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  </div>
+
+                  {/* Attribution Toggle */}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleAttributionToggle(website.website_token, website.attribution_enabled)}
+                      disabled={updating === website.website_token}
+                      className={`text-xs px-3 py-1 rounded font-medium transition-colors ${
+                        website.attribution_enabled
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      } ${updating === website.website_token ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={website.attribution_enabled ? 'Click to hide SEOAgent attribution link' : 'Click to show SEOAgent attribution link'}
+                    >
+                      {website.attribution_enabled ? '✓ Attribution' : '✗ Attribution'}
+                    </button>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {website.attribution_enabled ? 'Shows "SEO by SEOAgent" link' : 'Attribution hidden'}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

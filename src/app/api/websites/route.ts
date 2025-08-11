@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     // Get user's websites
     const { data: websites, error } = await supabase
       .from('websites')
-      .select('id, domain, website_token, created_at, is_managed, is_excluded_from_sync')
+      .select('id, domain, website_token, created_at, is_managed, is_excluded_from_sync, attribution_enabled')
       .eq('user_token', userToken)
       .order('created_at', { ascending: false });
 
@@ -59,16 +59,31 @@ export async function PUT(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userToken = searchParams.get('userToken');
     const body = await request.json();
-    const { websiteId, is_managed } = body;
+    const { websiteId, is_managed, attribution_enabled } = body;
 
-    if (!userToken || !websiteId || typeof is_managed !== 'boolean') {
+    if (!userToken || !websiteId) {
       return NextResponse.json(
-        { error: 'Missing required parameters: userToken, websiteId, is_managed' },
+        { error: 'Missing required parameters: userToken, websiteId' },
         { status: 400 }
       );
     }
 
-    console.log('[WEBSITES API] Updating website management status:', { websiteId, is_managed });
+    // Validate parameters if provided
+    if (is_managed !== undefined && typeof is_managed !== 'boolean') {
+      return NextResponse.json(
+        { error: 'is_managed must be a boolean' },
+        { status: 400 }
+      );
+    }
+
+    if (attribution_enabled !== undefined && typeof attribution_enabled !== 'boolean') {
+      return NextResponse.json(
+        { error: 'attribution_enabled must be a boolean' },
+        { status: 400 }
+      );
+    }
+
+    console.log('[WEBSITES API] Updating website status:', { websiteId, is_managed, attribution_enabled });
 
     // Verify the website belongs to the user
     const { data: website, error: websiteError } = await supabase
@@ -86,7 +101,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // If setting to managed, check plan limits
-    if (is_managed) {
+    if (is_managed === true) {
       // Get user's current plan and managed website count
       const { data: userPlan, error: planError } = await supabase
         .from('user_plans')
@@ -133,10 +148,26 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Build update object dynamically based on provided fields
+    const updateData: any = {};
+    if (is_managed !== undefined) {
+      updateData.is_managed = is_managed;
+    }
+    if (attribution_enabled !== undefined) {
+      updateData.attribution_enabled = attribution_enabled;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: 'No valid update fields provided' },
+        { status: 400 }
+      );
+    }
+
     // Update the website
     const { error: updateError } = await supabase
       .from('websites')
-      .update({ is_managed })
+      .update(updateData)
       .eq('website_token', websiteId)
       .eq('user_token', userToken);
 
@@ -148,15 +179,28 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    console.log('[WEBSITES API] Updated website management status successfully');
+    console.log('[WEBSITES API] Updated website status successfully:', updateData);
+
+    // Build response message
+    let message = 'Website updated successfully';
+    if (is_managed !== undefined) {
+      message = `Website ${is_managed ? 'added to' : 'removed from'} managed websites`;
+    }
+    if (attribution_enabled !== undefined) {
+      if (is_managed !== undefined) {
+        message += ` and attribution ${attribution_enabled ? 'enabled' : 'disabled'}`;
+      } else {
+        message = `Website attribution ${attribution_enabled ? 'enabled' : 'disabled'}`;
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Website ${is_managed ? 'added to' : 'removed from'} managed websites`,
+      message,
       website: {
         id: websiteId,
         domain: website.domain,
-        is_managed
+        ...updateData
       }
     });
 

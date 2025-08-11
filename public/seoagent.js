@@ -47,6 +47,9 @@ function initializeSEOMetrics() {
     
     // Process Open Graph tags
     processOpenGraphTags();
+    
+    // Add SEOAgent attribution (for backlink building)
+    addSEOAgentAttribution();
 }
 
 // Handle multiple loading scenarios
@@ -471,6 +474,149 @@ async function processOpenGraphTags() {
         
     } catch (error) {
         console.error('[SEO-METRICS] Error processing Open Graph tags:', error);
+    }
+}
+
+async function addSEOAgentAttribution() {
+    try {
+        console.log('[SEO-METRICS] Checking attribution settings');
+        
+        // Check if attribution already exists
+        if (document.querySelector('[data-seoagent="attribution"]')) {
+            console.log('[SEO-METRICS] Attribution already exists, skipping');
+            return;
+        }
+
+        // Check if attribution is enabled for this website
+        try {
+            const response = await fetch(`${API_BASE_URL}/check-attribution`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    website_token: idv
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (!data.attribution_enabled) {
+                    console.log('[SEO-METRICS] Attribution disabled for this website, skipping');
+                    return;
+                }
+            } else {
+                console.log('[SEO-METRICS] Attribution check failed, proceeding with default (enabled)');
+            }
+        } catch (error) {
+            console.log('[SEO-METRICS] Attribution check error, proceeding with default (enabled):', error);
+        }
+
+        console.log('[SEO-METRICS] Adding SEOAgent attribution link');
+        
+        // Try to find footer elements in order of preference
+        const footerSelectors = [
+            'footer',
+            '.footer', 
+            '#footer',
+            '.site-footer',
+            '[role="contentinfo"]',
+            '.page-footer'
+        ];
+        
+        let footerElement = null;
+        for (const selector of footerSelectors) {
+            footerElement = document.querySelector(selector);
+            if (footerElement) {
+                console.log(`[SEO-METRICS] Found footer element: ${selector}`);
+                break;
+            }
+        }
+        
+        // If no footer found, try to append to body
+        if (!footerElement) {
+            console.log('[SEO-METRICS] No footer found, will append to body');
+            footerElement = document.body;
+        }
+        
+        if (!footerElement) {
+            console.log('[SEO-METRICS] No suitable element found for attribution');
+            return;
+        }
+        
+        // Create attribution container
+        const attributionContainer = document.createElement('div');
+        attributionContainer.setAttribute('data-seoagent', 'attribution');
+        attributionContainer.style.cssText = `
+            margin: 8px 0;
+            padding: 4px 0;
+            font-size: 11px;
+            line-height: 1.2;
+            color: #666;
+            text-align: center;
+            border-top: 1px solid #eee;
+        `;
+        
+        // Create the attribution link
+        const attributionLink = document.createElement('a');
+        attributionLink.href = 'https://seoagent.com';
+        attributionLink.target = '_blank';
+        attributionLink.rel = 'dofollow'; // Explicit dofollow for SEO benefit
+        attributionLink.textContent = 'SEO by SEOAgent';
+        attributionLink.style.cssText = `
+            color: #666;
+            text-decoration: none;
+            font-size: 11px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        `;
+        
+        // Add hover effect
+        attributionLink.addEventListener('mouseenter', function() {
+            this.style.opacity = '1';
+            this.style.color = '#333';
+        });
+        
+        attributionLink.addEventListener('mouseleave', function() {
+            this.style.opacity = '0.7';
+            this.style.color = '#666';
+        });
+        
+        // Assemble the attribution
+        attributionContainer.appendChild(attributionLink);
+        
+        // Inject into footer (or body)
+        if (footerElement === document.body) {
+            // If appending to body, add some spacing
+            attributionContainer.style.marginTop = '20px';
+            footerElement.appendChild(attributionContainer);
+        } else {
+            // Try to append at the end of footer
+            footerElement.appendChild(attributionContainer);
+        }
+        
+        console.log('[SEO-METRICS] Successfully added SEOAgent attribution link');
+        
+        // Add schema markup for the attribution (credibility signal)
+        const attributionSchema = {
+            "@context": "https://schema.org",
+            "@type": "Organization", 
+            "name": "SEOAgent",
+            "url": "https://seoagent.com",
+            "description": "AI-powered SEO automation platform"
+        };
+        
+        const schemaScript = document.createElement('script');
+        schemaScript.type = 'application/ld+json';
+        schemaScript.setAttribute('data-seoagent', 'attribution-schema');
+        schemaScript.textContent = JSON.stringify(attributionSchema, null, 2);
+        document.head.appendChild(schemaScript);
+        
+        console.log('[SEO-METRICS] Added SEOAgent attribution schema markup');
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error adding attribution:', error);
     }
 }
 
