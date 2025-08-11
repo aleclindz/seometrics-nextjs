@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth';
 import { getSmartJSStatus } from '@/lib/seoagent-js-status';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
-import TechnicalSEODashboard from '@/components/TechnicalSEODashboard';
+import ActionItemsInterface from '@/components/ActionItemsInterface';
 import AIActivitySummary from '@/components/AIActivitySummary';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import GSCAnalytics from '@/components/GSCAnalytics';
@@ -428,17 +428,15 @@ export default function WebsitePage() {
                 />
               )}
 
-              {/* Technical SEO Dashboard */}
-              {user?.token && website.smartjsStatus === 'active' && (
+              {/* Action Items Interface */}
+              {user?.token && (
                 <div className="mt-8">
-                  <TechnicalSEODashboard 
-                    userToken={user.token}
-                    websites={[
-                      { 
-                        domain: website.url.replace(/^https?:\/\//, '').replace(/\/$/, ''), 
-                        website_token: websiteId 
-                      }
-                    ]}
+                  <ActionItemsInterface 
+                    siteUrl={website.url}
+                    onRefresh={() => {
+                      // Optionally refresh website data
+                      window.location.reload();
+                    }}
                   />
                 </div>
               )}
