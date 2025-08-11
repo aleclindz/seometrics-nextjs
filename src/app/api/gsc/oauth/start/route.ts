@@ -65,12 +65,16 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Create OAuth2 client
+    // Create OAuth2 client with explicit redirect URI to ensure no caching
+    console.log('[GSC OAUTH START] Creating OAuth2 client with redirect URI:', redirectUri);
     const oauth2Client = new google.auth.OAuth2(
       clientId,
       clientSecret,
       redirectUri
     );
+    
+    // Force set the redirect URI again to ensure it's not cached
+    oauth2Client.redirectUri = redirectUri;
 
     // Define scopes for Search Console full access (needed for sitemap submission)
     const scopes = [
