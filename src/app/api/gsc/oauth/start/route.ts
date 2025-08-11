@@ -72,9 +72,6 @@ export async function GET(request: NextRequest) {
       clientSecret,
       redirectUri
     );
-    
-    // Force set the redirect URI again to ensure it's not cached
-    oauth2Client.redirectUri = redirectUri;
 
     // Define scopes for Search Console full access (needed for sitemap submission)
     const scopes = [
