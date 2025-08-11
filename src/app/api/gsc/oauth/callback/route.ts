@@ -162,6 +162,26 @@ export async function GET(request: NextRequest) {
 
     console.log('[GSC OAUTH CALLBACK] Successfully stored GSC connection for user:', loginUser.email);
     
+    // Trigger property sync in background to populate properties
+    try {
+      console.log('[GSC OAUTH CALLBACK] Triggering property sync');
+      const baseUrl = getBaseUrl();
+      
+      // Make a background request to sync properties
+      fetch(`${baseUrl}/api/gsc/properties?userToken=${userToken}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).catch(error => {
+        console.error('[GSC OAUTH CALLBACK] Background property sync failed:', error);
+      });
+      
+    } catch (error) {
+      console.error('[GSC OAUTH CALLBACK] Error triggering property sync:', error);
+      // Don't fail the redirect, just log the error
+    }
+    
     // Redirect to dashboard with success message
     return NextResponse.redirect(`${getBaseUrl()}/dashboard?gsc_connected=true`);
 

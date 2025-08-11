@@ -229,6 +229,39 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
     }
   };
 
+  const handleSyncProperties = async () => {
+    if (!user?.token || !connectionStatus.connected) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('[GSC COMPONENT] Syncing properties...');
+      const response = await fetch(`/api/gsc/properties?userToken=${user.token}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('[GSC COMPONENT] Properties synced successfully:', data);
+        setProperties(data.properties || []);
+        // Refresh connection status to update property count
+        await checkConnectionStatus();
+      } else {
+        setError(data.error || 'Failed to sync properties');
+      }
+    } catch (error) {
+      console.error('[GSC COMPONENT] Error syncing properties:', error);
+      setError('Failed to sync properties');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading && !connectionStatus.connected) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-6">
@@ -304,8 +337,27 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
             </div>
           </div>
 
-          {/* Sync Button */}
+          {/* Sync Buttons */}
           <div className="flex gap-2 mb-4">
+            <button
+              onClick={handleSyncProperties}
+              disabled={loading}
+              className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm flex items-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  Sync Properties
+                </>
+              )}
+            </button>
             <button
               onClick={handleSync}
               disabled={syncing || loading}
