@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
     // Get OAuth credentials from environment
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+    // Force seoagent.com in production, ignore VERCEL_URL to avoid seometrics.ai redirects
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
     const redirectUri = `${baseUrl}/api/gsc/oauth/callback`;
     
     // Debug logging for environment variables
