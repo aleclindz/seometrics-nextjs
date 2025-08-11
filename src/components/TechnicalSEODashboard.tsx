@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AIFixModal from '@/components/AIFixModal';
 // Using basic HTML elements since shadcn/ui components are not installed
 import { 
   CheckCircle, 
@@ -49,19 +48,6 @@ interface TechnicalSEOData {
     crawlDelay?: number;
     sitemapUrls: number;
   } | null;
-  realtimeActivity: Array<{
-    timestamp: string;
-    action: string;
-    page: string;
-    status: 'success' | 'warning' | 'error';
-  }>;
-  issues: Array<{
-    type: string;
-    severity: 'critical' | 'warning' | 'info';
-    count: number;
-    description: string;
-    canAutoFix: boolean;
-  }>;
 }
 
 interface Props {
@@ -78,19 +64,6 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const [gscAnalysisInProgress, setGscAnalysisInProgress] = useState(false);
   const [sitemapGenerationInProgress, setSitemapGenerationInProgress] = useState(false);
   const [robotsAnalysisInProgress, setRobotsAnalysisInProgress] = useState(false);
-  const [activeTab, setActiveTab] = useState<'issues' | 'activity'>('issues');
-  const [fixSuggestions, setFixSuggestions] = useState<Record<string, string>>({});
-  const [aiFixModal, setAiFixModal] = useState<{
-    isOpen: boolean;
-    issue: any;
-    suggestion: string;
-    isLoading: boolean;
-  }>({
-    isOpen: false,
-    issue: null,
-    suggestion: '',
-    isLoading: false
-  });
 
   const debugUrlInspections = async () => {
     try {
@@ -103,82 +76,6 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
     }
   };
 
-  const getAIFixSuggestion = async (issue: any) => {
-    try {
-      const issueKey = `${issue.type}-${issue.description}`;
-      
-      // Open modal with loading state
-      setAiFixModal({
-        isOpen: true,
-        issue: issue,
-        suggestion: '',
-        isLoading: true
-      });
-      
-      if (fixSuggestions[issueKey]) {
-        // Already have suggestion, show it
-        setAiFixModal({
-          isOpen: true,
-          issue: issue,
-          suggestion: fixSuggestions[issueKey],
-          isLoading: false
-        });
-        return;
-      }
-
-      const response = await fetch('/api/technical-seo/ai-fix-suggestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          issueType: issue.type,
-          description: issue.description,
-          url: selectedSite,
-          severity: issue.severity,
-          rawData: issue.rawData || null
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const suggestion = result.data.suggestion;
-        
-        // Store suggestion for future use
-        setFixSuggestions(prev => ({ ...prev, [issueKey]: suggestion }));
-        
-        // Update modal with suggestion
-        setAiFixModal({
-          isOpen: true,
-          issue: issue,
-          suggestion: suggestion,
-          isLoading: false
-        });
-      } else {
-        setAiFixModal({
-          isOpen: true,
-          issue: issue,
-          suggestion: 'Failed to get AI fix suggestion. Please try again.',
-          isLoading: false
-        });
-      }
-    } catch (error) {
-      console.error('Error getting AI fix suggestion:', error);
-      setAiFixModal({
-        isOpen: true,
-        issue: issue,
-        suggestion: 'Error getting AI fix suggestion. Please check your connection.',
-        isLoading: false
-      });
-    }
-  };
-
-  const closeAiFixModal = () => {
-    setAiFixModal({
-      isOpen: false,
-      issue: null,
-      suggestion: '',
-      isLoading: false
-    });
-  };
 
   const runRobotsAnalysis = async () => {
     if (!selectedSite) return;
@@ -474,23 +371,9 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const getOverallStatus = () => {
     if (!data) return { status: 'unknown', message: 'Loading technical SEO data...' };
     
-    const criticalIssues = data.issues.filter(issue => issue.severity === 'critical').length;
-    const totalIssues = data.issues.length;
     const indexabilityRate = data.overview.totalPages > 0 ? (data.overview.indexablePages / data.overview.totalPages) * 100 : 0;
     
-    if (criticalIssues > 0) {
-      return { 
-        status: 'critical', 
-        message: `${criticalIssues} critical issue${criticalIssues > 1 ? 's' : ''} requiring immediate attention`,
-        color: 'red'
-      };
-    } else if (totalIssues > 0) {
-      return { 
-        status: 'warning', 
-        message: `${totalIssues} issue${totalIssues > 1 ? 's' : ''} detected, but no critical problems`,
-        color: 'orange'
-      };
-    } else if (indexabilityRate >= 95) {
+    if (indexabilityRate >= 95) {
       return { 
         status: 'excellent', 
         message: 'All systems optimal - technical SEO running smoothly!',
@@ -543,15 +426,6 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* AI Fix Modal */}
-      <AIFixModal
-        isOpen={aiFixModal.isOpen}
-        onClose={closeAiFixModal}
-        issue={aiFixModal.issue}
-        suggestion={aiFixModal.suggestion}
-        isLoading={aiFixModal.isLoading}
-      />
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -943,105 +817,6 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         </div>
       )}
 
-      {/* Tabs Section */}
-      {data && (
-        <div className="space-y-4">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('issues')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'issues'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Issues
-              </button>
-              <button
-                onClick={() => setActiveTab('activity')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'activity'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Real-time Activity
-              </button>
-            </nav>
-          </div>
-
-          {activeTab === 'issues' && (
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
-              <h3 className="text-lg font-semibold mb-2">Technical SEO Issues</h3>
-              <p className="text-gray-600 mb-4">
-                Issues detected and available automated fixes
-              </p>
-              <div className="space-y-4">
-                {data.issues.map((issue, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      {issue.severity === 'critical' && <XCircle className="h-5 w-5 text-red-500" />}
-                      {issue.severity === 'warning' && <AlertTriangle className="h-5 w-5 text-orange-500" />}
-                      {issue.severity === 'info' && <CheckCircle className="h-5 w-5 text-blue-500" />}
-                      <div>
-                        <p className="font-medium">{issue.type}</p>
-                        <p className="text-sm text-gray-600">{issue.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        issue.severity === 'critical' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {issue.count} pages
-                      </span>
-                      {issue.canAutoFix ? (
-                        <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 flex items-center">
-                          <Zap className="h-3 w-3 mr-1" />
-                          Auto-fixable
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => getAIFixSuggestion(issue)}
-                          className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 flex items-center"
-                        >
-                          <Search className="h-3 w-3 mr-1" />
-                          Get AI Fix
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'activity' && (
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
-              <h3 className="text-lg font-semibold mb-2">Real-time Activity</h3>
-              <p className="text-gray-600 mb-4">
-                Recent automated fixes and optimizations
-              </p>
-              <div className="space-y-3">
-                {data.realtimeActivity.map((activity, index) => (
-                  <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
-                    {activity.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />}
-                    {activity.status === 'warning' && <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5" />}
-                    {activity.status === 'error' && <XCircle className="h-4 w-4 text-red-500 mt-0.5" />}
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{activity.action}</p>
-                      <p className="text-xs text-gray-600">{activity.page}</p>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {new Date(activity.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Alert for no data */}
       {!data && !loading && (
