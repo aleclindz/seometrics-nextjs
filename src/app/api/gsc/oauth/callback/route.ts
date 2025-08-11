@@ -28,12 +28,12 @@ export async function GET(request: NextRequest) {
     // Handle OAuth errors
     if (error) {
       console.log('[GSC OAUTH CALLBACK] OAuth error:', error);
-      return NextResponse.redirect(`${getBaseUrl()}/autopilot?error=oauth_denied`);
+      return NextResponse.redirect(`${getBaseUrl()}/dashboard?error=oauth_denied`);
     }
 
     if (!code || !state) {
       console.log('[GSC OAUTH CALLBACK] Missing code or state parameter');
-      return NextResponse.redirect(`${getBaseUrl()}/autopilot?error=invalid_request`);
+      return NextResponse.redirect(`${getBaseUrl()}/dashboard?error=invalid_request`);
     }
 
     // Verify state parameter
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString());
     } catch (e) {
       console.log('[GSC OAUTH CALLBACK] Invalid state parameter');
-      return NextResponse.redirect(`${getBaseUrl()}/autopilot?error=invalid_state`);
+      return NextResponse.redirect(`${getBaseUrl()}/dashboard?error=invalid_state`);
     }
 
     const { userToken } = stateData;
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     
     if (!clientId || !clientSecret) {
       console.log('[GSC OAUTH CALLBACK] Missing OAuth credentials');
-      return NextResponse.redirect(`${baseUrl}/autopilot?error=server_error`);
+      return NextResponse.redirect(`${baseUrl}/dashboard?error=server_error`);
     }
 
     // Create OAuth2 client
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     
     if (!tokens.access_token || !tokens.refresh_token) {
       console.log('[GSC OAUTH CALLBACK] Missing required tokens');
-      return NextResponse.redirect(`${baseUrl}/autopilot?error=token_error`);
+      return NextResponse.redirect(`${baseUrl}/dashboard?error=token_error`);
     }
 
     // Set credentials to get user info
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     if (!email) {
       console.log('[GSC OAUTH CALLBACK] Unable to get user email');
-      return NextResponse.redirect(`${baseUrl}/autopilot?error=email_error`);
+      return NextResponse.redirect(`${baseUrl}/dashboard?error=email_error`);
     }
 
     // Verify user exists in database
@@ -157,16 +157,16 @@ export async function GET(request: NextRequest) {
         details: dbError.details,
         hint: dbError.hint
       });
-      return NextResponse.redirect(`${getBaseUrl()}/autopilot?error=db_error&details=${encodeURIComponent(dbError.message)}`);
+      return NextResponse.redirect(`${getBaseUrl()}/dashboard?error=db_error&details=${encodeURIComponent(dbError.message)}`);
     }
 
     console.log('[GSC OAUTH CALLBACK] Successfully stored GSC connection for user:', loginUser.email);
     
-    // Redirect to autopilot page with success
-    return NextResponse.redirect(`${getBaseUrl()}/autopilot?gsc_connected=true`);
+    // Redirect to dashboard with success message
+    return NextResponse.redirect(`${getBaseUrl()}/dashboard?gsc_connected=true`);
 
   } catch (error) {
     console.error('[GSC OAUTH CALLBACK] Unexpected error:', error);
-    return NextResponse.redirect(`${getBaseUrl()}/autopilot?error=unexpected`);
+    return NextResponse.redirect(`${getBaseUrl()}/dashboard?error=unexpected`);
   }
 }
