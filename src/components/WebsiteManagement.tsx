@@ -476,6 +476,35 @@ export default function WebsiteManagement() {
           </div>
         )}
 
+        {/* Pro Plan CTA for users with only 1 managed website */}
+        {userPlan.plan_id === 'pro' && managedCount === 1 && websites.length > 1 && (
+          <div className="mt-6 p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-lg border border-violet-200 dark:border-violet-700">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-violet-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                  🚀 Pro Plan: Add More Websites
+                </h3>
+                <div className="mt-2 text-sm text-violet-700 dark:text-violet-300">
+                  <p className="mb-3">
+                    You&apos;re currently managing 1 website, but your Pro plan supports up to <strong>5 managed websites</strong>! 
+                    Maximize your subscription value by managing more of your properties.
+                  </p>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-xs bg-violet-100 dark:bg-violet-800 px-2 py-1 rounded-full">
+                      💡 Pro Tip: Manage your highest-traffic websites for maximum SEO impact
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -490,7 +519,7 @@ export default function WebsiteManagement() {
               <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
                 <ul className="list-disc pl-5 space-y-1">
                   <li><strong>Selective Management:</strong> Choose which websites receive SEOAgent&apos;s automated SEO services</li>
-                  <li><strong>Plan Limits:</strong> Your {userPlan.plan_id === 'starter' ? 'Starter ($29/month)' : userPlan.plan_id === 'pro' ? 'Pro ($79/month)' : userPlan.plan_id} plan includes {userPlan.maxSites === -1 ? 'unlimited' : userPlan.maxSites} managed website{userPlan.maxSites === 1 ? '' : 's'} with unlimited content generation</li>
+                  <li><strong>Plan Limits:</strong> Your {userPlan.plan_id === 'starter' ? 'Starter ($29/month)' : userPlan.plan_id === 'pro' ? 'Pro ($79/month)' : userPlan.plan_id === 'enterprise' ? 'Enterprise' : userPlan.plan_id.charAt(0).toUpperCase() + userPlan.plan_id.slice(1)} plan includes {userPlan.maxSites === -1 ? 'unlimited' : userPlan.maxSites} managed website{userPlan.maxSites === 1 ? '' : 's'} with unlimited content generation</li>
                   <li><strong>SEO Services:</strong> Managed websites get technical SEO analysis, content optimization, and automated improvements</li>
                   <li><strong>Permanent Removal:</strong> Deleted websites won&apos;t return when syncing Google Search Console</li>
                   <li><strong>Flexible Changes:</strong> Switch managed websites anytime within your subscription limits</li>

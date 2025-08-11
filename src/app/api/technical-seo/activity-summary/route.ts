@@ -146,18 +146,27 @@ async function generateAISummary(siteUrl: string, activity: AggregatedActivity, 
   if (userToken) {
     try {
       const technicalStatus = await fetchTechnicalSEOStatus(userToken, siteUrl);
-      if (technicalStatus && technicalStatus.issues) {
-        const totalIssues = technicalStatus.issues.length;
-        const criticalIssues = technicalStatus.issues.filter((issue: any) => issue.severity === 'critical').length;
-        const autoFixableIssues = technicalStatus.issues.filter((issue: any) => issue.canAutoFix).length;
+      if (technicalStatus && technicalStatus.issues && technicalStatus.issues.length > 0) {
+        const { issues, summary } = technicalStatus;
         
-        technicalContext = `\nCurrent Technical SEO Status:
-- Total issues detected: ${totalIssues}
-- Critical issues: ${criticalIssues}
-- Auto-fixable issues: ${autoFixableIssues}
-- Issue types: ${technicalStatus.issues.map((issue: any) => `${issue.type} (${issue.severity})`).join(', ')}
-- Automated fixes: ${technicalStatus.fixes?.automated || 0}
-- Error fixes: ${technicalStatus.fixes?.errors || 0}`;
+        // Generate specific issue descriptions
+        const specificIssues = issues.slice(0, 3).map((issue: any) => {
+          const urlsText = issue.affectedUrls > 1 ? ` (affects ${issue.affectedUrls} pages)` : '';
+          return `${issue.title}: ${issue.description}${urlsText}`;
+        }).join('\n- ');
+        
+        technicalContext = `\nCurrent SEO Issues Detected:
+- Total active issues: ${summary.totalIssues}
+- Critical: ${summary.critical}, High: ${summary.high}, Medium: ${summary.medium}
+- Categories: ${Object.keys(summary.byCategory).join(', ')}
+- Auto-fixable: ${summary.autoFixable}
+
+Specific Issues:
+- ${specificIssues}${issues.length > 3 ? `\n- ...and ${issues.length - 3} more issues` : ''}
+
+IMPORTANT: Be very specific about these issues in your response. Don't say "identified important issues" - list the actual problems found.`;
+      } else {
+        technicalContext = `\nCurrent Technical SEO Status: ✅ No active SEO issues detected! Your website's technical foundation is solid.`;
       }
     } catch (error) {
       console.log('[AI SUMMARY] Could not fetch technical context:', error);
@@ -355,25 +364,28 @@ async function generateWelcomeMessage(websiteStatus: SummaryRequest['websiteStat
       const technicalStatus = await fetchTechnicalSEOStatus(userToken, siteUrl);
       
       if (technicalStatus && technicalStatus.issues && technicalStatus.issues.length > 0) {
-        const totalIssues = technicalStatus.issues.length;
-        const criticalIssues = technicalStatus.issues.filter((issue: any) => issue.severity === 'critical').length;
-        const autoFixableIssues = technicalStatus.issues.filter((issue: any) => issue.canAutoFix).length;
+        const { issues, summary } = technicalStatus;
         
-        message += `I'm actively monitoring ${domainName} and I've detected ${totalIssues} SEO opportunities. `;
+        message += `I'm actively monitoring ${domainName} and have identified specific SEO issues that need attention:\n\n`;
         
-        if (criticalIssues > 0) {
-          message += `${criticalIssues} require immediate attention. `;
+        // List the top 3 specific issues
+        const topIssues = issues.slice(0, 3);
+        topIssues.forEach((issue: any, index: number) => {
+          const urlsText = issue.affectedUrls > 1 ? ` (${issue.affectedUrls} pages affected)` : '';
+          message += `• ${issue.title}${urlsText} - ${issue.description}\n`;
+        });
+        
+        if (issues.length > 3) {
+          message += `• ...and ${issues.length - 3} additional issues\n`;
         }
         
-        if (autoFixableIssues > 0) {
-          message += `The good news is that ${autoFixableIssues} of these can be fixed automatically. `;
+        message += `\nSummary: ${summary.critical} critical, ${summary.high} high priority, ${summary.medium} medium priority issues detected.`;
+        
+        if (summary.autoFixable > 0) {
+          message += ` ${summary.autoFixable} of these can be fixed automatically with one click.`;
         }
         
-        // Mention specific issue types
-        const issueTypes = technicalStatus.issues.slice(0, 2).map((issue: any) => issue.type).join(', ');
-        if (issueTypes) {
-          message += `Priority issues include: ${issueTypes}.`;
-        }
+        message += "\n\nThese specific issues are affecting your search engine visibility. Click the action items below to start fixing them!";
         
         return message;
       } else {
@@ -412,31 +424,61 @@ async function generateWelcomeMessage(websiteStatus: SummaryRequest['websiteStat
 // Helper function to fetch technical SEO status
 async function fetchTechnicalSEOStatus(userToken: string, siteUrl: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/technical-seo/dashboard`, {
-      method: 'POST',
+    // Fetch action items instead of old technical SEO data
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/action-items?userToken=${userToken}&siteUrl=${encodeURIComponent(siteUrl)}&status=detected,assigned,in_progress,completed`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userToken,
-        websites: [{ 
-          domain: siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''), 
-          website_token: 'temp' // We'll get this from the sites API if needed
-        }]
-      })
+      }
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch technical SEO data');
+      throw new Error('Failed to fetch action items data');
     }
 
     const result = await response.json();
     
-    if (result.success && result.data && result.data.length > 0) {
-      return result.data[0]; // Return first website's data
+    if (result.success && result.actionItems) {
+      const items = result.actionItems;
+      
+      return {
+        issues: items.map((item: any) => ({
+          type: item.issue_type,
+          severity: item.severity,
+          title: item.title,
+          description: item.description,
+          category: item.issue_category,
+          status: item.status,
+          canAutoFix: ['sitemap_missing', 'robots_missing', 'schema_missing_pages', 'indexing_blocked_pages'].includes(item.issue_type),
+          affectedUrls: item.affected_urls?.length || 1
+        })),
+        summary: {
+          totalIssues: items.length,
+          critical: items.filter((i: any) => i.severity === 'critical').length,
+          high: items.filter((i: any) => i.severity === 'high').length,
+          medium: items.filter((i: any) => i.severity === 'medium').length,
+          low: items.filter((i: any) => i.severity === 'low').length,
+          byCategory: items.reduce((acc: any, item: any) => {
+            acc[item.issue_category] = (acc[item.issue_category] || 0) + 1;
+            return acc;
+          }, {}),
+          autoFixable: items.filter((i: any) => ['sitemap_missing', 'robots_missing', 'schema_missing_pages', 'indexing_blocked_pages'].includes(i.issue_type)).length
+        }
+      };
     }
     
-    return null;
+    return {
+      issues: [],
+      summary: {
+        totalIssues: 0,
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+        byCategory: {},
+        autoFixable: 0
+      }
+    };
   } catch (error) {
     console.error('Error fetching technical SEO status:', error);
     return null;

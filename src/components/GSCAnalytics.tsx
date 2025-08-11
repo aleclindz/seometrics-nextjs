@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth';
 
 interface GSCAnalyticsProps {
@@ -67,7 +67,7 @@ export default function GSCAnalytics({ siteUrl, className = '' }: GSCAnalyticsPr
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     if (!user?.token) return;
 
     setLoading(true);
@@ -104,7 +104,7 @@ export default function GSCAnalytics({ siteUrl, className = '' }: GSCAnalyticsPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.token, siteUrl, dateRange.startDate, dateRange.endDate]);
 
   // Helper functions for filtering and pagination
   const getFilteredData = () => {
@@ -157,7 +157,7 @@ export default function GSCAnalytics({ siteUrl, className = '' }: GSCAnalyticsPr
 
   useEffect(() => {
     fetchAnalytics();
-  }, [user?.token, siteUrl, dateRange]);
+  }, [fetchAnalytics]);
   
   useEffect(() => {
     setCurrentPage(1);
