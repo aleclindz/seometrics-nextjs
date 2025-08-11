@@ -651,7 +651,9 @@ class FunctionCaller {
 
   private async checkSEOAgentJSStatus(args: { site_url: string }): Promise<FunctionCallResult> {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'}/api/smartjs/check`, {
+      // Get base URL for API calls (client-side)
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/smartjs/check`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

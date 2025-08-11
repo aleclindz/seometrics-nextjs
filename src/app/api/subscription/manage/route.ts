@@ -11,6 +11,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Helper function to get the correct base URL
+function getBaseUrl(): string {
+  // Force seoagent.com in production, ignore VERCEL_URL to avoid seometrics.ai redirects
+  return process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -292,7 +298,7 @@ async function handleCreatePortalSession(userPlan: any) {
     // Create customer portal session
     const session = await stripe.billingPortal.sessions.create({
       customer: userPlan.stripe_customer_id,
-      return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/account`,
+      return_url: `${getBaseUrl()}/account`,
     });
 
     return NextResponse.json({

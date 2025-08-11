@@ -96,7 +96,7 @@ ${urlList.map(url => {
       .from('sitemap_submissions')
       .upsert({
         user_token: userToken,
-        site_url: siteUrl,
+        site_url: siteUrl, // Use original siteUrl for consistency with queries
         sitemap_url: `${cleanSiteUrl}/sitemap.xml`,
         status: 'generated',
         submission_method: 'api',

@@ -11,6 +11,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Helper function to get the correct base URL
+function getBaseUrl(): string {
+  // Force seoagent.com in production, ignore VERCEL_URL to avoid seometrics.ai redirects
+  return process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+}
+
 // Subscription tier configuration
 const SUBSCRIPTION_TIERS = {
   starter: {
@@ -101,8 +107,8 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/account?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/account?canceled=true`,
+      success_url: `${getBaseUrl()}/account?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${getBaseUrl()}/account?canceled=true`,
       metadata: {
         userToken: userToken,
         tier: tier,
