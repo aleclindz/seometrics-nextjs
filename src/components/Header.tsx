@@ -35,9 +35,7 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
               className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300"
               aria-label="Get support via Calendly"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.25a9.75 9.75 0 109.75 9.75M15.91 13.313c.227-.1.453-.3.598-.586.126-.25.172-.515.158-.78-.126-2.5-1.062-7.42-3.403-9.864a.75.75 0 10-1.06 1.06c1.875 1.954 2.7 6.001 2.8 8.25a.75.75 0 001.907.164z" />
-              </svg>
+              <span className="mr-2">🛟</span>
               Support
             </a>
             <a 
