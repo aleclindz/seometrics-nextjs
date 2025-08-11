@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
       hasClientId: !!clientId,
       hasClientSecret: !!clientSecret,
       clientIdPrefix: clientId ? clientId.substring(0, 10) + '...' : 'undefined',
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL_URL: process.env.VERCEL_URL,
+      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
       baseUrl,
       redirectUri
     });
@@ -89,9 +92,13 @@ export async function GET(request: NextRequest) {
     });
 
     console.log('[GSC OAUTH START] Generated auth URL for user:', loginUser.email);
+    console.log('[GSC OAUTH START] Full auth URL:', authUrl);
+    console.log('[GSC OAUTH START] Redirect URI being used:', redirectUri);
     
     return NextResponse.json({ 
       authUrl,
+      redirectUri, // Add for debugging
+      baseUrl, // Add for debugging
       message: 'Redirect to Google OAuth'
     });
 
