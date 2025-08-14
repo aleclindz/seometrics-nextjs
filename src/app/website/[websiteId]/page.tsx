@@ -434,8 +434,9 @@ export default function WebsitePage() {
                   <ActionItemsInterface 
                     siteUrl={website.url}
                     onRefresh={() => {
-                      // Optionally refresh website data
-                      window.location.reload();
+                      // Refresh AI Activity Summary instead of full page reload
+                      // The ActionItemsInterface already refreshes its own data
+                      // No need for full page reload
                     }}
                   />
                 </div>

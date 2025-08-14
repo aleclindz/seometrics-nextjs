@@ -285,6 +285,38 @@ export class ActionItemService {
 
   // Private helper methods
 
+  /**
+   * Generate URL variations to handle different formats (sc-domain:, https://, www. variations)
+   */
+  private static getNormalizedUrls(siteUrl: string): string[] {
+    const variations = new Set<string>();
+    
+    // Add the original URL
+    variations.add(siteUrl);
+    
+    // Extract domain from different formats
+    let domain = siteUrl;
+    
+    // Handle sc-domain: format
+    if (domain.startsWith('sc-domain:')) {
+      domain = domain.replace('sc-domain:', '');
+      variations.add(`https://${domain}`);
+      variations.add(`https://www.${domain}`);
+      variations.add(`http://${domain}`);
+      variations.add(`http://www.${domain}`);
+    } else {
+      // Handle regular URLs
+      domain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '');
+      variations.add(`sc-domain:${domain}`);
+      variations.add(`https://${domain}`);
+      variations.add(`https://www.${domain}`);
+      variations.add(`http://${domain}`);
+      variations.add(`http://www.${domain}`);
+    }
+    
+    return Array.from(variations);
+  }
+
   private static async detectIndexingIssues(userToken: string, siteUrl: string): Promise<DetectedIssue[]> {
     const issues: DetectedIssue[] = [];
 
@@ -322,11 +354,15 @@ export class ActionItemService {
   private static async detectSitemapIssues(userToken: string, siteUrl: string): Promise<DetectedIssue[]> {
     const issues: DetectedIssue[] = [];
 
+    // Normalize URL to handle both regular URLs and sc-domain: format
+    const urlVariations = this.getNormalizedUrls(siteUrl);
+
+    // Try to find sitemap with any of the URL variations
     const { data: sitemap } = await supabase
       .from('sitemap_submissions')
       .select('*')
       .eq('user_token', userToken)
-      .eq('site_url', siteUrl)
+      .in('site_url', urlVariations)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -368,11 +404,16 @@ export class ActionItemService {
   private static async detectRobotsIssues(userToken: string, siteUrl: string): Promise<DetectedIssue[]> {
     const issues: DetectedIssue[] = [];
 
+    // Use URL variations to handle different formats
+    const urlVariations = this.getNormalizedUrls(siteUrl);
+
     const { data: robots } = await supabase
       .from('robots_analyses')
       .select('*')
       .eq('user_token', userToken)
-      .eq('site_url', siteUrl)
+      .in('site_url', urlVariations)
+      .order('analyzed_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (!robots || !robots.exists) {
