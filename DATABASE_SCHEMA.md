@@ -641,6 +641,54 @@ CREATE TABLE api_usage (
 
 ---
 
+## 🔍 SEO Action Items System
+
+### `seo_action_items`
+**Purpose**: Track detected SEO issues and their resolution lifecycle
+```sql
+CREATE TABLE seo_action_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_token VARCHAR(255) NOT NULL REFERENCES login_users(token) ON DELETE CASCADE,
+    site_url TEXT NOT NULL,
+    issue_type VARCHAR(100) NOT NULL,
+    issue_category VARCHAR(50) NOT NULL, -- 'indexing', 'sitemap', 'robots', 'schema', 'mobile', 'performance', 'meta_tags', 'alt_tags', 'core_vitals', 'security'
+    severity VARCHAR(20) NOT NULL, -- 'critical', 'high', 'medium', 'low'
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    impact_description TEXT,
+    fix_recommendation TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'detected', -- 'detected', 'assigned', 'in_progress', 'completed', 'verified', 'closed', 'dismissed'
+    affected_urls TEXT[] DEFAULT '{}',
+    reference_id VARCHAR(255),
+    reference_table VARCHAR(100),
+    detected_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    assigned_at TIMESTAMP WITH TIME ZONE,
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    verified_at TIMESTAMP WITH TIME ZONE,
+    dismissed_at TIMESTAMP WITH TIME ZONE,
+    next_check_at TIMESTAMP WITH TIME ZONE,
+    fix_type VARCHAR(100),
+    fix_details JSONB DEFAULT '{}',
+    verification_status VARCHAR(20), -- 'pending', 'verified', 'failed', 'needs_recheck'
+    verification_attempts INTEGER DEFAULT 0,
+    verification_details JSONB DEFAULT '{}',
+    metadata JSONB DEFAULT '{}',
+    priority_score INTEGER DEFAULT 50,
+    estimated_impact VARCHAR(20), -- 'high', 'medium', 'low'
+    estimated_effort VARCHAR(20), -- 'easy', 'medium', 'hard'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+**Key Points**:
+- Comprehensive issue tracking from detection to resolution
+- Priority scoring system for issue triage
+- Reference linking to source tables (url_inspections, sitemap_submissions, etc.)
+- Unique constraint prevents duplicate active issues
+
+---
+
 ## 🗂️ Content Management Extensions
 
 ### `website_analysis`
@@ -731,6 +779,15 @@ CREATE INDEX idx_technical_seo_fixes_user_token ON technical_seo_fixes(user_toke
 CREATE INDEX idx_user_plans_user_token ON user_plans(user_token);
 CREATE INDEX idx_usage_tracking_user_token ON usage_tracking(user_token);
 CREATE INDEX idx_usage_tracking_month_year ON usage_tracking(month_year);
+
+-- SEO Action Items
+CREATE INDEX idx_seo_action_items_user_token ON seo_action_items(user_token);
+CREATE INDEX idx_seo_action_items_site_url ON seo_action_items(site_url);
+CREATE INDEX idx_seo_action_items_status ON seo_action_items(status);
+CREATE INDEX idx_seo_action_items_severity ON seo_action_items(severity);
+CREATE INDEX idx_seo_action_items_category ON seo_action_items(issue_category);
+CREATE INDEX idx_seo_action_items_priority ON seo_action_items(priority_score DESC);
+CREATE INDEX idx_seo_action_items_detected_at ON seo_action_items(detected_at);
 ```
 
 ---
@@ -747,6 +804,7 @@ CREATE INDEX idx_usage_tracking_month_year ON usage_tracking(month_year);
 
 ## 🔄 Recent Schema Changes
 
+- **2025-08-13**: Added `seo_action_items` table for comprehensive SEO issue tracking and management
 - **2025-08-07**: Fixed sitemap_submissions table documentation - removed non-existent columns (generated_at, sitemap_content, url_count, gsc_property)
 - **Website Management**: Added is_managed and is_excluded_from_sync columns to websites table
 - **Article Queue**: Enhanced with granular status tracking and CMS integration fields
@@ -754,5 +812,5 @@ CREATE INDEX idx_usage_tracking_month_year ON usage_tracking(month_year);
 
 ---
 
-**📝 Last Updated**: August 7, 2025
-**📋 Migration Files Analyzed**: All files in `/supabase/migrations/` up to `032_fix_sitemap_submissions.sql`
+**📝 Last Updated**: August 13, 2025
+**📋 Migration Files Analyzed**: All files in `/supabase/migrations/` up to `034_create_seo_action_items_table.sql`
