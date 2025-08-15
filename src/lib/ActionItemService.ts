@@ -357,7 +357,22 @@ export class ActionItemService {
     // Normalize URL to handle both regular URLs and sc-domain: format
     const urlVariations = this.getNormalizedUrls(siteUrl);
 
-    // Try to find sitemap with any of the URL variations
+    try {
+      // First, get fresh sitemap status from GSC API
+      const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gsc/sitemap-status?userToken=${userToken}&siteUrl=${encodeURIComponent(siteUrl)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (gscResponse.ok) {
+        const gscData = await gscResponse.json();
+        console.log(`[ACTION ITEMS] GSC sitemap check: ${gscData.success ? gscData.summary?.totalSitemaps || 0 : 0} sitemaps found`);
+      }
+    } catch (error) {
+      console.log('[ACTION ITEMS] GSC sitemap check failed, falling back to database only');
+    }
+
+    // Try to find sitemap with any of the URL variations (now updated with fresh GSC data)
     const { data: sitemap } = await supabase
       .from('sitemap_submissions')
       .select('*')

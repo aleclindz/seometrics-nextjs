@@ -80,13 +80,13 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
     try {
       setLoading(true);
       
-      // Fetch active action items
+      // Fetch active action items (including completed but not verified ones)
       const activeResponse = await fetch(
         `/api/action-items?userToken=${user.token}&siteUrl=${encodeURIComponent(siteUrl)}&status=detected,assigned,in_progress,completed`
       );
       const activeData = await activeResponse.json();
 
-      // Fetch completed action items
+      // Fetch verified/closed action items (completed items)
       const completedResponse = await fetch(
         `/api/action-items?userToken=${user.token}&siteUrl=${encodeURIComponent(siteUrl)}&status=verified,closed&limit=20`
       );
@@ -494,11 +494,43 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                     {item.status === 'completed' && (
                       <div className="text-center">
                         <div className="text-green-600 text-sm font-medium mb-1">
-                          ✅ Completed
+                          ✅ Fix Applied
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 mb-2">
                           Awaiting verification
                         </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              // Trigger verification check
+                              const response = await fetch(`/api/action-items/${item.id}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                  action: 'verify_completion',
+                                  userToken: user.token 
+                                })
+                              });
+                              const result = await response.json();
+                              
+                              if (result.success && result.verified) {
+                                // Show success feedback
+                                alert('✅ Verification successful! Issue has been resolved and verified.');
+                              } else if (result.success && !result.verified) {
+                                // Show needs more work feedback
+                                alert('⚠️ Verification failed - the issue still exists and needs additional work.');
+                              }
+                              
+                              await fetchActionItems(); // Refresh to show updated status
+                            } catch (error) {
+                              console.error('Error verifying completion:', error);
+                              alert('❌ Error during verification. Please try again.');
+                            }
+                          }}
+                          className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded hover:bg-blue-200 transition-colors"
+                        >
+                          ⚡ Verify Now
+                        </button>
                       </div>
                     )}
                   </div>

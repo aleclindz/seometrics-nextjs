@@ -20,9 +20,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameters: userToken, siteUrl' }, { status: 400 });
     }
 
-    // Clean the site URL
-    const cleanSiteUrl = siteUrl.replace(/\/$/, ''); // Remove trailing slash
-    const domain = cleanSiteUrl.replace(/^https?:\/\//, '');
+    // Clean the site URL and handle sc-domain: format
+    let cleanSiteUrl = siteUrl.replace(/\/$/, ''); // Remove trailing slash
+    let domain = '';
+    
+    if (siteUrl.startsWith('sc-domain:')) {
+      // For sc-domain format, extract domain and construct proper HTTPS URL
+      domain = siteUrl.replace('sc-domain:', '');
+      cleanSiteUrl = `https://${domain}`;
+    } else {
+      // For regular URLs, extract domain
+      domain = cleanSiteUrl.replace(/^https?:\/\//, '');
+      // Ensure we have a proper URL with protocol
+      if (!cleanSiteUrl.startsWith('http')) {
+        cleanSiteUrl = `https://${cleanSiteUrl}`;
+      }
+    }
+    
+    console.log(`[SITEMAP GENERATION] Processing: siteUrl=${siteUrl}, cleanSiteUrl=${cleanSiteUrl}, domain=${domain}`);
 
     // Step 1: Discover URLs for the sitemap
     console.log('[SITEMAP GENERATION] Discovering URLs for sitemap');
@@ -166,8 +181,8 @@ ${urlList.map(url => {
             refresh_token: connection.refresh_token
           });
 
-          // Create Search Console API client
-          const searchconsole = google.searchconsole({ version: 'v1', auth: oauth2Client });
+          // Create Webmasters API client (correct API for sitemap submission)
+          const webmasters = google.webmasters({ version: 'v3', auth: oauth2Client });
 
           // Find the appropriate GSC property
           const { data: properties } = await supabase
@@ -183,12 +198,15 @@ ${urlList.map(url => {
           );
 
           if (gscProperty) {
-            // Submit sitemap to GSC
+            // Submit sitemap to GSC using the correct format
+            // For sc-domain properties, we still need to provide the full HTTPS URL for the sitemap
             const sitemapUrl = `${cleanSiteUrl}/sitemap.xml`;
             
-            const submitResponse = await searchconsole.sitemaps.submit({
+            console.log(`[SITEMAP GENERATION] Submitting to GSC: property=${gscProperty.site_url}, sitemap=${sitemapUrl}`);
+            
+            const submitResponse = await webmasters.sitemaps.submit({
               siteUrl: gscProperty.site_url,
-              feedpath: sitemapUrl
+              feedpath: sitemapUrl  // Always use full HTTPS URL for sitemap, even for sc-domain properties
             });
 
             gscSubmissionResult = {

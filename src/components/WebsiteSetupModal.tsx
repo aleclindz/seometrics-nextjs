@@ -172,9 +172,125 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     }
   };
 
+  const [showCMSSetup, setShowCMSSetup] = useState(false);
+  const [selectedCMSType, setSelectedCMSType] = useState<string>('');
+  const [cmsFormData, setCmsFormData] = useState({
+    connection_name: '',
+    cms_type: 'strapi',
+    base_url: '',
+    api_token: '',
+    content_type: 'api::article.article'
+  });
+  const [cmsTestResult, setCmsTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [cmsConnecting, setCmsConnecting] = useState(false);
+  const [cmsTesting, setCmsTesting] = useState(false);
+
   const handleCMSConnect = (cmsType: string) => {
-    // Navigate to CMS connection page
-    window.open(`/website/${website.id}/cms-connection?type=${cmsType}`, '_blank');
+    setSelectedCMSType(cmsType);
+    setCmsFormData(prev => ({ ...prev, cms_type: cmsType }));
+    setShowCMSSetup(true);
+  };
+
+  const handleCMSFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCmsFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const testCMSConnection = async () => {
+    if (!cmsFormData.base_url || !cmsFormData.api_token) {
+      setCmsTestResult({
+        success: false,
+        message: 'Please enter both base URL and API token to test the connection'
+      });
+      return;
+    }
+
+    try {
+      setCmsTesting(true);
+      setCmsTestResult(null);
+      setCmsError(null);
+
+      const response = await fetch('/api/cms/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cms_type: cmsFormData.cms_type,
+          base_url: cmsFormData.base_url,
+          api_token: cmsFormData.api_token,
+          content_type: cmsFormData.content_type,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCmsTestResult({
+          success: true,
+          message: data.message || 'Connection successful!'
+        });
+      } else {
+        setCmsTestResult({
+          success: false,
+          message: data.error || 'Connection failed'
+        });
+      }
+    } catch (err) {
+      setCmsTestResult({
+        success: false,
+        message: 'Network error during connection test'
+      });
+    } finally {
+      setCmsTesting(false);
+    }
+  };
+
+  const saveCMSConnection = async () => {
+    if (!cmsFormData.connection_name || !cmsFormData.base_url || !cmsFormData.api_token) {
+      setCmsError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setCmsConnecting(true);
+      setCmsError(null);
+
+      const response = await fetch('/api/cms/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: user?.token,
+          ...cmsFormData
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Refresh CMS connections list
+        await fetchCMSConnections();
+        onStatusUpdate?.({ cmsStatus: 'connected' });
+        
+        // Reset form and close setup
+        setShowCMSSetup(false);
+        setCmsFormData({
+          connection_name: '',
+          cms_type: 'strapi',
+          base_url: '',
+          api_token: '',
+          content_type: 'api::article.article'
+        });
+        setCmsTestResult(null);
+      } else {
+        setCmsError(data.error || 'Failed to save connection');
+      }
+    } catch (err) {
+      setCmsError('Network error while saving connection');
+    } finally {
+      setCmsConnecting(false);
+    }
   };
 
   // SEOAgent.js Functions
@@ -534,6 +650,126 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                         </div>
                       </div>
                     ))}
+                  </div>
+                ) : showCMSSetup ? (
+                  <div>
+                    <div className="flex items-center space-x-3 mb-6">
+                      <button
+                        onClick={() => {
+                          setShowCMSSetup(false);
+                          setCmsTestResult(null);
+                          setCmsError(null);
+                        }}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                      </button>
+                      <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 capitalize">
+                        Setup {selectedCMSType} Connection
+                      </h4>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Connection Name
+                        </label>
+                        <input
+                          type="text"
+                          name="connection_name"
+                          value={cmsFormData.connection_name}
+                          onChange={handleCMSFormChange}
+                          placeholder="My Strapi CMS"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Base URL
+                        </label>
+                        <input
+                          type="url"
+                          name="base_url"
+                          value={cmsFormData.base_url}
+                          onChange={handleCMSFormChange}
+                          placeholder="https://your-strapi.com"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          API Token
+                        </label>
+                        <input
+                          type="password"
+                          name="api_token"
+                          value={cmsFormData.api_token}
+                          onChange={handleCMSFormChange}
+                          placeholder="Your API token"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Content Type
+                        </label>
+                        <input
+                          type="text"
+                          name="content_type"
+                          value={cmsFormData.content_type}
+                          onChange={handleCMSFormChange}
+                          placeholder="api::article.article"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      
+                      {cmsTestResult && (
+                        <div className={`p-3 rounded-lg text-sm ${
+                          cmsTestResult.success
+                            ? 'bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+                            : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                        }`}>
+                          {cmsTestResult.message}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center space-x-3 pt-4">
+                        <button
+                          onClick={testCMSConnection}
+                          disabled={cmsTesting}
+                          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 disabled:opacity-50"
+                        >
+                          {cmsTesting ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                              Testing...
+                            </>
+                          ) : (
+                            'Test Connection'
+                          )}
+                        </button>
+                        
+                        <button
+                          onClick={saveCMSConnection}
+                          disabled={cmsConnecting || !cmsTestResult?.success}
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
+                        >
+                          {cmsConnecting ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Saving...
+                            </>
+                          ) : (
+                            'Save Connection'
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div>
