@@ -29,6 +29,7 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showNeedsVerification, setShowNeedsVerification] = useState(true);
   const [processingItems, setProcessingItems] = useState<Set<string>>(new Set());
   const [autoRefresh, setAutoRefresh] = useState(false);
 
@@ -56,6 +57,7 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
     assigned: 'bg-yellow-50 border-yellow-200',
     in_progress: 'bg-blue-50 border-blue-200',
     completed: 'bg-green-50 border-green-200',
+    needs_verification: 'bg-orange-50 border-orange-200',
     verified: 'bg-green-100 border-green-300',
     closed: 'bg-gray-50 border-gray-200',
     dismissed: 'bg-gray-100 border-gray-300'
@@ -83,7 +85,7 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
       
       // Fetch active action items (including completed but not verified ones)
       const activeResponse = await fetch(
-        `/api/action-items?userToken=${user.token}&siteUrl=${encodeURIComponent(siteUrl)}&status=detected,assigned,in_progress,completed`
+        `/api/action-items?userToken=${user.token}&siteUrl=${encodeURIComponent(siteUrl)}&status=detected,assigned,in_progress,completed,needs_verification`
       );
       const activeData = await activeResponse.json();
 
@@ -455,6 +457,10 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
     if (selectedSeverity !== 'all' && item.severity !== selectedSeverity) {
       return false;
     }
+    // Filter needs_verification items based on toggle
+    if (item.status === 'needs_verification' && !showNeedsVerification) {
+      return false;
+    }
     return true;
   });
 
@@ -561,6 +567,16 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
 
           <div className="flex items-center space-x-2">
             <button
+              onClick={() => setShowNeedsVerification(!showNeedsVerification)}
+              className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                showNeedsVerification 
+                  ? 'bg-orange-100 text-orange-800 border border-orange-200' 
+                  : 'bg-gray-100 text-gray-700 border border-gray-200'
+              }`}
+            >
+              {showNeedsVerification ? 'Hide' : 'Show'} Needs Verification ({activeItems.filter(item => item.status === 'needs_verification').length})
+            </button>
+            <button
               onClick={() => setShowCompleted(!showCompleted)}
               className={`px-4 py-2 rounded-lg text-sm transition-colors ${
                 showCompleted 
@@ -638,7 +654,7 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                     )}
                     
                     {/* Pre-fix explanation for non-completed items */}
-                    {item.status !== 'completed' && item.status !== 'verified' && (
+                    {item.status !== 'completed' && item.status !== 'needs_verification' && item.status !== 'verified' && (
                       <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-3">
                         <p className="text-sm text-green-800 whitespace-pre-line">
                           <span className="font-medium">What SEOAgent will do:</span><br />
@@ -669,7 +685,7 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                   </div>
                   
                   <div className="flex flex-col space-y-2 ml-6">
-                    {item.status !== 'completed' && item.status !== 'verified' && (
+                    {item.status !== 'completed' && item.status !== 'needs_verification' && item.status !== 'verified' && (
                       <>
                         {(() => {
                           const buttonType = getFixButtonType(item);
@@ -732,13 +748,19 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                       </>
                     )}
                     
-                    {item.status === 'completed' && (
+                    {(item.status === 'completed' || item.status === 'needs_verification') && (
                       <div className="text-center">
-                        <div className="text-green-600 text-sm font-medium mb-1">
-                          ✅ Fix Applied
+                        <div className={`text-sm font-medium mb-1 ${
+                          item.status === 'needs_verification' 
+                            ? 'text-orange-600' 
+                            : 'text-green-600'
+                        }`}>
+                          {item.status === 'needs_verification' ? '⚠️ Needs Verification' : '✅ Fix Applied'}
                         </div>
                         <div className="text-xs text-gray-500 mb-2">
-                          {item.issue_category === 'indexing' 
+                          {item.status === 'needs_verification'
+                            ? 'Verification failed - may need more time or manual review'
+                            : item.issue_category === 'indexing' 
                             ? 'Waiting for Google to re-crawl pages (24-48 hrs typical)'
                             : item.issue_category === 'sitemap'
                             ? 'Waiting for Google to download updated sitemap'

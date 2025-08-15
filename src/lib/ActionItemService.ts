@@ -18,7 +18,7 @@ export interface ActionItem {
   description: string;
   impact_description?: string;
   fix_recommendation?: string;
-  status: 'detected' | 'assigned' | 'in_progress' | 'completed' | 'verified' | 'closed' | 'dismissed';
+  status: 'detected' | 'assigned' | 'in_progress' | 'completed' | 'needs_verification' | 'verified' | 'closed' | 'dismissed';
   affected_urls?: string[];
   reference_id?: string;
   reference_table?: string;
@@ -222,7 +222,7 @@ export class ActionItemService {
         verification_status: verificationResult ? 'verified' : 'needs_recheck',
         verification_attempts: (actionItem.verification_attempts || 0) + 1,
         verification_details: verificationDetails,
-        status: verificationResult ? 'verified' : 'completed'
+        status: verificationResult ? 'verified' : 'needs_verification'
       });
 
       return verificationResult;
@@ -725,13 +725,77 @@ export class ActionItemService {
   }
 
   private static async verifyRobotsFix(actionItem: ActionItem): Promise<boolean> {
-    const { data: robots } = await supabase
-      .from('robots_analyses')
-      .select('*')
-      .eq('site_url', actionItem.site_url)
-      .single();
+    try {
+      console.log(`[ACTION ITEMS] Starting robots.txt verification for ${actionItem.site_url}`);
+      
+      // Check if robots.txt file is actually accessible
+      const siteUrl = actionItem.site_url.startsWith('sc-domain:') 
+        ? actionItem.site_url.replace('sc-domain:', 'https://') 
+        : actionItem.site_url;
+      
+      const urlsToCheck = [
+        `${siteUrl}/robots.txt`,
+        `${siteUrl.replace('https://', 'https://www.')}/robots.txt`
+      ];
 
-    return !!(robots && robots.exists && robots.google_fetch_status !== 'error');
+      let robotsFileExists = false;
+      let robotsContent = '';
+      
+      for (const robotsUrl of urlsToCheck) {
+        try {
+          console.log(`[ACTION ITEMS] Checking robots.txt at: ${robotsUrl}`);
+          const response = await fetch(robotsUrl, { 
+            method: 'GET',
+            headers: {
+              'User-Agent': 'SEOAgent Bot 1.0'
+            }
+          });
+          
+          if (response.ok) {
+            robotsContent = await response.text();
+            robotsFileExists = true;
+            console.log(`[ACTION ITEMS] ✅ Robots.txt found at: ${robotsUrl}`);
+            console.log(`[ACTION ITEMS] Content preview: ${robotsContent.substring(0, 200)}...`);
+            break;
+          } else {
+            console.log(`[ACTION ITEMS] ❌ Robots.txt not accessible at: ${robotsUrl} (Status: ${response.status})`);
+          }
+        } catch (fetchError) {
+          console.log(`[ACTION ITEMS] ❌ Error fetching robots.txt at ${robotsUrl}:`, fetchError);
+        }
+      }
+
+      // Update database record to reflect actual status
+      if (robotsFileExists) {
+        console.log(`[ACTION ITEMS] Updating database with robots.txt verification success`);
+        await supabase
+          .from('robots_analyses')
+          .upsert({
+            user_token: actionItem.user_token,
+            site_url: actionItem.site_url,
+            exists: true,
+            accessible: true,
+            size: robotsContent.length,
+            content: robotsContent,
+            google_fetch_status: 'success',
+            google_fetch_errors: 0,
+            analyzed_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_token,site_url'
+          });
+      }
+
+      console.log(`[ACTION ITEMS] Robots.txt verification result for ${actionItem.site_url}:`, {
+        fileExists: robotsFileExists,
+        contentLength: robotsContent.length,
+        urlsChecked: urlsToCheck
+      });
+
+      return robotsFileExists;
+    } catch (error) {
+      console.error('[ACTION ITEMS] Error verifying robots.txt fix:', error);
+      return false;
+    }
   }
 
   private static async verifyIndexingFix(actionItem: ActionItem): Promise<boolean> {
@@ -744,25 +808,33 @@ export class ActionItemService {
     // First, try to refresh indexing data via GSC URL Inspection API
     let gscRefreshSuccess = false;
     try {
-      for (const url of actionItem.affected_urls.slice(0, 3)) { // Limit to 3 URLs to avoid rate limits
-        const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gsc/url-inspection?userToken=${actionItem.user_token}&siteUrl=${encodeURIComponent(actionItem.site_url)}&inspectUrl=${encodeURIComponent(url)}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
+      // Limit to 3 URLs to avoid rate limits and timeouts
+      const urlsToInspect = actionItem.affected_urls.slice(0, 3);
+      
+      console.log(`[ACTION ITEMS] Making POST request to URL inspection API with ${urlsToInspect.length} URLs`);
+      
+      const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gsc/url-inspection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: actionItem.user_token,
+          siteUrl: actionItem.site_url,
+          urls: urlsToInspect
+        })
+      });
 
-        if (gscResponse.ok) {
-          const gscData = await gscResponse.json();
-          if (gscData.success) {
-            gscRefreshSuccess = true;
-            console.log(`[ACTION ITEMS] GSC URL inspection successful for ${url}:`, {
-              canBeIndexed: gscData.inspection?.canBeIndexed,
-              indexStatus: gscData.inspection?.indexStatus
-            });
-          }
+      if (gscResponse.ok) {
+        const gscData = await gscResponse.json();
+        if (gscData.success) {
+          gscRefreshSuccess = true;
+          console.log(`[ACTION ITEMS] GSC URL inspection successful for ${urlsToInspect.length} URLs:`, {
+            indexable: gscData.data.summary.indexable,
+            blocked: gscData.data.summary.blocked,
+            errors: gscData.data.summary.errors
+          });
         }
-        
-        // Add delay between API calls to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        console.log(`[ACTION ITEMS] GSC URL inspection failed with status:`, gscResponse.status);
       }
     } catch (error) {
       console.log(`[ACTION ITEMS] GSC URL Inspection failed:`, error);
