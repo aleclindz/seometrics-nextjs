@@ -419,7 +419,8 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
     const instructions = CodingAgentInstructionsGenerator.generate(
       actionItem.issue_type, 
       actionItem.title,
-      actionItem.affected_urls
+      actionItem.affected_urls,
+      actionItem.metadata
     );
     
     if (instructions) {
@@ -636,6 +637,33 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                     <p className="text-gray-600 mb-3">
                       {item.description}
                     </p>
+                    
+                    {/* Detailed problem breakdown for indexing issues */}
+                    {item.issue_type === 'indexing_blocked_pages' && item.metadata?.problemsByType && (
+                      <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-3">
+                        <p className="text-sm font-medium text-red-900 mb-2">🔍 Specific Issues Found:</p>
+                        {Object.entries(item.metadata.problemsByType).map(([problemType, problems]: [string, any]) => (
+                          <div key={problemType} className="mb-2 last:mb-0">
+                            <div className="text-sm text-red-800">
+                              <span className="font-medium">• {problemType}</span> ({problems.length} page{problems.length > 1 ? 's' : ''}):
+                            </div>
+                            <div className="text-xs text-red-700 ml-2 mt-1">
+                              {problems[0].explanation}
+                            </div>
+                            <div className="text-xs text-red-600 ml-2 mt-1">
+                              <strong>Affected:</strong> {problems.map((p: any) => {
+                                try {
+                                  const url = new URL(p.url);
+                                  return url.pathname;
+                                } catch {
+                                  return p.url;
+                                }
+                              }).join(', ')}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     
                     {item.impact_description && (
                       <div className="bg-orange-50 border border-orange-200 rounded-md p-3 mb-3">

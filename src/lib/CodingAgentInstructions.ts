@@ -11,7 +11,7 @@ export interface CodingAgentInstructions {
 }
 
 export class CodingAgentInstructionsGenerator {
-  static generate(issueType: string, issueTitle: string, affectedUrls?: string[]): CodingAgentInstructions | null {
+  static generate(issueType: string, issueTitle: string, affectedUrls?: string[], metadata?: any): CodingAgentInstructions | null {
     const instructionsMap: Record<string, CodingAgentInstructions> = {
       mobile_usability_issues: {
         issueTitle: 'Fix Mobile Usability Issues',
@@ -333,7 +333,164 @@ export default function Contact() {
       }
     };
 
+    // Special handling for indexing issues to generate URL-specific instructions
+    if (issueType === 'indexing_blocked_pages' && affectedUrls && metadata?.problemsByType) {
+      return this.generateSpecificIndexingInstructions(issueTitle, affectedUrls, metadata);
+    }
+
     return instructionsMap[issueType] || null;
+  }
+
+  /**
+   * Generate specific instructions for indexing issues based on actual detected problems
+   */
+  private static generateSpecificIndexingInstructions(
+    issueTitle: string, 
+    affectedUrls: string[], 
+    metadata: any
+  ): CodingAgentInstructions {
+    const problemsByType = metadata.problemsByType || {};
+    const analysisData = metadata.analysisData || {};
+    
+    // Analyze the URLs to understand what type of pages they are
+    const urlAnalysis = affectedUrls.map(url => {
+      try {
+        const parsedUrl = new URL(url);
+        const path = parsedUrl.pathname.toLowerCase();
+        const pageName = path.replace('/', '') || 'homepage';
+        
+        // Determine likely page type and content
+        let pageType = 'general';
+        let suggestedContent = 'relevant content for this page';
+        
+        if (path.includes('contact')) {
+          pageType = 'contact';
+          suggestedContent = 'contact form, phone number, email, and address';
+        } else if (path.includes('about')) {
+          pageType = 'about';
+          suggestedContent = 'company description, mission, team information';
+        } else if (path.includes('service')) {
+          pageType = 'services';
+          suggestedContent = 'detailed service descriptions and pricing';
+        } else if (path.includes('product')) {
+          pageType = 'product';
+          suggestedContent = 'product details, specifications, and pricing';
+        } else if (path.includes('blog') || path.includes('article')) {
+          pageType = 'content';
+          suggestedContent = 'article content with proper headings and structure';
+        } else if (path.includes('privacy')) {
+          pageType = 'legal';
+          suggestedContent = 'privacy policy content';
+        } else if (path.includes('terms')) {
+          pageType = 'legal';
+          suggestedContent = 'terms of service content';
+        }
+        
+        return { url, path, pageName, pageType, suggestedContent };
+      } catch {
+        return { url, path: url, pageName: 'unknown', pageType: 'general', suggestedContent: 'relevant content' };
+      }
+    });
+    
+    // Generate problem-specific descriptions
+    const problemDescriptions = Object.entries(problemsByType).map(([problemType, problems]: [string, any]) => {
+      const urls = problems.map((p: any) => p.url);
+      return `**${problemType}** (${problems.length} page${problems.length > 1 ? 's' : ''}): ${problems[0].explanation}`;
+    }).join('\n');
+    
+    // Generate specific fix instructions based on problem types
+    const specificInstructions: string[] = [];
+    const codeExamples: string[] = [];
+    
+    if (problemsByType['Page Not Found']) {
+      const notFoundPages = problemsByType['Page Not Found'];
+      const pageAnalysis = notFoundPages.map((p: any) => 
+        urlAnalysis.find(a => a.url === p.url)
+      ).filter(Boolean);
+      
+      specificInstructions.push(
+        'Fix 404 "Page Not Found" errors by creating the missing pages',
+        'Each page should have proper content, meta tags, and navigation'
+      );
+      
+      // Generate code examples for each specific page
+      pageAnalysis.forEach((page: any) => {
+        const componentName = page.pageName.charAt(0).toUpperCase() + page.pageName.slice(1);
+        const fileName = page.path === '/' ? 'page.tsx' : `${page.pageName}/page.tsx`;
+        
+        codeExamples.push(`
+// Create: app/${fileName}
+export default function ${componentName}() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">${componentName}</h1>
+      {/* Add ${page.suggestedContent} */}
+      <div className="prose max-w-none">
+        <p>Add your ${page.suggestedContent} here.</p>
+      </div>
+    </div>
+  );
+}
+
+// Don't forget to add metadata for SEO
+export const metadata = {
+  title: '${componentName} | Your Site Name',
+  description: 'Description for the ${page.pageName} page',
+};`);
+      });
+    }
+    
+    if (problemsByType['Robots.txt Blocking']) {
+      specificInstructions.push(
+        'Update robots.txt to allow access to blocked pages',
+        'Ensure search engines can crawl important content pages'
+      );
+      
+      codeExamples.push(`
+// Update: public/robots.txt
+User-agent: *
+Allow: /
+
+# Specifically allow the blocked pages:
+${problemsByType['Robots.txt Blocking'].map((p: any) => {
+  try {
+    return `Allow: ${new URL(p.url).pathname}`;
+  } catch {
+    return `Allow: ${p.url}`;
+  }
+}).join('\n')}
+
+Sitemap: https://yoursite.com/sitemap.xml`);
+    }
+    
+    if (problemsByType['Access Denied']) {
+      specificInstructions.push(
+        'Configure server to allow search engine access',
+        'Remove password protection or IP restrictions for public pages'
+      );
+    }
+    
+    // Generate testing steps specific to the affected URLs
+    const testingSteps = [
+      `Test each fixed URL directly in your browser:`,
+      ...urlAnalysis.map(page => `  • Visit ${page.url} - should load without 404 error`),
+      'Use Google Search Console URL Inspection tool to verify pages are accessible',
+      'Check that pages have proper meta tags and content',
+      'Submit URLs for re-indexing in Google Search Console',
+      'Monitor indexing status over the next 24-48 hours'
+    ];
+    
+    return {
+      issueTitle: `Fix Specific Indexing Issues: ${issueTitle}`,
+      problemDescription: `${affectedUrls.length} specific pages are blocked from Google indexing and need immediate fixes.`,
+      technicalDetails: `Detected Issues:\n${problemDescriptions}\n\nAffected URLs:\n${affectedUrls.map(url => `• ${url}`).join('\n')}`,
+      fixInstructions: specificInstructions,
+      codeExamples: codeExamples.join('\n\n'),
+      testingSteps,
+      expectedOutcome: `All ${affectedUrls.length} pages will be accessible to Google, properly indexed, and appear in search results`,
+      priority: 'high' as const,
+      estimatedTime: `${Math.max(1, Math.ceil(affectedUrls.length / 2))}-${Math.max(2, affectedUrls.length)} hours`
+    };
   }
 
   static generateCopyableInstructions(instructions: CodingAgentInstructions): string {

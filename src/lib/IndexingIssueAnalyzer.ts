@@ -206,17 +206,32 @@ export class IndexingIssueAnalyzer {
    * Generate user-friendly summary
    */
   private static generateSummary(totalProblems: number, problemsByType: Record<string, IndexingProblem[]>): string {
-    if (totalProblems === 1) {
-      const problemType = Object.keys(problemsByType)[0];
-      return `1 page has a ${problemType.toLowerCase()} preventing it from appearing in Google search results.`;
-    }
-    
     const types = Object.keys(problemsByType);
-    if (types.length === 1) {
-      return `${totalProblems} pages have ${types[0].toLowerCase()} issues preventing them from appearing in Google search results.`;
+    
+    if (totalProblems === 1) {
+      const problemType = types[0];
+      const problem = problemsByType[problemType][0];
+      return `1 page has a **${problemType}** issue: ${problem.explanation.split('.')[0]}.`;
     }
     
-    return `${totalProblems} pages have various indexing problems preventing them from appearing in Google search results.`;
+    if (types.length === 1) {
+      const problemType = types[0];
+      const problem = problemsByType[problemType][0];
+      return `${totalProblems} pages have **${problemType}** issues: ${problem.explanation.split('.')[0]}.`;
+    }
+    
+    // Multiple problem types - list them specifically
+    const typeDescriptions = types.map(type => {
+      const count = problemsByType[type].length;
+      const problem = problemsByType[type][0];
+      return `${count} ${count === 1 ? 'page has' : 'pages have'} **${type}** issues`;
+    });
+    
+    if (types.length === 2) {
+      return `${typeDescriptions.join(' and ')}.`;
+    } else {
+      return `${typeDescriptions.slice(0, -1).join(', ')}, and ${typeDescriptions[typeDescriptions.length - 1]}.`;
+    }
   }
 
   /**
