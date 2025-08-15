@@ -105,12 +105,12 @@ export async function PUT(request: NextRequest) {
       // Get user's current plan and managed website count
       const { data: userPlan, error: planError } = await supabase
         .from('user_plans')
-        .select('plan_id')
+        .select('tier')
         .eq('user_token', userToken)
-        .eq('is_active', true)
+        .eq('status', 'active')
         .single();
 
-      const currentPlan = userPlan?.plan_id || 'free';
+      const currentPlan = userPlan?.tier || 'free';
 
       // Count currently managed websites
       const { count: managedCount } = await supabase
@@ -130,11 +130,15 @@ export async function PUT(request: NextRequest) {
       const maxAllowed = planLimits[currentPlan as keyof typeof planLimits] || 1;
       
       if (maxAllowed !== -1 && (managedCount || 0) >= maxAllowed) {
-        const upgradeMessage = currentPlan === 'free' 
-          ? 'Upgrade to Starter plan ($29/month) to manage this website'
-          : currentPlan === 'starter'
-          ? 'Upgrade to Pro plan ($79/month) to manage up to 5 websites'
-          : 'Contact support to increase your website limit';
+        let upgradeMessage = 'Contact support to increase your website limit';
+        
+        if (currentPlan === 'free') {
+          upgradeMessage = 'Upgrade to Starter plan ($29/month) to manage this website';
+        } else if (currentPlan === 'starter') {
+          upgradeMessage = 'Upgrade to Pro plan ($79/month) to manage up to 5 websites';
+        } else if (currentPlan === 'pro') {
+          upgradeMessage = 'Upgrade to Enterprise plan for unlimited managed websites';
+        }
 
         return NextResponse.json(
           { 
