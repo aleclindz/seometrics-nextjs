@@ -102,17 +102,12 @@ export async function GET(request: NextRequest) {
           console.log(`[GSC SITEMAP STATUS] Updating local sitemap ${localSitemap.id} with GSC data`);
           
           const updateData = {
-            google_download_status: gscSitemap.lastDownloaded ? 'downloaded' : 'pending',
-            google_last_downloaded: gscSitemap.lastDownloaded,
-            google_processing_status: gscSitemap.isPending ? 'pending' : 'processed',
-            google_processed_urls: gscSitemap.contents?.[0]?.submitted || 0,
-            google_warnings: gscSitemap.warnings || 0,
-            verification_attempts: (localSitemap.verification_attempts || 0) + 1,
-            next_verification_check: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            verification_details: {
-              lastChecked: new Date().toISOString(),
-              gscData: gscSitemap
-            }
+            last_downloaded: gscSitemap.lastDownloaded,
+            is_pending: gscSitemap.isPending,
+            warnings: parseInt(gscSitemap.warnings || '0'),
+            errors: parseInt(gscSitemap.errors || '0'),
+            status: gscSitemap.lastDownloaded ? 'processed' : 'submitted',
+            updated_at: new Date().toISOString()
           };
           
           console.log(`[GSC SITEMAP STATUS] Update data:`, updateData);
@@ -132,8 +127,10 @@ export async function GET(request: NextRequest) {
               id: updateResult.id,
               site_url: updateResult.site_url,
               sitemap_url: updateResult.sitemap_url,
-              google_last_downloaded: updateResult.google_last_downloaded,
-              google_download_status: updateResult.google_download_status
+              last_downloaded: updateResult.last_downloaded,
+              status: updateResult.status,
+              is_pending: updateResult.is_pending,
+              warnings: updateResult.warnings
             });
           }
         } else {

@@ -627,8 +627,9 @@ export class ActionItemService {
         id: s.id,
         site_url: s.site_url,
         sitemap_url: s.sitemap_url,
-        google_last_downloaded: s.google_last_downloaded,
-        google_download_status: s.google_download_status
+        last_downloaded: s.last_downloaded,
+        status: s.status,
+        is_pending: s.is_pending
       })));
       
       // Find matching sitemap using the robust URL normalization service
@@ -646,19 +647,21 @@ export class ActionItemService {
         id: matchingSitemap.id,
         site_url: matchingSitemap.site_url,
         sitemap_url: matchingSitemap.sitemap_url,
-        google_last_downloaded: matchingSitemap.google_last_downloaded,
-        google_download_status: matchingSitemap.google_download_status
+        last_downloaded: matchingSitemap.last_downloaded,
+        status: matchingSitemap.status,
+        is_pending: matchingSitemap.is_pending
       } : null);
 
       // Verify sitemap exists and has been downloaded by Google
       const isVerified = !!(matchingSitemap && 
-        matchingSitemap.google_last_downloaded && 
-        matchingSitemap.google_download_status === 'downloaded');
+        matchingSitemap.last_downloaded && 
+        matchingSitemap.status === 'processed');
 
       console.log(`[ACTION ITEMS] Verification result:`, {
         hasMatchingSitemap: !!matchingSitemap,
-        hasDownloadDate: !!matchingSitemap?.google_last_downloaded,
-        downloadStatus: matchingSitemap?.google_download_status,
+        hasDownloadDate: !!matchingSitemap?.last_downloaded,
+        status: matchingSitemap?.status,
+        isPending: matchingSitemap?.is_pending,
         isVerified
       });
 
@@ -696,8 +699,9 @@ export class ActionItemService {
       console.log(`[ACTION ITEMS] Final sitemap verification for ${actionItem.site_url}:`, {
         sitemapExists: !!matchingSitemap,
         sitemapUrl: matchingSitemap?.sitemap_url,
-        lastDownloaded: matchingSitemap?.google_last_downloaded,
-        downloadStatus: matchingSitemap?.google_download_status,
+        lastDownloaded: matchingSitemap?.last_downloaded,
+        status: matchingSitemap?.status,
+        isPending: matchingSitemap?.is_pending,
         sitemapUrlExists,
         gscRefreshSuccess,
         isVerified
