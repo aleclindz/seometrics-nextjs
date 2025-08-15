@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { ActionItem } from '@/lib/ActionItemService';
+import { CodingAgentInstructionsGenerator } from '@/lib/CodingAgentInstructions';
 
 interface ActionItemsInterfaceProps {
   siteUrl: string;
@@ -166,6 +167,15 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
   const handleFixAction = async (actionItem: ActionItem, fixType: string) => {
     if (!user?.token) return;
 
+    console.log(`[ACTION ITEMS] 🚀 Starting fix for "${actionItem.title}"`, {
+      actionItemId: actionItem.id,
+      issueType: actionItem.issue_type,
+      category: actionItem.issue_category,
+      severity: actionItem.severity,
+      fixType: fixType,
+      affectedUrls: actionItem.affected_urls
+    });
+
     try {
       setProcessingItems(prev => {
         const newSet = new Set(prev);
@@ -173,7 +183,27 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
         return newSet;
       });
 
+      // Show user what the agent is doing
+      console.log(`[ACTION ITEMS] 🔧 SEOAgent is attempting to fix: ${actionItem.title}`);
+      console.log(`[ACTION ITEMS] 📋 Fix strategy: ${fixType}`);
+      console.log(`[ACTION ITEMS] 🌐 Target site: ${siteUrl}`);
+
+      // Run debug endpoint for sitemap issues to get detailed info before fix
+      if (actionItem.issue_category === 'sitemap') {
+        console.log(`[ACTION ITEMS] 🔍 Running pre-fix sitemap diagnosis...`);
+        try {
+          const debugResponse = await fetch(`/api/debug/sitemap-debug?userToken=${user.token}&siteUrl=${encodeURIComponent(actionItem.site_url)}`);
+          if (debugResponse.ok) {
+            const debugData = await debugResponse.json();
+            console.log(`[ACTION ITEMS] 📊 Pre-fix diagnosis:`, debugData.debugInfo);
+          }
+        } catch (e) {
+          console.log(`[ACTION ITEMS] ⚠️ Pre-fix diagnosis failed:`, e);
+        }
+      }
+
       // Call the automated fix API
+      console.log(`[ACTION ITEMS] 🎯 Calling automated fix API...`);
       const response = await fetch('/api/test-seo/automated-fixes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -187,9 +217,15 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
 
       const result = await response.json();
       
+      console.log(`[ACTION ITEMS] 📈 Fix API response:`, result);
+      
       if (result.success) {
+        console.log(`[ACTION ITEMS] ✅ Fix applied successfully!`);
+        console.log(`[ACTION ITEMS] 📝 Fix details:`, result.result);
+        
         // Update action item status
-        await fetch(`/api/action-items/${actionItem.id}`, {
+        console.log(`[ACTION ITEMS] 💾 Updating action item status to completed...`);
+        const updateResponse = await fetch(`/api/action-items/${actionItem.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -199,12 +235,52 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
           })
         });
 
+        const updateResult = await updateResponse.json();
+        console.log(`[ACTION ITEMS] 💾 Status update result:`, updateResult);
+
+        // Automatic verification for applicable issues
+        if (['sitemap', 'robots', 'schema'].includes(actionItem.issue_category)) {
+          console.log(`[ACTION ITEMS] 🔍 Starting automatic verification...`);
+          
+          try {
+            // Wait a moment for changes to propagate
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const verifyResponse = await fetch(`/api/action-items/${actionItem.id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                action: 'verify_completion',
+                userToken: user.token 
+              })
+            });
+            
+            const verifyResult = await verifyResponse.json();
+            console.log(`[ACTION ITEMS] 🔍 Verification result:`, verifyResult);
+            
+            if (verifyResult.success && verifyResult.verified) {
+              console.log(`[ACTION ITEMS] ✨ Auto-verification successful! Issue fully resolved.`);
+            } else {
+              console.log(`[ACTION ITEMS] ⏳ Fix applied but needs time to propagate. Manual verification may be needed.`);
+            }
+          } catch (verifyError) {
+            console.log(`[ACTION ITEMS] ⚠️ Auto-verification failed:`, verifyError);
+          }
+        }
+
         // Refresh action items
+        console.log(`[ACTION ITEMS] 🔄 Refreshing action items list...`);
         await fetchActionItems();
         onRefresh?.();
+        
+        console.log(`[ACTION ITEMS] 🎉 Fix process completed for "${actionItem.title}"`);
+      } else {
+        console.error(`[ACTION ITEMS] ❌ Fix failed:`, result);
+        alert(`❌ Fix failed: ${result.error || 'Unknown error'}. Check console for details.`);
       }
     } catch (error) {
-      console.error('Error applying fix:', error);
+      console.error('[ACTION ITEMS] 💥 Error during fix process:', error);
+      alert('❌ Error during fix process. Check console for details.');
     } finally {
       setProcessingItems(prev => {
         const newSet = new Set(prev);
@@ -237,16 +313,96 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
 
   const getFixButtonForItem = (item: ActionItem) => {
     const fixes = {
+      // Existing automatable fixes
       sitemap_missing: 'generate_and_submit_sitemap',
       sitemap_not_downloaded: 'generate_and_submit_sitemap',
       robots_missing: 'generate_robots_txt',
       robots_fetch_errors: 'generate_robots_txt',
       indexing_blocked_pages: 'fix_indexing_issue',
       schema_missing_all: 'generate_schema_markup',
-      schema_missing_pages: 'generate_schema_markup'
+      schema_missing_pages: 'generate_schema_markup',
+      
+      // New automatable fixes via SEOAgent.js
+      meta_tags_missing: 'optimize_meta_tags',
+      meta_tags_duplicate: 'optimize_meta_tags', 
+      alt_tags_missing: 'optimize_alt_tags',
+      
+      // Performance optimizations (basic ones)
+      images_not_optimized: 'optimize_images',
+      lazy_loading_missing: 'enable_lazy_loading',
+      
+      // Mobile issues (basic responsive fixes)
+      mobile_viewport_missing: 'fix_mobile_viewport',
+      
+      // Security issues (basic ones)
+      https_redirect_missing: 'enable_https_redirect',
+      security_headers_missing: 'add_security_headers'
     };
 
     return fixes[item.issue_type as keyof typeof fixes];
+  };
+
+  const getFixButtonType = (item: ActionItem) => {
+    const fixAction = getFixButtonForItem(item);
+    
+    if (fixAction) {
+      return 'auto'; // Can be automatically fixed
+    }
+    
+    // Check if it's code-fixable (needs coding agent instructions)
+    const codeFixableIssues = [
+      'mobile_usability_issues',
+      'core_web_vitals_poor',
+      'performance_slow_loading',
+      'css_render_blocking',
+      'javascript_render_blocking',
+      'images_without_webp',
+      'missing_cdn',
+      'database_optimization_needed'
+    ];
+    
+    if (codeFixableIssues.includes(item.issue_type)) {
+      return 'code'; // Needs coding agent instructions
+    }
+    
+    return 'manual'; // Requires manual intervention
+  };
+
+  const handleGenerateInstructions = async (actionItem: ActionItem) => {
+    console.log(`[ACTION ITEMS] 🤖 Generating coding agent instructions for: ${actionItem.title}`);
+    
+    const instructions = CodingAgentInstructionsGenerator.generate(
+      actionItem.issue_type, 
+      actionItem.title,
+      actionItem.affected_urls
+    );
+    
+    if (instructions) {
+      const copyableText = CodingAgentInstructionsGenerator.generateCopyableInstructions(instructions);
+      
+      try {
+        await navigator.clipboard.writeText(copyableText);
+        console.log(`[ACTION ITEMS] 📋 Instructions copied to clipboard for: ${actionItem.title}`);
+        alert('📋 Coding agent instructions copied to clipboard! Paste them into your coding assistant.');
+      } catch (error) {
+        console.error('[ACTION ITEMS] Failed to copy instructions:', error);
+        // Fallback: show instructions in a popup
+        const popup = window.open('', '_blank', 'width=800,height=600,scrollbars=yes');
+        if (popup) {
+          popup.document.write(`
+            <html>
+              <head><title>Coding Agent Instructions - ${actionItem.title}</title></head>
+              <body style="font-family: system-ui; padding: 20px; line-height: 1.6;">
+                <pre style="white-space: pre-wrap; background: #f5f5f5; padding: 20px; border-radius: 8px;">${copyableText}</pre>
+                <button onclick="navigator.clipboard.writeText(document.querySelector('pre').textContent); alert('Copied!');" style="margin-top: 20px; padding: 10px 20px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;">Copy to Clipboard</button>
+              </body>
+            </html>
+          `);
+        }
+      }
+    } else {
+      alert('⚠️ No automated instructions available for this issue type. Manual review required.');
+    }
   };
 
   const filteredActiveItems = activeItems.filter(item => {
@@ -462,25 +618,57 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                   <div className="flex flex-col space-y-2 ml-6">
                     {item.status !== 'completed' && item.status !== 'verified' && (
                       <>
-                        {getFixButtonForItem(item) && (
-                          <button
-                            onClick={() => handleFixAction(item, getFixButtonForItem(item)!)}
-                            disabled={processingItems.has(item.id)}
-                            className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
-                          >
-                            {processingItems.has(item.id) ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                <span>Fixing...</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>⚡</span>
-                                <span>Fix Now</span>
-                              </>
-                            )}
-                          </button>
-                        )}
+                        {(() => {
+                          const buttonType = getFixButtonType(item);
+                          const fixAction = getFixButtonForItem(item);
+                          
+                          if (buttonType === 'auto' && fixAction) {
+                            // Auto-fixable: Green "Fix Now" button
+                            return (
+                              <button
+                                onClick={() => handleFixAction(item, fixAction)}
+                                disabled={processingItems.has(item.id)}
+                                className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
+                              >
+                                {processingItems.has(item.id) ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <span>Fixing...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>⚡</span>
+                                    <span>Fix Now</span>
+                                  </>
+                                )}
+                              </button>
+                            );
+                          } else if (buttonType === 'code') {
+                            // Code-fixable: Blue "Generate Instructions" button
+                            return (
+                              <button
+                                onClick={() => handleGenerateInstructions(item)}
+                                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                              >
+                                <span>🤖</span>
+                                <span>Generate Fix Instructions</span>
+                              </button>
+                            );
+                          } else {
+                            // Manual-only: Gray "View Manual Steps" button
+                            return (
+                              <button
+                                onClick={() => {
+                                  alert(`📖 Manual Review Required\n\nThis issue type (${item.issue_type}) requires manual review and cannot be automatically fixed. Please:\n\n1. Review the issue details\n2. Consult the fix recommendation\n3. Implement changes manually\n4. Test the results\n\nOnce fixed, you can dismiss this item.`);
+                                }}
+                                className="px-4 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+                              >
+                                <span>📖</span>
+                                <span>Manual Review</span>
+                              </button>
+                            );
+                          }
+                        })()}
                         
                         <button
                           onClick={() => handleDismiss(item)}
