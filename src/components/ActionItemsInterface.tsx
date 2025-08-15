@@ -501,6 +501,8 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                         </div>
                         <button
                           onClick={async () => {
+                            if (!user?.token) return;
+                            
                             try {
                               // Trigger verification check
                               const response = await fetch(`/api/action-items/${item.id}`, {
