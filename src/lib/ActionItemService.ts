@@ -587,15 +587,90 @@ export class ActionItemService {
 
   // Verification methods
   private static async verifySitemapFix(actionItem: ActionItem): Promise<boolean> {
-    const { data: sitemap } = await supabase
-      .from('sitemap_submissions')
-      .select('*')
-      .eq('site_url', actionItem.site_url)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    try {
+      // First, refresh sitemap status from GSC API
+      console.log(`[ACTION ITEMS] Starting sitemap verification for ${actionItem.site_url}`);
+      
+      const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gsc/sitemap-status?userToken=${actionItem.user_token}&siteUrl=${encodeURIComponent(actionItem.site_url)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-    return !!(sitemap && sitemap.google_last_downloaded);
+      let gscRefreshSuccess = false;
+      if (gscResponse.ok) {
+        const gscData = await gscResponse.json();
+        gscRefreshSuccess = gscData.success;
+        console.log('[ACTION ITEMS] GSC sitemap verification response:', {
+          success: gscData.success,
+          sitemapCount: gscData.summary?.totalSitemaps || 0,
+          downloadedCount: gscData.summary?.downloadedSitemaps || 0
+        });
+      } else {
+        console.log('[ACTION ITEMS] GSC sitemap check failed:', gscResponse.status);
+      }
+
+      // Check for sitemap in database (try both URL variations)
+      const urlVariations = this.getNormalizedUrls(actionItem.site_url);
+      
+      const { data: sitemaps } = await supabase
+        .from('sitemap_submissions')
+        .select('*')
+        .in('site_url', urlVariations)
+        .order('created_at', { ascending: false });
+
+      const sitemap = sitemaps && sitemaps[0];
+
+      // Verify sitemap exists and has been downloaded by Google
+      const isVerified = !!(sitemap && 
+        sitemap.google_last_downloaded && 
+        sitemap.google_download_status === 'downloaded');
+
+      // If no sitemap is found or not downloaded, check if the actual sitemap URL exists
+      let sitemapUrlExists = false;
+      if (!isVerified) {
+        const siteUrl = actionItem.site_url.startsWith('sc-domain:') 
+          ? actionItem.site_url.replace('sc-domain:', 'https://') 
+          : actionItem.site_url;
+        
+        try {
+          // Check both www and non-www versions
+          const urlsToCheck = [
+            `${siteUrl}/sitemap.xml`,
+            `${siteUrl.replace('https://', 'https://www.')}/sitemap.xml`
+          ];
+
+          for (const sitemapUrl of urlsToCheck) {
+            try {
+              const sitemapResponse = await fetch(sitemapUrl, { method: 'HEAD' });
+              if (sitemapResponse.ok) {
+                sitemapUrlExists = true;
+                console.log(`[ACTION ITEMS] Sitemap found at: ${sitemapUrl}`);
+                break;
+              }
+            } catch (e) {
+              // Continue to next URL
+            }
+          }
+        } catch (error) {
+          console.log('[ACTION ITEMS] Error checking sitemap URL existence:', error);
+        }
+      }
+
+      console.log(`[ACTION ITEMS] Sitemap verification for ${actionItem.site_url}:`, {
+        sitemapExists: !!sitemap,
+        sitemapUrl: sitemap?.sitemap_url,
+        lastDownloaded: sitemap?.google_last_downloaded,
+        downloadStatus: sitemap?.google_download_status,
+        sitemapUrlExists,
+        gscRefreshSuccess,
+        isVerified
+      });
+
+      return isVerified;
+    } catch (error) {
+      console.error('[ACTION ITEMS] Error verifying sitemap fix:', error);
+      return false;
+    }
   }
 
   private static async verifyRobotsFix(actionItem: ActionItem): Promise<boolean> {
