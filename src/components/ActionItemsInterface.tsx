@@ -503,8 +503,29 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                           onClick={async () => {
                             if (!user?.token) return;
                             
+                            console.log(`[ACTION ITEMS UI] Starting verification for item:`, {
+                              id: item.id,
+                              title: item.title,
+                              issueType: item.issue_type,
+                              category: item.issue_category,
+                              status: item.status
+                            });
+                            
                             try {
+                              // First, run debug endpoint for sitemap issues to get detailed info
+                              if (item.issue_category === 'sitemap') {
+                                console.log(`[ACTION ITEMS UI] Running sitemap debug for verification`);
+                                const debugResponse = await fetch(`/api/debug/sitemap-debug?userToken=${user.token}&siteUrl=${encodeURIComponent(item.site_url)}`);
+                                if (debugResponse.ok) {
+                                  const debugData = await debugResponse.json();
+                                  console.log(`[ACTION ITEMS UI] Sitemap debug data:`, debugData.debugInfo);
+                                } else {
+                                  console.log(`[ACTION ITEMS UI] Debug endpoint failed:`, debugResponse.status);
+                                }
+                              }
+                              
                               // Trigger verification check
+                              console.log(`[ACTION ITEMS UI] Calling verification API for item ${item.id}`);
                               const response = await fetch(`/api/action-items/${item.id}`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -515,17 +536,24 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                               });
                               const result = await response.json();
                               
+                              console.log(`[ACTION ITEMS UI] Verification result:`, result);
+                              
                               if (result.success && result.verified) {
                                 // Show success feedback
+                                console.log(`[ACTION ITEMS UI] Verification successful for ${item.title}`);
                                 alert('✅ Verification successful! Issue has been resolved and verified.');
                               } else if (result.success && !result.verified) {
                                 // Show needs more work feedback
+                                console.log(`[ACTION ITEMS UI] Verification failed for ${item.title}`);
                                 alert('⚠️ Verification failed - the issue still exists and needs additional work.');
+                              } else {
+                                console.log(`[ACTION ITEMS UI] Verification API failed:`, result);
+                                alert('❌ Verification API failed. Check console for details.');
                               }
                               
                               await fetchActionItems(); // Refresh to show updated status
                             } catch (error) {
-                              console.error('Error verifying completion:', error);
+                              console.error('[ACTION ITEMS UI] Error verifying completion:', error);
                               alert('❌ Error during verification. Please try again.');
                             }
                           }}

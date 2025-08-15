@@ -52,41 +52,98 @@ export async function GET(request: NextRequest) {
     const webmasters = google.webmasters({ version: 'v3', auth: oauth2Client });
     
     try {
+      console.log(`[GSC SITEMAP STATUS] Querying GSC for site: ${siteUrl}`);
+      
       const response = await webmasters.sitemaps.list({
         siteUrl: siteUrl
       });
 
       const sitemaps = response.data.sitemap || [];
+      console.log(`[GSC SITEMAP STATUS] Raw GSC response:`, JSON.stringify(sitemaps, null, 2));
       console.log(`[GSC SITEMAP STATUS] Found ${sitemaps.length} sitemaps`);
 
       // Update local database with Google's sitemap status
       for (const gscSitemap of sitemaps) {
-        const { data: localSitemap } = await supabase
-          .from('sitemap_submissions')
-          .select('*')
-          .eq('user_token', userToken)
-          .eq('site_url', siteUrl)
-          .eq('sitemap_url', gscSitemap.path)
-          .single();
+        console.log(`[GSC SITEMAP STATUS] Processing GSC sitemap:`, {
+          path: gscSitemap.path,
+          lastDownloaded: gscSitemap.lastDownloaded,
+          isPending: gscSitemap.isPending,
+          warnings: gscSitemap.warnings,
+          errors: gscSitemap.errors,
+          contents: gscSitemap.contents
+        });
+        
+        // Find matching local sitemap - try multiple variations
+        const possibleUrls = [
+          gscSitemap.path,
+          gscSitemap.path?.replace('https://www.', 'https://'),
+          gscSitemap.path?.replace('https://', 'https://www.'),
+        ].filter(Boolean);
+        
+        let localSitemap = null;
+        for (const possibleUrl of possibleUrls) {
+          const { data: found } = await supabase
+            .from('sitemap_submissions')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('site_url', siteUrl)
+            .eq('sitemap_url', possibleUrl)
+            .single();
+          
+          if (found) {
+            localSitemap = found;
+            console.log(`[GSC SITEMAP STATUS] Found local sitemap match:`, {
+              localUrl: possibleUrl,
+              gscUrl: gscSitemap.path,
+              localId: found.id
+            });
+            break;
+          }
+        }
+        
+        // Also try finding by site_url pattern match
+        if (!localSitemap) {
+          const { data: allSitemaps } = await supabase
+            .from('sitemap_submissions')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('site_url', siteUrl);
+            
+          console.log(`[GSC SITEMAP STATUS] All local sitemaps for ${siteUrl}:`, allSitemaps);
+          localSitemap = allSitemaps?.[0]; // Use most recent one
+        }
 
         if (localSitemap) {
-          // Update with Google's data
-          await supabase
+          console.log(`[GSC SITEMAP STATUS] Updating local sitemap ${localSitemap.id} with GSC data`);
+          
+          const updateData = {
+            google_download_status: gscSitemap.lastDownloaded ? 'downloaded' : 'pending',
+            google_last_downloaded: gscSitemap.lastDownloaded,
+            google_processing_status: gscSitemap.isPending ? 'pending' : 'processed',
+            google_processed_urls: gscSitemap.contents?.[0]?.submitted || 0,
+            google_warnings: gscSitemap.warnings || 0,
+            verification_attempts: (localSitemap.verification_attempts || 0) + 1,
+            next_verification_check: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            verification_details: {
+              lastChecked: new Date().toISOString(),
+              gscData: gscSitemap
+            }
+          };
+          
+          console.log(`[GSC SITEMAP STATUS] Update data:`, updateData);
+          
+          const { error: updateError } = await supabase
             .from('sitemap_submissions')
-            .update({
-              google_download_status: gscSitemap.lastDownloaded ? 'downloaded' : 'pending',
-              google_last_downloaded: gscSitemap.lastDownloaded,
-              google_processing_status: gscSitemap.isPending ? 'pending' : 'processed',
-              google_processed_urls: gscSitemap.contents?.[0]?.submitted || 0,
-              google_warnings: gscSitemap.warnings || 0,
-              verification_attempts: (localSitemap.verification_attempts || 0) + 1,
-              next_verification_check: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-              verification_details: {
-                lastChecked: new Date().toISOString(),
-                gscData: gscSitemap
-              }
-            })
+            .update(updateData)
             .eq('id', localSitemap.id);
+            
+          if (updateError) {
+            console.error(`[GSC SITEMAP STATUS] Error updating sitemap:`, updateError);
+          } else {
+            console.log(`[GSC SITEMAP STATUS] Successfully updated sitemap ${localSitemap.id}`);
+          }
+        } else {
+          console.log(`[GSC SITEMAP STATUS] No local sitemap found for GSC sitemap: ${gscSitemap.path}`);
         }
       }
 
