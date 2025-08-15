@@ -117,15 +117,24 @@ export async function GET(request: NextRequest) {
           
           console.log(`[GSC SITEMAP STATUS] Update data:`, updateData);
           
-          const { error: updateError } = await supabase
+          const { data: updateResult, error: updateError } = await supabase
             .from('sitemap_submissions')
             .update(updateData)
-            .eq('id', localSitemap.id);
+            .eq('id', localSitemap.id)
+            .select('*')
+            .single();
             
           if (updateError) {
             console.error(`[GSC SITEMAP STATUS] Error updating sitemap:`, updateError);
           } else {
             console.log(`[GSC SITEMAP STATUS] Successfully updated sitemap ${localSitemap.id}`);
+            console.log(`[GSC SITEMAP STATUS] Updated record:`, {
+              id: updateResult.id,
+              site_url: updateResult.site_url,
+              sitemap_url: updateResult.sitemap_url,
+              google_last_downloaded: updateResult.google_last_downloaded,
+              google_download_status: updateResult.google_download_status
+            });
           }
         } else {
           console.log(`[GSC SITEMAP STATUS] No local sitemap found for GSC sitemap: ${gscSitemap.path}`);

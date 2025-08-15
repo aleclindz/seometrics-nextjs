@@ -610,6 +610,12 @@ export class ActionItemService {
         console.log('[ACTION ITEMS] GSC sitemap check failed:', gscResponse.status);
       }
 
+      // Add small delay to ensure database updates are committed after GSC refresh
+      if (gscRefreshSuccess) {
+        console.log('[ACTION ITEMS] Waiting for database updates to commit...');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+
       // Get all user sitemaps and find the matching one using URL normalization
       const { data: allSitemaps } = await supabase
         .from('sitemap_submissions')
@@ -617,7 +623,13 @@ export class ActionItemService {
         .eq('user_token', actionItem.user_token)
         .order('created_at', { ascending: false });
 
-      console.log(`[ACTION ITEMS] All user sitemaps for verification:`, allSitemaps);
+      console.log(`[ACTION ITEMS] All user sitemaps for verification:`, allSitemaps?.map(s => ({
+        id: s.id,
+        site_url: s.site_url,
+        sitemap_url: s.sitemap_url,
+        google_last_downloaded: s.google_last_downloaded,
+        google_download_status: s.google_download_status
+      })));
       
       // Find matching sitemap using the robust URL normalization service
       const matchingSitemap = allSitemaps && allSitemaps.length > 0

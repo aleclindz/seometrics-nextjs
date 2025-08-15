@@ -700,20 +700,32 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                             });
                             
                             try {
-                              // First, run debug endpoint for sitemap issues to get detailed info
+                              // For sitemap issues, FIRST refresh GSC data to ensure database is up-to-date
                               if (item.issue_category === 'sitemap') {
-                                console.log(`[ACTION ITEMS UI] Running sitemap debug for verification`);
+                                console.log(`[ACTION ITEMS UI] 🔄 Refreshing GSC sitemap status before verification...`);
+                                const gscRefreshResponse = await fetch(`/api/gsc/sitemap-status?userToken=${user.token}&siteUrl=${encodeURIComponent(item.site_url)}`);
+                                if (gscRefreshResponse.ok) {
+                                  const gscRefreshData = await gscRefreshResponse.json();
+                                  console.log(`[ACTION ITEMS UI] ✅ GSC refresh successful:`, gscRefreshData);
+                                } else {
+                                  console.log(`[ACTION ITEMS UI] ⚠️ GSC refresh failed:`, gscRefreshResponse.status);
+                                }
+                                
+                                // Add small delay to ensure database updates are committed
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                                
+                                console.log(`[ACTION ITEMS UI] 🔍 Running sitemap debug for verification`);
                                 const debugResponse = await fetch(`/api/debug/sitemap-debug?userToken=${user.token}&siteUrl=${encodeURIComponent(item.site_url)}`);
                                 if (debugResponse.ok) {
                                   const debugData = await debugResponse.json();
-                                  console.log(`[ACTION ITEMS UI] Sitemap debug data:`, debugData.debugInfo);
+                                  console.log(`[ACTION ITEMS UI] 📊 Sitemap debug data:`, debugData.debugInfo);
                                 } else {
-                                  console.log(`[ACTION ITEMS UI] Debug endpoint failed:`, debugResponse.status);
+                                  console.log(`[ACTION ITEMS UI] ❌ Debug endpoint failed:`, debugResponse.status);
                                 }
                               }
                               
                               // Trigger verification check
-                              console.log(`[ACTION ITEMS UI] Calling verification API for item ${item.id}`);
+                              console.log(`[ACTION ITEMS UI] 🔍 Calling verification API for item ${item.id}`);
                               const response = await fetch(`/api/action-items/${item.id}`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
