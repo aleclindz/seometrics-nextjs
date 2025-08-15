@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { UrlNormalizationService } from './UrlNormalizationService';
+import { IndexingIssueAnalyzer, IndexingAnalysis } from './IndexingIssueAnalyzer';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -334,18 +335,27 @@ export class ActionItemService {
     const mobileUnfriendly = inspections.filter(i => i.can_be_indexed && !i.mobile_usable);
 
     if (blockedPages.length > 0) {
+      // Use IndexingIssueAnalyzer to get detailed problem analysis
+      const analysis = IndexingIssueAnalyzer.analyzeIndexingIssues(blockedPages);
+      
       issues.push({
         type: 'indexing_blocked_pages',
         category: 'indexing',
-        severity: blockedPages.length > 5 ? 'critical' : 'high',
-        title: `${blockedPages.length} Pages Cannot Be Indexed`,
-        description: `${blockedPages.length} pages are blocked from search engine indexing due to various issues.`,
-        impactDescription: 'These pages will not appear in search results, significantly reducing organic traffic potential.',
-        fixRecommendation: 'Review and fix indexing issues including robots.txt blocks, 404 errors, and server errors.',
+        severity: analysis.totalAffectedPages > 5 ? 'critical' : 'high',
+        title: `${analysis.totalAffectedPages} Pages Cannot Be Indexed`,
+        description: analysis.summary,
+        impactDescription: `${analysis.totalAffectedPages} pages cannot appear in Google search results, which means potential customers won&apos;t find them when searching for your products or services.`,
+        fixRecommendation: analysis.detailedExplanation + '\n\n' + analysis.recommendedActions.join('\n\n'),
         affectedUrls: blockedPages.map(p => p.inspected_url),
-        estimatedImpact: blockedPages.length > 10 ? 'high' : 'medium',
-        estimatedEffort: 'medium',
-        metadata: { blockedCount: blockedPages.length, issueTypes: blockedPages.map(p => p.index_status) }
+        estimatedImpact: analysis.totalAffectedPages > 10 ? 'high' : 'medium',
+        estimatedEffort: analysis.autoFixableCount > 0 ? 'easy' : 'medium',
+        metadata: { 
+          analysisData: analysis,
+          autoFixableCount: analysis.autoFixableCount,
+          codeFixableCount: analysis.codeFixableCount,
+          manualOnlyCount: analysis.manualOnlyCount,
+          problemsByType: analysis.problemsByType
+        }
       });
     }
 
@@ -729,16 +739,75 @@ export class ActionItemService {
       return true;
     }
 
+    console.log(`[ACTION ITEMS] Verifying indexing fix for ${actionItem.affected_urls.length} URLs`);
+    
+    // First, try to refresh indexing data via GSC URL Inspection API
+    let gscRefreshSuccess = false;
+    try {
+      for (const url of actionItem.affected_urls.slice(0, 3)) { // Limit to 3 URLs to avoid rate limits
+        const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gsc/url-inspection?userToken=${actionItem.user_token}&siteUrl=${encodeURIComponent(actionItem.site_url)}&inspectUrl=${encodeURIComponent(url)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (gscResponse.ok) {
+          const gscData = await gscResponse.json();
+          if (gscData.success) {
+            gscRefreshSuccess = true;
+            console.log(`[ACTION ITEMS] GSC URL inspection successful for ${url}:`, {
+              canBeIndexed: gscData.inspection?.canBeIndexed,
+              indexStatus: gscData.inspection?.indexStatus
+            });
+          }
+        }
+        
+        // Add delay between API calls to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    } catch (error) {
+      console.log(`[ACTION ITEMS] GSC URL Inspection failed:`, error);
+    }
+
+    // Wait a moment for database updates if GSC calls were successful
+    if (gscRefreshSuccess) {
+      console.log('[ACTION ITEMS] Waiting for GSC data to be processed...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    // Check current database state
     const { data: inspections } = await supabase
       .from('url_inspections')
       .select('*')
       .eq('site_url', actionItem.site_url)
       .in('inspected_url', actionItem.affected_urls);
 
-    if (!inspections) return false;
+    if (!inspections || inspections.length === 0) {
+      console.log(`[ACTION ITEMS] No URL inspections found for verification`);
+      return false;
+    }
+
+    console.log(`[ACTION ITEMS] Found ${inspections.length} inspections for verification:`, 
+      inspections.map(i => ({
+        url: i.inspected_url,
+        canBeIndexed: i.can_be_indexed,
+        indexStatus: i.index_status,
+        fetchStatus: i.fetch_status,
+        robotsTxtState: i.robots_txt_state
+      }))
+    );
 
     // Check if all previously blocked pages are now indexable
-    return inspections.every(i => i.can_be_indexed);
+    const allIndexable = inspections.every(i => i.can_be_indexed && i.index_status !== 'FAIL');
+    
+    console.log(`[ACTION ITEMS] Indexing verification result:`, {
+      totalInspections: inspections.length,
+      indexableCount: inspections.filter(i => i.can_be_indexed).length,
+      passedCount: inspections.filter(i => i.index_status !== 'FAIL').length,
+      allIndexable,
+      gscRefreshSuccess
+    });
+    
+    return allIndexable;
   }
 
   private static async verifySchemaFix(actionItem: ActionItem): Promise<boolean> {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { IndexingFixEngine } from '@/lib/IndexingFixEngine';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -513,58 +514,102 @@ async function testSchemaGeneration(userToken: string, siteUrl: string, issueId?
   };
 }
 
-async function testIndexingFix(userToken: string, siteUrl: string, issueId?: string) {
-  console.log('[INDEXING FIX] Starting indexing issue fix test...');
+async function testIndexingFix(userToken: string, siteUrl: string, actionItemId?: string) {
+  console.log('[INDEXING FIX] Starting real indexing issue fix...');
 
-  // Find indexing issues and simulate fixes
-  const { data: inspections } = await supabase
-    .from('url_inspections')
-    .select('*')
-    .eq('user_token', userToken)
-    .eq('site_url', siteUrl)
-    .in('index_status', ['FAIL', 'PARTIAL']);
-
-  let fixedCount = 0;
-  const results = [];
-
-  if (inspections && inspections.length > 0) {
-    for (const inspection of inspections.slice(0, 2)) { // Fix up to 2 issues
-      // Simulate fixing the issue
-      const { data, error } = await supabase
-        .from('url_inspections')
-        .update({
-          index_status: 'PASS',
-          can_be_indexed: true,
-          index_status_description: 'Page successfully indexed',
-          inspected_at: new Date().toISOString()
-        })
-        .eq('id', inspection.id)
-        .select()
+  try {
+    // Get the action item with analysis data
+    let problemAnalysis = null;
+    
+    if (actionItemId) {
+      const { data: actionItem } = await supabase
+        .from('seo_action_items')
+        .select('*')
+        .eq('id', actionItemId)
         .single();
-
-      if (!error) {
-        fixedCount++;
-        results.push({
-          url: inspection.inspected_url,
-          previousStatus: inspection.index_status,
-          newStatus: 'PASS',
-          fixApplied: getFixApplied(inspection.index_status_description)
-        });
+      
+      if (actionItem?.metadata?.analysisData) {
+        problemAnalysis = actionItem.metadata.analysisData;
+        console.log('[INDEXING FIX] Using stored analysis data from action item');
       }
     }
-  }
+    
+    // If no analysis data, generate it from current URL inspections
+    if (!problemAnalysis) {
+      console.log('[INDEXING FIX] No stored analysis, generating fresh analysis...');
+      
+      const { data: inspections } = await supabase
+        .from('url_inspections')
+        .select('*')
+        .eq('user_token', userToken)
+        .eq('site_url', siteUrl)
+        .in('index_status', ['FAIL', 'PARTIAL']);
+      
+      if (!inspections || inspections.length === 0) {
+        return {
+          success: false,
+          action: 'no_indexing_issues',
+          error: 'No indexing issues found to fix',
+          statusBefore: 'no_issues',
+          statusAfter: 'no_action_needed',
+          impact: 'none'
+        };
+      }
+      
+      // Import and use the IndexingIssueAnalyzer
+      const { IndexingIssueAnalyzer } = await import('@/lib/IndexingIssueAnalyzer');
+      problemAnalysis = IndexingIssueAnalyzer.analyzeIndexingIssues(inspections);
+    }
 
-  return {
-    success: fixedCount > 0,
-    action: 'indexing_issues_fixed',
-    details: {
-      issuesFixed: fixedCount,
-      pages: results
-    },
-    statusBefore: 'has_errors',
-    statusAfter: fixedCount > 0 ? 'resolved' : 'error', 
-    impact: 'high'
-  };
+    // Use IndexingFixEngine to apply real fixes
+    const fixResult = await IndexingFixEngine.fixIndexingIssues({
+      userToken,
+      siteUrl,
+      actionItemId,
+      problemAnalysis
+    });
+
+    if (fixResult.success) {
+      return {
+        success: true,
+        action: 'indexing_issues_fixed',
+        details: {
+          description: fixResult.description,
+          userMessage: fixResult.userMessage,
+          changesApplied: fixResult.changesApplied,
+          verificationNote: fixResult.verificationNote,
+          technicalDetails: fixResult.technicalDetails
+        },
+        statusBefore: 'has_indexing_issues',
+        statusAfter: 'issues_resolved',
+        impact: 'high'
+      };
+    } else {
+      return {
+        success: false,
+        action: 'indexing_fix_failed',
+        details: {
+          reason: fixResult.description,
+          userMessage: fixResult.userMessage,
+          technicalDetails: fixResult.technicalDetails
+        },
+        statusBefore: 'has_indexing_issues',
+        statusAfter: 'needs_manual_attention',
+        impact: 'medium'
+      };
+    }
+    
+  } catch (error) {
+    console.error('[INDEXING FIX] Error in indexing fix:', error);
+    return {
+      success: false,
+      action: 'indexing_fix_error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      statusBefore: 'has_indexing_issues',
+      statusAfter: 'error',
+      impact: 'none'
+    };
+  }
 }
 
 function generateRobotsTxtContent(siteUrl: string): string {

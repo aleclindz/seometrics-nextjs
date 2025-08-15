@@ -345,6 +345,18 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
   const getFixButtonType = (item: ActionItem) => {
     const fixAction = getFixButtonForItem(item);
     
+    // Special handling for indexing issues based on analysis data
+    if (item.issue_type === 'indexing_blocked_pages' && item.metadata?.analysisData) {
+      const analysis = item.metadata.analysisData;
+      if (analysis.autoFixableCount > 0) {
+        return 'auto'; // Has auto-fixable issues
+      } else if (analysis.codeFixableCount > 0) {
+        return 'code'; // Has code-fixable issues
+      } else {
+        return 'manual'; // Only manual issues
+      }
+    }
+    
     if (fixAction) {
       return 'auto'; // Can be automatically fixed
     }
@@ -366,6 +378,37 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
     }
     
     return 'manual'; // Requires manual intervention
+  };
+
+  const getPreFixExplanation = (item: ActionItem, buttonType: string) => {
+    if (item.issue_type === 'indexing_blocked_pages' && item.metadata?.analysisData) {
+      const analysis = item.metadata.analysisData;
+      
+      if (buttonType === 'auto') {
+        const autoFixableTypes = Object.entries(analysis.problemsByType)
+          .filter(([_, problems]: [string, any]) => problems.some((p: any) => p.fixable === 'auto'))
+          .map(([type, _]) => type);
+        
+        return `🚀 **SEOAgent can automatically fix ${analysis.autoFixableCount} of these indexing issues:**\n\n` +
+               `${autoFixableTypes.map(type => `• **${type}** - I&apos;ll update your website configuration to resolve this`).join('\n')}\n\n` +
+               `After clicking "Fix Now", these changes will be applied immediately and Google will be able to access your pages.`;
+      } else if (buttonType === 'code') {
+        return `🛠️ **${analysis.codeFixableCount} issues need code changes** that I can guide you through.\n\n` +
+               `These problems require updates to your website&apos;s code or content. Click "Generate Instructions" to get step-by-step guidance for your coding assistant.`;
+      } else {
+        return `📋 **These issues require manual investigation** to determine the best solution.\n\n` +
+               `The problems are complex and need human review to understand the root cause and appropriate fix.`;
+      }
+    }
+    
+    // Default explanations for other issue types
+    if (buttonType === 'auto') {
+      return `🚀 **SEOAgent can fix this automatically.** Click "Fix Now" and I&apos;ll resolve the issue for you immediately.`;
+    } else if (buttonType === 'code') {
+      return `🛠️ **This issue needs code changes.** Click "Generate Instructions" to get detailed guidance for your coding assistant.`;
+    } else {
+      return `📋 **This issue requires manual review** to determine the best approach for your specific situation.`;
+    }
   };
 
   const handleGenerateInstructions = async (actionItem: ActionItem) => {
@@ -588,8 +631,18 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                     
                     {item.fix_recommendation && (
                       <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-3">
-                        <p className="text-sm text-blue-800">
+                        <p className="text-sm text-blue-800 whitespace-pre-line">
                           <span className="font-medium">Recommendation:</span> {item.fix_recommendation}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Pre-fix explanation for non-completed items */}
+                    {item.status !== 'completed' && item.status !== 'verified' && (
+                      <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-3">
+                        <p className="text-sm text-green-800 whitespace-pre-line">
+                          <span className="font-medium">What SEOAgent will do:</span><br />
+                          {getPreFixExplanation(item, getFixButtonType(item))}
                         </p>
                       </div>
                     )}
@@ -685,8 +738,19 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                           ✅ Fix Applied
                         </div>
                         <div className="text-xs text-gray-500 mb-2">
-                          Awaiting verification
+                          {item.issue_category === 'indexing' 
+                            ? 'Waiting for Google to re-crawl pages (24-48 hrs typical)'
+                            : item.issue_category === 'sitemap'
+                            ? 'Waiting for Google to download updated sitemap'
+                            : 'Awaiting verification'
+                          }
                         </div>
+                        {/* Additional guidance for indexing issues */}
+                        {item.issue_category === 'indexing' && (
+                          <div className="text-xs text-blue-600 mb-2 px-2 py-1 bg-blue-50 rounded">
+                            💡 <strong>Normal process:</strong> Google needs time to discover and re-evaluate your pages after fixes are applied.
+                          </div>
+                        )}
                         <button
                           onClick={async () => {
                             if (!user?.token) return;
@@ -743,9 +807,30 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                                 console.log(`[ACTION ITEMS UI] Verification successful for ${item.title}`);
                                 alert('✅ Verification successful! Issue has been resolved and verified.');
                               } else if (result.success && !result.verified) {
-                                // Show needs more work feedback
+                                // Show needs more work feedback with context-specific message
                                 console.log(`[ACTION ITEMS UI] Verification failed for ${item.title}`);
-                                alert('⚠️ Verification failed - the issue still exists and needs additional work.');
+                                let failureMessage = '⚠️ Verification shows the issue still needs more time to resolve.\n\n';
+                                
+                                if (item.issue_category === 'indexing') {
+                                  failureMessage += '**For indexing issues:** Google may not have re-crawled your pages yet. This is normal and can take 24-48 hours.\n\n' +
+                                                  '**What you can do:**\n' +
+                                                  '• Wait another day and try verification again\n' +
+                                                  '• Request re-indexing in Google Search Console\n' +
+                                                  '• Check that your fixes are still in place';
+                                } else if (item.issue_category === 'sitemap') {
+                                  failureMessage += '**For sitemap issues:** Google may not have processed your updated sitemap yet.\n\n' +
+                                                  '**What you can do:**\n' +
+                                                  '• Wait a few hours and try again\n' +
+                                                  '• Check Google Search Console for sitemap status\n' +
+                                                  '• Verify your sitemap is accessible at the URL';
+                                } else {
+                                  failureMessage += '**Next steps:**\n' +
+                                                  '• Wait some time for changes to take effect\n' +
+                                                  '• Verify that your fixes are still in place\n' +
+                                                  '• Try verification again later';
+                                }
+                                
+                                alert(failureMessage);
                               } else {
                                 console.log(`[ACTION ITEMS UI] Verification API failed:`, result);
                                 alert('❌ Verification API failed. Check console for details.');

@@ -267,6 +267,69 @@ document.documentElement.className = 'js';
         expectedOutcome: 'Faster page rendering, improved Time to Interactive, better user experience',
         priority: 'medium', 
         estimatedTime: '2-3 hours'
+      },
+
+      indexing_blocked_pages: {
+        issueTitle: 'Fix Pages That Cannot Be Indexed',
+        problemDescription: 'Multiple pages are blocked from appearing in Google search results due to various indexing problems.',
+        technicalDetails: `Common indexing issues include:
+- 404 errors (page not found)
+- Server errors (500, 503, etc.)
+- Redirect chains or loops
+- Password-protected pages accessible to users but not search engines
+- Incorrect canonical tags pointing to non-existent pages
+- Missing or broken content`,
+        fixInstructions: [
+          'Identify and fix 404 errors by creating missing pages or setting up proper redirects',
+          'Resolve server errors by fixing application bugs or server configuration',
+          'Simplify redirect chains - use direct 301 redirects to final destinations',
+          'Remove password protection from pages that should be publicly accessible',
+          'Fix canonical tags to point to the correct, accessible versions of pages',
+          'Ensure all linked pages have substantial, unique content'
+        ],
+        codeExamples: `<!-- Fix canonical tags -->
+<link rel="canonical" href="https://yoursite.com/correct-page-url" />
+
+<!-- 301 Redirect (Apache .htaccess) -->
+RedirectMatch 301 ^/old-page$ https://yoursite.com/new-page
+RedirectMatch 301 ^/category/(.*)$ https://yoursite.com/new-category/$1
+
+<!-- Next.js redirect configuration -->
+// next.config.js
+module.exports = {
+  async redirects() {
+    return [
+      {
+        source: '/old-page',
+        destination: '/new-page',
+        permanent: true,
+      },
+    ];
+  },
+};
+
+<!-- Check for missing pages and create them -->
+// Example: Create missing contact page
+// pages/contact.js or app/contact/page.js
+export default function Contact() {
+  return (
+    <div>
+      <h1>Contact Us</h1>
+      <p>Get in touch with our team...</p>
+    </div>
+  );
+}`,
+        testingSteps: [
+          'Use Google Search Console URL Inspection tool to test each affected URL',
+          'Check server logs for 404 and 500 errors',
+          'Test all redirects to ensure they lead to working pages',
+          'Verify canonical tags point to accessible pages',
+          'Use site crawling tools to identify broken internal links',
+          'Submit fixed URLs for re-indexing in Google Search Console'
+        ],
+        expectedOutcome: 'All pages become accessible to search engines, improved organic traffic potential, better site architecture',
+        priority: 'high',
+        estimatedTime: '3-6 hours'
       }
     };
 
