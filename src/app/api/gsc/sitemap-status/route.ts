@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,14 @@ export async function GET(request: NextRequest) {
       console.log(`[GSC SITEMAP STATUS] Raw GSC response:`, JSON.stringify(sitemaps, null, 2));
       console.log(`[GSC SITEMAP STATUS] Found ${sitemaps.length} sitemaps`);
 
+      // Get all sitemap submissions for this user to match against
+      const { data: allUserSitemaps } = await supabase
+        .from('sitemap_submissions')
+        .select('*')
+        .eq('user_token', userToken);
+        
+      console.log(`[GSC SITEMAP STATUS] All user sitemaps:`, allUserSitemaps);
+
       // Update local database with Google's sitemap status
       for (const gscSitemap of sitemaps) {
         console.log(`[GSC SITEMAP STATUS] Processing GSC sitemap:`, {
@@ -73,45 +82,21 @@ export async function GET(request: NextRequest) {
           contents: gscSitemap.contents
         });
         
-        // Find matching local sitemap - try multiple variations
-        const possibleUrls = [
-          gscSitemap.path,
-          gscSitemap.path?.replace('https://www.', 'https://'),
-          gscSitemap.path?.replace('https://', 'https://www.'),
-        ].filter(Boolean);
+        // Use the new URL normalization service to find matching sitemap
+        const localSitemap = UrlNormalizationService.findMatchingSitemap(
+          gscSitemap.path || '',
+          allUserSitemaps || []
+        );
         
-        let localSitemap = null;
-        for (const possibleUrl of possibleUrls) {
-          const { data: found } = await supabase
-            .from('sitemap_submissions')
-            .select('*')
-            .eq('user_token', userToken)
-            .eq('site_url', siteUrl)
-            .eq('sitemap_url', possibleUrl)
-            .single();
-          
-          if (found) {
-            localSitemap = found;
-            console.log(`[GSC SITEMAP STATUS] Found local sitemap match:`, {
-              localUrl: possibleUrl,
-              gscUrl: gscSitemap.path,
-              localId: found.id
-            });
-            break;
-          }
-        }
-        
-        // Also try finding by site_url pattern match
-        if (!localSitemap) {
-          const { data: allSitemaps } = await supabase
-            .from('sitemap_submissions')
-            .select('*')
-            .eq('user_token', userToken)
-            .eq('site_url', siteUrl);
-            
-          console.log(`[GSC SITEMAP STATUS] All local sitemaps for ${siteUrl}:`, allSitemaps);
-          localSitemap = allSitemaps?.[0]; // Use most recent one
-        }
+        console.log(`[GSC SITEMAP STATUS] URL normalization result:`, {
+          gscSitemapPath: gscSitemap.path,
+          foundMatch: !!localSitemap,
+          matchedRecord: localSitemap ? {
+            id: localSitemap.id,
+            site_url: localSitemap.site_url,
+            sitemap_url: localSitemap.sitemap_url
+          } : null
+        });
 
         if (localSitemap) {
           console.log(`[GSC SITEMAP STATUS] Updating local sitemap ${localSitemap.id} with GSC data`);

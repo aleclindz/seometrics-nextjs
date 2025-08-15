@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { UrlNormalizationService } from './UrlNormalizationService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -609,21 +610,45 @@ export class ActionItemService {
         console.log('[ACTION ITEMS] GSC sitemap check failed:', gscResponse.status);
       }
 
-      // Check for sitemap in database (try both URL variations)
-      const urlVariations = this.getNormalizedUrls(actionItem.site_url);
-      
-      const { data: sitemaps } = await supabase
+      // Get all user sitemaps and find the matching one using URL normalization
+      const { data: allSitemaps } = await supabase
         .from('sitemap_submissions')
         .select('*')
-        .in('site_url', urlVariations)
+        .eq('user_token', actionItem.user_token)
         .order('created_at', { ascending: false });
 
-      const sitemap = sitemaps && sitemaps[0];
+      console.log(`[ACTION ITEMS] All user sitemaps for verification:`, allSitemaps);
+      
+      // Find matching sitemap using the robust URL normalization service
+      const matchingSitemap = allSitemaps && allSitemaps.length > 0
+        ? UrlNormalizationService.findMatchingSitemap(
+            // Convert action item site_url to a sitemap URL format for matching
+            UrlNormalizationService.domainPropertyToHttps(actionItem.site_url) + '/sitemap.xml',
+            allSitemaps
+          ) || allSitemaps.find(s => 
+            UrlNormalizationService.isSameSite(s.site_url, actionItem.site_url)
+          )
+        : null;
+
+      console.log(`[ACTION ITEMS] Matching sitemap found:`, matchingSitemap ? {
+        id: matchingSitemap.id,
+        site_url: matchingSitemap.site_url,
+        sitemap_url: matchingSitemap.sitemap_url,
+        google_last_downloaded: matchingSitemap.google_last_downloaded,
+        google_download_status: matchingSitemap.google_download_status
+      } : null);
 
       // Verify sitemap exists and has been downloaded by Google
-      const isVerified = !!(sitemap && 
-        sitemap.google_last_downloaded && 
-        sitemap.google_download_status === 'downloaded');
+      const isVerified = !!(matchingSitemap && 
+        matchingSitemap.google_last_downloaded && 
+        matchingSitemap.google_download_status === 'downloaded');
+
+      console.log(`[ACTION ITEMS] Verification result:`, {
+        hasMatchingSitemap: !!matchingSitemap,
+        hasDownloadDate: !!matchingSitemap?.google_last_downloaded,
+        downloadStatus: matchingSitemap?.google_download_status,
+        isVerified
+      });
 
       // If no sitemap is found or not downloaded, check if the actual sitemap URL exists
       let sitemapUrlExists = false;
@@ -656,11 +681,11 @@ export class ActionItemService {
         }
       }
 
-      console.log(`[ACTION ITEMS] Sitemap verification for ${actionItem.site_url}:`, {
-        sitemapExists: !!sitemap,
-        sitemapUrl: sitemap?.sitemap_url,
-        lastDownloaded: sitemap?.google_last_downloaded,
-        downloadStatus: sitemap?.google_download_status,
+      console.log(`[ACTION ITEMS] Final sitemap verification for ${actionItem.site_url}:`, {
+        sitemapExists: !!matchingSitemap,
+        sitemapUrl: matchingSitemap?.sitemap_url,
+        lastDownloaded: matchingSitemap?.google_last_downloaded,
+        downloadStatus: matchingSitemap?.google_download_status,
         sitemapUrlExists,
         gscRefreshSuccess,
         isVerified
