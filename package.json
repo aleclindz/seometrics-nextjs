@@ -29,8 +29,12 @@
     "check-tables": "node scripts/check-agent-tables.js"
   },
   "dependencies": {
+    "@radix-ui/react-collapsible": "^1.1.12",
+    "@radix-ui/react-slot": "^1.2.3",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.45.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dotenv": "^17.2.0",
     "googleapis": "^154.0.0",
     "lucide-react": "^0.535.0",
@@ -38,7 +42,8 @@
     "openai": "^4.56.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "stripe": "^17.7.0"
+    "stripe": "^17.7.0",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
