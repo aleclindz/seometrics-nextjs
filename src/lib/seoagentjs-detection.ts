@@ -64,11 +64,11 @@ export async function checkSmartJSInstallation(websiteUrl: string): Promise<Smar
 
     const html = await response.text();
 
-    // Check for smart.js script tag
-    const smartJSRegex = /<script[^>]*src\s*=\s*['"](.*?smart\.js.*?)['"][^>]*>/i;
-    const smartJSMatch = html.match(smartJSRegex);
+    // Check for seoagent.js script tag (updated from smart.js)
+    const seoAgentRegex = /<script[^>]*src\s*=\s*['"](.*?seoagent\.js.*?)['"][^>]*>/i;
+    const seoAgentMatch = html.match(seoAgentRegex);
     
-    if (smartJSMatch) {
+    if (seoAgentMatch) {
       result.scriptFound = true;
       result.installed = true;
     }
