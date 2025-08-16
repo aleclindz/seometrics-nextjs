@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth';
-import { getSmartJSStatus } from '@/lib/seoagent-js-status';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import ActionItemsInterface from '@/components/ActionItemsInterface';
@@ -113,13 +113,35 @@ export default function WebsitePage() {
           console.log('No stats data available:', statsError);
         }
 
+        // Check real SEOAgent.js installation status
+        let smartjsStatus: 'active' | 'inactive' | 'error' = 'inactive';
+        try {
+          const smartjsResponse = await fetch('/api/smartjs/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              websiteUrl: UrlNormalizationService.domainPropertyToHttps(currentWebsite.url) 
+            })
+          });
+          
+          if (smartjsResponse.ok) {
+            const smartjsResult = await smartjsResponse.json();
+            if (smartjsResult.success && smartjsResult.data.active) {
+              smartjsStatus = 'active';
+            }
+          }
+        } catch (smartjsError) {
+          console.log('Error checking SEOAgent.js status:', smartjsError);
+          smartjsStatus = 'error';
+        }
+
         setWebsite({
           id: currentWebsite.id,
           url: currentWebsite.url,
           name: currentWebsite.name || currentWebsite.url,
           gscStatus: currentWebsite.gscStatus || 'none',
           cmsStatus: currentWebsite.cmsStatus || 'none',
-          smartjsStatus: getSmartJSStatus(currentWebsite.url),
+          smartjsStatus,
           lastSync: currentWebsite.lastSync ? new Date(currentWebsite.lastSync) : undefined,
           metrics: currentWebsite.metrics,
           lastAuditDate: auditData?.completed_at || auditData?.created_at,

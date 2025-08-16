@@ -22,9 +22,10 @@ interface CMSConnectionFormProps {
   onSuccess: () => void;
   onCancel: () => void;
   connection?: any; // For editing existing connections
+  preselectedWebsiteId?: string; // For modal usage
 }
 
-export default function CMSConnectionForm({ onSuccess, onCancel, connection }: CMSConnectionFormProps) {
+export default function CMSConnectionForm({ onSuccess, onCancel, connection, preselectedWebsiteId }: CMSConnectionFormProps) {
   const { user } = useAuth();
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,7 +36,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection }: C
 
   const [formData, setFormData] = useState({
     connection_name: connection?.connection_name || '',
-    website_id: connection?.website_id || '',
+    website_id: connection?.website_id || preselectedWebsiteId || '',
     cms_type: connection?.cms_type || 'strapi',
     base_url: connection?.base_url || '',
     api_token: connection?.api_token || '',
@@ -328,25 +329,27 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection }: C
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Website *
-          </label>
-          <select
-            name="website_id"
-            value={formData.website_id}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            required
-          >
-            <option value="">Select a website</option>
-            {websites.map(website => (
-              <option key={website.id} value={website.id}>
-                {website.domain}
-              </option>
-            ))}
-          </select>
-        </div>
+{!preselectedWebsiteId && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Website *
+            </label>
+            <select
+              name="website_id"
+              value={formData.website_id}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              required
+            >
+              <option value="">Select a website</option>
+              {websites.map(website => (
+                <option key={website.id} value={website.id}>
+                  {website.domain}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Connection Summary */}
@@ -355,6 +358,11 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection }: C
         <div className="space-y-2 text-sm">
           <div><span className="font-medium">CMS Type:</span> <span className="text-gray-600 dark:text-gray-400">Strapi</span></div>
           <div><span className="font-medium">Base URL:</span> <span className="text-gray-600 dark:text-gray-400">{formData.base_url}</span></div>
+          {preselectedWebsiteId && (
+            <div><span className="font-medium">Website:</span> <span className="text-gray-600 dark:text-gray-400">
+              {websites.find(w => w.id.toString() === preselectedWebsiteId)?.domain || 'Selected website'}
+            </span></div>
+          )}
           <div><span className="font-medium">Content Type:</span> <span className="text-gray-600 dark:text-gray-400">
             {discoveredTypes.find(t => t.id === formData.content_type)?.name || formData.content_type}
           </span></div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
+import CMSConnectionForm from './CMSConnectionForm';
 
 interface WebsiteSetupModalProps {
   isOpen: boolean;
@@ -67,6 +68,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   // SEOAgent.js State
   const [smartjsInstallCode, setSmartjsInstallCode] = useState('');
   const [smartjsLoading, setSmartjsLoading] = useState(false);
+  const [smartjsDetected, setSmartjsDetected] = useState(website.smartjsStatus === 'active');
 
   useEffect(() => {
     if (isOpen) {
@@ -74,6 +76,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       checkGSCStatus();
       fetchCMSConnections();
       generateSmartJSCode();
+      checkSmartJSStatus(); // Check SEOAgent.js installation immediately
       
       // Set initial tab based on what needs setup
       if (website.gscStatus !== 'connected') {
@@ -85,6 +88,32 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       }
     }
   }, [isOpen, website]);
+
+  // Check SEOAgent.js installation status
+  const checkSmartJSStatus = async () => {
+    if (!user?.token) return;
+
+    try {
+      const response = await fetch('/api/smartjs/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteUrl: UrlNormalizationService.domainPropertyToHttps(website.url) })
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.data.active) {
+        setSmartjsDetected(true);
+        onStatusUpdate?.({ smartjsStatus: 'active' });
+      } else {
+        setSmartjsDetected(false);
+        onStatusUpdate?.({ smartjsStatus: 'inactive' });
+      }
+    } catch (error) {
+      console.error('Error checking SEOAgent.js status:', error);
+      setSmartjsDetected(false);
+    }
+  };
 
   // GSC Functions
   const checkGSCStatus = async () => {
@@ -173,125 +202,13 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     }
   };
 
-  const [showCMSSetup, setShowCMSSetup] = useState(false);
-  const [selectedCMSType, setSelectedCMSType] = useState<string>('');
-  const [cmsFormData, setCmsFormData] = useState({
-    connection_name: '',
-    cms_type: 'strapi',
-    base_url: '',
-    api_token: '',
-    content_type: 'api::article.article'
-  });
-  const [cmsTestResult, setCmsTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [cmsConnecting, setCmsConnecting] = useState(false);
-  const [cmsTesting, setCmsTesting] = useState(false);
+  const [showCMSForm, setShowCMSForm] = useState(false);
 
-  const handleCMSConnect = (cmsType: string) => {
-    setSelectedCMSType(cmsType);
-    setCmsFormData(prev => ({ ...prev, cms_type: cmsType }));
-    setShowCMSSetup(true);
-  };
-
-  const handleCMSFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setCmsFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const testCMSConnection = async () => {
-    if (!cmsFormData.base_url || !cmsFormData.api_token) {
-      setCmsTestResult({
-        success: false,
-        message: 'Please enter both base URL and API token to test the connection'
-      });
-      return;
-    }
-
-    try {
-      setCmsTesting(true);
-      setCmsTestResult(null);
-      setCmsError(null);
-
-      const response = await fetch('/api/cms/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cms_type: cmsFormData.cms_type,
-          base_url: cmsFormData.base_url,
-          api_token: cmsFormData.api_token,
-          content_type: cmsFormData.content_type,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setCmsTestResult({
-          success: true,
-          message: data.message || 'Connection successful!'
-        });
-      } else {
-        setCmsTestResult({
-          success: false,
-          message: data.error || 'Connection failed'
-        });
-      }
-    } catch (err) {
-      setCmsTestResult({
-        success: false,
-        message: 'Network error during connection test'
-      });
-    } finally {
-      setCmsTesting(false);
-    }
-  };
-
-  const saveCMSConnection = async () => {
-    if (!cmsFormData.connection_name || !cmsFormData.base_url || !cmsFormData.api_token) {
-      setCmsError('Please fill in all required fields');
-      return;
-    }
-
-    try {
-      setCmsConnecting(true);
-      setCmsError(null);
-
-      const response = await fetch('/api/cms/connections', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userToken: user?.token,
-          ...cmsFormData
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Refresh CMS connections list
-        await fetchCMSConnections();
-        onStatusUpdate?.({ cmsStatus: 'connected' });
-        
-        // Reset form and close setup
-        setShowCMSSetup(false);
-        setCmsFormData({
-          connection_name: '',
-          cms_type: 'strapi',
-          base_url: '',
-          api_token: '',
-          content_type: 'api::article.article'
-        });
-        setCmsTestResult(null);
-      } else {
-        setCmsError(data.error || 'Failed to save connection');
-      }
-    } catch (err) {
-      setCmsError('Network error while saving connection');
-    } finally {
-      setCmsConnecting(false);
-    }
+  const handleCMSSuccess = async () => {
+    // Refresh CMS connections and update parent
+    await fetchCMSConnections();
+    onStatusUpdate?.({ cmsStatus: 'connected' });
+    setShowCMSForm(false);
   };
 
   // SEOAgent.js Functions
@@ -328,10 +245,15 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       const result = await response.json();
       
       if (result.success && result.data.active) {
+        setSmartjsDetected(true);
         onStatusUpdate?.({ smartjsStatus: 'active' });
+      } else {
+        setSmartjsDetected(false);
+        onStatusUpdate?.({ smartjsStatus: 'inactive' });
       }
     } catch (error) {
       console.error('Error testing SEOAgent.js:', error);
+      setSmartjsDetected(false);
     } finally {
       setSmartjsLoading(false);
     }
@@ -554,267 +476,188 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
           {/* SEOAgent.js Tab */}
           {activeTab === 'smartjs' && (
             <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  SEOAgent.js Installation
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  Add this script to your website&apos;s HTML to enable automated SEO optimizations including meta tags, alt tags, and schema markup.
-                </p>
-                
-                <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-400">HTML</span>
-                    <button
-                      onClick={copyInstallCode}
-                      className="text-xs text-gray-400 hover:text-white"
-                    >
-                      Copy
-                    </button>
+              {smartjsDetected ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
                   </div>
-                  <pre className="text-sm text-green-400 overflow-x-auto">
-                    <code>{smartjsInstallCode}</code>
-                  </pre>
-                </div>
-                
-                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Installation Instructions</h4>
-                  <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2 list-decimal list-inside">
-                    <li>Copy the code above</li>
-                    <li>Paste it into your website&apos;s HTML, preferably in the &lt;head&gt; section</li>
-                    <li>Deploy your website</li>
-                    <li>Click &ldquo;Test Installation&rdquo; below to verify it&apos;s working</li>
-                  </ol>
-                </div>
-                
-                <div className="flex items-center space-x-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    SEOAgent.js is Active
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Your website is successfully running SEOAgent.js and automated SEO optimizations are active.
+                  </p>
+                  
                   <button
                     onClick={testSmartJSInstallation}
                     disabled={smartjsLoading}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 disabled:opacity-50"
                   >
                     {smartjsLoading ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Testing...
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                        Checking...
                       </>
                     ) : (
-                      'Test Installation'
+                      'Re-check Installation'
                     )}
                   </button>
-                  
-                  {website.smartjsStatus === 'active' && (
-                    <div className="flex items-center space-x-2 text-green-600">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-sm font-medium">Active & Working</span>
-                    </div>
-                  )}
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    SEOAgent.js Installation
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Add this script to your website&apos;s HTML to enable automated SEO optimizations including meta tags, alt tags, and schema markup.
+                  </p>
+                  
+                  <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-400">HTML</span>
+                      <button
+                        onClick={copyInstallCode}
+                        className="text-xs text-gray-400 hover:text-white"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <pre className="text-sm text-green-400 overflow-x-auto">
+                      <code>{smartjsInstallCode}</code>
+                    </pre>
+                  </div>
+                  
+                  <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                    <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Installation Instructions</h4>
+                    <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2 list-decimal list-inside">
+                      <li>Copy the code above</li>
+                      <li>Paste it into your website&apos;s HTML, preferably in the &lt;head&gt; section</li>
+                      <li>Deploy your website</li>
+                      <li>Click &ldquo;Test Installation&rdquo; below to verify it&apos;s working</li>
+                    </ol>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={testSmartJSInstallation}
+                      disabled={smartjsLoading}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
+                    >
+                      {smartjsLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Testing...
+                        </>
+                      ) : (
+                        'Test Installation'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* CMS Integration Tab */}
           {activeTab === 'cms' && (
             <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  CMS Integration
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  Connect your Content Management System to enable automated article publishing and content management.
-                </p>
-                
-                {cmsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
-                  </div>
-                ) : cmsConnections.length > 0 ? (
-                  <div className="space-y-4">
+              {cmsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+                </div>
+              ) : cmsConnections.length > 0 && !showCMSForm ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">Connected CMS</h4>
-                    {cmsConnections.map((connection) => (
-                      <div key={connection.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h5 className="font-medium text-gray-900 dark:text-gray-100 capitalize">
-                              {connection.cms_type}
-                            </h5>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {connection.connection_name}
-                            </p>
-                          </div>
-                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(connection.status)}`}>
-                            {connection.status}
-                          </div>
+                    <button
+                      onClick={() => setShowCMSForm(true)}
+                      className="inline-flex items-center px-3 py-1 text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                    >
+                      Add Another
+                    </button>
+                  </div>
+                  {cmsConnections.map((connection) => (
+                    <div key={connection.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h5 className="font-medium text-gray-900 dark:text-gray-100 capitalize">
+                            {connection.cms_type}
+                          </h5>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {connection.connection_name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {connection.base_url}
+                          </p>
                         </div>
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(connection.status)}`}>
+                          {connection.status}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : showCMSForm ? (
+                <CMSConnectionForm
+                  onSuccess={handleCMSSuccess}
+                  onCancel={() => setShowCMSForm(false)}
+                  preselectedWebsiteId={website.id}
+                />
+              ) : (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    CMS Integration
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Connect your Content Management System to enable automated article publishing and content management.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {[
+                      { type: 'strapi', name: 'Strapi', icon: '🚀', available: true },
+                      { type: 'wordpress', name: 'WordPress', icon: '📝', available: false },
+                      { type: 'webflow', name: 'Webflow', icon: '🌊', available: false },
+                      { type: 'shopify', name: 'Shopify', icon: '🛒', available: false },
+                    ].map((cms) => (
+                      <div key={cms.type} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <span className="text-2xl">{cms.icon}</span>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">{cms.name}</h4>
+                        </div>
+                        <button
+                          onClick={() => cms.available && setShowCMSForm(true)}
+                          disabled={!cms.available}
+                          className={`w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md ${
+                            cms.available
+                              ? 'border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/10 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-900/20'
+                              : 'border-gray-300 text-gray-500 bg-gray-50 cursor-not-allowed dark:bg-gray-700/30 dark:border-gray-600 dark:text-gray-400'
+                          }`}
+                        >
+                          {cms.available ? `Connect ${cms.name}` : 'Coming Soon'}
+                        </button>
                       </div>
                     ))}
                   </div>
-                ) : showCMSSetup ? (
-                  <div>
-                    <div className="flex items-center space-x-3 mb-6">
-                      <button
-                        onClick={() => {
-                          setShowCMSSetup(false);
-                          setCmsTestResult(null);
-                          setCmsError(null);
-                        }}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                      </button>
-                      <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 capitalize">
-                        Setup {selectedCMSType} Connection
-                      </h4>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Connection Name
-                        </label>
-                        <input
-                          type="text"
-                          name="connection_name"
-                          value={cmsFormData.connection_name}
-                          onChange={handleCMSFormChange}
-                          placeholder="My Strapi CMS"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Base URL
-                        </label>
-                        <input
-                          type="url"
-                          name="base_url"
-                          value={cmsFormData.base_url}
-                          onChange={handleCMSFormChange}
-                          placeholder="https://your-strapi.com"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          API Token
-                        </label>
-                        <input
-                          type="password"
-                          name="api_token"
-                          value={cmsFormData.api_token}
-                          onChange={handleCMSFormChange}
-                          placeholder="Your API token"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Content Type
-                        </label>
-                        <input
-                          type="text"
-                          name="content_type"
-                          value={cmsFormData.content_type}
-                          onChange={handleCMSFormChange}
-                          placeholder="api::article.article"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                      
-                      {cmsTestResult && (
-                        <div className={`p-3 rounded-lg text-sm ${
-                          cmsTestResult.success
-                            ? 'bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
-                            : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
-                        }`}>
-                          {cmsTestResult.message}
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center space-x-3 pt-4">
-                        <button
-                          onClick={testCMSConnection}
-                          disabled={cmsTesting}
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 disabled:opacity-50"
-                        >
-                          {cmsTesting ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                              Testing...
-                            </>
-                          ) : (
-                            'Test Connection'
-                          )}
-                        </button>
-                        
-                        <button
-                          onClick={saveCMSConnection}
-                          disabled={cmsConnecting || !cmsTestResult?.success}
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50"
-                        >
-                          {cmsConnecting ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Saving...
-                            </>
-                          ) : (
-                            'Save Connection'
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Benefits of CMS Integration</h4>
+                    <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                      <li>Automated article publishing</li>
+                      <li>Content synchronization</li>
+                      <li>SEO metadata management</li>
+                      <li>Bulk content operations</li>
+                    </ul>
                   </div>
-                ) : (
-                  <div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      {/* CMS Options */}
-                      {[
-                        { type: 'wordpress', name: 'WordPress', icon: '📝' },
-                        { type: 'strapi', name: 'Strapi', icon: '🚀' },
-                        { type: 'webflow', name: 'Webflow', icon: '🌊' },
-                        { type: 'shopify', name: 'Shopify', icon: '🛒' },
-                      ].map((cms) => (
-                        <div key={cms.type} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                          <div className="flex items-center space-x-3 mb-3">
-                            <span className="text-2xl">{cms.icon}</span>
-                            <h4 className="font-medium text-gray-900 dark:text-gray-100">{cms.name}</h4>
-                          </div>
-                          <button
-                            onClick={() => handleCMSConnect(cms.type)}
-                            className="w-full inline-flex items-center justify-center px-4 py-2 border border-violet-300 text-sm font-medium rounded-md text-violet-700 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/10 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-900/20"
-                          >
-                            Connect {cms.name}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Benefits of CMS Integration</h4>
-                      <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
-                        <li>Automated article publishing</li>
-                        <li>Content synchronization</li>
-                        <li>SEO metadata management</li>
-                        <li>Bulk content operations</li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
+                </div>
+              )}
                 
-                {cmsError && (
-                  <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
-                    {cmsError}
-                  </div>
-                )}
-              </div>
+              {cmsError && (
+                <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
+                  {cmsError}
+                </div>
+              )}
             </div>
           )}
           
