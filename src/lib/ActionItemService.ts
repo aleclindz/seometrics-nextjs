@@ -678,9 +678,7 @@ export class ActionItemService {
       // If no sitemap is found or not downloaded, check if the actual sitemap URL exists
       let sitemapUrlExists = false;
       if (!isVerified) {
-        const siteUrl = actionItem.site_url.startsWith('sc-domain:') 
-          ? actionItem.site_url.replace('sc-domain:', 'https://') 
-          : actionItem.site_url;
+        const siteUrl = UrlNormalizationService.domainPropertyToHttps(actionItem.site_url);
         
         try {
           // Check both www and non-www versions
@@ -729,9 +727,7 @@ export class ActionItemService {
       console.log(`[ACTION ITEMS] Starting robots.txt verification for ${actionItem.site_url}`);
       
       // Check if robots.txt file is actually accessible
-      const siteUrl = actionItem.site_url.startsWith('sc-domain:') 
-        ? actionItem.site_url.replace('sc-domain:', 'https://') 
-        : actionItem.site_url;
+      const siteUrl = UrlNormalizationService.domainPropertyToHttps(actionItem.site_url);
       
       const urlsToCheck = [
         `${siteUrl}/robots.txt`,

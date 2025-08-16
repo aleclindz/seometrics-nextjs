@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import GSCConnection from './GSCConnection';
 import { useAuth } from '@/contexts/auth';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -323,7 +324,7 @@ export default function Dashboard() {
                                       href={`/website/${website.website_token}`}
                                       className="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-violet-100 dark:bg-gray-700 dark:hover:bg-violet-900/20 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-violet-600 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
                                     >
-                                      {website.domain.replace(/^sc-domain:/, '')}
+                                      {UrlNormalizationService.domainPropertyToHttps(website.domain).replace(/^https?:\/\//, '')}
                                     </a>
                                   </div>
                                 </td>

@@ -17,6 +17,7 @@ import {
   BarChart3,
   Map
 } from 'lucide-react';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 
 interface TechnicalSEOData {
   overview: {
@@ -83,7 +84,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
     try {
       setRobotsAnalysisInProgress(true);
       
-      const siteUrlToSend = `https://${selectedSite.replace('sc-domain:', '')}`;
+      const siteUrlToSend = UrlNormalizationService.domainPropertyToHttps(selectedSite);
       console.log('[DASHBOARD] Analyzing robots.txt for:', siteUrlToSend);
       
       const response = await fetch('/api/technical-seo/robots-analysis', {
@@ -140,7 +141,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
     try {
       setSitemapGenerationInProgress(true);
       
-      const siteUrlToSend = `https://${selectedSite.replace('sc-domain:', '')}`;
+      const siteUrlToSend = UrlNormalizationService.domainPropertyToHttps(selectedSite);
       console.log('[DASHBOARD] Generating sitemap for:', siteUrlToSend);
       
       const response = await fetch('/api/technical-seo/generate-sitemap', {
@@ -270,7 +271,7 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         const siteWithoutWww = selectedSite.replace('www.', '');
         const matchingProperty = debugData.data.properties.find((prop: any) => {
           console.log('Checking property:', prop.site_url);
-          const propDomain = prop.site_url.replace('sc-domain:', '').replace('https://', '').replace('http://', '').replace('www.', '');
+          const propDomain = UrlNormalizationService.domainPropertyToHttps(prop.site_url).replace(/^https?:\/\//, '').replace(/^www\./, '');
           const selectedDomain = siteWithoutWww.replace('https://', '').replace('http://', '');
           
           return propDomain === selectedDomain ||
@@ -295,13 +296,9 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         // Extract the actual domain from GSC property format or clean domain
         let actualDomain = selectedSite;
         
-        // Remove sc-domain: prefix if present
-        if (actualDomain.startsWith('sc-domain:')) {
-          actualDomain = actualDomain.replace('sc-domain:', '');
-        }
-        
-        // Remove protocol prefixes if present
-        actualDomain = actualDomain.replace(/^https?:\/\//, '');
+        // Extract clean domain using normalization service
+        const httpsUrl = UrlNormalizationService.domainPropertyToHttps(actualDomain);
+        actualDomain = httpsUrl.replace(/^https?:\/\//, '').replace(/^www\./, '');
         
         // Remove www prefix if present
         actualDomain = actualDomain.replace(/^www\./, '');

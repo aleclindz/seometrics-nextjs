@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -38,16 +39,8 @@ export async function POST(request: NextRequest) {
     if (inspections1?.length) {
       inspections = inspections1;
     } else {
-      // Handle different URL formats to match database
-      let scDomainUrl;
-      
-      if (siteUrl.includes('sc-domain:')) {
-        // If already in sc-domain format, remove https:// prefix
-        scDomainUrl = siteUrl.replace('https://', '').replace('http://', '');
-      } else {
-        // Convert regular URL to sc-domain format
-        scDomainUrl = siteUrl.replace('https://', 'sc-domain:').replace('http://', 'sc-domain:').replace('www.', '');
-      }
+      // Handle different URL formats to match database using normalization service
+      const scDomainUrl = UrlNormalizationService.urlToDomainProperty(siteUrl);
       
       console.log('[TECHNICAL SEO SUMMARY] Trying sc-domain format:', scDomainUrl);
       

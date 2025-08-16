@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 
 interface WebsiteSetupModalProps {
   isOpen: boolean;
@@ -321,7 +322,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       const response = await fetch('/api/smartjs/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteUrl: website.url })
+        body: JSON.stringify({ websiteUrl: UrlNormalizationService.domainPropertyToHttps(website.url) })
       });
 
       const result = await response.json();

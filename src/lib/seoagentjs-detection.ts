@@ -25,9 +25,23 @@ export async function checkSmartJSInstallation(websiteUrl: string): Promise<Smar
   };
 
   try {
+    // Clean and validate URL first
+    if (websiteUrl.includes('sc-domain:')) {
+      result.error = 'Invalid URL format: sc-domain prefix detected';
+      return result;
+    }
+    
     // Ensure URL has protocol
     if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
       websiteUrl = 'https://' + websiteUrl;
+    }
+    
+    // Validate URL format
+    try {
+      new URL(websiteUrl);
+    } catch (urlError) {
+      result.error = `Invalid URL format: ${websiteUrl}`;
+      return result;
     }
 
     // Fetch the website HTML with timeout using AbortController

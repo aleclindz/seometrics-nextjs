@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userToken = searchParams.get('userToken');
-    const siteUrl = searchParams.get('siteUrl') || 'sc-domain:seoagent.com';
+    const siteUrl = searchParams.get('siteUrl') || 'https://seoagent.com';
 
     if (!userToken) {
       return NextResponse.json({ error: 'Missing userToken' }, { status: 400 });
