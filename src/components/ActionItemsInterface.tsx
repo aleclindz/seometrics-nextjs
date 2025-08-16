@@ -797,19 +797,19 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                 <div className={`text-sm font-medium mb-1 ${statusDisplay.class}`}>
                   {statusDisplay.text}
                 </div>
-                <div className="text-xs text-gray-500 mb-2">
-                  {item.status === 'needs_verification' 
-                    ? 'Verification failed - may need more time or manual review'
-                    : item.issue_category === 'indexing' 
-                    ? 'Waiting for Google to re-crawl pages (24-48 hrs typical)'
-                    : item.issue_category === 'sitemap'
-                    ? 'Waiting for Google to download updated sitemap'
-                    : 'Awaiting verification'
-                  }
-                </div>
                 {item.issue_category === 'indexing' && (
-                  <div className="text-xs text-blue-600 mb-2 px-2 py-1 bg-blue-50 rounded">
+                  <div className="text-xs text-blue-600 mb-2 px-2 py-1 bg-blue-50 rounded max-w-xs">
                     💡 <strong>Normal process:</strong> Google needs time to discover and re-evaluate your pages after fixes are applied.
+                  </div>
+                )}
+                {item.issue_category === 'sitemap' && (
+                  <div className="text-xs text-gray-500 mb-2">
+                    Waiting for Google to download updated sitemap
+                  </div>
+                )}
+                {item.status === 'verified' && (
+                  <div className="text-xs text-gray-500 mb-2">
+                    Issue verified and resolved
                   </div>
                 )}
                 <Button
@@ -953,38 +953,6 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
             </div>
           )}
           
-          {/* Pre-fix explanation for non-completed items */}
-          {item.status !== 'completed' && item.status !== 'needs_verification' && item.status !== 'verified' && (
-            <div className="bg-green-50 border border-green-200 rounded-md p-3">
-              <p className="text-sm text-green-800 whitespace-pre-line">
-                <span className="font-medium">What SEOAgent will do:</span><br />
-                {getPreFixExplanation(item, getFixButtonType(item))}
-              </p>
-            </div>
-          )}
-          
-          {item.affected_urls && item.affected_urls.length > 0 && (
-            <Collapsible>
-              <CollapsibleTrigger className="text-sm font-medium text-gray-700 hover:text-gray-900">
-                Affected URLs ({item.affected_urls.length}) ▼
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <div className="max-h-32 overflow-y-auto space-y-1">
-                  {item.affected_urls.slice(0, 5).map((url, index) => (
-                    <div key={index} className="text-sm text-gray-600 truncate px-2 py-1 bg-gray-50 rounded">
-                      {url}
-                    </div>
-                  ))}
-                  {item.affected_urls.length > 5 && (
-                    <div className="text-sm text-gray-500 px-2 py-1">
-                      +{item.affected_urls.length - 5} more
-                    </div>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
             {item.status !== 'completed' && item.status !== 'needs_verification' && item.status !== 'verified' && (
@@ -1016,8 +984,9 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                       <div className="flex flex-wrap gap-2">
                         <Button
                           onClick={() => handleGenerateInstructions(item)}
-                          variant="default"
+                          variant="outline"
                           size="sm"
+                          className="bg-blue-100 text-blue-800 hover:bg-blue-200"
                         >
                           🤖 Generate Fix Instructions
                         </Button>
@@ -1026,12 +995,13 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                           <Button
                             onClick={() => handleVerifyCodeFix(item)}
                             disabled={processingItems.has(item.id)}
-                            className="bg-purple-600 hover:bg-purple-700"
+                            variant="outline"
                             size="sm"
+                            className="bg-purple-100 text-purple-800 hover:bg-purple-200"
                           >
                             {processingItems.has(item.id) ? (
                               <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-800 mr-2"></div>
                                 Verifying...
                               </>
                             ) : (
@@ -1065,126 +1035,32 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                 </Button>
               </>
             )}
-            
-            {(item.status === 'completed' || item.status === 'needs_verification') && (
-              <div className="w-full text-center space-y-2">
-                <div className={`text-sm font-medium ${
-                  item.status === 'needs_verification' 
-                    ? 'text-orange-600' 
-                    : 'text-green-600'
-                }`}>
-                  {item.status === 'needs_verification' ? '⚠️ Needs Verification' : '✅ Fix Applied'}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {item.status === 'needs_verification'
-                    ? 'Verification failed - may need more time or manual review'
-                    : item.issue_category === 'indexing' 
-                    ? 'Waiting for Google to re-crawl pages (24-48 hrs typical)'
-                    : item.issue_category === 'sitemap'
-                    ? 'Waiting for Google to download updated sitemap'
-                    : 'Awaiting verification'
-                  }
-                </div>
-                {item.issue_category === 'indexing' && (
-                  <div className="text-xs text-blue-600 px-2 py-1 bg-blue-50 rounded">
-                    💡 <strong>Normal process:</strong> Google needs time to discover and re-evaluate your pages after fixes are applied.
-                  </div>
-                )}
-                <Button
-                  onClick={async () => {
-                    if (!user?.token) return;
-                    
-                    console.log(`[ACTION ITEMS UI] Starting verification for item:`, {
-                      id: item.id,
-                      title: item.title,
-                      issueType: item.issue_type,
-                      category: item.issue_category,
-                      status: item.status
-                    });
-                    
-                    try {
-                      if (item.issue_category === 'sitemap') {
-                        console.log(`[ACTION ITEMS UI] 🔄 Refreshing GSC sitemap status before verification...`);
-                        const gscRefreshResponse = await fetch(`/api/gsc/sitemap-status?userToken=${user.token}&siteUrl=${encodeURIComponent(item.site_url)}`);
-                        if (gscRefreshResponse.ok) {
-                          const gscRefreshData = await gscRefreshResponse.json();
-                          console.log(`[ACTION ITEMS UI] ✅ GSC refresh successful:`, gscRefreshData);
-                        } else {
-                          console.log(`[ACTION ITEMS UI] ⚠️ GSC refresh failed:`, gscRefreshResponse.status);
-                        }
-                        
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        
-                        console.log(`[ACTION ITEMS UI] 🔍 Running sitemap debug for verification`);
-                        const debugResponse = await fetch(`/api/debug/sitemap-debug?userToken=${user.token}&siteUrl=${encodeURIComponent(item.site_url)}`);
-                        if (debugResponse.ok) {
-                          const debugData = await debugResponse.json();
-                          console.log(`[ACTION ITEMS UI] 📊 Sitemap debug data:`, debugData.debugInfo);
-                        } else {
-                          console.log(`[ACTION ITEMS UI] ❌ Debug endpoint failed:`, debugResponse.status);
-                        }
-                      }
-                      
-                      console.log(`[ACTION ITEMS UI] 🔍 Calling verification API for item ${item.id}`);
-                      const response = await fetch(`/api/action-items/${item.id}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                          action: 'verify_completion',
-                          userToken: user.token 
-                        })
-                      });
-                      const result = await response.json();
-                      
-                      console.log(`[ACTION ITEMS UI] Verification result:`, result);
-                      
-                      if (result.success && result.verified) {
-                        console.log(`[ACTION ITEMS UI] Verification successful for ${item.title}`);
-                        alert('✅ Verification successful! Issue has been resolved and verified.');
-                      } else if (result.success && !result.verified) {
-                        console.log(`[ACTION ITEMS UI] Verification failed for ${item.title}`);
-                        let failureMessage = '⚠️ Verification shows the issue still needs more time to resolve.\n\n';
-                        
-                        if (item.issue_category === 'indexing') {
-                          failureMessage += '**For indexing issues:** Google may not have re-crawled your pages yet. This is normal and can take 24-48 hours.\n\n' +
-                                          '**What you can do:**\n' +
-                                          '• Wait another day and try verification again\n' +
-                                          '• Request re-indexing in Google Search Console\n' +
-                                          '• Check that your fixes are still in place';
-                        } else if (item.issue_category === 'sitemap') {
-                          failureMessage += '**For sitemap issues:** Google may not have processed your updated sitemap yet.\n\n' +
-                                          '**What you can do:**\n' +
-                                          '• Wait a few hours and try again\n' +
-                                          '• Check Google Search Console for sitemap status\n' +
-                                          '• Verify your sitemap is accessible at the URL';
-                        } else {
-                          failureMessage += '**Next steps:**\n' +
-                                          '• Wait some time for changes to take effect\n' +
-                                          '• Verify that your fixes are still in place\n' +
-                                          '• Try verification again later';
-                        }
-                        
-                        alert(failureMessage);
-                      } else {
-                        console.log(`[ACTION ITEMS UI] Verification API failed:`, result);
-                        alert('❌ Verification API failed. Check console for details.');
-                      }
-                      
-                      await fetchActionItems();
-                    } catch (error) {
-                      console.error('[ACTION ITEMS UI] Error verifying completion:', error);
-                      alert('❌ Error during verification. Please try again.');
-                    }
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="bg-blue-100 text-blue-800 hover:bg-blue-200"
-                >
-                  ⚡ Verify Now
-                </Button>
-              </div>
-            )}
           </div>
+          
+          {/* Pre-fix explanation for non-completed items */}
+          {item.status !== 'completed' && item.status !== 'needs_verification' && item.status !== 'verified' && (
+            <div className="bg-green-50 border border-green-200 rounded-md p-3">
+              <p className="text-sm text-green-800 whitespace-pre-line">
+                <span className="font-medium">What SEOAgent will do:</span><br />
+                {getPreFixExplanation(item, getFixButtonType(item))}
+              </p>
+            </div>
+          )}
+          
+          {/* Collapsible Affected URLs */}
+          {item.affected_urls && item.affected_urls.length > 0 && (
+            <Collapsible open={urlsOpen} onOpenChange={setUrlsOpen}>
+              <CollapsibleTrigger className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 transition-colors">
+                <ChevronRight className={`h-4 w-4 transition-transform ${urlsOpen ? 'rotate-90' : ''}`} />
+                Affected URLs ({item.affected_urls.length})
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-1 text-sm text-muted-foreground pl-6">
+                {item.affected_urls.map((url, index) => (
+                  <div key={index}>{url}</div>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
           {/* Footer metadata */}
           <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-200">
