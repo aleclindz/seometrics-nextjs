@@ -12,15 +12,17 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[GSC PERFORMANCE] Fetching performance data');
+    console.log('[GSC PERFORMANCE] Starting performance data fetch');
     
     const { siteUrl, startDate, endDate, userToken } = await request.json();
+    console.log('[GSC PERFORMANCE] Request params:', { siteUrl, startDate, endDate, userToken: userToken ? `${userToken.substring(0, 10)}...` : 'undefined' });
     
     if (!siteUrl || !startDate || !endDate || !userToken) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
     // Get active GSC connection
+    console.log('[GSC PERFORMANCE] Fetching GSC connection for user...');
     const { data: connection, error: connectionError } = await supabase
       .from('gsc_connections')
       .select('*')
@@ -29,9 +31,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (connectionError || !connection) {
-      console.log('[GSC PERFORMANCE] No active GSC connection found');
+      console.log('[GSC PERFORMANCE] No active GSC connection found. Error:', connectionError);
       return NextResponse.json({ error: 'No GSC connection found' }, { status: 404 });
     }
+    
+    console.log('[GSC PERFORMANCE] Found GSC connection:', { id: connection.id, created_at: connection.created_at });
 
     // Check if user has access to this property
     const { data: property, error: propertyError } = await supabase
@@ -144,13 +148,35 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // Execute all requests in parallel
-    const [queriesResponse, pagesResponse, countriesResponse, devicesResponse] = await Promise.all([
-      webmasters.searchanalytics.query(queriesRequest),
-      webmasters.searchanalytics.query(pagesRequest),
-      webmasters.searchanalytics.query(countriesRequest),
-      webmasters.searchanalytics.query(devicesRequest)
-    ]);
+    // Execute all requests in parallel with better error handling
+    console.log('[GSC PERFORMANCE] Making Google API calls...');
+    let queriesResponse, pagesResponse, countriesResponse, devicesResponse;
+    
+    try {
+      [queriesResponse, pagesResponse, countriesResponse, devicesResponse] = await Promise.all([
+        webmasters.searchanalytics.query(queriesRequest),
+        webmasters.searchanalytics.query(pagesRequest),
+        webmasters.searchanalytics.query(countriesRequest),
+        webmasters.searchanalytics.query(devicesRequest)
+      ]);
+      console.log('[GSC PERFORMANCE] Google API calls completed successfully');
+    } catch (apiError: any) {
+      console.error('[GSC PERFORMANCE] Google API call failed:', {
+        message: apiError.message,
+        code: apiError.code,
+        status: apiError.status,
+        details: apiError.response?.data
+      });
+      
+      // Handle specific API errors
+      if (apiError.code === 403) {
+        return NextResponse.json({ error: 'Access denied to GSC property. Please reconnect your Google Search Console.' }, { status: 403 });
+      } else if (apiError.code === 401) {
+        return NextResponse.json({ error: 'Authentication expired. Please reconnect your Google Search Console.' }, { status: 401 });
+      } else {
+        return NextResponse.json({ error: `Google API error: ${apiError.message || 'Unknown error'}` }, { status: 500 });
+      }
+    }
 
     const queriesRows = queriesResponse.data.rows || [];
     const pagesRows = pagesResponse.data.rows || [];
@@ -273,7 +299,8 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b.clicks - a.clicks);
 
     // Store performance data in database
-    await supabase
+    console.log('[GSC PERFORMANCE] Storing performance data in database...');
+    const { error: insertError } = await supabase
       .from('gsc_performance_data')
       .upsert({
         property_id: property.id,
@@ -291,6 +318,13 @@ export async function POST(request: NextRequest) {
       }, {
         onConflict: 'property_id,date_start,date_end'
       });
+      
+    if (insertError) {
+      console.error('[GSC PERFORMANCE] Database insert error:', insertError);
+      // Don't fail the request if database insert fails, just log it
+    } else {
+      console.log('[GSC PERFORMANCE] Performance data stored successfully');
+    }
 
     const totalRowCount = queriesRows.length + pagesRows.length + countriesRows.length + devicesRows.length;
     
