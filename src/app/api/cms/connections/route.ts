@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     if (!userToken || !connection_name || !website_id || !base_url || !api_token) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: userToken, connection_name, website_id, base_url, api_token' },
         { status: 400 }
       );
     }
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
         cms_type,
         base_url: base_url.replace(/\/$/, ''), // Remove trailing slash
         api_token, // In production, encrypt this
-        content_type: content_type || 'api::article::article',
+        content_type: content_type || 'api::blog-post.blog-post',
         status: 'active'
       })
       .select()

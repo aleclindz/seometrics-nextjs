@@ -9,6 +9,15 @@ interface Website {
   website_token: string;
 }
 
+interface DiscoveredContentType {
+  id: string;
+  name: string;
+  description: string;
+  endpoint: string;
+  entryCount?: number;
+  verified: boolean;
+}
+
 interface CMSConnectionFormProps {
   onSuccess: () => void;
   onCancel: () => void;
@@ -19,9 +28,10 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection }: C
   const { user } = useAuth();
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loading, setLoading] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [discoveredTypes, setDiscoveredTypes] = useState<DiscoveredContentType[]>([]);
+  const [currentStep, setCurrentStep] = useState(connection ? 3 : 1); // Skip discovery for existing connections
 
   const [formData, setFormData] = useState({
     connection_name: connection?.connection_name || '',
@@ -29,7 +39,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection }: C
     cms_type: connection?.cms_type || 'strapi',
     base_url: connection?.base_url || '',
     api_token: connection?.api_token || '',
-    content_type: connection?.content_type || 'api::article::article'
+    content_type: connection?.content_type || ''
   });
 
   useEffect(() => {
@@ -56,53 +66,47 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection }: C
     }));
   };
 
-  const testConnection = async () => {
+  const discoverContentTypes = async () => {
     if (!formData.base_url || !formData.api_token) {
-      setTestResult({
-        success: false,
-        message: 'Please enter both base URL and API token to test the connection'
-      });
+      setError('Please enter both base URL and API token');
       return;
     }
 
     try {
-      setTesting(true);
-      setTestResult(null);
+      setDiscovering(true);
       setError(null);
 
-      const response = await fetch('/api/cms/test-connection', {
+      const response = await fetch('/api/cms/discover-content-types', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          cms_type: formData.cms_type,
           base_url: formData.base_url,
           api_token: formData.api_token,
-          content_type: formData.content_type,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setTestResult({
-          success: true,
-          message: data.message || 'Connection successful!'
-        });
+        setDiscoveredTypes(data.discoveredTypes || []);
+        setCurrentStep(2);
+        
+        // Auto-select recommended content type
+        if (data.recommended) {
+          setFormData(prev => ({
+            ...prev,
+            content_type: data.recommended.id
+          }));
+        }
       } else {
-        setTestResult({
-          success: false,
-          message: data.error || 'Connection failed'
-        });
+        setError(data.error || 'Failed to discover content types');
       }
     } catch (err) {
-      setTestResult({
-        success: false,
-        message: err instanceof Error ? err.message : 'Connection test failed'
-      });
+      setError(err instanceof Error ? err.message : 'Discovery failed');
     } finally {
-      setTesting(false);
+      setDiscovering(false);
     }
   };
 
@@ -145,17 +149,260 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection }: C
     }
   };
 
+  const renderStepIndicator = () => (
+    <div className="flex items-center justify-center mb-6">
+      <div className="flex items-center space-x-4">
+        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 1 ? 'bg-violet-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+          1
+        </div>
+        <div className={`h-0.5 w-12 ${currentStep >= 2 ? 'bg-violet-600' : 'bg-gray-200'}`}></div>
+        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 2 ? 'bg-violet-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+          2
+        </div>
+        <div className={`h-0.5 w-12 ${currentStep >= 3 ? 'bg-violet-600' : 'bg-gray-200'}`}></div>
+        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 3 ? 'bg-violet-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+          3
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep1 = () => (
+    <div className="space-y-4">
+      <div className="text-center mb-6">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Connect to your Strapi CMS</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter your Strapi URL and API token to get started</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Strapi Base URL *
+        </label>
+        <input
+          type="url"
+          name="base_url"
+          value={formData.base_url}
+          onChange={handleInputChange}
+          placeholder="https://your-strapi-instance.railway.app"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          API Token *
+        </label>
+        <input
+          type="password"
+          name="api_token"
+          value={formData.api_token}
+          onChange={handleInputChange}
+          placeholder="Your Strapi API token"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+          required
+        />
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Generate this in your Strapi admin panel under Settings → API Tokens
+        </p>
+      </div>
+
+      <div className="flex justify-between pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={discoverContentTypes}
+          disabled={discovering || !formData.base_url || !formData.api_token}
+          className="btn bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
+        >
+          {discovering ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              Discovering...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Connect & Discover
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div className="space-y-4">
+      <div className="text-center mb-6">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Choose Content Type</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Found {discoveredTypes.length} content type(s) in your Strapi CMS
+        </p>
+      </div>
+
+      {discoveredTypes.length > 0 ? (
+        <div className="space-y-3">
+          {discoveredTypes.map((type) => (
+            <div
+              key={type.id}
+              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                formData.content_type === type.id
+                  ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+              }`}
+              onClick={() => setFormData(prev => ({ ...prev, content_type: type.id }))}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-white">{type.name}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{type.description}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{type.id}</div>
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 ${
+                  formData.content_type === type.id
+                    ? 'border-violet-500 bg-violet-500'
+                    : 'border-gray-300'
+                }`}>
+                  {formData.content_type === type.id && (
+                    <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <div className="text-gray-500 dark:text-gray-400">No content types found</div>
+        </div>
+      )}
+
+      <div className="flex justify-between pt-4">
+        <button
+          type="button"
+          onClick={() => setCurrentStep(1)}
+          className="btn border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentStep(3)}
+          disabled={!formData.content_type}
+          className="btn bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="text-center mb-6">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Finalize Connection</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review and save your CMS connection</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Connection Name *
+          </label>
+          <input
+            type="text"
+            name="connection_name"
+            value={formData.connection_name}
+            onChange={handleInputChange}
+            placeholder="My Blog CMS"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Website *
+          </label>
+          <select
+            name="website_id"
+            value={formData.website_id}
+            onChange={handleInputChange}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            required
+          >
+            <option value="">Select a website</option>
+            {websites.map(website => (
+              <option key={website.id} value={website.id}>
+                {website.domain}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Connection Summary */}
+      <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+        <h4 className="font-medium text-gray-900 dark:text-white mb-3">Connection Summary</h4>
+        <div className="space-y-2 text-sm">
+          <div><span className="font-medium">CMS Type:</span> <span className="text-gray-600 dark:text-gray-400">Strapi</span></div>
+          <div><span className="font-medium">Base URL:</span> <span className="text-gray-600 dark:text-gray-400">{formData.base_url}</span></div>
+          <div><span className="font-medium">Content Type:</span> <span className="text-gray-600 dark:text-gray-400">
+            {discoveredTypes.find(t => t.id === formData.content_type)?.name || formData.content_type}
+          </span></div>
+        </div>
+      </div>
+
+      <div className="flex justify-between pt-4">
+        <button
+          type="button"
+          onClick={() => setCurrentStep(connection ? 3 : 2)}
+          className="btn border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300"
+        >
+          {connection ? 'Cancel' : 'Back'}
+        </button>
+        <button
+          type="submit"
+          disabled={loading || !formData.connection_name || !formData.website_id || !formData.content_type}
+          className="btn bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
+        >
+          {loading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              Saving...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {connection ? 'Update' : 'Create'} Connection
+            </>
+          )}
+        </button>
+      </div>
+    </form>
+  );
+
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
       <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
         <h2 className="font-semibold text-gray-800 dark:text-gray-100">
-          {connection ? 'Edit' : 'Add'} CMS Connection
+          {connection ? 'Edit CMS Connection' : 'Add CMS Connection'}
         </h2>
       </div>
       
-      <form onSubmit={handleSubmit} className="p-5 space-y-4">
+      <div className="p-5">
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,186 +416,12 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection }: C
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Connection Name *
-            </label>
-            <input
-              type="text"
-              name="connection_name"
-              value={formData.connection_name}
-              onChange={handleInputChange}
-              placeholder="My Blog CMS"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Website *
-            </label>
-            <select
-              name="website_id"
-              value={formData.website_id}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-              required
-            >
-              <option value="">Select a website</option>
-              {websites.map(website => (
-                <option key={website.id} value={website.id}>
-                  {website.domain}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              CMS Type
-            </label>
-            <select
-              name="cms_type"
-              value={formData.cms_type}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            >
-              <option value="strapi">Strapi</option>
-              <option value="wordpress" disabled>WordPress (Coming Soon)</option>
-              <option value="contentful" disabled>Contentful (Coming Soon)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Content Type
-            </label>
-            <input
-              type="text"
-              name="content_type"
-              value={formData.content_type}
-              onChange={handleInputChange}
-              placeholder="api::article::article"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Strapi content type identifier (e.g., api::article::article)
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Base URL *
-          </label>
-          <input
-            type="url"
-            name="base_url"
-            value={formData.base_url}
-            onChange={handleInputChange}
-            placeholder="https://your-strapi-instance.com"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            API Token *
-          </label>
-          <input
-            type="password"
-            name="api_token"
-            value={formData.api_token}
-            onChange={handleInputChange}
-            placeholder="Your Strapi API token"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            required
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Generate this in your Strapi admin panel under Settings → API Tokens
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between pt-4">
-          <button
-            type="button"
-            onClick={testConnection}
-            disabled={testing || !formData.base_url || !formData.api_token}
-            className="btn border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 disabled:opacity-50"
-          >
-            {testing ? (
-              <>
-                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2"></div>
-                Testing...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Test Connection
-              </>
-            )}
-          </button>
-
-          <div className="flex space-x-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {connection ? 'Update' : 'Create'} Connection
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {testResult && (
-          <div className={`rounded-lg p-4 ${testResult.success ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'}`}>
-            <div className="flex">
-              <div className="flex-shrink-0">
-                {testResult.success ? (
-                  <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                )}
-              </div>
-              <div className="ml-3">
-                <p className={`text-sm ${testResult.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {testResult.message}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </form>
+        {!connection && renderStepIndicator()}
+        
+        {currentStep === 1 && renderStep1()}
+        {currentStep === 2 && renderStep2()}
+        {currentStep === 3 && renderStep3()}
+      </div>
     </div>
   );
 }
