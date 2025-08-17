@@ -267,21 +267,170 @@ SEOAgent.com differentiates from tools like SurferSEO by focusing on **automatio
 - [TODO] Google Search Console API
 - [TODO] Lighthouse API
 
-## 🚨 IMMEDIATE PRIORITIES (Three-Pillar Focus)
+## 🤖 **TECHNICAL SEO AGENT ROADMAP (Launch Priority #1)**
 
-### **Phase 1: Technical SEO Analyst Foundation (Weeks 1-2)**
-1. **Google Search Console OAuth integration** - Core data source for automation
-2. **Website crawling system setup** - Foundation for technical SEO detection
-3. **Basic technical SEO issue detection** - Starting with common problems
-4. **Performance metrics dashboard** - Show value of automated fixes
+**Mission**: Create a conversational LLM agent that can execute all technical SEO tasks through natural language chat.
 
-### **Phase 2: Multi-CMS Competitive Advantage (Weeks 3-4)**
+### **🚀 LAUNCH-CRITICAL FEATURES (4 Weeks)**
+
+#### **FEATURE 1: Core Web Vitals Monitoring** 🔥 **Week 1**
+**API Requirements:**
+- `/api/technical-seo/core-web-vitals` - Google PageSpeed Insights integration
+- `/api/technical-seo/performance-optimization` - Specific optimization recommendations
+
+**LLM Function Schemas:**
+```typescript
+check_core_web_vitals(site_url, pages?, force_refresh?)
+optimize_page_performance(page_url, metric_focus?)
+```
+
+**User Experience:**
+- "Check my site's performance" → LLM calls `check_core_web_vitals` → "Your homepage LCP is 3.2s (needs improvement). Let me get specific optimization suggestions..." → calls `optimize_page_performance`
+
+#### **FEATURE 2: Enhanced Sitemap Automation** 🔥 **Week 1-2**
+**API Requirements:**
+- Enhanced `/api/technical-seo/generate-sitemap` (build on existing)
+- `/api/technical-seo/sitemap-health` - Sitemap validation and monitoring
+
+**LLM Function Schemas:**
+```typescript
+generate_sitemap(site_url, submit_to_gsc?, crawl_depth?)
+check_sitemap_health(site_url, sitemap_url?)
+```
+
+**User Experience:**
+- "Make sure my sitemap is optimized" → LLM calls `check_sitemap_health` → "Found 3 sitemap issues. Generating optimized version..." → calls `generate_sitemap` → "✅ New sitemap with 47 URLs submitted to GSC"
+
+#### **FEATURE 3: Robots.txt Optimization** 🔥 **Week 2**
+**API Requirements:**
+- Enhanced `/api/technical-seo/robots-analysis` (build on existing)
+- `/api/technical-seo/robots-optimization` - Auto-fix robots.txt issues
+
+**LLM Function Schemas:**
+```typescript
+analyze_robots_txt(site_url, check_blocking?)
+optimize_robots_txt(site_url, include_sitemaps?, preserve_existing?)
+```
+
+**User Experience:**
+- "Check if my robots.txt is blocking important pages" → LLM calls `analyze_robots_txt` → "Found blocking rules for /blog/* - this prevents 23 blog posts from being indexed" → calls `optimize_robots_txt`
+
+#### **FEATURE 4: Comprehensive Website Crawler** 🔥 **Week 2-3**
+**API Requirements:**
+- `/api/technical-seo/website-crawler` - Headless browser crawling system
+- `/api/technical-seo/crawl-status` - Monitor crawl progress and results
+
+**LLM Function Schemas:**
+```typescript
+crawl_website(site_url, max_pages?, crawl_depth?, check_technical_seo?)
+get_crawl_results(site_url, include_technical_data?, pages_only?)
+```
+
+**User Experience:**
+- "Scan my entire website for SEO issues" → LLM calls `crawl_website` → "Crawling 127 pages... Found 15 technical issues across 8 pages. Here's what needs attention..."
+
+#### **FEATURE 5: Internal Linking Optimization** 🔥 **Week 3-4**
+**API Requirements:**
+- `/api/technical-seo/internal-links-analysis` - Link structure analysis
+- `/api/technical-seo/internal-links-suggestions` - Smart linking recommendations
+
+**LLM Function Schemas:**
+```typescript
+analyze_internal_links(site_url, page_url?, find_orphaned?)
+suggest_internal_links(source_page, content_context?, max_suggestions?)
+```
+
+**User Experience:**
+- "Find pages that need more internal links" → LLM calls `analyze_internal_links` → "Found 12 orphaned pages. For your blog post about 'SEO basics', I suggest linking to..." → calls `suggest_internal_links`
+
+### **🗄️ DATABASE SCHEMA ADDITIONS**
+```sql
+-- Core Web Vitals tracking
+CREATE TABLE core_web_vitals (
+  id SERIAL PRIMARY KEY,
+  user_token VARCHAR(255) REFERENCES login_users(token),
+  site_url TEXT NOT NULL,
+  page_url TEXT NOT NULL,
+  lcp_score DECIMAL(10,2),
+  fid_score DECIMAL(10,2), 
+  cls_score DECIMAL(10,2),
+  overall_rating VARCHAR(20),
+  recommendations TEXT[],
+  measured_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Website crawl results
+CREATE TABLE crawl_results (
+  id SERIAL PRIMARY KEY,
+  user_token VARCHAR(255) REFERENCES login_users(token),
+  site_url TEXT NOT NULL,
+  page_url TEXT NOT NULL,
+  title TEXT,
+  meta_description TEXT,
+  h1_tags TEXT[],
+  internal_links_count INTEGER,
+  external_links_count INTEGER,
+  images_without_alt INTEGER,
+  page_load_time DECIMAL(10,2),
+  technical_issues TEXT[],
+  crawled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Internal linking structure
+CREATE TABLE internal_links (
+  id SERIAL PRIMARY KEY,
+  user_token VARCHAR(255) REFERENCES login_users(token),
+  site_url TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  target_url TEXT NOT NULL,
+  anchor_text TEXT,
+  link_context TEXT,
+  relevance_score DECIMAL(3,2),
+  discovered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crawl job management
+CREATE TABLE website_crawl_jobs (
+  id SERIAL PRIMARY KEY,
+  user_token VARCHAR(255) REFERENCES login_users(token),
+  site_url TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  pages_discovered INTEGER DEFAULT 0,
+  pages_crawled INTEGER DEFAULT 0,
+  issues_found INTEGER DEFAULT 0,
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+### **🎯 SUCCESS METRICS FOR LAUNCH**
+- **Conversational Coverage**: 100% of technical SEO tasks executable via chat
+- **Response Time**: <30 seconds for all technical SEO function calls
+- **Accuracy**: LLM selects correct tools 95%+ of the time
+- **User Adoption**: 80%+ of users engage with chat agent for technical SEO
+
+### **📋 IMPLEMENTATION CHECKLIST**
+- [TODO] Core Web Vitals API + LLM functions (Week 1)
+- [TODO] Enhanced Sitemap APIs + LLM functions (Week 1-2)  
+- [TODO] Robots.txt Optimization APIs + LLM functions (Week 2)
+- [TODO] Website Crawler + LLM functions (Week 2-3)
+- [TODO] Internal Linking Analysis + LLM functions (Week 3-4)
+- [TODO] Update openai-function-client.ts with all 10 new function schemas
+- [TODO] Database migrations for new tables
+- [TODO] Integration testing of full conversational workflows
+- [TODO] Performance optimization for real-time chat responses
+
+---
+
+## 🚨 LEGACY PRIORITIES (Moved to Phase 2+)
+
+### **Phase 2: Multi-CMS Competitive Advantage (Weeks 5-6)**
 1. **End-to-end CMS testing** - Strapi, WordPress, Webflow, Shopify
 2. **Ghost CMS integration** - Expand beyond SurferSEO's limitations
 3. **Multi-CMS marketing documentation** - Highlight competitive advantage
 4. **Content automation workflows** - Reduce manual intervention
 
-### **Phase 3: SEO Strategist Intelligence (Weeks 5-6)**
+### **Phase 3: SEO Strategist Intelligence (Weeks 7-8)**
 1. **SERP.dev API integration** - Automated keyword research
 2. **Competitor analysis automation** - Strategic intelligence gathering
 3. **Dynamic strategy generation** - Personalized SEO roadmaps

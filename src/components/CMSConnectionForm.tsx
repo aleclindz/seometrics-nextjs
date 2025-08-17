@@ -176,10 +176,11 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="base_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Strapi Base URL *
         </label>
         <input
+          id="base_url"
           type="url"
           name="base_url"
           value={formData.base_url}
@@ -191,10 +192,11 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="api_token" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           API Token *
         </label>
         <input
+          id="api_token"
           type="password"
           name="api_token"
           value={formData.api_token}
@@ -315,10 +317,11 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor="connection_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Connection Name *
           </label>
           <input
+            id="connection_name"
             type="text"
             name="connection_name"
             value={formData.connection_name}
@@ -331,10 +334,11 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
 
 {!preselectedWebsiteId && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="website_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Website *
             </label>
             <select
+              id="website_id"
               name="website_id"
               value={formData.website_id}
               onChange={handleInputChange}

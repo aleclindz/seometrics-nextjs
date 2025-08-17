@@ -104,10 +104,16 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       
       if (result.success && result.data.active) {
         setSmartjsDetected(true);
-        onStatusUpdate?.({ smartjsStatus: 'active' });
+        // Only update parent if status actually changed
+        if (website.smartjsStatus !== 'active') {
+          onStatusUpdate?.({ smartjsStatus: 'active' });
+        }
       } else {
         setSmartjsDetected(false);
-        onStatusUpdate?.({ smartjsStatus: 'inactive' });
+        // Only update parent if status actually changed
+        if (website.smartjsStatus !== 'inactive') {
+          onStatusUpdate?.({ smartjsStatus: 'inactive' });
+        }
       }
     } catch (error) {
       console.error('Error checking SEOAgent.js status:', error);
@@ -246,10 +252,16 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       
       if (result.success && result.data.active) {
         setSmartjsDetected(true);
-        onStatusUpdate?.({ smartjsStatus: 'active' });
+        // Only update parent if status actually changed
+        if (website.smartjsStatus !== 'active') {
+          onStatusUpdate?.({ smartjsStatus: 'active' });
+        }
       } else {
         setSmartjsDetected(false);
-        onStatusUpdate?.({ smartjsStatus: 'inactive' });
+        // Only update parent if status actually changed  
+        if (website.smartjsStatus !== 'inactive') {
+          onStatusUpdate?.({ smartjsStatus: 'inactive' });
+        }
       }
     } catch (error) {
       console.error('Error testing SEOAgent.js:', error);
