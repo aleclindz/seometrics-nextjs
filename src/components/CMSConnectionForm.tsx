@@ -77,7 +77,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       setDiscovering(true);
       setError(null);
 
-      const response = await fetch('/api/cms/discover-content-types', {
+      const response = await fetch(`/api/cms/discover-content-types?userToken=${user?.token}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -85,7 +85,6 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         body: JSON.stringify({
           base_url: formData.base_url,
           api_token: formData.api_token,
-          userToken: user?.token,
         }),
       });
 

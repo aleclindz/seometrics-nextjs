@@ -8,13 +8,21 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
+    const userToken = request.nextUrl.searchParams.get('userToken');
     const body = await request.json();
-    const { base_url, api_token, userToken } = body;
+    const { base_url, api_token } = body;
 
-    if (!base_url || !api_token || !userToken) {
+    if (!base_url || !api_token) {
       return NextResponse.json(
-        { error: 'Missing required fields: base_url, api_token, and userToken' },
+        { error: 'Missing required fields: base_url and api_token' },
         { status: 400 }
+      );
+    }
+
+    if (!userToken) {
+      return NextResponse.json(
+        { error: 'User token is required' },
+        { status: 401 }
       );
     }
 
