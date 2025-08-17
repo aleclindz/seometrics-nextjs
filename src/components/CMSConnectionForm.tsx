@@ -85,6 +85,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         body: JSON.stringify({
           base_url: formData.base_url,
           api_token: formData.api_token,
+          userToken: user?.token,
         }),
       });
 

@@ -1,14 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { base_url, api_token } = body;
+    const { base_url, api_token, userToken } = body;
 
-    if (!base_url || !api_token) {
+    if (!base_url || !api_token || !userToken) {
       return NextResponse.json(
-        { error: 'Missing required fields: base_url and api_token' },
+        { error: 'Missing required fields: base_url, api_token, and userToken' },
         { status: 400 }
+      );
+    }
+
+    // Validate user token
+    const { data: user, error: userError } = await supabase
+      .from('login_users')
+      .select('token')
+      .eq('token', userToken)
+      .single();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Invalid user token' },
+        { status: 401 }
       );
     }
 
