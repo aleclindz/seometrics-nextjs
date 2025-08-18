@@ -7,7 +7,7 @@ echo "🧪 Testing SEOAgent Sitemap Cron Job..."
 echo "========================================"
 
 # Configuration
-BASE_URL="https://seoagent.com"
+BASE_URL="https://www.seoagent.com"
 ADMIN_SECRET="y7X0I3xd1RXD9vKjvhAd5tPbLMyqR8SguAHqaEO+KuU="
 
 # URL encode the secret (replace + with %2B and = with %3D)
@@ -24,14 +24,27 @@ echo "🔑 Using Admin Secret: ${ADMIN_SECRET:0:10}..."
 echo "🔧 URL-encoded Secret: ${ENCODED_SECRET:0:15}..."
 echo ""
 
-# Make the request
-echo "🚀 Triggering cron test..."
-response=$(curl -s -L -w "HTTPSTATUS:%{http_code}" \
+# Make the request with timeout (using curl's built-in timeout)
+echo "🚀 Triggering cron test (60s timeout)..."
+response=$(curl -s -L -m 60 -w "HTTPSTATUS:%{http_code}" \
   "${BASE_URL}/api/admin/test-sitemap-cron?adminToken=${ENCODED_SECRET}")
+curl_exit_code=$?
 
-# Also test if the endpoint exists
+if [ $curl_exit_code -eq 28 ]; then
+  echo -e "${RED}⏰ REQUEST TIMED OUT after 60 seconds${NC}"
+  echo "This usually means:"
+  echo "1. The endpoint is processing many websites (this is normal)"  
+  echo "2. There might be an internal error in the cron job"
+  echo "3. The database query is taking too long"
+  echo ""
+  echo "✅ The good news: Your endpoint is deployed and accessible!"
+  echo "🔍 Check Vercel function logs for more details"
+  exit 1
+fi
+
+# Also test if the endpoint exists quickly
 echo "🔍 Testing endpoint existence..."
-endpoint_test=$(curl -s -I -w "HTTPSTATUS:%{http_code}" \
+endpoint_test=$(curl -s -I -m 10 -w "HTTPSTATUS:%{http_code}" \
   "${BASE_URL}/api/admin/test-sitemap-cron" | grep "HTTPSTATUS:")
 endpoint_code=$(echo $endpoint_test | sed 's/.*HTTPSTATUS://')
 echo "📍 Endpoint status (without params): $endpoint_code"

@@ -12,9 +12,24 @@ export async function POST(request: NextRequest) {
 
     // Verify this is a legitimate cron request (basic auth check)
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.log('[CRON SITEMAP] Unauthorized cron request');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
+    
+    console.log('[CRON SITEMAP] Received auth header:', authHeader?.substring(0, 20) + '...');
+    console.log('[CRON SITEMAP] Expected auth header:', expectedAuth?.substring(0, 20) + '...');
+    console.log('[CRON SITEMAP] CRON_SECRET exists:', !!process.env.CRON_SECRET);
+    console.log('[CRON SITEMAP] Headers match:', authHeader === expectedAuth);
+    
+    if (authHeader !== expectedAuth) {
+      console.log('[CRON SITEMAP] Unauthorized cron request - auth mismatch');
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        debug: {
+          hasAuthHeader: !!authHeader,
+          hasCronSecret: !!process.env.CRON_SECRET,
+          authHeaderLength: authHeader?.length || 0,
+          expectedLength: expectedAuth?.length || 0
+        }
+      }, { status: 401 });
     }
 
     // Get all active websites that need sitemap regeneration

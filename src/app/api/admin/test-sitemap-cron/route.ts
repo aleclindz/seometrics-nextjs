@@ -24,7 +24,14 @@ export async function GET(request: NextRequest) {
     console.log('[ADMIN] Testing sitemap cron job...');
 
     // Call the cron endpoint
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/regenerate-sitemaps`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.seoagent.com';
+    const cronUrl = `${baseUrl}/api/cron/regenerate-sitemaps`;
+    
+    console.log('[ADMIN] Calling cron endpoint:', cronUrl);
+    console.log('[ADMIN] Using CRON_SECRET exists:', !!process.env.CRON_SECRET);
+    console.log('[ADMIN] Base URL:', baseUrl);
+    
+    const response = await fetch(cronUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.CRON_SECRET}`,
