@@ -9,6 +9,14 @@ export async function GET(request: NextRequest) {
     console.log('[ADMIN] Expected token:', process.env.ADMIN_SECRET?.substring(0, 10) + '...');
     console.log('[ADMIN] Tokens match:', adminToken === process.env.ADMIN_SECRET);
     
+    // Character by character comparison for debugging
+    if (adminToken && process.env.ADMIN_SECRET && adminToken !== process.env.ADMIN_SECRET) {
+      console.log('[ADMIN] Full received token:', JSON.stringify(adminToken));
+      console.log('[ADMIN] Full expected token:', JSON.stringify(process.env.ADMIN_SECRET));
+      console.log('[ADMIN] Char codes at pos 0:', adminToken.charCodeAt(0), 'vs', process.env.ADMIN_SECRET.charCodeAt(0));
+      console.log('[ADMIN] Char codes at end:', adminToken.charCodeAt(adminToken.length-1), 'vs', process.env.ADMIN_SECRET.charCodeAt(process.env.ADMIN_SECRET.length-1));
+    }
+    
     if (!adminToken || adminToken !== process.env.ADMIN_SECRET) {
       return NextResponse.json({ 
         error: 'Unauthorized',
