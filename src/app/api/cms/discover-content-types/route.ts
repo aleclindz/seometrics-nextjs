@@ -44,9 +44,12 @@ export async function POST(request: NextRequest) {
 
     const cleanUrl = base_url.replace(/\/$/, '');
     
-    // Test basic connectivity first
+    // Test basic connectivity with content-type-builder (requires fewer permissions)
+    let connectionWorking = false;
+    let connectionError = '';
+    
     try {
-      const healthResponse = await fetch(`${cleanUrl}/api/users/me`, {
+      const healthResponse = await fetch(`${cleanUrl}/api/content-type-builder/content-types`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${api_token}`,
@@ -54,22 +57,43 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      if (!healthResponse.ok) {
-        if (healthResponse.status === 401) {
-          return NextResponse.json(
-            { error: 'Invalid API token. Please check your token and try again.' },
-            { status: 401 }
-          );
-        }
-        return NextResponse.json(
-          { error: `Connection failed: ${healthResponse.status}` },
-          { status: 400 }
-        );
+      if (healthResponse.ok) {
+        connectionWorking = true;
+      } else if (healthResponse.status === 401) {
+        connectionError = 'Invalid API token. Please create a Custom token with Content-Type-Builder.read permission.';
+      } else if (healthResponse.status === 403) {
+        connectionError = 'API token lacks permissions. Please create a Custom token with Content-Type-Builder.read and Content-Manager.read permissions.';
+      } else {
+        connectionError = `Connection failed: ${healthResponse.status}`;
       }
     } catch (error) {
+      connectionError = 'Could not connect to Strapi instance. Please check your base URL.';
+    }
+
+    // If primary health check failed, try a basic content endpoint as fallback
+    if (!connectionWorking) {
+      try {
+        const fallbackResponse = await fetch(`${cleanUrl}/api/blog-posts?pagination[limit]=1`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${api_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (fallbackResponse.ok) {
+          connectionWorking = true;
+          connectionError = ''; // Clear error if fallback works
+        }
+      } catch (error) {
+        // Fallback failed, keep original error
+      }
+    }
+
+    if (!connectionWorking) {
       return NextResponse.json(
-        { error: 'Could not connect to Strapi instance. Please check your base URL.' },
-        { status: 400 }
+        { error: connectionError },
+        { status: 401 }
       );
     }
 
