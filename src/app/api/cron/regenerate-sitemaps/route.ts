@@ -71,29 +71,46 @@ export async function POST(request: NextRequest) {
 
     // Process each website
     for (const website of websites || []) {
+      // Determine the website URL to use - handle null website.url (outside try block for catch access)
+      const websiteUrl = website.url || website.domain;
+      const displayUrl = websiteUrl || website.domain || 'Unknown';
+      
       try {
-        console.log(`[CRON SITEMAP] Processing website: ${website.url}`);
+        
+        console.log(`[CRON SITEMAP] Processing website: ${displayUrl}`);
         
         results.processed++;
+
+        if (!websiteUrl) {
+          console.log(`[CRON SITEMAP] Skipping ${website.domain} - no URL available`);
+          results.details.push({
+            website: website.domain,
+            status: 'skipped',
+            reason: 'No URL available'
+          });
+          continue;
+        }
 
         // Check if sitemap was regenerated recently (within last 6 days)
         const sixDaysAgo = new Date();
         sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
 
+        // Safely construct domain for query
+        const safeDomain = websiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '');
         const { data: recentSitemap } = await supabase
           .from('sitemap_submissions')
           .select('*')
           .eq('user_token', website.user_token)
-          .or(`site_url.eq.${website.url},site_url.eq.sc-domain:${website.url.replace(/^https?:\/\//, '').replace(/^www\./, '')}`)
+          .or(`site_url.eq.${websiteUrl},site_url.eq.sc-domain:${safeDomain}`)
           .gte('created_at', sixDaysAgo.toISOString())
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
 
         if (recentSitemap) {
-          console.log(`[CRON SITEMAP] Skipping ${website.url} - sitemap generated recently`);
+          console.log(`[CRON SITEMAP] Skipping ${displayUrl} - sitemap generated recently`);
           results.details.push({
-            website: website.url,
+            website: displayUrl,
             status: 'skipped',
             reason: 'Generated recently'
           });
@@ -108,28 +125,28 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             userToken: website.user_token,
-            siteUrl: website.url,
+            siteUrl: websiteUrl,
             submitToGSC: true
           }),
         });
 
         if (response.ok) {
           const result = await response.json();
-          console.log(`[CRON SITEMAP] ✅ Successfully regenerated sitemap for ${website.url}`);
+          console.log(`[CRON SITEMAP] ✅ Successfully regenerated sitemap for ${displayUrl}`);
           
           results.success++;
           results.details.push({
-            website: website.url,
+            website: displayUrl,
             status: 'success',
             urlCount: result.data?.urlCount || 0,
             sitemapUrl: result.data?.sitemapUrl
           });
         } else {
-          console.error(`[CRON SITEMAP] ❌ Failed to regenerate sitemap for ${website.url}: ${response.status}`);
+          console.error(`[CRON SITEMAP] ❌ Failed to regenerate sitemap for ${displayUrl}: ${response.status}`);
           
           results.failed++;
           results.details.push({
-            website: website.url,
+            website: displayUrl,
             status: 'failed',
             error: `HTTP ${response.status}`
           });
@@ -139,11 +156,11 @@ export async function POST(request: NextRequest) {
         await new Promise(resolve => setTimeout(resolve, 2000));
 
       } catch (error) {
-        console.error(`[CRON SITEMAP] Error processing ${website.url}:`, error);
+        console.error(`[CRON SITEMAP] Error processing ${displayUrl}:`, error);
         
         results.failed++;
         results.details.push({
-          website: website.url,
+          website: displayUrl,
           status: 'error',
           error: error instanceof Error ? error.message : 'Unknown error'
         });
