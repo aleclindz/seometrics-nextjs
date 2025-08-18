@@ -37,13 +37,18 @@ export async function GET(request: NextRequest) {
     
     console.log('[ADMIN] Calling cron endpoint:', cronUrl);
     console.log('[ADMIN] Using CRON_SECRET exists:', !!process.env.CRON_SECRET);
+    console.log('[ADMIN] CRON_SECRET length:', process.env.CRON_SECRET?.length);
     console.log('[ADMIN] Base URL:', baseUrl);
+    
+    const authHeader = `Bearer ${process.env.CRON_SECRET}`;
+    console.log('[ADMIN] Auth header being sent:', authHeader.substring(0, 30) + '...');
     
     const response = await fetch(cronUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.CRON_SECRET}`,
-        'Content-Type': 'application/json'
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+        'User-Agent': 'SEOAgent-Admin-Test/1.0'
       }
     });
 

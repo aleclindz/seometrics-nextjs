@@ -10,8 +10,8 @@ echo "========================================"
 BASE_URL="https://www.seoagent.com"
 ADMIN_SECRET="y7X0I3xd1RXD9vKjvhAd5tPbLMyqR8SguAHqaEO+KuU="
 
-# Use raw secret (no encoding needed!)
-RAW_SECRET="${ADMIN_SECRET}"
+# URL encode ONLY the + character (the real issue!)
+PROPERLY_ENCODED_SECRET=$(echo "$ADMIN_SECRET" | sed 's/+/%2B/g')
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -21,13 +21,13 @@ NC='\033[0m' # No Color
 
 echo "📍 Testing URL: ${BASE_URL}/api/admin/test-sitemap-cron"
 echo "🔑 Using Admin Secret: ${ADMIN_SECRET:0:10}..."
-echo "✨ Using raw secret (no URL encoding needed)"
+echo "🔧 Properly encoded (+ only): ${PROPERLY_ENCODED_SECRET:0:15}..."
 echo ""
 
 # Make the request with timeout (using curl's built-in timeout)
 echo "🚀 Triggering cron test (60s timeout)..."
 response=$(curl -s -L -m 60 -w "HTTPSTATUS:%{http_code}" \
-  "${BASE_URL}/api/admin/test-sitemap-cron?adminToken=${RAW_SECRET}")
+  "${BASE_URL}/api/admin/test-sitemap-cron?adminToken=${PROPERLY_ENCODED_SECRET}")
 curl_exit_code=$?
 
 if [ $curl_exit_code -eq 28 ]; then

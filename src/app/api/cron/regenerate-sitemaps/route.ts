@@ -14,9 +14,16 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
     
+    // Debug all headers received
+    console.log('[CRON SITEMAP] All headers received:');
+    request.headers.forEach((value, key) => {
+      console.log(`  ${key}: ${value.substring(0, 50)}...`);
+    });
+    
     console.log('[CRON SITEMAP] Received auth header:', authHeader?.substring(0, 20) + '...');
     console.log('[CRON SITEMAP] Expected auth header:', expectedAuth?.substring(0, 20) + '...');
     console.log('[CRON SITEMAP] CRON_SECRET exists:', !!process.env.CRON_SECRET);
+    console.log('[CRON SITEMAP] CRON_SECRET length:', process.env.CRON_SECRET?.length);
     console.log('[CRON SITEMAP] Headers match:', authHeader === expectedAuth);
     
     if (authHeader !== expectedAuth) {
