@@ -7,14 +7,14 @@ echo "=================================="
 BASE_URL="https://www.seoagent.com"
 ADMIN_SECRET="y7X0I3xd1RXD9vKjvhAd5tPbLMyqR8SguAHqaEO+KuU="
 
-# URL encode the secret
-ENCODED_SECRET=$(echo "$ADMIN_SECRET" | sed 's/+/%2B/g' | sed 's/=/%3D/g')
+# Use raw secret (no encoding needed!)
+RAW_SECRET="${ADMIN_SECRET}"
 
-echo "🔑 Testing with encoded secret: ${ENCODED_SECRET:0:15}..."
+echo "🔑 Testing with raw secret: ${RAW_SECRET:0:15}..."
 
 # Test with a quick request that should fail fast if auth is wrong
 response=$(curl -s -m 10 -w "HTTPSTATUS:%{http_code}" \
-  "${BASE_URL}/api/admin/test-sitemap-cron?adminToken=${ENCODED_SECRET}")
+  "${BASE_URL}/api/admin/test-sitemap-cron?adminToken=${RAW_SECRET}")
 
 http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
 response_body=$(echo $response | sed -e 's/HTTPSTATUS:.*//g')
