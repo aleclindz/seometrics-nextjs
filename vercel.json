@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/gsc-sync",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/regenerate-sitemaps",
+      "schedule": "0 2 * * 1"
     }
   ],
   "redirects": [
