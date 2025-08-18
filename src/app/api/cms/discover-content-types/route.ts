@@ -153,13 +153,15 @@ export async function POST(request: NextRequest) {
 
           if (testResponse.ok) {
             const data = await testResponse.json();
+            const entryCount = data.meta?.pagination?.total || 0;
             discoveredTypes.push({
               ...pattern,
-              description: `Found ${data.meta?.pagination?.total || 0} entries`,
+              description: entryCount === 0 ? 'Empty collection (ready for content)' : `${entryCount} entries`,
+              entryCount,
               kind: 'collectionType',
               verified: true
             });
-            console.log('[CMS DISCOVERY] Verified endpoint:', pattern.endpoint);
+            console.log('[CMS DISCOVERY] Verified endpoint:', pattern.endpoint, `(${entryCount} entries)`);
           }
         } catch (error) {
           console.log('[CMS DISCOVERY] Failed to test:', pattern.endpoint);
@@ -182,7 +184,7 @@ export async function POST(request: NextRequest) {
           if (countResponse.ok) {
             const data = await countResponse.json();
             type.entryCount = data.meta?.pagination?.total || 0;
-            type.description = `${type.entryCount} entries`;
+            type.description = type.entryCount === 0 ? 'Empty collection (ready for content)' : `${type.entryCount} entries`;
             type.verified = true;
           }
         } catch (error) {
@@ -201,6 +203,9 @@ export async function POST(request: NextRequest) {
         if (!a.id.includes('blog') && b.id.includes('blog')) return 1;
         if (a.id.includes('article') && !b.id.includes('article')) return -1;
         if (!a.id.includes('article') && b.id.includes('article')) return 1;
+        // Show non-empty collections first, but include empty ones
+        if ((a.entryCount || 0) > 0 && (b.entryCount || 0) === 0) return -1;
+        if ((a.entryCount || 0) === 0 && (b.entryCount || 0) > 0) return 1;
         return (b.entryCount || 0) - (a.entryCount || 0);
       });
 
