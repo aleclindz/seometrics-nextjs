@@ -42,9 +42,25 @@ export async function POST(request: NextRequest) {
     if (sitemapError || !sitemapRecord) {
       console.log('[SITEMAP SERVE] No sitemap found, generating basic sitemap');
       
+      // Determine the website URL to use - handle null website.url
+      let baseUrl = website_url;
+      if (!baseUrl && website.url) {
+        baseUrl = website.url.startsWith('sc-domain:') 
+          ? website.url.replace('sc-domain:', 'https://') 
+          : website.url;
+      }
+      if (!baseUrl && website.domain) {
+        baseUrl = website.domain.startsWith('sc-domain:') 
+          ? website.domain.replace('sc-domain:', 'https://') 
+          : `https://${website.domain}`;
+      }
+      if (!baseUrl) {
+        console.error('[SITEMAP SERVE] No URL available for sitemap generation');
+        return NextResponse.json({ error: 'No website URL available' }, { status: 400 });
+      }
+      
       // Generate a basic sitemap on-the-fly
       const currentDate = new Date().toISOString().split('T')[0];
-      const baseUrl = website_url || website.url.replace('sc-domain:', 'https://');
       
       const basicSitemapXML = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -78,6 +94,24 @@ export async function POST(request: NextRequest) {
 
     // Try to fetch the full sitemap XML from the generation endpoint
     try {
+      // Determine the site URL for the generation API - handle null website.url
+      let siteUrlForGeneration = website_url;
+      if (!siteUrlForGeneration && website.url) {
+        siteUrlForGeneration = website.url;
+      }
+      if (!siteUrlForGeneration && website.domain) {
+        siteUrlForGeneration = website.domain.startsWith('sc-domain:') 
+          ? website.domain 
+          : `sc-domain:${website.domain}`;
+      }
+      
+      if (!siteUrlForGeneration) {
+        console.error('[SITEMAP SERVE] No site URL available for generation API');
+        throw new Error('No site URL available');
+      }
+      
+      console.log(`[SITEMAP SERVE] Calling generation API with siteUrl: ${siteUrlForGeneration}`);
+      
       // Reconstruct the sitemap XML from stored data or regenerate it
       const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/technical-seo/generate-sitemap`, {
         method: 'POST',
@@ -86,7 +120,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           userToken: website.user_token,
-          siteUrl: website.url,
+          siteUrl: siteUrlForGeneration,
           submitToGSC: false // Don't resubmit, just get XML
         })
       });
