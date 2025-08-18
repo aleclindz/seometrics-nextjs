@@ -48,6 +48,9 @@ function initializeSEOMetrics() {
     // Process Open Graph tags
     processOpenGraphTags();
     
+    // Setup sitemap handler
+    setupSitemapHandler();
+    
     // Add SEOAgent attribution (for backlink building)
     addSEOAgentAttribution();
 }
@@ -474,6 +477,96 @@ async function processOpenGraphTags() {
         
     } catch (error) {
         console.error('[SEO-METRICS] Error processing Open Graph tags:', error);
+    }
+}
+
+async function setupSitemapHandler() {
+    try {
+        console.log('[SEO-METRICS] Setting up sitemap handler');
+        
+        // Check if this is a sitemap.xml request
+        if (window.location.pathname === '/sitemap.xml' || window.location.pathname === '/sitemap') {
+            console.log('[SEO-METRICS] Sitemap request detected, serving generated sitemap');
+            await serveSitemap();
+            return;
+        }
+        
+        // Set up interception for future sitemap requests (fallback)
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+        
+        history.pushState = function() {
+            originalPushState.apply(history, arguments);
+            checkForSitemapRoute();
+        };
+        
+        history.replaceState = function() {
+            originalReplaceState.apply(history, arguments);
+            checkForSitemapRoute();
+        };
+        
+        window.addEventListener('popstate', checkForSitemapRoute);
+        
+        console.log('[SEO-METRICS] Sitemap handler setup completed');
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error setting up sitemap handler:', error);
+    }
+}
+
+function checkForSitemapRoute() {
+    if (window.location.pathname === '/sitemap.xml' || window.location.pathname === '/sitemap') {
+        serveSitemap();
+    }
+}
+
+async function serveSitemap() {
+    try {
+        console.log('[SEO-METRICS] Fetching generated sitemap for website');
+        
+        // Fetch the generated sitemap from our API
+        const response = await fetch(`https://seoagent.com/api/sitemaps/serve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                website_token: idv,
+                website_url: window.location.origin
+            })
+        });
+        
+        if (!response.ok) {
+            console.error(`[SEO-METRICS] Failed to fetch sitemap: ${response.status}`);
+            // Don't interfere with normal page loading if sitemap fetch fails
+            return;
+        }
+        
+        const sitemapData = await response.json();
+        
+        if (sitemapData.sitemapXML) {
+            console.log('[SEO-METRICS] Serving generated sitemap XML');
+            
+            // Replace page content with sitemap XML
+            document.open();
+            document.write(sitemapData.sitemapXML);
+            document.close();
+            
+            // Set correct content type
+            if (document.head) {
+                const meta = document.createElement('meta');
+                meta.setAttribute('http-equiv', 'content-type');
+                meta.setAttribute('content', 'application/xml; charset=utf-8');
+                document.head.appendChild(meta);
+            }
+            
+            console.log('[SEO-METRICS] Sitemap served successfully');
+        } else {
+            console.log('[SEO-METRICS] No sitemap XML available');
+        }
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error serving sitemap:', error);
     }
 }
 
