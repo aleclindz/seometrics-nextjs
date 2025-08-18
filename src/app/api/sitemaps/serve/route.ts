@@ -29,15 +29,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Look for a generated sitemap for this website
-    const { data: sitemapRecord, error: sitemapError } = await supabase
+    let sitemapQuery = supabase
       .from('sitemap_submissions')
       .select('*')
       .eq('user_token', website.user_token)
-      .or(`site_url.eq.${website.url},site_url.eq.sc-domain:${website.url.replace(/^https?:\/\//, '').replace(/^www\./, '')}`)
       .eq('status', 'submitted')
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
+
+    // Add URL-based filtering only if website.url exists
+    if (website.url) {
+      const cleanUrl = website.url.replace(/^https?:\/\//, '').replace(/^www\./, '');
+      sitemapQuery = sitemapQuery.or(`site_url.eq.${website.url},site_url.eq.sc-domain:${cleanUrl}`);
+    }
+    
+    const { data: sitemapRecord, error: sitemapError } = await sitemapQuery.single();
 
     if (sitemapError || !sitemapRecord) {
       console.log('[SITEMAP SERVE] No sitemap found, generating basic sitemap');
@@ -158,18 +164,92 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  // Support GET requests with website_token as query parameter
-  const website_token = request.nextUrl.searchParams.get('website_token');
-  const website_url = request.nextUrl.searchParams.get('website_url');
-  
-  if (!website_token) {
-    return NextResponse.json({ error: 'Website token is required' }, { status: 400 });
+  try {
+    // Support GET requests with website_token as query parameter
+    const website_token = request.nextUrl.searchParams.get('website_token');
+    const website_url = request.nextUrl.searchParams.get('website_url');
+    const domain = request.nextUrl.searchParams.get('domain');
+    
+    // If domain is provided, look up website by domain
+    if (domain && !website_token) {
+      console.log(`[SITEMAP SERVE] Looking up website by domain: ${domain}`);
+      
+      const { data: website, error: websiteError } = await supabase
+        .from('websites')
+        .select('*')
+        .or(`domain.eq.${domain},domain.eq.sc-domain:${domain},domain.ilike.%${domain}%,url.ilike.%${domain}%`)
+        .single();
+        
+      if (websiteError || !website) {
+        console.error('[SITEMAP SERVE] Website not found by domain:', websiteError);
+        
+        // Return a basic sitemap for unknown domains
+        const currentDate = new Date().toISOString().split('T')[0];
+        const basicSitemapXML = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://${domain}</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://${domain}/about</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://${domain}/contact</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>`;
+
+        return new Response(basicSitemapXML, {
+          headers: {
+            'Content-Type': 'application/xml',
+            'Cache-Control': 'public, max-age=3600'
+          }
+        });
+      }
+      
+      // Use the found website token
+      const mockRequest = {
+        json: async () => ({ website_token: website.website_token, website_url })
+      };
+      
+      const result = await POST(mockRequest as any);
+      
+      // If the result is JSON, convert it to XML response for direct sitemap serving
+      if (result.headers.get('content-type')?.includes('application/json')) {
+        const jsonData = await result.json();
+        if (jsonData.success && jsonData.sitemapXML) {
+          return new Response(jsonData.sitemapXML, {
+            headers: {
+              'Content-Type': 'application/xml',
+              'Cache-Control': 'public, max-age=3600'
+            }
+          });
+        }
+      }
+      
+      return result;
+    }
+    
+    if (!website_token) {
+      return NextResponse.json({ error: 'Website token or domain is required' }, { status: 400 });
+    }
+    
+    // Convert to POST-like call
+    const mockRequest = {
+      json: async () => ({ website_token, website_url })
+    };
+    
+    return POST(mockRequest as any);
+  } catch (error) {
+    console.error('[SITEMAP SERVE] GET error:', error);
+    return NextResponse.json({ error: 'Failed to serve sitemap' }, { status: 500 });
   }
-  
-  // Convert to POST-like call
-  const mockRequest = {
-    json: async () => ({ website_token, website_url })
-  };
-  
-  return POST(mockRequest as any);
 }

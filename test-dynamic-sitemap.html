@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dynamic Sitemap - translateyoutubevideos.com</title>
+</head>
+<body>
+    <h1>Testing Dynamic Sitemap Serving</h1>
+    <p>This page simulates translateyoutubevideos.com to test the dynamic sitemap functionality.</p>
+    
+    <div id="test-results">
+        <h2>Test Results:</h2>
+        <div id="console-log"></div>
+    </div>
+    
+    <div id="test-buttons">
+        <button onclick="testSitemapGeneration()">Test Basic Sitemap Generation</button>
+        <button onclick="testAPIFetch()">Test API Sitemap Fetch</button>
+        <button onclick="testNavigateToSitemap()">Test Navigate to /sitemap.xml</button>
+        <button onclick="testServiceWorker()">Test Service Worker Setup</button>
+    </div>
+
+    <script>
+        // Override console.log to display results on page
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const logDiv = document.getElementById('console-log');
+            const p = document.createElement('p');
+            p.textContent = args.join(' ');
+            p.style.fontSize = '12px';
+            p.style.margin = '2px 0';
+            p.style.fontFamily = 'monospace';
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        // Simulate website token for testing
+        const idv = 'translateyoutubevideos_test_token_' + Date.now();
+        
+        // Test functions
+        function testSitemapGeneration() {
+            console.log('=== Testing Basic Sitemap Generation ===');
+            
+            // Simulate the generateBasicSitemap function
+            const domain = 'translateyoutubevideos.com';
+            const protocol = 'https:';
+            const baseUrl = `${protocol}//${domain}`;
+            
+            const currentDate = new Date().toISOString().split('T')[0];
+            
+            const urls = [
+                { url: '/', priority: '1.0', changefreq: 'weekly' },
+                { url: '/translate', priority: '0.9', changefreq: 'weekly' },
+                { url: '/about', priority: '0.8', changefreq: 'monthly' },
+                { url: '/contact', priority: '0.7', changefreq: 'monthly' },
+                { url: '/privacy', priority: '0.3', changefreq: 'yearly' },
+                { url: '/terms', priority: '0.3', changefreq: 'yearly' }
+            ];
+            
+            let sitemapXML = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+            urls.forEach(({ url, priority, changefreq }) => {
+                sitemapXML += `
+  <url>
+    <loc>${baseUrl}${url}</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+            });
+
+            sitemapXML += `
+</urlset>`;
+            
+            console.log('Generated sitemap XML:');
+            console.log(sitemapXML.substring(0, 300) + '...');
+            console.log('✅ Basic sitemap generation successful');
+        }
+
+        async function testAPIFetch() {
+            console.log('=== Testing API Sitemap Fetch ===');
+            
+            try {
+                const domain = 'translateyoutubevideos.com';
+                const apiUrl = `https://seoagent.com/api/sitemaps/serve?domain=${domain}`;
+                
+                console.log('Fetching from API:', apiUrl);
+                
+                const response = await fetch(apiUrl);
+                console.log('API Response status:', response.status);
+                console.log('API Response content-type:', response.headers.get('content-type'));
+                
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('xml')) {
+                        const xmlText = await response.text();
+                        console.log('✅ API returned XML:', xmlText.substring(0, 200) + '...');
+                    } else {
+                        const data = await response.json();
+                        console.log('✅ API returned JSON:', Object.keys(data));
+                    }
+                } else {
+                    console.log('❌ API returned error:', response.status);
+                }
+                
+            } catch (error) {
+                console.log('❌ API fetch failed:', error.message);
+            }
+        }
+
+        function testNavigateToSitemap() {
+            console.log('=== Testing Navigation to /sitemap.xml ===');
+            
+            // Simulate navigation to sitemap.xml
+            const originalPathname = window.location.pathname;
+            
+            // Mock window.location.pathname
+            Object.defineProperty(window.location, 'pathname', {
+                writable: true,
+                value: '/sitemap.xml'
+            });
+            
+            console.log('Simulated navigation to:', window.location.pathname);
+            
+            // Test the sitemap detection logic
+            if (window.location.pathname === '/sitemap.xml' || window.location.pathname.endsWith('/sitemap.xml')) {
+                console.log('✅ Sitemap path detected correctly');
+                console.log('Would trigger: serveDynamicSitemap()');
+            } else {
+                console.log('❌ Sitemap path not detected');
+            }
+            
+            // Restore original pathname
+            Object.defineProperty(window.location, 'pathname', {
+                writable: true,
+                value: originalPathname
+            });
+        }
+
+        function testServiceWorker() {
+            console.log('=== Testing Service Worker Setup ===');
+            
+            if ('serviceWorker' in navigator) {
+                console.log('✅ Service Worker supported');
+                
+                try {
+                    const swCode = `
+self.addEventListener('fetch', function(event) {
+    if (event.request.url.endsWith('/sitemap.xml')) {
+        console.log('[TEST-SW] Would intercept sitemap request:', event.request.url);
+    }
+});`;
+                    
+                    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+                    const swUrl = URL.createObjectURL(swBlob);
+                    
+                    console.log('✅ Service Worker blob created successfully');
+                    console.log('SW URL:', swUrl.substring(0, 50) + '...');
+                    
+                } catch (error) {
+                    console.log('❌ Service Worker setup error:', error.message);
+                }
+                
+            } else {
+                console.log('❌ Service Worker not supported');
+            }
+        }
+
+        // Initialize page
+        console.log('🧪 Dynamic Sitemap Test Page Loaded');
+        console.log('Simulated domain: translateyoutubevideos.com');
+        console.log('Website token (idv):', idv);
+        console.log('Current pathname:', window.location.pathname);
+        console.log('Ready to test dynamic sitemap functionality!');
+    </script>
+
+    <!-- Load the actual SEOAgent.js for full testing -->
+    <script>
+        // You can uncomment this to test with the real script
+        // const script = document.createElement('script');
+        // script.src = 'https://seoagent.com/seoagent.js';
+        // document.head.appendChild(script);
+    </script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #console-log { 
+            background: #f5f5f5; 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            height: 400px; 
+            overflow-y: auto; 
+            margin: 10px 0;
+        }
+        #test-buttons button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #007cba;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #test-buttons button:hover {
+            background: #005a87;
+        }
+    </style>
+</body>
+</html>

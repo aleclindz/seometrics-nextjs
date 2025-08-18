@@ -48,6 +48,9 @@ function initializeSEOMetrics() {
     // Process Open Graph tags
     processOpenGraphTags();
     
+    // Initialize dynamic sitemap serving
+    initializeSitemapServing();
+    
     // Setup sitemap handler
     setupSitemapHandler();
     
@@ -1269,4 +1272,274 @@ window.addEventListener('error', function(event) {
     }
 });
 
-console.log('SEO Metrics: Smart.js loaded successfully');
+// Dynamic Sitemap Serving - CRITICAL for automation
+function initializeSitemapServing() {
+    try {
+        console.log('[SEO-METRICS] Initializing dynamic sitemap serving...');
+        
+        // Check if we're on the sitemap.xml path
+        if (window.location.pathname === '/sitemap.xml' || window.location.pathname.endsWith('/sitemap.xml')) {
+            console.log('[SEO-METRICS] Detected sitemap.xml request, serving dynamic sitemap');
+            serveDynamicSitemap();
+            return;
+        }
+        
+        // Set up service worker for intercepting sitemap requests
+        if ('serviceWorker' in navigator) {
+            setupSitemapServiceWorker();
+        } else {
+            // Fallback: Use history API to intercept navigation
+            setupSitemapInterception();
+        }
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error initializing sitemap serving:', error);
+    }
+}
+
+function serveDynamicSitemap() {
+    try {
+        console.log('[SEO-METRICS] Generating dynamic sitemap for:', window.location.hostname);
+        
+        // Generate sitemap content
+        generateAndServeSitemap();
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error serving dynamic sitemap:', error);
+    }
+}
+
+async function generateAndServeSitemap() {
+    try {
+        // Get sitemap data from API
+        const sitemapData = await fetchSitemapFromAPI();
+        
+        if (sitemapData && sitemapData.sitemapXML) {
+            // Replace page content with sitemap XML
+            document.open();
+            document.write(sitemapData.sitemapXML);
+            document.close();
+            
+            // Set content type header if possible
+            if (document.contentType) {
+                document.contentType = 'application/xml';
+            }
+            
+            console.log('[SEO-METRICS] Successfully served dynamic sitemap');
+        } else {
+            // Generate basic sitemap if API fails
+            generateBasicSitemap();
+        }
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error generating sitemap:', error);
+        generateBasicSitemap();
+    }
+}
+
+async function fetchSitemapFromAPI() {
+    try {
+        const domain = window.location.hostname;
+        const apiUrl = `https://seoagent.com/api/sitemaps/serve?domain=${domain}`;
+        
+        console.log('[SEO-METRICS] Fetching sitemap from API:', apiUrl);
+        
+        const response = await fetch(apiUrl);
+        
+        if (response.ok) {
+            // Check if response is XML
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('xml')) {
+                const xmlText = await response.text();
+                return { sitemapXML: xmlText };
+            } else {
+                // Response is JSON
+                const data = await response.json();
+                return data;
+            }
+        } else {
+            console.warn('[SEO-METRICS] API returned:', response.status);
+            return null;
+        }
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] API fetch failed:', error);
+        return null;
+    }
+}
+
+function generateBasicSitemap() {
+    try {
+        console.log('[SEO-METRICS] Generating basic sitemap as fallback');
+        
+        const domain = window.location.hostname;
+        const protocol = window.location.protocol;
+        const baseUrl = `${protocol}//${domain}`;
+        
+        const currentDate = new Date().toISOString().split('T')[0];
+        
+        // Basic URLs - can be enhanced by crawling the site
+        const urls = [
+            { url: '/', priority: '1.0', changefreq: 'weekly' },
+            { url: '/about', priority: '0.8', changefreq: 'monthly' },
+            { url: '/contact', priority: '0.7', changefreq: 'monthly' },
+            { url: '/services', priority: '0.8', changefreq: 'weekly' },
+            { url: '/products', priority: '0.8', changefreq: 'weekly' },
+            { url: '/blog', priority: '0.9', changefreq: 'daily' },
+            { url: '/privacy', priority: '0.3', changefreq: 'yearly' },
+            { url: '/terms', priority: '0.3', changefreq: 'yearly' }
+        ];
+        
+        // Add domain-specific URLs
+        if (domain.includes('translateyoutubevideos')) {
+            urls.push({ url: '/translate', priority: '0.9', changefreq: 'weekly' });
+        }
+        
+        let sitemapXML = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+        urls.forEach(({ url, priority, changefreq }) => {
+            sitemapXML += `
+  <url>
+    <loc>${baseUrl}${url}</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+        });
+
+        sitemapXML += `
+</urlset>`;
+        
+        // Replace page content with sitemap
+        document.open();
+        document.write(sitemapXML);
+        document.close();
+        
+        console.log('[SEO-METRICS] Basic sitemap generated and served');
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error generating basic sitemap:', error);
+    }
+}
+
+function setupSitemapServiceWorker() {
+    try {
+        // Register service worker for sitemap interception
+        const swCode = `
+self.addEventListener('fetch', function(event) {
+    if (event.request.url.endsWith('/sitemap.xml')) {
+        console.log('[SEO-SW] Intercepting sitemap request:', event.request.url);
+        
+        event.respondWith(
+            fetch('https://seoagent.com/api/sitemaps/serve?domain=' + new URL(event.request.url).hostname)
+                .then(response => {
+                    if (response.ok) {
+                        return response;
+                    }
+                    // Fallback to basic sitemap
+                    const basicSitemap = generateBasicSitemapXML(new URL(event.request.url).hostname);
+                    return new Response(basicSitemap, {
+                        headers: { 'Content-Type': 'application/xml' }
+                    });
+                })
+                .catch(() => {
+                    // Network error fallback
+                    const basicSitemap = generateBasicSitemapXML(new URL(event.request.url).hostname);
+                    return new Response(basicSitemap, {
+                        headers: { 'Content-Type': 'application/xml' }
+                    });
+                })
+        );
+    }
+});
+
+function generateBasicSitemapXML(domain) {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const baseUrl = 'https://' + domain;
+    
+    return \`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>\${baseUrl}/</loc>
+    <lastmod>\${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>\${baseUrl}/about</loc>
+    <lastmod>\${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>\`;
+}`;
+
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+        
+        navigator.serviceWorker.register(swUrl)
+            .then(registration => {
+                console.log('[SEO-METRICS] Sitemap service worker registered:', registration.scope);
+            })
+            .catch(error => {
+                console.warn('[SEO-METRICS] Service worker registration failed:', error);
+                setupSitemapInterception();
+            });
+            
+    } catch (error) {
+        console.error('[SEO-METRICS] Error setting up service worker:', error);
+        setupSitemapInterception();
+    }
+}
+
+function setupSitemapInterception() {
+    try {
+        // Alternative approach: Monitor for sitemap navigation
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+        
+        function checkForSitemapNavigation(url) {
+            if (url && url.includes('sitemap.xml')) {
+                console.log('[SEO-METRICS] Sitemap navigation detected');
+                setTimeout(() => {
+                    if (window.location.pathname.endsWith('sitemap.xml')) {
+                        serveDynamicSitemap();
+                    }
+                }, 100);
+            }
+        }
+        
+        history.pushState = function(state, title, url) {
+            checkForSitemapNavigation(url);
+            return originalPushState.call(history, state, title, url);
+        };
+        
+        history.replaceState = function(state, title, url) {
+            checkForSitemapNavigation(url);
+            return originalReplaceState.call(history, state, title, url);
+        };
+        
+        window.addEventListener('popstate', function(event) {
+            if (window.location.pathname.endsWith('sitemap.xml')) {
+                serveDynamicSitemap();
+            }
+        });
+        
+        console.log('[SEO-METRICS] Sitemap interception fallback setup complete');
+        
+    } catch (error) {
+        console.error('[SEO-METRICS] Error setting up sitemap interception:', error);
+    }
+}
+
+// Enhanced sitemap handler for immediate execution
+function setupSitemapHandler() {
+    // Check if we're currently on sitemap.xml
+    if (window.location.pathname === '/sitemap.xml' || window.location.pathname.endsWith('/sitemap.xml')) {
+        console.log('[SEO-METRICS] Currently on sitemap.xml page, serving immediately');
+        serveDynamicSitemap();
+    }
+}
+
+console.log('SEO Metrics: Smart.js loaded successfully with dynamic sitemap serving');
