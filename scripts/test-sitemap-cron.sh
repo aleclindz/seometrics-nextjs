@@ -10,6 +10,9 @@ echo "========================================"
 BASE_URL="https://seoagent.com"
 ADMIN_SECRET="y7X0I3xd1RXD9vKjvhAd5tPbLMyqR8SguAHqaEO+KuU="
 
+# URL encode the secret (replace + with %2B and = with %3D)
+ENCODED_SECRET=$(echo "$ADMIN_SECRET" | sed 's/+/%2B/g' | sed 's/=/%3D/g')
+
 # Colors for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -18,12 +21,13 @@ NC='\033[0m' # No Color
 
 echo "📍 Testing URL: ${BASE_URL}/api/admin/test-sitemap-cron"
 echo "🔑 Using Admin Secret: ${ADMIN_SECRET:0:10}..."
+echo "🔧 URL-encoded Secret: ${ENCODED_SECRET:0:15}..."
 echo ""
 
 # Make the request
 echo "🚀 Triggering cron test..."
 response=$(curl -s -L -w "HTTPSTATUS:%{http_code}" \
-  "${BASE_URL}/api/admin/test-sitemap-cron?adminToken=${ADMIN_SECRET}")
+  "${BASE_URL}/api/admin/test-sitemap-cron?adminToken=${ENCODED_SECRET}")
 
 # Also test if the endpoint exists
 echo "🔍 Testing endpoint existence..."

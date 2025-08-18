@@ -5,8 +5,20 @@ export async function GET(request: NextRequest) {
     // Get admin token from query params for manual testing
     const adminToken = request.nextUrl.searchParams.get('adminToken');
     
+    console.log('[ADMIN] Received token:', adminToken?.substring(0, 10) + '...');
+    console.log('[ADMIN] Expected token:', process.env.ADMIN_SECRET?.substring(0, 10) + '...');
+    console.log('[ADMIN] Tokens match:', adminToken === process.env.ADMIN_SECRET);
+    
     if (!adminToken || adminToken !== process.env.ADMIN_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        debug: {
+          receivedLength: adminToken?.length || 0,
+          expectedLength: process.env.ADMIN_SECRET?.length || 0,
+          hasToken: !!adminToken,
+          hasEnvVar: !!process.env.ADMIN_SECRET
+        }
+      }, { status: 401 });
     }
 
     console.log('[ADMIN] Testing sitemap cron job...');
