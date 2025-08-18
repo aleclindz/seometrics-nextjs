@@ -395,6 +395,57 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
     }
   };
 
+  const handleRegenerateSitemap = async (actionItem: ActionItem) => {
+    if (!user?.token) return;
+
+    console.log('[ACTION ITEMS] 🗺️ Regenerating sitemap for:', actionItem.site_url);
+    
+    setProcessingItems(prev => {
+      const newSet = new Set(prev);
+      newSet.add(actionItem.id);
+      return newSet;
+    });
+
+    try {
+      const response = await fetch('/api/technical-seo/generate-sitemap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userToken: user.token,
+          siteUrl: actionItem.site_url,
+          submitToGSC: true
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to regenerate sitemap');
+      }
+
+      const result = await response.json();
+      console.log('[ACTION ITEMS] ✅ Sitemap regenerated:', result);
+      
+      // Show success message
+      alert(`✅ Sitemap regenerated and submitted to Google Search Console!\n\n` +
+            `📊 Generated ${result.data.urlCount} URLs\n` +
+            `🔗 Available at: ${result.data.sitemapUrl}\n\n` +
+            `Note: Google may take a few hours to process the updated sitemap.`);
+      
+      // Refresh action items to update status
+      await fetchActionItems();
+    } catch (error) {
+      console.error('Error regenerating sitemap:', error);
+      alert('❌ Failed to regenerate sitemap. Please try again or contact support.');
+    } finally {
+      setProcessingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(actionItem.id);
+        return newSet;
+      });
+    }
+  };
+
   const getFixButtonForItem = (item: ActionItem) => {
     const fixes = {
       // Existing automatable fixes
@@ -759,6 +810,7 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
     handleGenerateInstructions: (item: ActionItem) => void;
     handleVerifyCodeFix: (item: ActionItem) => void;
     handleDismiss: (item: ActionItem) => void;
+    handleRegenerateSitemap: (item: ActionItem) => void;
     fetchActionItems: () => Promise<void>;
     getFixButtonType: (item: ActionItem) => string;
     getFixButtonForItem: (item: ActionItem) => any;
@@ -879,6 +931,27 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                         );
                       }
                     })()} 
+                    
+                    {/* Regenerate Sitemap button for sitemap-related issues */}
+                    {item.issue_category === 'sitemap' && (
+                      <Button
+                        onClick={() => handleRegenerateSitemap(item)}
+                        variant="outline"
+                        size="sm"
+                        className="bg-green-100 text-green-700 hover:bg-green-200"
+                        disabled={processingItems.has(item.id)}
+                      >
+                        {processingItems.has(item.id) ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin mr-1"></div>
+                            Regenerating...
+                          </>
+                        ) : (
+                          <>🗺️ Regenerate Sitemap</>
+                        )}
+                      </Button>
+                    )}
+                    
                     <Button
                       onClick={() => handleDismiss(item)}
                       variant="outline"
@@ -1247,6 +1320,7 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
                 handleGenerateInstructions={handleGenerateInstructions}
                 handleVerifyCodeFix={handleVerifyCodeFix}
                 handleDismiss={handleDismiss}
+                handleRegenerateSitemap={handleRegenerateSitemap}
                 fetchActionItems={fetchActionItems}
                 getFixButtonType={getFixButtonType}
                 getFixButtonForItem={getFixButtonForItem}
