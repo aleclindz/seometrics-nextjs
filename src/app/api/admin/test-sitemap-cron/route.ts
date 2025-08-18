@@ -47,9 +47,15 @@ export async function GET(request: NextRequest) {
       method: 'POST',
       headers: {
         'Authorization': authHeader,
+        'X-Admin-Secret': process.env.ADMIN_SECRET || '',
         'Content-Type': 'application/json',
         'User-Agent': 'SEOAgent-Admin-Test/1.0'
       }
+    });
+    
+    console.log('[ADMIN] Request headers sent:', {
+      authorization: authHeader ? 'present' : 'missing',
+      adminSecret: process.env.ADMIN_SECRET ? 'present' : 'missing'
     });
 
     const result = await response.json();

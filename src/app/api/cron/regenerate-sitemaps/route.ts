@@ -10,34 +10,41 @@ export async function POST(request: NextRequest) {
   try {
     console.log('[CRON SITEMAP] Starting scheduled sitemap regeneration...');
 
-    // Verify this is a legitimate cron request (basic auth check)
+    // Verify this is a legitimate cron request 
+    // Support both Bearer token (for actual cron) and admin secret (for testing)
     const authHeader = request.headers.get('authorization');
-    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
+    const expectedCronAuth = `Bearer ${process.env.CRON_SECRET}`;
+    const adminSecret = request.headers.get('x-admin-secret');
     
-    // Debug all headers received
-    console.log('[CRON SITEMAP] All headers received:');
-    request.headers.forEach((value, key) => {
-      console.log(`  ${key}: ${value.substring(0, 50)}...`);
-    });
+    console.log('[CRON SITEMAP] Auth check details:');
+    console.log(`   Auth header: ${authHeader ? authHeader.substring(0, 20) + '...' : 'undefined'}`);
+    console.log(`   Expected cron auth: ${expectedCronAuth?.substring(0, 20) + '...'}`);
+    console.log(`   Admin secret header: ${adminSecret ? adminSecret.substring(0, 10) + '...' : 'undefined'}`);
+    console.log(`   CRON_SECRET exists: ${!!process.env.CRON_SECRET}`);
+    console.log(`   ADMIN_SECRET exists: ${!!process.env.ADMIN_SECRET}`);
     
-    console.log('[CRON SITEMAP] Received auth header:', authHeader?.substring(0, 20) + '...');
-    console.log('[CRON SITEMAP] Expected auth header:', expectedAuth?.substring(0, 20) + '...');
-    console.log('[CRON SITEMAP] CRON_SECRET exists:', !!process.env.CRON_SECRET);
-    console.log('[CRON SITEMAP] CRON_SECRET length:', process.env.CRON_SECRET?.length);
-    console.log('[CRON SITEMAP] Headers match:', authHeader === expectedAuth);
+    const validCronAuth = authHeader === expectedCronAuth;
+    const validAdminAuth = adminSecret === process.env.ADMIN_SECRET;
     
-    if (authHeader !== expectedAuth) {
-      console.log('[CRON SITEMAP] Unauthorized cron request - auth mismatch');
+    console.log(`   Valid cron auth: ${validCronAuth}`);
+    console.log(`   Valid admin auth: ${validAdminAuth}`);
+    
+    if (!validCronAuth && !validAdminAuth) {
+      console.log('[CRON SITEMAP] Unauthorized cron request - no valid auth');
       return NextResponse.json({ 
         error: 'Unauthorized',
         debug: {
           hasAuthHeader: !!authHeader,
+          hasAdminSecret: !!adminSecret,
           hasCronSecret: !!process.env.CRON_SECRET,
-          authHeaderLength: authHeader?.length || 0,
-          expectedLength: expectedAuth?.length || 0
+          hasAdminEnvSecret: !!process.env.ADMIN_SECRET,
+          authSource: validCronAuth ? 'cron' : validAdminAuth ? 'admin' : 'none'
         }
       }, { status: 401 });
     }
+    
+    const authSource = validCronAuth ? 'cron-bearer' : 'admin-secret';
+    console.log(`[CRON SITEMAP] Authorized via: ${authSource}`);
 
     // Get all active websites that need sitemap regeneration
     const { data: websites, error: websitesError } = await supabase
@@ -46,8 +53,7 @@ export async function POST(request: NextRequest) {
         *,
         login_users!inner(*)
       `)
-      .eq('is_managed', true)
-      .eq('login_users.is_active', true);
+      .eq('is_managed', true);
 
     if (websitesError) {
       console.error('[CRON SITEMAP] Error fetching websites:', websitesError);
