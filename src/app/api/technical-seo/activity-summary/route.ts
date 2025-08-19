@@ -138,8 +138,8 @@ async function generateAISummary(siteUrl: string, activity: AggregatedActivity, 
   const domainName = extractDomainName(siteUrl);
   const timePeriod = getTimePeriodDescription(activity.periodStart, activity.periodEnd);
   
-  // Prepare activity data for AI
-  const activitySummary = summarizeActivitiesByType(activity.activities);
+  // Prepare activity data for AI with enhanced metrics
+  const activitySummary = await summarizeActivitiesByTypeWithMetrics(activity.activities, userToken);
   
   // Get current technical SEO status for context
   let technicalContext = '';
@@ -173,8 +173,9 @@ IMPORTANT: Be very specific about these issues in your response. Don't say "iden
     }
   }
 
-  // Generate next steps based on website status
-  const nextSteps = generateNextSteps(websiteStatus, domainName);
+  // Generate next steps based on website status - but first enhance it with actual detection
+  const enhancedWebsiteStatus = await enhanceWebsiteStatus(websiteStatus, userToken, siteUrl, aggregatedActivity);
+  const nextSteps = generateNextSteps(enhancedWebsiteStatus, domainName);
   
   const prompt = `You are SEOAgent's friendly assistant. Create a warm, conversational welcome message summarizing what you've accomplished for ${domainName} ${timePeriod}, then provide actionable next steps.
 
@@ -188,21 +189,29 @@ ${activitySummary}${technicalContext}
 Current website status and recommended next steps:
 ${nextSteps}
 
-Instructions:
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+- ONLY suggest connecting Google Search Console if it's specifically mentioned in the "next steps" section above
+- ONLY suggest installing SEOAgent.js if it's specifically mentioned in the "next steps" section above  
+- DO NOT suggest "SEO Health Check" - instead say "scan for technical issues" if needed
+- If GSC is already connected (evidenced by sitemap data or technical context), acknowledge this success
+- If SEOAgent.js is already installed (evidenced by technical context), acknowledge this automation
+- Focus on SPECIFIC accomplishments with numbers (e.g., "generated 15 meta tags", "added schema to 8 pages")
+- Use the exact time period provided - do not guess or default to "two weeks"
+
+Style Instructions:
 - Start with "Welcome back!" or similar friendly greeting
 - Use simple, non-technical language that any website owner can understand
 - Explain the SEO benefits of each action (why it helps Google find/understand/rank their content)
 - Be encouraging and show the value being provided
 - Keep it conversational and personalized to ${domainName}
 - Use bullet points (•) for major accomplishments
-- After accomplishments, add a "Next Steps:" section with specific actionable recommendations
-- Prioritize the most important next steps first (GSC connection, SEOAgent.js installation, critical fixes)
+- After accomplishments, add a "Next Steps:" section ONLY if steps are provided above
 - Maximum 200 words total
-- Focus on the most impactful activities and next steps first
+- Be accurate - don't suggest things that are already implemented
 
-Example tone: "Welcome back! Here's what I've accomplished for ${domainName} this week: • Added schema markup to 5 pages - this helps Google display rich snippets with your business info...
+Example: "Welcome back! Here's what I've accomplished for ${domainName} this week: • Generated and submitted sitemap to Google Search Console - helping Google find all your pages • Added schema markup to 12 pages - improving how your content appears in search results • Created 25 optimized meta descriptions - making your pages more clickable in search..."
 
-Next Steps: • Connect Google Search Console to track your site's performance in search results • Install SEOAgent.js to enable automated technical SEO fixes • Run your first SEO Health Check to identify critical issues"`;
+Next Steps format: Only include if specific steps are provided in the data above.`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -301,6 +310,83 @@ function generateFallbackSummary(domainName: string, timePeriod: string, activit
 
   summary += '\n\nI\'m continuously monitoring and improving your SEO automatically!';
   
+  return summary;
+}
+
+async function summarizeActivitiesByTypeWithMetrics(activities: any[], userToken?: string): Promise<string> {
+  const grouped = activities.reduce((acc, activity) => {
+    if (!acc[activity.type]) {
+      acc[activity.type] = [];
+    }
+    acc[activity.type].push(activity);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  let summary = '';
+  
+  // Add actual SEO metrics if we have a user token
+  if (userToken) {
+    try {
+      const { data: metaTags } = await supabase
+        .from('seo_tags')
+        .select('id')
+        .eq('user_token', userToken)
+        .eq('tag_type', 'meta');
+      
+      const { data: altTags } = await supabase
+        .from('seo_tags')  
+        .select('id')
+        .eq('user_token', userToken)
+        .eq('tag_type', 'alt');
+
+      const { data: articles } = await supabase
+        .from('generated_articles')
+        .select('id, title')
+        .eq('user_token', userToken);
+
+      const { data: sitemaps } = await supabase
+        .from('sitemap_submissions')
+        .select('id, sitemap_url, status, last_downloaded')
+        .eq('user_token', userToken);
+
+      // Add specific metrics to summary
+      if (metaTags && metaTags.length > 0) {
+        summary += `Meta Tag Generation: Created ${metaTags.length} optimized meta descriptions and titles\n`;
+      }
+      
+      if (altTags && altTags.length > 0) {
+        summary += `Alt Tag Generation: Added ${altTags.length} descriptive alt tags for better accessibility and SEO\n`;
+      }
+
+      if (sitemaps && sitemaps.length > 0) {
+        const downloadedSitemaps = sitemaps.filter(s => s.last_downloaded);
+        summary += `Sitemap Management: ${downloadedSitemaps.length > 0 ? 'Generated and submitted sitemap to Google Search Console' : 'Generated sitemap files'}\n`;
+      }
+
+      if (articles && articles.length > 0) {
+        summary += `Content Generation: Created ${articles.length} SEO-optimized articles\n`;
+      }
+
+      console.log('[ACTIVITY SUMMARY] Added metrics:', {
+        metaTags: metaTags?.length || 0,
+        altTags: altTags?.length || 0,
+        sitemaps: sitemaps?.length || 0,
+        articles: articles?.length || 0
+      });
+    } catch (error) {
+      console.error('[ACTIVITY SUMMARY] Error fetching metrics:', error);
+    }
+  }
+
+  // Add grouped activities (fallback)
+  Object.entries(grouped).forEach(([type, items]) => {
+    const typedItems = items as any[];
+    summary += `${type}: ${typedItems.length} activities\n`;
+    typedItems.slice(0, 2).forEach(item => {
+      summary += `  - ${item.action} (${item.status})\n`;
+    });
+  });
+
   return summary;
 }
 
@@ -419,6 +505,133 @@ async function generateWelcomeMessage(websiteStatus: SummaryRequest['websiteStat
   }
   
   return message;
+}
+
+// Enhanced website status detection
+async function enhanceWebsiteStatus(
+  websiteStatus: SummaryRequest['websiteStatus'], 
+  userToken: string, 
+  siteUrl: string,
+  aggregatedActivity: AggregatedActivity
+): Promise<SummaryRequest['websiteStatus']> {
+  try {
+    // Start with provided status or defaults
+    const enhanced: SummaryRequest['websiteStatus'] = {
+      gscConnected: websiteStatus?.gscConnected || false,
+      seoagentjsInstalled: websiteStatus?.seoagentjsInstalled || false,
+      hasAuditScore: websiteStatus?.hasAuditScore || false,
+      criticalIssues: websiteStatus?.criticalIssues || 0,
+      mobileFriendly: websiteStatus?.mobileFriendly || 0,
+      withSchema: websiteStatus?.withSchema || 0,
+      totalPages: websiteStatus?.totalPages || 0
+    };
+
+    // Detect GSC connection by checking for sitemap submissions or GSC data
+    try {
+      const { data: sitemaps } = await supabase
+        .from('sitemap_submissions')
+        .select('id')
+        .eq('user_token', userToken)
+        .limit(1);
+      
+      if (sitemaps && sitemaps.length > 0) {
+        enhanced.gscConnected = true;
+        console.log('[ENHANCED STATUS] GSC detected via sitemap submissions');
+      }
+    } catch (error) {
+      console.log('[ENHANCED STATUS] Could not check GSC status:', error);
+    }
+
+    // Detect SEOAgent.js installation by checking the actual website
+    try {
+      const baseUrl = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`;
+      const homeResponse = await fetch(baseUrl, {
+        method: 'GET',
+        timeout: 5000,
+        headers: { 'User-Agent': 'SEOAgent-StatusBot/1.0' }
+      } as any);
+      
+      if (homeResponse.ok) {
+        const homeContent = await homeResponse.text();
+        const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
+        const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
+        
+        if (hasScript && hasWebsiteToken) {
+          enhanced.seoagentjsInstalled = true;
+          console.log('[ENHANCED STATUS] SEOAgent.js detected via website analysis');
+        }
+      }
+    } catch (error) {
+      console.log('[ENHANCED STATUS] Could not check SEOAgent.js status:', error);
+    }
+
+    // Check if we have any technical analysis (indicates audit was run)
+    try {
+      const { data: actionItems } = await supabase
+        .from('seo_action_items')
+        .select('id')
+        .eq('user_token', userToken)
+        .limit(1);
+      
+      if (actionItems && actionItems.length > 0) {
+        enhanced.hasAuditScore = true;
+        console.log('[ENHANCED STATUS] Technical audit detected via action items');
+      }
+    } catch (error) {
+      console.log('[ENHANCED STATUS] Could not check audit status:', error);
+    }
+
+    // Get actual SEO metrics counts from database
+    try {
+      const { data: metaTags } = await supabase
+        .from('seo_tags')
+        .select('id')
+        .eq('user_token', userToken)
+        .eq('tag_type', 'meta');
+      
+      const { data: altTags } = await supabase
+        .from('seo_tags')  
+        .select('id')
+        .eq('user_token', userToken)
+        .eq('tag_type', 'alt');
+
+      const { data: schemaData } = await supabase
+        .from('schema_analyses')
+        .select('pages_with_schema')
+        .eq('user_token', userToken)
+        .order('analyzed_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      // Update counts based on actual data
+      enhanced.totalPages = Math.max(
+        enhanced.totalPages || 0,
+        (metaTags?.length || 0) + (altTags?.length || 0)
+      );
+      enhanced.withSchema = schemaData?.pages_with_schema || enhanced.withSchema || 0;
+      
+      console.log('[ENHANCED STATUS] SEO metrics detected:', {
+        metaTags: metaTags?.length || 0,
+        altTags: altTags?.length || 0, 
+        schemaPages: enhanced.withSchema
+      });
+    } catch (error) {
+      console.log('[ENHANCED STATUS] Could not fetch SEO metrics:', error);
+    }
+
+    return enhanced;
+  } catch (error) {
+    console.error('[ENHANCED STATUS] Error enhancing website status:', error);
+    return websiteStatus || {
+      gscConnected: false,
+      seoagentjsInstalled: false,
+      hasAuditScore: false,
+      criticalIssues: 0,
+      mobileFriendly: 0,
+      withSchema: 0,
+      totalPages: 0
+    };
+  }
 }
 
 // Helper function to fetch technical SEO status
