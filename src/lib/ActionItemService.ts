@@ -502,22 +502,81 @@ export class ActionItemService {
       .limit(1)
       .single();
 
-    if (!robots || !robots.exists) {
+    // NEW: Actually test if robots.txt exists at the URL regardless of database records
+    let robotsActuallyExists = false;
+    const testUrl = UrlNormalizationService.domainPropertyToHttps(siteUrl) + '/robots.txt';
+    
+    try {
+      console.log(`[ACTION ITEMS] Testing actual robots.txt URL: ${testUrl}`);
+      const robotsResponse = await fetch(testUrl, {
+        method: 'HEAD', // Use HEAD to avoid downloading content
+        timeout: 10000 // 10 second timeout
+      } as any);
+      
+      if (robotsResponse.ok) {
+        const contentType = robotsResponse.headers.get('content-type') || '';
+        robotsActuallyExists = contentType.includes('text') || robotsResponse.status === 200;
+        console.log(`[ACTION ITEMS] Robots.txt URL test: ${robotsResponse.status}, content-type: ${contentType}, exists: ${robotsActuallyExists}`);
+      }
+    } catch (error) {
+      console.log(`[ACTION ITEMS] Robots.txt URL test failed: ${error}`);
+      robotsActuallyExists = false;
+    }
+
+    // If robots.txt actually exists at the URL but no database record
+    if (robotsActuallyExists && (!robots || !robots.exists)) {
+      issues.push({
+        type: 'robots_not_analyzed',
+        category: 'robots',
+        severity: 'low',
+        title: 'Robots.txt Exists but Not Analyzed',
+        description: 'A robots.txt file exists at your website but has not been analyzed for optimization opportunities.',
+        impactDescription: 'Without analysis, you may miss opportunities to improve crawling efficiency.',
+        fixRecommendation: 'Run robots.txt analysis to check for optimization opportunities.',
+        affectedUrls: [testUrl],
+        estimatedImpact: 'low',
+        estimatedEffort: 'easy',
+        metadata: { robotsUrl: testUrl, actuallyExists: true }
+      });
+    }
+    // If neither database record nor actual robots.txt exists
+    else if (!robotsActuallyExists && (!robots || !robots.exists)) {
       issues.push({
         type: 'robots_missing',
         category: 'robots',
         severity: 'medium',
         title: 'Robots.txt File Missing',
-        description: 'No robots.txt file found or accessible.',
+        description: 'No robots.txt file exists at your website.',
         impactDescription: 'Missing robots.txt can lead to crawling inefficiencies and missed SEO opportunities.',
         fixRecommendation: 'Create a properly formatted robots.txt file.',
-        affectedUrls: [`${siteUrl}/robots.txt`],
+        affectedUrls: [testUrl],
         estimatedImpact: 'medium',
         estimatedEffort: 'easy',
         referenceId: robots?.id,
-        referenceTable: 'robots_analyses'
+        referenceTable: 'robots_analyses',
+        metadata: { robotsUrl: testUrl, actuallyExists: false }
       });
-    } else if (robots.google_fetch_status === 'error' || robots.google_fetch_errors > 0) {
+    }
+    // If database record exists but actual robots.txt doesn't (broken robots.txt)
+    else if (!robotsActuallyExists && robots && robots.exists) {
+      issues.push({
+        type: 'robots_broken',
+        category: 'robots',
+        severity: 'high',
+        title: 'Robots.txt Not Accessible',
+        description: 'Robots.txt is recorded as existing but the URL is not accessible or returns invalid content.',
+        impactDescription: 'Search engines cannot access your robots.txt file, affecting crawling behavior.',
+        fixRecommendation: 'Fix the robots.txt URL or regenerate the robots.txt file.',
+        affectedUrls: [testUrl],
+        estimatedImpact: 'high',
+        estimatedEffort: 'medium',
+        referenceId: robots.id,
+        referenceTable: 'robots_analyses',
+        metadata: { robotsUrl: testUrl, actuallyExists: false }
+      });
+    }
+    // If robots exists and is recorded but Google has fetch errors
+    else if (robots && robots.exists && (robots.google_fetch_status === 'error' || robots.google_fetch_errors > 0)) {
       issues.push({
         type: 'robots_fetch_errors',
         category: 'robots',
@@ -526,11 +585,12 @@ export class ActionItemService {
         description: 'Google is encountering errors when trying to fetch your robots.txt file.',
         impactDescription: 'Fetch errors can prevent proper crawling of your website.',
         fixRecommendation: 'Check robots.txt accessibility and fix any server-side issues.',
-        affectedUrls: [`${siteUrl}/robots.txt`],
+        affectedUrls: [testUrl],
         estimatedImpact: 'medium',
         estimatedEffort: 'medium',
         referenceId: robots.id,
-        referenceTable: 'robots_analyses'
+        referenceTable: 'robots_analyses',
+        metadata: { robotsUrl: testUrl, actuallyExists: robotsActuallyExists }
       });
     }
 

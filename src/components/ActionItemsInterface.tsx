@@ -455,6 +455,8 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
       sitemap_broken: 'generate_and_submit_sitemap',
       robots_missing: 'generate_robots_txt',
       robots_fetch_errors: 'generate_robots_txt',
+      robots_not_analyzed: 'generate_robots_txt',
+      robots_broken: 'generate_robots_txt',
       indexing_blocked_pages: 'fix_indexing_issue',
       schema_missing_all: 'generate_schema_markup',
       schema_missing_pages: 'generate_schema_markup',
