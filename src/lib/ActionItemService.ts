@@ -68,6 +68,8 @@ export class ActionItemService {
     const detectedIssues: DetectedIssue[] = [];
     
     try {
+      // Note: Verification is handled when manually triggered via the UI
+      
       // Detect indexing issues from URL inspections
       const indexingIssues = await this.detectIndexingIssues(userToken, siteUrl);
       detectedIssues.push(...indexingIssues);
@@ -911,13 +913,14 @@ export class ActionItemService {
         isVerified
       });
 
-      // If no sitemap is found or not downloaded, check if the actual sitemap URL exists
+      // If no sitemap is found or not downloaded, use enhanced detection logic
       let sitemapUrlExists = false;
+      let hasDynamicServing = false;
       if (!isVerified) {
         const siteUrl = UrlNormalizationService.domainPropertyToHttps(actionItem.site_url);
         
+        // Step 1: Direct URL test (existing logic)
         try {
-          // Check both www and non-www versions
           const urlsToCheck = [
             `${siteUrl}/sitemap.xml`,
             `${siteUrl.replace('https://', 'https://www.')}/sitemap.xml`
@@ -928,7 +931,7 @@ export class ActionItemService {
               const sitemapResponse = await fetch(sitemapUrl, { method: 'HEAD' });
               if (sitemapResponse.ok) {
                 sitemapUrlExists = true;
-                console.log(`[ACTION ITEMS] Sitemap found at: ${sitemapUrl}`);
+                console.log(`[ACTION ITEMS] ✅ Sitemap found via direct access: ${sitemapUrl}`);
                 break;
               }
             } catch (e) {
@@ -936,7 +939,40 @@ export class ActionItemService {
             }
           }
         } catch (error) {
-          console.log('[ACTION ITEMS] Error checking sitemap URL existence:', error);
+          console.log('[ACTION ITEMS] Error checking direct sitemap access:', error);
+        }
+
+        // Step 2: Enhanced SEOAgent.js dynamic serving detection
+        if (!sitemapUrlExists) {
+          try {
+            console.log(`[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: ${siteUrl}`);
+            const homeResponse = await fetch(siteUrl, {
+              method: 'GET',
+              timeout: 10000,
+              headers: {
+                'User-Agent': 'SEOAgent-ActionItemBot/1.0'
+              }
+            } as any);
+            
+            if (homeResponse.ok) {
+              const homeContent = await homeResponse.text();
+              
+              // Check for SEOAgent.js installation markers
+              const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
+              const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
+              
+              hasDynamicServing = hasScript && hasWebsiteToken;
+              console.log(`[ACTION ITEMS] SEOAgent.js detection: script=${hasScript}, token=${hasWebsiteToken}, dynamic=${hasDynamicServing}`);
+              
+              if (hasDynamicServing) {
+                sitemapUrlExists = true;
+                console.log(`[ACTION ITEMS] ✅ Dynamic sitemap serving detected via SEOAgent.js`);
+              }
+            }
+          } catch (error) {
+            console.log(`[ACTION ITEMS] SEOAgent.js detection failed: ${error}`);
+            hasDynamicServing = false;
+          }
         }
       }
 
@@ -947,16 +983,17 @@ export class ActionItemService {
         status: matchingSitemap?.status,
         isPending: matchingSitemap?.is_pending,
         sitemapUrlExists,
+        hasDynamicServing,
         gscRefreshSuccess,
         isVerified
       });
 
       // ENHANCED: Verification passes if either:
       // 1. GSC shows sitemap is downloaded and processed (original logic)
-      // 2. Sitemap actually exists at the URL (new logic for dynamic sitemaps)
+      // 2. Sitemap actually exists at the URL (includes dynamic serving detection)
       const finalVerification = isVerified || sitemapUrlExists;
       
-      console.log(`[ACTION ITEMS] Enhanced verification result: ${finalVerification} (GSC verified: ${isVerified}, URL exists: ${sitemapUrlExists})`);
+      console.log(`[ACTION ITEMS] Enhanced verification result: ${finalVerification} (GSC verified: ${isVerified}, URL exists: ${sitemapUrlExists}, dynamic serving: ${hasDynamicServing})`);
       
       return finalVerification;
     } catch (error) {
