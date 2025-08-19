@@ -451,6 +451,8 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
       // Existing automatable fixes
       sitemap_missing: 'generate_and_submit_sitemap',
       sitemap_not_downloaded: 'generate_and_submit_sitemap',
+      sitemap_not_submitted: 'generate_and_submit_sitemap',
+      sitemap_broken: 'generate_and_submit_sitemap',
       robots_missing: 'generate_robots_txt',
       robots_fetch_errors: 'generate_robots_txt',
       indexing_blocked_pages: 'fix_indexing_issue',

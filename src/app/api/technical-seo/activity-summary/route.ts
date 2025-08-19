@@ -449,7 +449,7 @@ async function fetchTechnicalSEOStatus(userToken: string, siteUrl: string) {
           description: item.description,
           category: item.issue_category,
           status: item.status,
-          canAutoFix: ['sitemap_missing', 'robots_missing', 'schema_missing_pages', 'indexing_blocked_pages'].includes(item.issue_type),
+          canAutoFix: ['sitemap_missing', 'sitemap_not_downloaded', 'sitemap_not_submitted', 'sitemap_broken', 'robots_missing', 'schema_missing_pages', 'indexing_blocked_pages'].includes(item.issue_type),
           affectedUrls: item.affected_urls?.length || 1
         })),
         summary: {
@@ -462,7 +462,7 @@ async function fetchTechnicalSEOStatus(userToken: string, siteUrl: string) {
             acc[item.issue_category] = (acc[item.issue_category] || 0) + 1;
             return acc;
           }, {}),
-          autoFixable: items.filter((i: any) => ['sitemap_missing', 'robots_missing', 'schema_missing_pages', 'indexing_blocked_pages'].includes(i.issue_type)).length
+          autoFixable: items.filter((i: any) => ['sitemap_missing', 'sitemap_not_downloaded', 'sitemap_not_submitted', 'sitemap_broken', 'robots_missing', 'schema_missing_pages', 'indexing_blocked_pages'].includes(i.issue_type)).length
         }
       };
     }

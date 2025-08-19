@@ -393,21 +393,80 @@ export class ActionItemService {
       .limit(1)
       .single();
 
-    if (!sitemap) {
+    // NEW: Actually test if sitemap.xml exists at the URL regardless of database records
+    let sitemapActuallyExists = false;
+    const testUrl = UrlNormalizationService.domainPropertyToHttps(siteUrl) + '/sitemap.xml';
+    
+    try {
+      console.log(`[ACTION ITEMS] Testing actual sitemap URL: ${testUrl}`);
+      const sitemapResponse = await fetch(testUrl, {
+        method: 'HEAD', // Use HEAD to avoid downloading large XML files
+        timeout: 10000 // 10 second timeout
+      } as any);
+      
+      if (sitemapResponse.ok) {
+        const contentType = sitemapResponse.headers.get('content-type') || '';
+        sitemapActuallyExists = contentType.includes('xml') || contentType.includes('text');
+        console.log(`[ACTION ITEMS] Sitemap URL test: ${sitemapResponse.status}, content-type: ${contentType}, exists: ${sitemapActuallyExists}`);
+      }
+    } catch (error) {
+      console.log(`[ACTION ITEMS] Sitemap URL test failed: ${error}`);
+      sitemapActuallyExists = false;
+    }
+
+    // If sitemap actually exists at the URL but no database record, it means it wasn't submitted to GSC
+    if (sitemapActuallyExists && !sitemap) {
+      issues.push({
+        type: 'sitemap_not_submitted',
+        category: 'sitemap',
+        severity: 'medium',
+        title: 'Sitemap Exists but Not Submitted to GSC',
+        description: 'A sitemap.xml file exists at your website but has not been submitted to Google Search Console.',
+        impactDescription: 'Google may not discover all your pages efficiently without a submitted sitemap.',
+        fixRecommendation: 'Submit your existing sitemap to Google Search Console.',
+        affectedUrls: [testUrl],
+        estimatedImpact: 'medium',
+        estimatedEffort: 'easy',
+        metadata: { sitemapUrl: testUrl, actuallyExists: true }
+      });
+    }
+    // If neither database record nor actual sitemap exists
+    else if (!sitemapActuallyExists && !sitemap) {
       issues.push({
         type: 'sitemap_missing',
         category: 'sitemap',
         severity: 'high',
         title: 'XML Sitemap Missing',
-        description: 'No XML sitemap has been submitted to Google Search Console.',
+        description: 'No XML sitemap exists at your website and none has been submitted to Google Search Console.',
         impactDescription: 'Missing sitemaps make it harder for search engines to discover and index your pages.',
         fixRecommendation: 'Generate and submit an XML sitemap to Google Search Console.',
         affectedUrls: [siteUrl],
         estimatedImpact: 'high',
         estimatedEffort: 'easy',
-        referenceTable: 'sitemap_submissions'
+        referenceTable: 'sitemap_submissions',
+        metadata: { sitemapUrl: testUrl, actuallyExists: false }
       });
-    } else if (sitemap.google_download_status === 'pending' || !sitemap.google_last_downloaded) {
+    }
+    // If database record exists but actual sitemap doesn't (broken sitemap)
+    else if (!sitemapActuallyExists && sitemap) {
+      issues.push({
+        type: 'sitemap_broken',
+        category: 'sitemap',
+        severity: 'high',
+        title: 'Submitted Sitemap Not Accessible',
+        description: 'A sitemap has been submitted to Google Search Console but the URL is not accessible or returns invalid content.',
+        impactDescription: 'Google cannot process your sitemap, affecting page discovery and indexing.',
+        fixRecommendation: 'Fix the sitemap URL or regenerate and resubmit the sitemap.',
+        affectedUrls: [sitemap.sitemap_url],
+        estimatedImpact: 'high',
+        estimatedEffort: 'medium',
+        referenceId: sitemap.id,
+        referenceTable: 'sitemap_submissions',
+        metadata: { sitemapUrl: sitemap.sitemap_url, actuallyExists: false }
+      });
+    }
+    // If sitemap exists and is submitted but Google hasn't downloaded it yet
+    else if (sitemap && (sitemap.google_download_status === 'pending' || !sitemap.google_last_downloaded)) {
       issues.push({
         type: 'sitemap_not_downloaded',
         category: 'sitemap',
@@ -420,7 +479,8 @@ export class ActionItemService {
         estimatedImpact: 'medium',
         estimatedEffort: 'easy',
         referenceId: sitemap.id,
-        referenceTable: 'sitemap_submissions'
+        referenceTable: 'sitemap_submissions',
+        metadata: { sitemapUrl: sitemap.sitemap_url, actuallyExists: sitemapActuallyExists }
       });
     }
 
@@ -715,7 +775,14 @@ export class ActionItemService {
         isVerified
       });
 
-      return isVerified;
+      // ENHANCED: Verification passes if either:
+      // 1. GSC shows sitemap is downloaded and processed (original logic)
+      // 2. Sitemap actually exists at the URL (new logic for dynamic sitemaps)
+      const finalVerification = isVerified || sitemapUrlExists;
+      
+      console.log(`[ACTION ITEMS] Enhanced verification result: ${finalVerification} (GSC verified: ${isVerified}, URL exists: ${sitemapUrlExists})`);
+      
+      return finalVerification;
     } catch (error) {
       console.error('[ACTION ITEMS] Error verifying sitemap fix:', error);
       return false;
