@@ -51,8 +51,7 @@ function initializeSEOMetrics() {
     // Initialize dynamic sitemap serving
     initializeSitemapServing();
     
-    // Initialize dynamic robots.txt serving
-    initializeRobotsServing();
+    // Note: robots.txt requires server-side deployment (see action items for manual setup)
     
     // Setup sitemap handler
     setupSitemapHandler();

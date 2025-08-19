@@ -139,7 +139,7 @@ async function generateAISummary(siteUrl: string, activity: AggregatedActivity, 
   const timePeriod = getTimePeriodDescription(activity.periodStart, activity.periodEnd);
   
   // Prepare activity data for AI with enhanced metrics
-  const activitySummary = await summarizeActivitiesByTypeWithMetrics(activity.activities, userToken);
+  const activitySummary = await summarizeActivitiesByTypeWithMetrics(activity.activities, userToken!);
   
   // Get current technical SEO status for context
   let technicalContext = '';
@@ -174,7 +174,7 @@ IMPORTANT: Be very specific about these issues in your response. Don't say "iden
   }
 
   // Generate next steps based on website status - but first enhance it with actual detection
-  const enhancedWebsiteStatus = await enhanceWebsiteStatus(websiteStatus, userToken, siteUrl, aggregatedActivity);
+  const enhancedWebsiteStatus = await enhanceWebsiteStatus(websiteStatus, userToken!, siteUrl, activity);
   const nextSteps = generateNextSteps(enhancedWebsiteStatus, domainName);
   
   const prompt = `You are SEOAgent's friendly assistant. Create a warm, conversational welcome message summarizing what you've accomplished for ${domainName} ${timePeriod}, then provide actionable next steps.
@@ -662,7 +662,7 @@ async function fetchTechnicalSEOStatus(userToken: string, siteUrl: string) {
           description: item.description,
           category: item.issue_category,
           status: item.status,
-          canAutoFix: ['sitemap_missing', 'sitemap_not_downloaded', 'sitemap_not_submitted', 'sitemap_broken', 'sitemap_dynamic_not_submitted', 'robots_missing', 'robots_fetch_errors', 'robots_not_analyzed', 'robots_broken', 'robots_dynamic_not_analyzed', 'schema_missing_pages', 'indexing_blocked_pages'].includes(item.issue_type),
+          canAutoFix: ['sitemap_missing', 'sitemap_not_downloaded', 'sitemap_not_submitted', 'sitemap_broken', 'sitemap_dynamic_not_submitted', 'robots_not_analyzed', 'schema_missing_pages', 'indexing_blocked_pages'].includes(item.issue_type),
           affectedUrls: item.affected_urls?.length || 1
         })),
         summary: {
@@ -675,7 +675,7 @@ async function fetchTechnicalSEOStatus(userToken: string, siteUrl: string) {
             acc[item.issue_category] = (acc[item.issue_category] || 0) + 1;
             return acc;
           }, {}),
-          autoFixable: items.filter((i: any) => ['sitemap_missing', 'sitemap_not_downloaded', 'sitemap_not_submitted', 'sitemap_broken', 'sitemap_dynamic_not_submitted', 'robots_missing', 'robots_fetch_errors', 'robots_not_analyzed', 'robots_broken', 'robots_dynamic_not_analyzed', 'schema_missing_pages', 'indexing_blocked_pages'].includes(i.issue_type)).length
+          autoFixable: items.filter((i: any) => ['sitemap_missing', 'sitemap_not_downloaded', 'sitemap_not_submitted', 'sitemap_broken', 'sitemap_dynamic_not_submitted', 'robots_not_analyzed', 'schema_missing_pages', 'indexing_blocked_pages'].includes(i.issue_type)).length
         }
       };
     }

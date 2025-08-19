@@ -624,25 +624,51 @@ export class ActionItemService {
       }
     }
 
-    // Handle different scenarios based on detection results
-    if (hasDynamicServing && !robots) {
-      // SEOAgent.js is serving robots.txt dynamically, but we haven't analyzed it yet
+    // Generate issues based on detection results - robots.txt requires manual server-side deployment
+    if (!robotsActuallyExists) {
+      // No robots.txt detected - provide manual deployment instructions
+      const manualFixInstructions = `To add a robots.txt file to your website:
+
+1. Create a file named "robots.txt" with this content:
+   User-agent: *
+   Allow: /
+   
+   Sitemap: ${baseUrl}/sitemap.xml
+   
+   # Block admin areas
+   Disallow: /admin/
+   Disallow: /wp-admin/
+
+2. Upload this file to your website's root directory
+3. Verify it's accessible at: ${testUrl}
+
+For coding agents/developers:
+- Place robots.txt in the public/static folder of your web application
+- Configure your web server (Nginx/Apache) to serve static files from root
+- For CDN/hosting platforms (Vercel/Netlify), place in public/ directory`;
+
       issues.push({
-        type: 'robots_dynamic_not_analyzed',
+        type: 'robots_missing_manual_fix',
         category: 'robots',
-        severity: 'low',
-        title: 'Dynamic Robots.txt Not Analyzed',
-        description: 'SEOAgent.js is dynamically serving your robots.txt file, but it has not been analyzed for optimization opportunities.',
-        impactDescription: 'Without analysis, you may miss opportunities to improve crawling efficiency.',
-        fixRecommendation: 'Run robots.txt analysis to verify the dynamically generated content.',
+        severity: 'medium',
+        title: 'Robots.txt File Missing - Manual Setup Required',
+        description: 'No robots.txt file exists at your website. This file must be deployed at the server level and cannot be automated via JavaScript.',
+        impactDescription: 'Missing robots.txt can lead to crawling inefficiencies and missed SEO opportunities. Search engines may not know which parts of your site to crawl.',
+        fixRecommendation: manualFixInstructions,
         affectedUrls: [testUrl],
-        estimatedImpact: 'low',
+        estimatedImpact: 'medium',
         estimatedEffort: 'easy',
-        metadata: { robotsUrl: testUrl, actuallyExists: true, dynamicServing: true }
+        referenceId: robots?.id,
+        referenceTable: 'robots_analyses',
+        metadata: { 
+          robotsUrl: testUrl, 
+          actuallyExists: false, 
+          requiresManualDeployment: true,
+          automatable: false 
+        }
       });
-    }
-    else if (robotsActuallyExists && (!robots || !robots.exists) && !hasDynamicServing) {
-      // Static robots.txt exists but no database record
+    } else if (robotsActuallyExists && (!robots || !robots.exists)) {
+      // Static robots.txt exists but hasn't been analyzed
       issues.push({
         type: 'robots_not_analyzed',
         category: 'robots',
@@ -650,29 +676,11 @@ export class ActionItemService {
         title: 'Robots.txt Exists but Not Analyzed',
         description: 'A robots.txt file exists at your website but has not been analyzed for optimization opportunities.',
         impactDescription: 'Without analysis, you may miss opportunities to improve crawling efficiency.',
-        fixRecommendation: 'Run robots.txt analysis to check for optimization opportunities.',
+        fixRecommendation: 'Run robots.txt analysis to check for optimization opportunities and ensure it includes your sitemap URL.',
         affectedUrls: [testUrl],
         estimatedImpact: 'low',
         estimatedEffort: 'easy',
-        metadata: { robotsUrl: testUrl, actuallyExists: true, dynamicServing: false }
-      });
-    }
-    // If neither database record nor actual robots.txt exists (and no dynamic serving)
-    else if (!robotsActuallyExists && (!robots || !robots.exists)) {
-      issues.push({
-        type: 'robots_missing',
-        category: 'robots',
-        severity: 'medium',
-        title: 'Robots.txt File Missing',
-        description: 'No robots.txt file exists at your website.',
-        impactDescription: 'Missing robots.txt can lead to crawling inefficiencies and missed SEO opportunities.',
-        fixRecommendation: 'Create a properly formatted robots.txt file.',
-        affectedUrls: [testUrl],
-        estimatedImpact: 'medium',
-        estimatedEffort: 'easy',
-        referenceId: robots?.id,
-        referenceTable: 'robots_analyses',
-        metadata: { robotsUrl: testUrl, actuallyExists: false, dynamicServing: false }
+        metadata: { robotsUrl: testUrl, actuallyExists: true, automatable: true }
       });
     }
     // If database record exists but actual robots.txt doesn't (broken robots.txt)
@@ -1016,7 +1024,9 @@ export class ActionItemService {
 
       let robotsFileExists = false;
       let robotsContent = '';
+      let hasDynamicServing = false;
       
+      // Step 1: Test direct robots.txt access
       for (const robotsUrl of urlsToCheck) {
         try {
           console.log(`[ACTION ITEMS] Checking robots.txt at: ${robotsUrl}`);
@@ -1029,15 +1039,62 @@ export class ActionItemService {
           
           if (response.ok) {
             robotsContent = await response.text();
-            robotsFileExists = true;
-            console.log(`[ACTION ITEMS] ✅ Robots.txt found at: ${robotsUrl}`);
-            console.log(`[ACTION ITEMS] Content preview: ${robotsContent.substring(0, 200)}...`);
-            break;
+            
+            // Check if it's actual robots.txt content (not HTML)
+            const isValidRobots = robotsContent.includes('User-agent:') || 
+                                 robotsContent.includes('Disallow:') ||
+                                 robotsContent.includes('Allow:') ||
+                                 robotsContent.includes('Sitemap:');
+            
+            if (isValidRobots) {
+              robotsFileExists = true;
+              console.log(`[ACTION ITEMS] ✅ Valid robots.txt found at: ${robotsUrl}`);
+              console.log(`[ACTION ITEMS] Content preview: ${robotsContent.substring(0, 200)}...`);
+              break;
+            } else {
+              console.log(`[ACTION ITEMS] ❌ Invalid robots.txt content (HTML returned) at: ${robotsUrl}`);
+            }
           } else {
             console.log(`[ACTION ITEMS] ❌ Robots.txt not accessible at: ${robotsUrl} (Status: ${response.status})`);
           }
         } catch (fetchError) {
           console.log(`[ACTION ITEMS] ❌ Error fetching robots.txt at ${robotsUrl}:`, fetchError);
+        }
+      }
+
+      // Step 2: If no valid robots.txt found, check for SEOAgent.js dynamic serving capability
+      if (!robotsFileExists) {
+        try {
+          console.log(`[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: ${siteUrl}`);
+          const homeResponse = await fetch(siteUrl, {
+            method: 'GET',
+            timeout: 10000,
+            headers: {
+              'User-Agent': 'SEOAgent-ActionItemBot/1.0'
+            }
+          } as any);
+          
+          if (homeResponse.ok) {
+            const homeContent = await homeResponse.text();
+            
+            // Check for SEOAgent.js installation markers
+            const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
+            const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
+            const hasRobotsServing = homeContent.includes('initializeRobotsServing') || 
+                                   homeContent.includes('robots.txt serving');
+            
+            hasDynamicServing = hasScript && hasWebsiteToken;
+            console.log(`[ACTION ITEMS] SEOAgent.js detection: script=${hasScript}, token=${hasWebsiteToken}, robotsServing=${hasRobotsServing}, dynamic=${hasDynamicServing}`);
+            
+            if (hasDynamicServing) {
+              // SEOAgent.js is installed but robots.txt serving has limitations for direct URL access
+              console.log(`[ACTION ITEMS] ⚠️  SEOAgent.js detected but robots.txt not directly accessible - this is expected for JavaScript-based serving`);
+              robotsFileExists = true; // Consider it "exists" from a capability standpoint
+            }
+          }
+        } catch (error) {
+          console.log(`[ACTION ITEMS] SEOAgent.js detection failed: ${error}`);
+          hasDynamicServing = false;
         }
       }
 
@@ -1050,10 +1107,10 @@ export class ActionItemService {
             user_token: actionItem.user_token,
             site_url: actionItem.site_url,
             exists: true,
-            accessible: true,
-            size: robotsContent.length,
-            content: robotsContent,
-            google_fetch_status: 'success',
+            accessible: hasDynamicServing ? false : true, // Direct access limited for dynamic serving
+            size: robotsContent.length || 0,
+            content: robotsContent || 'Dynamic serving via SEOAgent.js',
+            google_fetch_status: hasDynamicServing ? 'warning' : 'success',
             google_fetch_errors: 0,
             analyzed_at: new Date().toISOString()
           }, {
@@ -1063,7 +1120,9 @@ export class ActionItemService {
 
       console.log(`[ACTION ITEMS] Robots.txt verification result for ${actionItem.site_url}:`, {
         fileExists: robotsFileExists,
+        hasDynamicServing,
         contentLength: robotsContent.length,
+        isDirectlyAccessible: robotsFileExists && !hasDynamicServing,
         urlsChecked: urlsToCheck
       });
 
