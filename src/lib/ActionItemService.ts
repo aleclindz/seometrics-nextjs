@@ -395,8 +395,11 @@ export class ActionItemService {
 
     // NEW: Actually test if sitemap.xml exists at the URL regardless of database records
     let sitemapActuallyExists = false;
+    let hasDynamicServing = false;
     const testUrl = UrlNormalizationService.domainPropertyToHttps(siteUrl) + '/sitemap.xml';
+    const baseUrl = UrlNormalizationService.domainPropertyToHttps(siteUrl);
     
+    // Step 1: Test if sitemap.xml is accessible via direct request
     try {
       console.log(`[ACTION ITEMS] Testing actual sitemap URL: ${testUrl}`);
       const sitemapResponse = await fetch(testUrl, {
@@ -414,24 +417,69 @@ export class ActionItemService {
       sitemapActuallyExists = false;
     }
 
-    // If sitemap actually exists at the URL but no database record, it means it wasn't submitted to GSC
+    // Step 2: If direct test failed, check for SEOAgent.js dynamic serving
+    if (!sitemapActuallyExists) {
+      try {
+        console.log(`[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: ${baseUrl}`);
+        const homeResponse = await fetch(baseUrl, {
+          method: 'GET',
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'SEOAgent-ActionItemBot/1.0'
+          }
+        } as any);
+        
+        if (homeResponse.ok) {
+          const homeContent = await homeResponse.text();
+          
+          // Check for SEOAgent.js installation markers
+          const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
+          const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
+          
+          hasDynamicServing = hasScript && hasWebsiteToken;
+          console.log(`[ACTION ITEMS] SEOAgent.js detection: script=${hasScript}, token=${hasWebsiteToken}, dynamic=${hasDynamicServing}`);
+          
+          if (hasDynamicServing) {
+            // If SEOAgent.js is properly installed, assume sitemap serving works
+            sitemapActuallyExists = true;
+            console.log(`[ACTION ITEMS] ✅ Dynamic sitemap serving detected via SEOAgent.js`);
+          }
+        }
+      } catch (error) {
+        console.log(`[ACTION ITEMS] SEOAgent.js detection failed: ${error}`);
+        hasDynamicServing = false;
+      }
+    }
+
+    // If sitemap actually exists (either static or dynamic) but no database record, it means it wasn't submitted to GSC
     if (sitemapActuallyExists && !sitemap) {
+      const issueType = hasDynamicServing ? 'sitemap_dynamic_not_submitted' : 'sitemap_not_submitted';
+      const title = hasDynamicServing ? 'Dynamic Sitemap Not Submitted to GSC' : 'Sitemap Exists but Not Submitted to GSC';
+      const description = hasDynamicServing 
+        ? 'SEOAgent.js is serving your sitemap dynamically but it has not been submitted to Google Search Console.'
+        : 'A sitemap.xml file exists at your website but has not been submitted to Google Search Console.';
+      
       issues.push({
-        type: 'sitemap_not_submitted',
+        type: issueType,
         category: 'sitemap',
         severity: 'medium',
-        title: 'Sitemap Exists but Not Submitted to GSC',
-        description: 'A sitemap.xml file exists at your website but has not been submitted to Google Search Console.',
+        title,
+        description,
         impactDescription: 'Google may not discover all your pages efficiently without a submitted sitemap.',
         fixRecommendation: 'Submit your existing sitemap to Google Search Console.',
         affectedUrls: [testUrl],
         estimatedImpact: 'medium',
         estimatedEffort: 'easy',
-        metadata: { sitemapUrl: testUrl, actuallyExists: true }
+        metadata: { 
+          sitemapUrl: testUrl, 
+          actuallyExists: true, 
+          hasDynamicServing,
+          detectionMethod: hasDynamicServing ? 'seoagent_js_detected' : 'direct_url_test'
+        }
       });
     }
-    // If neither database record nor actual sitemap exists
-    else if (!sitemapActuallyExists && !sitemap) {
+    // If neither database record nor actual sitemap exists (and no dynamic serving)
+    else if (!sitemapActuallyExists && !sitemap && !hasDynamicServing) {
       issues.push({
         type: 'sitemap_missing',
         category: 'sitemap',
@@ -444,11 +492,16 @@ export class ActionItemService {
         estimatedImpact: 'high',
         estimatedEffort: 'easy',
         referenceTable: 'sitemap_submissions',
-        metadata: { sitemapUrl: testUrl, actuallyExists: false }
+        metadata: { 
+          sitemapUrl: testUrl, 
+          actuallyExists: false,
+          hasDynamicServing: false,
+          detectionMethod: 'direct_url_test'
+        }
       });
     }
     // If database record exists but actual sitemap doesn't (broken sitemap)
-    else if (!sitemapActuallyExists && sitemap) {
+    else if (!sitemapActuallyExists && sitemap && !hasDynamicServing) {
       issues.push({
         type: 'sitemap_broken',
         category: 'sitemap',
@@ -462,7 +515,12 @@ export class ActionItemService {
         estimatedEffort: 'medium',
         referenceId: sitemap.id,
         referenceTable: 'sitemap_submissions',
-        metadata: { sitemapUrl: sitemap.sitemap_url, actuallyExists: false }
+        metadata: { 
+          sitemapUrl: sitemap.sitemap_url, 
+          actuallyExists: false,
+          hasDynamicServing: false,
+          detectionMethod: 'direct_url_test'
+        }
       });
     }
     // If sitemap exists and is submitted but Google hasn't downloaded it yet
@@ -480,7 +538,12 @@ export class ActionItemService {
         estimatedEffort: 'easy',
         referenceId: sitemap.id,
         referenceTable: 'sitemap_submissions',
-        metadata: { sitemapUrl: sitemap.sitemap_url, actuallyExists: sitemapActuallyExists }
+        metadata: { 
+          sitemapUrl: sitemap.sitemap_url, 
+          actuallyExists: sitemapActuallyExists,
+          hasDynamicServing,
+          detectionMethod: sitemapActuallyExists ? (hasDynamicServing ? 'seoagent_js_detected' : 'direct_url_test') : 'database_only'
+        }
       });
     }
 
@@ -504,8 +567,11 @@ export class ActionItemService {
 
     // NEW: Actually test if robots.txt exists at the URL regardless of database records
     let robotsActuallyExists = false;
+    let hasDynamicServing = false;
     const testUrl = UrlNormalizationService.domainPropertyToHttps(siteUrl) + '/robots.txt';
+    const baseUrl = UrlNormalizationService.domainPropertyToHttps(siteUrl);
     
+    // Step 1: Direct URL test
     try {
       console.log(`[ACTION ITEMS] Testing actual robots.txt URL: ${testUrl}`);
       const robotsResponse = await fetch(testUrl, {
@@ -516,15 +582,65 @@ export class ActionItemService {
       if (robotsResponse.ok) {
         const contentType = robotsResponse.headers.get('content-type') || '';
         robotsActuallyExists = contentType.includes('text') || robotsResponse.status === 200;
-        console.log(`[ACTION ITEMS] Robots.txt URL test: ${robotsResponse.status}, content-type: ${contentType}, exists: ${robotsActuallyExists}`);
+        console.log(`[ACTION ITEMS] ✅ Robots.txt found via direct access: ${robotsResponse.status}, content-type: ${contentType}`);
       }
     } catch (error) {
-      console.log(`[ACTION ITEMS] Robots.txt URL test failed: ${error}`);
-      robotsActuallyExists = false;
+      console.log(`[ACTION ITEMS] ❌ Direct robots.txt access failed: ${error}`);
     }
 
-    // If robots.txt actually exists at the URL but no database record
-    if (robotsActuallyExists && (!robots || !robots.exists)) {
+    // Step 2: If direct test failed, check for SEOAgent.js dynamic serving
+    if (!robotsActuallyExists) {
+      try {
+        console.log(`[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: ${baseUrl}`);
+        const homeResponse = await fetch(baseUrl, {
+          method: 'GET',
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'SEOAgent-ActionItemBot/1.0'
+          }
+        } as any);
+        
+        if (homeResponse.ok) {
+          const homeContent = await homeResponse.text();
+          
+          // Check for SEOAgent.js installation markers
+          const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
+          const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
+          
+          hasDynamicServing = hasScript && hasWebsiteToken;
+          console.log(`[ACTION ITEMS] SEOAgent.js detection: script=${hasScript}, token=${hasWebsiteToken}, dynamic=${hasDynamicServing}`);
+          
+          if (hasDynamicServing) {
+            // If SEOAgent.js is properly installed, assume robots.txt serving works
+            robotsActuallyExists = true;
+            console.log(`[ACTION ITEMS] ✅ Dynamic robots.txt serving detected via SEOAgent.js`);
+          }
+        }
+      } catch (error) {
+        console.log(`[ACTION ITEMS] SEOAgent.js detection failed: ${error}`);
+        hasDynamicServing = false;
+      }
+    }
+
+    // Handle different scenarios based on detection results
+    if (hasDynamicServing && !robots) {
+      // SEOAgent.js is serving robots.txt dynamically, but we haven't analyzed it yet
+      issues.push({
+        type: 'robots_dynamic_not_analyzed',
+        category: 'robots',
+        severity: 'low',
+        title: 'Dynamic Robots.txt Not Analyzed',
+        description: 'SEOAgent.js is dynamically serving your robots.txt file, but it has not been analyzed for optimization opportunities.',
+        impactDescription: 'Without analysis, you may miss opportunities to improve crawling efficiency.',
+        fixRecommendation: 'Run robots.txt analysis to verify the dynamically generated content.',
+        affectedUrls: [testUrl],
+        estimatedImpact: 'low',
+        estimatedEffort: 'easy',
+        metadata: { robotsUrl: testUrl, actuallyExists: true, dynamicServing: true }
+      });
+    }
+    else if (robotsActuallyExists && (!robots || !robots.exists) && !hasDynamicServing) {
+      // Static robots.txt exists but no database record
       issues.push({
         type: 'robots_not_analyzed',
         category: 'robots',
@@ -536,10 +652,10 @@ export class ActionItemService {
         affectedUrls: [testUrl],
         estimatedImpact: 'low',
         estimatedEffort: 'easy',
-        metadata: { robotsUrl: testUrl, actuallyExists: true }
+        metadata: { robotsUrl: testUrl, actuallyExists: true, dynamicServing: false }
       });
     }
-    // If neither database record nor actual robots.txt exists
+    // If neither database record nor actual robots.txt exists (and no dynamic serving)
     else if (!robotsActuallyExists && (!robots || !robots.exists)) {
       issues.push({
         type: 'robots_missing',
@@ -554,7 +670,7 @@ export class ActionItemService {
         estimatedEffort: 'easy',
         referenceId: robots?.id,
         referenceTable: 'robots_analyses',
-        metadata: { robotsUrl: testUrl, actuallyExists: false }
+        metadata: { robotsUrl: testUrl, actuallyExists: false, dynamicServing: false }
       });
     }
     // If database record exists but actual robots.txt doesn't (broken robots.txt)

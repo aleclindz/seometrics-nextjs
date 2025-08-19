@@ -1,0 +1,45 @@
+
+> seoagent-nextjs@1.0.0 dev
+> node scripts/dev-with-browser.js
+
+🚀 Starting SEOAgent development server...
+
+> seoagent-nextjs@1.0.0 dev:next
+> next dev
+
+ ⚠ Port 3000 is in use, trying 3001 instead.
+  ▲ Next.js 14.2.31
+  - Local:        http://localhost:3001
+  - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 1325ms
+🌐 Opening browser...
+ ○ Compiling /api/action-items ...
+ ✓ Compiled /api/action-items in 741ms (132 modules)
+[ACTION ITEMS API] Processing action: detect_issues for https://translateyoutubevideos.com
+[ACTION ITEMS API] Detecting issues for https://translateyoutubevideos.com
+[ACTION ITEMS] Detecting issues for https://translateyoutubevideos.com
+[ACTION ITEMS] Testing actual sitemap URL: https://translateyoutubevideos.com/sitemap.xml
+[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: https://translateyoutubevideos.com
+[ACTION ITEMS] SEOAgent.js detection: script=true, token=true, dynamic=true
+[ACTION ITEMS] ✅ Dynamic sitemap serving detected via SEOAgent.js
+[ACTION ITEMS] Testing actual robots.txt URL: https://translateyoutubevideos.com/robots.txt
+[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: https://translateyoutubevideos.com
+[ACTION ITEMS] SEOAgent.js detection: script=true, token=true, dynamic=true
+[ACTION ITEMS] ✅ Dynamic robots.txt serving detected via SEOAgent.js
+[ACTION ITEMS] Detected 2 issues
+[ACTION ITEMS] Error creating action item: {
+  code: '23503',
+  details: 'Key (user_token)=(your-token-here) is not present in table "login_users".',
+  hint: null,
+  message: 'insert or update on table "seo_action_items" violates foreign key constraint "seo_action_items_user_token_fkey"'
+}
+[ACTION ITEMS] Error creating action item: {
+  code: '23503',
+  details: 'Key (user_token)=(your-token-here) is not present in table "login_users".',
+  hint: null,
+  message: 'insert or update on table "seo_action_items" violates foreign key constraint "seo_action_items_user_token_fkey"'
+}
+ POST /api/action-items 200 in 5134ms
+[?25h
