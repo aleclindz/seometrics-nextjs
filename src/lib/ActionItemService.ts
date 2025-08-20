@@ -419,54 +419,45 @@ export class ActionItemService {
       sitemapActuallyExists = false;
     }
 
-    // Step 2: If direct test failed, check for SEOAgent.js dynamic serving
+    // Step 2: Check for hosting provider integration capability
+    // Note: Dynamic serving via JavaScript has been removed - now requires server-side deployment
+    let hostingProviderDetected = false;
     if (!sitemapActuallyExists) {
       try {
-        console.log(`[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: ${baseUrl}`);
+        console.log(`[ACTION ITEMS] Analyzing hosting provider for automated deployment: ${baseUrl}`);
+        // Basic hosting provider detection (to be enhanced with HostDetectionService)
         const homeResponse = await fetch(baseUrl, {
           method: 'GET',
           timeout: 10000,
           headers: {
-            'User-Agent': 'SEOAgent-ActionItemBot/1.0'
+            'User-Agent': 'SEOAgent-HostDetectionBot/1.0'
           }
         } as any);
         
         if (homeResponse.ok) {
-          const homeContent = await homeResponse.text();
+          // Check response headers for hosting provider indicators
+          const server = homeResponse.headers.get('server') || '';
+          const xPoweredBy = homeResponse.headers.get('x-powered-by') || '';
+          const cfRay = homeResponse.headers.get('cf-ray');
+          const xVercelId = homeResponse.headers.get('x-vercel-id');
           
-          // Check for SEOAgent.js installation markers
-          const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
-          const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
-          
-          hasDynamicServing = hasScript && hasWebsiteToken;
-          console.log(`[ACTION ITEMS] SEOAgent.js detection: script=${hasScript}, token=${hasWebsiteToken}, dynamic=${hasDynamicServing}`);
-          
-          if (hasDynamicServing) {
-            // If SEOAgent.js is properly installed, assume sitemap serving works
-            sitemapActuallyExists = true;
-            console.log(`[ACTION ITEMS] ✅ Dynamic sitemap serving detected via SEOAgent.js`);
-          }
+          hostingProviderDetected = !!(cfRay || xVercelId || server.includes('cloudflare') || server.includes('vercel'));
+          console.log(`[ACTION ITEMS] Hosting provider indicators: cf-ray=${!!cfRay}, vercel-id=${!!xVercelId}, server=${server}`);
         }
       } catch (error) {
-        console.log(`[ACTION ITEMS] SEOAgent.js detection failed: ${error}`);
-        hasDynamicServing = false;
+        console.log(`[ACTION ITEMS] Hosting provider detection failed: ${error}`);
+        hostingProviderDetected = false;
       }
     }
 
-    // If sitemap actually exists (either static or dynamic) but no database record, it means it wasn't submitted to GSC
+    // If sitemap exists but no database record, it means it wasn't submitted to GSC
     if (sitemapActuallyExists && !sitemap) {
-      const issueType = hasDynamicServing ? 'sitemap_dynamic_not_submitted' : 'sitemap_not_submitted';
-      const title = hasDynamicServing ? 'Dynamic Sitemap Not Submitted to GSC' : 'Sitemap Exists but Not Submitted to GSC';
-      const description = hasDynamicServing 
-        ? 'SEOAgent.js is serving your sitemap dynamically but it has not been submitted to Google Search Console.'
-        : 'A sitemap.xml file exists at your website but has not been submitted to Google Search Console.';
-      
       issues.push({
-        type: issueType,
+        type: 'sitemap_not_submitted',
         category: 'sitemap',
         severity: 'medium',
-        title,
-        description,
+        title: 'Sitemap Exists but Not Submitted to GSC',
+        description: 'A sitemap.xml file exists at your website but has not been submitted to Google Search Console.',
         impactDescription: 'Google may not discover all your pages efficiently without a submitted sitemap.',
         fixRecommendation: 'Submit your existing sitemap to Google Search Console.',
         affectedUrls: [testUrl],
@@ -475,13 +466,18 @@ export class ActionItemService {
         metadata: { 
           sitemapUrl: testUrl, 
           actuallyExists: true, 
-          hasDynamicServing,
-          detectionMethod: hasDynamicServing ? 'seoagent_js_detected' : 'direct_url_test'
+          hostingProviderDetected,
+          detectionMethod: 'direct_url_test'
         }
       });
     }
-    // If neither database record nor actual sitemap exists (and no dynamic serving)
-    else if (!sitemapActuallyExists && !sitemap && !hasDynamicServing) {
+    // If no sitemap exists, suggest hosting provider integration or manual setup
+    else if (!sitemapActuallyExists && !sitemap) {
+      const requiresHostingIntegration = hostingProviderDetected;
+      const fixRecommendation = requiresHostingIntegration 
+        ? 'Enable hosting provider integration for automated sitemap deployment, or manually upload a sitemap.xml file to your website root directory.'
+        : 'Generate and upload a sitemap.xml file to your website root directory, then submit it to Google Search Console.';
+      
       issues.push({
         type: 'sitemap_missing',
         category: 'sitemap',
@@ -489,21 +485,26 @@ export class ActionItemService {
         title: 'XML Sitemap Missing',
         description: 'No XML sitemap exists at your website and none has been submitted to Google Search Console.',
         impactDescription: 'Missing sitemaps make it harder for search engines to discover and index your pages.',
-        fixRecommendation: 'Generate and submit an XML sitemap to Google Search Console.',
+        fixRecommendation,
         affectedUrls: [siteUrl],
         estimatedImpact: 'high',
-        estimatedEffort: 'easy',
+        estimatedEffort: requiresHostingIntegration ? 'easy' : 'medium',
         referenceTable: 'sitemap_submissions',
         metadata: { 
           sitemapUrl: testUrl, 
           actuallyExists: false,
-          hasDynamicServing: false,
+          hostingProviderDetected,
+          requiresHostingIntegration,
           detectionMethod: 'direct_url_test'
         }
       });
     }
     // If database record exists but actual sitemap doesn't (broken sitemap)
-    else if (!sitemapActuallyExists && sitemap && !hasDynamicServing) {
+    else if (!sitemapActuallyExists && sitemap) {
+      const fixRecommendation = hostingProviderDetected 
+        ? 'Use hosting provider integration to automatically deploy the sitemap, or manually fix the sitemap URL.'
+        : 'Fix the sitemap URL or regenerate and resubmit the sitemap manually.';
+        
       issues.push({
         type: 'sitemap_broken',
         category: 'sitemap',
@@ -511,16 +512,16 @@ export class ActionItemService {
         title: 'Submitted Sitemap Not Accessible',
         description: 'A sitemap has been submitted to Google Search Console but the URL is not accessible or returns invalid content.',
         impactDescription: 'Google cannot process your sitemap, affecting page discovery and indexing.',
-        fixRecommendation: 'Fix the sitemap URL or regenerate and resubmit the sitemap.',
+        fixRecommendation,
         affectedUrls: [sitemap.sitemap_url],
         estimatedImpact: 'high',
-        estimatedEffort: 'medium',
+        estimatedEffort: hostingProviderDetected ? 'easy' : 'medium',
         referenceId: sitemap.id,
         referenceTable: 'sitemap_submissions',
         metadata: { 
           sitemapUrl: sitemap.sitemap_url, 
           actuallyExists: false,
-          hasDynamicServing: false,
+          hostingProviderDetected,
           detectionMethod: 'direct_url_test'
         }
       });
@@ -543,8 +544,8 @@ export class ActionItemService {
         metadata: { 
           sitemapUrl: sitemap.sitemap_url, 
           actuallyExists: sitemapActuallyExists,
-          hasDynamicServing,
-          detectionMethod: sitemapActuallyExists ? (hasDynamicServing ? 'seoagent_js_detected' : 'direct_url_test') : 'database_only'
+          hostingProviderDetected,
+          detectionMethod: sitemapActuallyExists ? 'direct_url_test' : 'database_only'
         }
       });
     }
@@ -590,45 +591,48 @@ export class ActionItemService {
       console.log(`[ACTION ITEMS] ❌ Direct robots.txt access failed: ${error}`);
     }
 
-    // Step 2: If direct test failed, check for SEOAgent.js dynamic serving
+    // Step 2: Check for hosting provider integration capability
+    // Note: Dynamic serving via JavaScript has been removed - now requires server-side deployment
+    let hostingProviderDetected = false;
     if (!robotsActuallyExists) {
       try {
-        console.log(`[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: ${baseUrl}`);
+        console.log(`[ACTION ITEMS] Analyzing hosting provider for automated deployment: ${baseUrl}`);
+        // Basic hosting provider detection (to be enhanced with HostDetectionService)
         const homeResponse = await fetch(baseUrl, {
           method: 'GET',
           timeout: 10000,
           headers: {
-            'User-Agent': 'SEOAgent-ActionItemBot/1.0'
+            'User-Agent': 'SEOAgent-HostDetectionBot/1.0'
           }
         } as any);
         
         if (homeResponse.ok) {
-          const homeContent = await homeResponse.text();
+          // Check response headers for hosting provider indicators
+          const server = homeResponse.headers.get('server') || '';
+          const xPoweredBy = homeResponse.headers.get('x-powered-by') || '';
+          const cfRay = homeResponse.headers.get('cf-ray');
+          const xVercelId = homeResponse.headers.get('x-vercel-id');
           
-          // Check for SEOAgent.js installation markers
-          const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
-          const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
-          
-          hasDynamicServing = hasScript && hasWebsiteToken;
-          console.log(`[ACTION ITEMS] SEOAgent.js detection: script=${hasScript}, token=${hasWebsiteToken}, dynamic=${hasDynamicServing}`);
-          
-          if (hasDynamicServing) {
-            // If SEOAgent.js is properly installed, assume robots.txt serving works
-            robotsActuallyExists = true;
-            console.log(`[ACTION ITEMS] ✅ Dynamic robots.txt serving detected via SEOAgent.js`);
-          }
+          hostingProviderDetected = !!(cfRay || xVercelId || server.includes('cloudflare') || server.includes('vercel'));
+          console.log(`[ACTION ITEMS] Hosting provider indicators: cf-ray=${!!cfRay}, vercel-id=${!!xVercelId}, server=${server}`);
         }
       } catch (error) {
-        console.log(`[ACTION ITEMS] SEOAgent.js detection failed: ${error}`);
-        hasDynamicServing = false;
+        console.log(`[ACTION ITEMS] Hosting provider detection failed: ${error}`);
+        hostingProviderDetected = false;
       }
     }
 
-    // Generate issues based on detection results - robots.txt requires manual server-side deployment
+    // Generate issues based on detection results - suggest hosting provider integration or manual deployment
     if (!robotsActuallyExists) {
-      // No robots.txt detected - provide manual deployment instructions
-      const manualFixInstructions = `To add a robots.txt file to your website:
-
+      const requiresHostingIntegration = hostingProviderDetected;
+      
+      // Provide deployment instructions based on hosting provider detection
+      const automaticFixInstructions = `Automated deployment via hosting provider integration:
+1. Enable hosting provider integration in SEOAgent settings
+2. The robots.txt file will be automatically deployed to your website root
+3. Sitemap URL will be automatically included`;
+      
+      const manualFixInstructions = `Manual robots.txt setup:
 1. Create a file named "robots.txt" with this content:
    User-agent: *
    Allow: /
@@ -642,29 +646,35 @@ export class ActionItemService {
 2. Upload this file to your website's root directory
 3. Verify it's accessible at: ${testUrl}
 
-For coding agents/developers:
+For developers:
 - Place robots.txt in the public/static folder of your web application
-- Configure your web server (Nginx/Apache) to serve static files from root
 - For CDN/hosting platforms (Vercel/Netlify), place in public/ directory`;
 
+      const fixRecommendation = requiresHostingIntegration 
+        ? `${automaticFixInstructions}\n\nAlternatively:\n${manualFixInstructions}`
+        : manualFixInstructions;
+
       issues.push({
-        type: 'robots_missing_manual_fix',
+        type: requiresHostingIntegration ? 'robots_missing_hosting_integration' : 'robots_missing_manual_fix',
         category: 'robots',
         severity: 'medium',
-        title: 'Robots.txt File Missing - Manual Setup Required',
-        description: 'No robots.txt file exists at your website. This file must be deployed at the server level and cannot be automated via JavaScript.',
+        title: requiresHostingIntegration ? 'Robots.txt Missing - Hosting Integration Available' : 'Robots.txt File Missing - Manual Setup Required',
+        description: requiresHostingIntegration 
+          ? 'No robots.txt file exists at your website. Automated deployment is available via hosting provider integration.'
+          : 'No robots.txt file exists at your website. This file must be deployed at the server level.',
         impactDescription: 'Missing robots.txt can lead to crawling inefficiencies and missed SEO opportunities. Search engines may not know which parts of your site to crawl.',
-        fixRecommendation: manualFixInstructions,
+        fixRecommendation,
         affectedUrls: [testUrl],
         estimatedImpact: 'medium',
-        estimatedEffort: 'easy',
+        estimatedEffort: requiresHostingIntegration ? 'easy' : 'medium',
         referenceId: robots?.id,
         referenceTable: 'robots_analyses',
         metadata: { 
           robotsUrl: testUrl, 
           actuallyExists: false, 
-          requiresManualDeployment: true,
-          automatable: false 
+          hostingProviderDetected,
+          requiresHostingIntegration,
+          automatable: requiresHostingIntegration
         }
       });
     } else if (robotsActuallyExists && (!robots || !robots.exists)) {
@@ -680,7 +690,7 @@ For coding agents/developers:
         affectedUrls: [testUrl],
         estimatedImpact: 'low',
         estimatedEffort: 'easy',
-        metadata: { robotsUrl: testUrl, actuallyExists: true, automatable: true }
+        metadata: { robotsUrl: testUrl, actuallyExists: true, hostingProviderDetected, automatable: true }
       });
     }
     // If database record exists but actual robots.txt doesn't (broken robots.txt)
@@ -698,7 +708,7 @@ For coding agents/developers:
         estimatedEffort: 'medium',
         referenceId: robots.id,
         referenceTable: 'robots_analyses',
-        metadata: { robotsUrl: testUrl, actuallyExists: false }
+        metadata: { robotsUrl: testUrl, actuallyExists: false, hostingProviderDetected }
       });
     }
     // If robots exists and is recorded but Google has fetch errors
