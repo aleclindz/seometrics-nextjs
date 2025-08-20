@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // Generate AI summary with technical SEO context
     console.log('[ACTIVITY SUMMARY] Generating AI summary for', aggregatedActivity.totalCount, 'activities');
-    const aiSummary = await generateAISummary(siteUrl, aggregatedActivity, websiteStatus, userToken);
+    const aiSummary = await generateAISummary(siteUrl, aggregatedActivity, userToken, websiteStatus);
 
     // Cache the summary
     await ActivityAggregator.saveSummary(
@@ -134,12 +134,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateAISummary(siteUrl: string, activity: AggregatedActivity, websiteStatus?: SummaryRequest['websiteStatus'], userToken?: string): Promise<string> {
+async function generateAISummary(siteUrl: string, activity: AggregatedActivity, userToken: string, websiteStatus?: SummaryRequest['websiteStatus']): Promise<string> {
   const domainName = extractDomainName(siteUrl);
   const timePeriod = getTimePeriodDescription(activity.periodStart, activity.periodEnd);
   
   // Prepare activity data for AI with enhanced metrics
-  const activitySummary = await summarizeActivitiesByTypeWithMetrics(activity.activities, userToken!);
+  const activitySummary = await summarizeActivitiesByTypeWithMetrics(activity.activities, userToken);
   
   // Get current technical SEO status for context
   let technicalContext = '';
@@ -174,7 +174,7 @@ IMPORTANT: Be very specific about these issues in your response. Don't say "iden
   }
 
   // Generate next steps based on website status - but first enhance it with actual detection
-  const enhancedWebsiteStatus = await enhanceWebsiteStatus(websiteStatus, userToken!, siteUrl, activity);
+  const enhancedWebsiteStatus = await enhanceWebsiteStatus(websiteStatus, userToken, siteUrl, activity);
   const nextSteps = generateNextSteps(enhancedWebsiteStatus, domainName);
   
   const prompt = `You are SEOAgent's friendly assistant. Create a warm, conversational welcome message summarizing what you've accomplished for ${domainName} ${timePeriod}, then provide actionable next steps.
