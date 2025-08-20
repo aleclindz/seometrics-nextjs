@@ -23,6 +23,16 @@
       "chrome-mcp-server": {
         "type": "streamableHttp",
         "url": "http://127.0.0.1:12306/mcp"
-      }
+      },"supabase": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "@supabase/mcp-server-supabase@latest",
+            "--read-only",
+            "--project-ref=<project-ref>"
+          ],
+          "env": {
+            "SUPABASE_ACCESS_TOKEN": "sbp_cb4221d05479c4998c7cf55acb3bec3d0fa023f3"
+          }
     }
 }

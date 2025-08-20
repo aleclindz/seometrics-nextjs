@@ -18,6 +18,7 @@ interface Website {
   gscStatus: 'connected' | 'pending' | 'error' | 'none';
   cmsStatus: 'connected' | 'pending' | 'error' | 'none';
   smartjsStatus: 'active' | 'inactive' | 'error';
+  hostStatus?: 'connected' | 'pending' | 'error' | 'none';
   lastSync?: Date;
   metrics?: {
     clicks: number;
@@ -142,6 +143,7 @@ export default function WebsitePage() {
           gscStatus: currentWebsite.gscStatus || 'none',
           cmsStatus: currentWebsite.cmsStatus || 'none',
           smartjsStatus,
+          hostStatus: currentWebsite.hostStatus || 'none',
           lastSync: currentWebsite.lastSync ? new Date(currentWebsite.lastSync) : undefined,
           metrics: currentWebsite.metrics,
           lastAuditDate: auditData?.completed_at || auditData?.created_at,
@@ -247,6 +249,7 @@ export default function WebsitePage() {
     gscStatus?: 'connected' | 'pending' | 'error' | 'none';
     cmsStatus?: 'connected' | 'pending' | 'error' | 'none';
     smartjsStatus?: 'active' | 'inactive' | 'error';
+    hostStatus?: 'connected' | 'pending' | 'error' | 'none';
   }) => {
     if (website) {
       setWebsite(prev => prev ? {

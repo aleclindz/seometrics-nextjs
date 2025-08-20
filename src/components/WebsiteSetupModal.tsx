@@ -15,15 +15,17 @@ interface WebsiteSetupModalProps {
     gscStatus: 'connected' | 'pending' | 'error' | 'none';
     cmsStatus: 'connected' | 'pending' | 'error' | 'none';
     smartjsStatus: 'active' | 'inactive' | 'error';
+    hostStatus?: 'connected' | 'pending' | 'error' | 'none';
   };
   onStatusUpdate?: (updates: {
     gscStatus?: 'connected' | 'pending' | 'error' | 'none';
     cmsStatus?: 'connected' | 'pending' | 'error' | 'none';
     smartjsStatus?: 'active' | 'inactive' | 'error';
+    hostStatus?: 'connected' | 'pending' | 'error' | 'none';
   }) => void;
 }
 
-type SetupTab = 'gsc' | 'cms' | 'smartjs';
+type SetupTab = 'gsc' | 'cms' | 'smartjs' | 'host';
 
 interface GSCConnectionStatus {
   connected: boolean;
@@ -50,6 +52,18 @@ interface CMSConnection {
   last_used_at?: string;
 }
 
+interface HostConnection {
+  id: number;
+  host_type: string;
+  connection_name: string;
+  project_name?: string;
+  domain?: string;
+  deployment_status: 'active' | 'inactive' | 'error';
+  last_deployment_at?: string;
+  auto_deploy_enabled: boolean;
+  created_at: string;
+}
+
 export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUpdate }: WebsiteSetupModalProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SetupTab>('gsc');
@@ -64,6 +78,11 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [cmsConnections, setCmsConnections] = useState<CMSConnection[]>([]);
   const [cmsLoading, setCmsLoading] = useState(false);
   const [cmsError, setCmsError] = useState<string | null>(null);
+
+  // Host Connection State
+  const [hostConnections, setHostConnections] = useState<HostConnection[]>([]);
+  const [hostLoading, setHostLoading] = useState(false);
+  const [hostError, setHostError] = useState<string | null>(null);
   
   // SEOAgent.js State
   const [smartjsInstallCode, setSmartjsInstallCode] = useState('');
@@ -75,6 +94,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       // Load data for all tabs when modal opens
       checkGSCStatus();
       fetchCMSConnections();
+      fetchHostConnections();
       generateSmartJSCode();
       checkSmartJSStatus(); // Check SEOAgent.js installation immediately
       
@@ -85,6 +105,8 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         setActiveTab('smartjs');
       } else if (website.cmsStatus !== 'connected') {
         setActiveTab('cms');
+      } else if (website.hostStatus !== 'connected') {
+        setActiveTab('host');
       }
     }
   }, [isOpen, website]);
@@ -215,6 +237,33 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     await fetchCMSConnections();
     onStatusUpdate?.({ cmsStatus: 'connected' });
     setShowCMSForm(false);
+  };
+
+  // Host Connection Functions
+  const fetchHostConnections = async () => {
+    if (!user?.token) return;
+
+    try {
+      setHostLoading(true);
+      const response = await fetch(`/api/host/connections?userToken=${user.token}&websiteId=${website.id}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setHostConnections(data.connections);
+        // Update parent status if we have active connections
+        const hasActiveConnection = data.connections.some((conn: HostConnection) => 
+          conn.deployment_status === 'active'
+        );
+        if (hasActiveConnection && website.hostStatus !== 'connected') {
+          onStatusUpdate?.({ hostStatus: 'connected' });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching host connections:', error);
+      setHostError('Failed to fetch host connections');
+    } finally {
+      setHostLoading(false);
+    }
   };
 
   // SEOAgent.js Functions
@@ -356,6 +405,10 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
               {getStatusIcon(website.cmsStatus)}
               <span>CMS</span>
             </div>
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(website.hostStatus || 'none')}`}>
+              {getStatusIcon(website.hostStatus || 'none')}
+              <span>Hosting</span>
+            </div>
           </div>
         </div>
 
@@ -391,6 +444,16 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
               }`}
             >
               CMS Integration
+            </button>
+            <button
+              onClick={() => setActiveTab('host')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'host'
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              Hosting
             </button>
           </nav>
         </div>
@@ -668,6 +731,116 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
               {cmsError && (
                 <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
                   {cmsError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Host Connection Tab */}
+          {activeTab === 'host' && (
+            <div className="space-y-6">
+              {hostLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+                </div>
+              ) : hostConnections.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">Connected Hosting Platforms</h4>
+                    <button
+                      onClick={() => {/* Add host connection functionality */}}
+                      className="inline-flex items-center px-3 py-1 text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                    >
+                      Add Connection
+                    </button>
+                  </div>
+                  {hostConnections.map((connection) => (
+                    <div key={connection.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h5 className="font-medium text-gray-900 dark:text-gray-100 capitalize">
+                              {connection.host_type}
+                            </h5>
+                            {connection.auto_deploy_enabled && (
+                              <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/20 dark:text-green-300 rounded-full">
+                                Auto Deploy
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {connection.project_name || connection.connection_name}
+                          </p>
+                          {connection.domain && (
+                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                              {connection.domain}
+                            </p>
+                          )}
+                          {connection.last_deployment_at && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Last deployed: {new Date(connection.last_deployment_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(connection.deployment_status)}`}>
+                          {connection.deployment_status}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    Hosting Integration
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Connect your hosting platform to enable automated deployments and seamless content publishing.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {[
+                      { type: 'vercel', name: 'Vercel', icon: '▲', available: false },
+                      { type: 'netlify', name: 'Netlify', icon: '🌐', available: false },
+                      { type: 'github_pages', name: 'GitHub Pages', icon: '🐙', available: false },
+                      { type: 'custom', name: 'Custom Host', icon: '🔧', available: false },
+                    ].map((host) => (
+                      <div key={host.type} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <span className="text-2xl">{host.icon}</span>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">{host.name}</h4>
+                        </div>
+                        <button
+                          onClick={() => {/* Add host connection functionality */}}
+                          disabled={!host.available}
+                          className={`w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md ${
+                            host.available
+                              ? 'border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/10 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-900/20'
+                              : 'border-gray-300 text-gray-500 bg-gray-50 cursor-not-allowed dark:bg-gray-700/30 dark:border-gray-600 dark:text-gray-400'
+                          }`}
+                        >
+                          {host.available ? `Connect ${host.name}` : 'Coming Soon'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Benefits of Hosting Integration</h4>
+                    <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                      <li>Automated deployments on content changes</li>
+                      <li>Seamless CI/CD pipeline integration</li>
+                      <li>Real-time deployment status monitoring</li>
+                      <li>Environment-specific configurations</li>
+                      <li>Build optimization and performance tracking</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+                
+              {hostError && (
+                <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
+                  {hostError}
                 </div>
               )}
             </div>
