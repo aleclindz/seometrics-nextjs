@@ -65,20 +65,12 @@ serve(async (req) => {
       schemas.push(baseSchema);
     }
 
-    // 2. Organization schema (if contact info detected)
+    // 2. Local Business or Organization schema (enhanced with business detection)
     if (pageData.hasContactInfo && existingSchemaCount === 0) {
-      const organizationSchema = {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "url": pageData.url.match(/^https?:\/\/[^\/]+/)?.[0] || pageData.url,
-        "name": extractDomainName(pageData.url)
-      };
-
-      if (pageData.images && pageData.images.length > 0) {
-        organizationSchema["logo"] = pageData.images[0];
+      const businessSchema = await generateBusinessSchema(websiteToken, pageData);
+      if (businessSchema) {
+        schemas.push(businessSchema);
       }
-
-      schemas.push(organizationSchema);
     }
 
     // 3. Article schema (if article content detected)
@@ -262,4 +254,242 @@ function generateFAQSchema(headings: string[]): any | null {
     "@type": "FAQPage",
     "mainEntity": mainEntity
   };
+}
+
+async function generateBusinessSchema(websiteToken: string, pageData: any): Promise<any | null> {
+  try {
+    // Get business information from database
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { data: website, error } = await supabaseClient
+      .from('websites')
+      .select('business_type, business_info, business_detection_confidence, domain')
+      .eq('website_token', websiteToken)
+      .single();
+
+    if (error || !website) {
+      console.log('[SCHEMA GENERATION] No website data found, using basic Organization schema');
+      return generateBasicOrganizationSchema(pageData);
+    }
+
+    const businessInfo = website.business_info || {};
+    const businessType = website.business_type || 'unknown';
+
+    // If not a local business or low confidence, use basic Organization schema
+    if (businessType === 'online' || businessType === 'unknown' || website.business_detection_confidence < 30) {
+      return generateBasicOrganizationSchema(pageData);
+    }
+
+    // Get appropriate schema type based on business category
+    const schemaType = await getBusinessSchemaType(businessInfo.businessCategory);
+
+    // Generate LocalBusiness or specific business type schema
+    const localBusinessSchema: any = {
+      "@context": "https://schema.org",
+      "@type": schemaType,
+      "url": pageData.url.match(/^https?:\/\/[^\/]+/)?.[0] || pageData.url,
+      "name": businessInfo.name || extractDomainName(pageData.url)
+    };
+
+    // Add address if available
+    if (businessInfo.address) {
+      localBusinessSchema.address = {
+        "@type": "PostalAddress",
+        "streetAddress": businessInfo.address,
+        ...(businessInfo.city && { "addressLocality": businessInfo.city }),
+        ...(businessInfo.state && { "addressRegion": businessInfo.state }),
+        ...(businessInfo.zipCode && { "postalCode": businessInfo.zipCode }),
+        ...(businessInfo.country && { "addressCountry": businessInfo.country })
+      };
+    }
+
+    // Add phone number
+    if (businessInfo.phone) {
+      localBusinessSchema.telephone = businessInfo.phone;
+    }
+
+    // Add business hours
+    if (businessInfo.hours) {
+      localBusinessSchema.openingHours = parseBusinessHours(businessInfo.hours);
+    }
+
+    // Add service area for service businesses
+    if (businessType === 'hybrid' || businessType === 'service') {
+      if (businessInfo.serviceArea) {
+        localBusinessSchema.areaServed = businessInfo.serviceArea;
+      }
+    }
+
+    // Add coordinates if available
+    if (businessInfo.coordinates) {
+      localBusinessSchema.geo = {
+        "@type": "GeoCoordinates",
+        "latitude": businessInfo.coordinates.latitude,
+        "longitude": businessInfo.coordinates.longitude
+      };
+    }
+
+    // Add description
+    if (pageData.description) {
+      localBusinessSchema.description = pageData.description;
+    }
+
+    // Add logo/image
+    if (pageData.images && pageData.images.length > 0) {
+      localBusinessSchema.logo = pageData.images[0];
+      localBusinessSchema.image = pageData.images[0];
+    }
+
+    // Add price range for appropriate business types
+    if (['restaurant', 'retail', 'service'].includes(businessInfo.businessCategory)) {
+      localBusinessSchema.priceRange = businessInfo.priceRange || '$$';
+    }
+
+    // Add specific properties based on business category
+    addCategorySpecificProperties(localBusinessSchema, businessInfo.businessCategory, businessInfo);
+
+    console.log(`[SCHEMA GENERATION] Generated ${schemaType} schema for ${website.domain}`);
+    return localBusinessSchema;
+
+  } catch (error) {
+    console.error('[SCHEMA GENERATION] Error generating business schema:', error);
+    return generateBasicOrganizationSchema(pageData);
+  }
+}
+
+function generateBasicOrganizationSchema(pageData: any): any {
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "url": pageData.url.match(/^https?:\/\/[^\/]+/)?.[0] || pageData.url,
+    "name": extractDomainName(pageData.url)
+  };
+
+  if (pageData.images && pageData.images.length > 0) {
+    organizationSchema.logo = pageData.images[0];
+  }
+
+  if (pageData.description) {
+    organizationSchema.description = pageData.description;
+  }
+
+  return organizationSchema;
+}
+
+async function getBusinessSchemaType(businessCategory?: string): Promise<string> {
+  if (!businessCategory) return 'LocalBusiness';
+
+  // Map categories to specific schema types
+  const categoryMap: Record<string, string> = {
+    'restaurant': 'Restaurant',
+    'service': 'ProfessionalService',
+    'emergency_service': 'EmergencyService',
+    'retail': 'Store',
+    'medical': 'MedicalOrganization',
+    'automotive': 'AutomotiveBusiness',
+    'local': 'LocalBusiness'
+  };
+
+  return categoryMap[businessCategory] || 'LocalBusiness';
+}
+
+function parseBusinessHours(hoursString: string): string[] {
+  // Simple parsing - could be enhanced for more complex formats
+  const hours: string[] = [];
+  
+  // Common patterns like "Mon-Fri 9am-5pm"
+  if (/mon.*fri|monday.*friday/i.test(hoursString)) {
+    const days = ['Mo', 'Tu', 'We', 'Th', 'Fr'];
+    const timeMatch = hoursString.match(/(\d{1,2}(?::\d{2})?(?:am|pm)?)\s*[-–]\s*(\d{1,2}(?::\d{2})?(?:am|pm)?)/i);
+    
+    if (timeMatch) {
+      const openTime = normalizeTime(timeMatch[1]);
+      const closeTime = normalizeTime(timeMatch[2]);
+      
+      days.forEach(day => {
+        hours.push(`${day} ${openTime}-${closeTime}`);
+      });
+    }
+  }
+  
+  // If no structured format detected, return as-is
+  if (hours.length === 0) {
+    hours.push(hoursString);
+  }
+  
+  return hours;
+}
+
+function normalizeTime(timeStr: string): string {
+  // Convert time to 24-hour format for schema.org
+  const time = timeStr.toLowerCase().trim();
+  
+  if (time.includes('pm') && !time.startsWith('12')) {
+    const hour = parseInt(time.match(/\d+/)?.[0] || '0');
+    return time.replace(/\d+/, String(hour + 12)).replace('pm', '');
+  }
+  
+  if (time.includes('am')) {
+    if (time.startsWith('12')) {
+      return time.replace('12', '00').replace('am', '');
+    }
+    return time.replace('am', '');
+  }
+  
+  return time;
+}
+
+function addCategorySpecificProperties(schema: any, category?: string, businessInfo?: any) {
+  if (!category) return;
+
+  switch (category) {
+    case 'restaurant':
+      if (businessInfo?.cuisine) {
+        schema.servesCuisine = businessInfo.cuisine;
+      }
+      if (businessInfo?.acceptsReservations !== undefined) {
+        schema.acceptsReservations = businessInfo.acceptsReservations;
+      }
+      if (businessInfo?.menu) {
+        schema.hasMenu = businessInfo.menu;
+      }
+      break;
+
+    case 'medical':
+      if (businessInfo?.specialty) {
+        schema.medicalSpecialty = businessInfo.specialty;
+      }
+      if (businessInfo?.insurance) {
+        schema.acceptedInsurance = businessInfo.insurance;
+      }
+      break;
+
+    case 'automotive':
+      if (businessInfo?.brands) {
+        schema.brand = businessInfo.brands;
+      }
+      if (businessInfo?.services) {
+        schema.availableService = businessInfo.services;
+      }
+      break;
+
+    case 'service':
+      if (businessInfo?.serviceType) {
+        schema.serviceType = businessInfo.serviceType;
+      }
+      break;
+  }
+
+  // Add payment methods if available
+  if (businessInfo?.paymentMethods) {
+    schema.paymentAccepted = businessInfo.paymentMethods;
+  }
+
+  // Add social media profiles
+  if (businessInfo?.socialProfiles) {
+    schema.sameAs = businessInfo.socialProfiles;
+  }
 }
