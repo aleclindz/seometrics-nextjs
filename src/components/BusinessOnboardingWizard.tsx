@@ -15,7 +15,7 @@ interface BusinessInfo {
   serviceArea?: string;
   businessCategory?: string;
   website?: string;
-  businessType?: 'local' | 'online' | 'hybrid';
+  businessType?: 'local' | 'online' | 'hybrid' | 'unknown';
 }
 
 interface DetectionResult {
