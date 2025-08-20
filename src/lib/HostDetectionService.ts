@@ -73,6 +73,9 @@ export interface HostDetectionResult {
 }
 
 export class HostDetectionService {
+  // Import database integration
+  private static dbEnabled: boolean | null = null;
+  
   private static readonly PROVIDER_FINGERPRINTS: Record<string, DetectionFingerprint> = {
     cloudflare: {
       headers: {
@@ -267,35 +270,65 @@ export class HostDetectionService {
   };
 
   /**
+   * Check if database integration is available
+   */
+  private static async checkDatabaseAvailability(): Promise<boolean> {
+    if (this.dbEnabled !== null) {
+      return this.dbEnabled;
+    }
+
+    try {
+      // Dynamic import to avoid dependency issues if database tables don't exist
+      const { HostingProviderDatabase } = await import('./HostingProviderDatabase');
+      const tablesExist = await HostingProviderDatabase.checkTablesExist();
+      this.dbEnabled = tablesExist;
+      console.log(`[HOST DETECTION] Database integration ${tablesExist ? 'enabled' : 'disabled'}`);
+      return tablesExist;
+    } catch (error) {
+      console.log('[HOST DETECTION] Database integration unavailable, using static fingerprints');
+      this.dbEnabled = false;
+      return false;
+    }
+  }
+
+  /**
    * Detect hosting provider for a given domain
    */
-  static async detectProvider(domain: string, userAgent = 'SEOAgent-HostDetection/1.0'): Promise<HostDetectionResult> {
+  static async detectProvider(domain: string, userAgent = 'SEOAgent-HostDetection/1.0', userToken?: string): Promise<HostDetectionResult> {
+    const startTime = Date.now();
     const url = domain.startsWith('http') ? domain : `https://${domain}`;
     const detectionMethods: string[] = [];
     const detectedProviders: Map<string, number> = new Map();
+    const matchedFingerprints: any[] = [];
+
+    // Check if database integration is available
+    const dbEnabled = await this.checkDatabaseAvailability();
 
     try {
-      // Method 1: HTTP Header Analysis
-      const headerResults = await this.detectViaHeaders(url, userAgent);
-      headerResults.forEach((confidence, provider) => {
+      // Method 1: HTTP Header Analysis (enhanced with database fingerprints)
+      const headerResults = await this.detectViaHeaders(url, userAgent, dbEnabled);
+      headerResults.providers.forEach((confidence, provider) => {
         detectedProviders.set(provider, (detectedProviders.get(provider) || 0) + confidence);
         detectionMethods.push(`headers:${provider}`);
       });
+      matchedFingerprints.push(...headerResults.fingerprints);
 
       // Method 2: DNS Analysis (simplified for browser compatibility)
       // Note: Full DNS analysis would require server-side implementation
-      const dnsResults = await this.detectViaDNS(domain);
-      dnsResults.forEach((confidence, provider) => {
+      const dnsResults = await this.detectViaDNS(domain, dbEnabled);
+      dnsResults.providers.forEach((confidence, provider) => {
         detectedProviders.set(provider, (detectedProviders.get(provider) || 0) + confidence);
         detectionMethods.push(`dns:${provider}`);
       });
+      matchedFingerprints.push(...dnsResults.fingerprints);
 
-      // Method 3: Path Fingerprinting
-      const pathResults = await this.detectViaPathFingerprints(url, userAgent);
-      pathResults.forEach((confidence, provider) => {
+      // Method 3: Path Fingerprinting (enhanced with database fingerprints)
+      const pathResults = await this.detectViaPathFingerprints(url, userAgent, dbEnabled);
+      pathResults.providers.forEach((confidence, provider) => {
         detectedProviders.set(provider, (detectedProviders.get(provider) || 0) + confidence);
         detectionMethods.push(`paths:${provider}`);
       });
+      matchedFingerprints.push(...pathResults.fingerprints);
 
     } catch (error) {
       console.error('[HOST DETECTION] Error during detection:', error);
@@ -318,7 +351,30 @@ export class HostDetectionService {
     // Generate recommendations
     const recommendations = this.generateRecommendations(providers, domain);
 
-    return {
+    // Save detection result to database if available and userToken provided
+    if (dbEnabled && userToken) {
+      try {
+        const { HostingProviderDatabase } = await import('./HostingProviderDatabase');
+        const detectionDuration = Date.now() - startTime;
+        
+        await HostingProviderDatabase.saveDetectionResult(
+          userToken,
+          url,
+          domain,
+          providers.map(p => ({ name: p.name, type: p.type, confidence: p.confidence })),
+          primaryProvider?.name || null,
+          overallConfidence,
+          detectionMethods,
+          matchedFingerprints,
+          detectionDuration,
+          userAgent
+        );
+      } catch (error) {
+        console.error('[HOST DETECTION] Error saving detection result:', error);
+      }
+    }
+
+    const result: HostDetectionResult = {
       providers,
       primaryProvider,
       confidence: overallConfidence,
@@ -326,13 +382,25 @@ export class HostDetectionService {
       recommendations,
       integrationAvailable
     };
+
+    console.log(`[HOST DETECTION] Detection completed in ${Date.now() - startTime}ms:`, {
+      domain,
+      providersFound: providers.length,
+      primaryProvider: primaryProvider?.name,
+      confidence: overallConfidence,
+      dbEnabled,
+      fingerprintsMatched: matchedFingerprints.length
+    });
+
+    return result;
   }
 
   /**
    * Detect provider via HTTP response headers
    */
-  private static async detectViaHeaders(url: string, userAgent: string): Promise<Map<string, number>> {
+  private static async detectViaHeaders(url: string, userAgent: string, dbEnabled = false): Promise<{providers: Map<string, number>, fingerprints: any[]}> {
     const results = new Map<string, number>();
+    const matchedFingerprints: any[] = [];
 
     try {
       const response = await fetch(url, {
@@ -343,39 +411,98 @@ export class HostDetectionService {
 
       const headers = response.headers;
 
-      // Check each provider's header fingerprints
-      Object.entries(this.PROVIDER_FINGERPRINTS).forEach(([provider, fingerprint]) => {
-        if (!fingerprint.headers) return;
+      // Use database fingerprints if available, otherwise fall back to static
+      if (dbEnabled) {
+        try {
+          const { HostingProviderDatabase } = await import('./HostingProviderDatabase');
+          const headerFingerprints = await HostingProviderDatabase.getFingerprintsByType('header');
+          
+          // Group fingerprints by provider
+          const providerFingerprints: Record<string, any[]> = {};
+          headerFingerprints.forEach(fp => {
+            if (!providerFingerprints[fp.provider_name]) {
+              providerFingerprints[fp.provider_name] = [];
+            }
+            providerFingerprints[fp.provider_name].push(fp);
+          });
 
-        let matches = 0;
-        let total = 0;
+          // Check each provider's database fingerprints
+          Object.entries(providerFingerprints).forEach(([provider, fingerprints]) => {
+            let totalWeight = 0;
+            let matchedWeight = 0;
 
-        Object.entries(fingerprint.headers).forEach(([headerName, pattern]) => {
-          total++;
-          const headerValue = headers.get(headerName);
-          if (headerValue && this.matchesPattern(headerValue, pattern)) {
-            matches++;
+            fingerprints.forEach(fp => {
+              totalWeight += fp.confidence_weight;
+              const headerValue = headers.get(fp.fingerprint_key);
+              
+              if (headerValue && this.matchesDatabasePattern(headerValue, fp)) {
+                matchedWeight += fp.confidence_weight;
+                matchedFingerprints.push({
+                  type: 'header',
+                  provider,
+                  key: fp.fingerprint_key,
+                  value: headerValue,
+                  pattern: fp.fingerprint_value,
+                  weight: fp.confidence_weight
+                });
+              }
+            });
+
+            if (matchedWeight > 0) {
+              const confidence = (matchedWeight / totalWeight) * 100;
+              results.set(provider, confidence);
+            }
+          });
+        } catch (dbError) {
+          console.error('[HOST DETECTION] Database header analysis failed, falling back to static:', dbError);
+          // Fall through to static fingerprints
+        }
+      }
+
+      // Static fingerprints fallback (or if database disabled)
+      if (!dbEnabled || results.size === 0) {
+        Object.entries(this.PROVIDER_FINGERPRINTS).forEach(([provider, fingerprint]) => {
+          if (!fingerprint.headers) return;
+
+          let matches = 0;
+          let total = 0;
+
+          Object.entries(fingerprint.headers).forEach(([headerName, pattern]) => {
+            total++;
+            const headerValue = headers.get(headerName);
+            if (headerValue && this.matchesPattern(headerValue, pattern)) {
+              matches++;
+              matchedFingerprints.push({
+                type: 'header',
+                provider,
+                key: headerName,
+                value: headerValue,
+                pattern: pattern.toString(),
+                weight: 50 // Default weight
+              });
+            }
+          });
+
+          if (matches > 0) {
+            const confidence = (matches / total) * 100;
+            results.set(provider, confidence);
           }
         });
-
-        if (matches > 0) {
-          const confidence = (matches / total) * 100;
-          results.set(provider, confidence);
-        }
-      });
+      }
 
     } catch (error) {
       console.error('[HOST DETECTION] Header analysis failed:', error);
     }
 
-    return results;
+    return { providers: results, fingerprints: matchedFingerprints };
   }
 
   /**
    * Detect provider via DNS patterns (simplified)
    */
-  private static async detectViaDNS(domain: string): Promise<Map<string, number>> {
+  private static async detectViaDNS(domain: string, dbEnabled = false): Promise<{providers: Map<string, number>, fingerprints: any[]}> {
     const results = new Map<string, number>();
+    const matchedFingerprints: any[] = [];
 
     // Note: Browser-based DNS analysis is limited
     // This is a placeholder for server-side DNS resolution
@@ -399,14 +526,49 @@ export class HostDetectionService {
           // Analyze redirect chains for hosting provider indicators
           const location = response.headers.get('location');
           if (location) {
-            Object.entries(this.PROVIDER_FINGERPRINTS).forEach(([provider, fingerprint]) => {
-              if (fingerprint.dns?.cname) {
-                const cnameMatches = fingerprint.dns.cname.some(pattern => location.includes(pattern));
-                if (cnameMatches) {
-                  results.set(provider, (results.get(provider) || 0) + 30);
-                }
+            // Use database fingerprints if available
+            if (dbEnabled) {
+              try {
+                const { HostingProviderDatabase } = await import('./HostingProviderDatabase');
+                const dnsFingerprints = await HostingProviderDatabase.getFingerprintsByType('dns');
+                
+                dnsFingerprints.forEach(fp => {
+                  if (fp.fingerprint_key === 'cname' && this.matchesDatabasePattern(location, fp)) {
+                    results.set(fp.provider_name, (results.get(fp.provider_name) || 0) + (fp.confidence_weight * 0.3));
+                    matchedFingerprints.push({
+                      type: 'dns',
+                      provider: fp.provider_name,
+                      key: 'cname_redirect',
+                      value: location,
+                      pattern: fp.fingerprint_value,
+                      weight: fp.confidence_weight
+                    });
+                  }
+                });
+              } catch (dbError) {
+                console.error('[HOST DETECTION] Database DNS analysis failed, falling back to static:', dbError);
               }
-            });
+            }
+
+            // Static DNS fingerprints fallback
+            if (!dbEnabled || results.size === 0) {
+              Object.entries(this.PROVIDER_FINGERPRINTS).forEach(([provider, fingerprint]) => {
+                if (fingerprint.dns?.cname) {
+                  const cnameMatches = fingerprint.dns.cname.some(pattern => location.includes(pattern));
+                  if (cnameMatches) {
+                    results.set(provider, (results.get(provider) || 0) + 30);
+                    matchedFingerprints.push({
+                      type: 'dns',
+                      provider,
+                      key: 'cname_redirect',
+                      value: location,
+                      pattern: fingerprint.dns.cname.join(','),
+                      weight: 30
+                    });
+                  }
+                }
+              });
+            }
           }
         } catch (error) {
           // Ignore individual URL failures
@@ -417,46 +579,116 @@ export class HostDetectionService {
       console.error('[HOST DETECTION] DNS analysis failed:', error);
     }
 
-    return results;
+    return { providers: results, fingerprints: matchedFingerprints };
   }
 
   /**
    * Detect provider via path fingerprinting
    */
-  private static async detectViaPathFingerprints(url: string, userAgent: string): Promise<Map<string, number>> {
+  private static async detectViaPathFingerprints(url: string, userAgent: string, dbEnabled = false): Promise<{providers: Map<string, number>, fingerprints: any[]}> {
     const results = new Map<string, number>();
+    const matchedFingerprints: any[] = [];
 
     try {
       const baseUrl = new URL(url).origin;
 
-      // Test common paths for each provider
-      for (const [provider, fingerprint] of Object.entries(this.PROVIDER_FINGERPRINTS)) {
-        if (!fingerprint.pathFingerprints) continue;
-
-        let matches = 0;
-        const total = fingerprint.pathFingerprints.length;
-
-        for (const path of fingerprint.pathFingerprints) {
-          try {
-            const testUrl = `${baseUrl}${path}`;
-            const response = await fetch(testUrl, {
-              method: 'HEAD',
-              headers: { 'User-Agent': userAgent },
-              timeout: 5000
-            } as any);
-
-            // Consider 200, 404, 403 as valid responses (path exists in routing)
-            if ([200, 404, 403].includes(response.status)) {
-              matches++;
+      // Use database path fingerprints if available
+      if (dbEnabled) {
+        try {
+          const { HostingProviderDatabase } = await import('./HostingProviderDatabase');
+          const pathFingerprints = await HostingProviderDatabase.getFingerprintsByType('path');
+          
+          // Group by provider
+          const providerPaths: Record<string, any[]> = {};
+          pathFingerprints.forEach(fp => {
+            if (!providerPaths[fp.provider_name]) {
+              providerPaths[fp.provider_name] = [];
             }
-          } catch (error) {
-            // Path doesn't exist or network error
-          }
-        }
+            providerPaths[fp.provider_name].push(fp);
+          });
 
-        if (matches > 0) {
-          const confidence = (matches / total) * 40; // Lower weight than headers
-          results.set(provider, confidence);
+          // Test each provider's paths
+          for (const [provider, fingerprints] of Object.entries(providerPaths)) {
+            let totalWeight = 0;
+            let matchedWeight = 0;
+
+            for (const fp of fingerprints) {
+              totalWeight += fp.confidence_weight;
+              const testPath = fp.fingerprint_key;
+              const expectedStatuses = fp.fingerprint_value.split(',').map((s: string) => parseInt(s.trim()));
+
+              try {
+                const testUrl = `${baseUrl}${testPath}`;
+                const response = await fetch(testUrl, {
+                  method: 'HEAD',
+                  headers: { 'User-Agent': userAgent },
+                  timeout: 5000
+                } as any);
+
+                if (expectedStatuses.includes(response.status)) {
+                  matchedWeight += fp.confidence_weight;
+                  matchedFingerprints.push({
+                    type: 'path',
+                    provider,
+                    key: testPath,
+                    value: response.status.toString(),
+                    pattern: fp.fingerprint_value,
+                    weight: fp.confidence_weight
+                  });
+                }
+              } catch (error) {
+                // Path test failed
+              }
+            }
+
+            if (matchedWeight > 0) {
+              const confidence = (matchedWeight / totalWeight) * 0.6; // Path detection gets 60% weight
+              results.set(provider, confidence);
+            }
+          }
+        } catch (dbError) {
+          console.error('[HOST DETECTION] Database path analysis failed, falling back to static:', dbError);
+        }
+      }
+
+      // Static path fingerprints fallback
+      if (!dbEnabled || results.size === 0) {
+        for (const [provider, fingerprint] of Object.entries(this.PROVIDER_FINGERPRINTS)) {
+          if (!fingerprint.pathFingerprints) continue;
+
+          let matches = 0;
+          const total = fingerprint.pathFingerprints.length;
+
+          for (const path of fingerprint.pathFingerprints) {
+            try {
+              const testUrl = `${baseUrl}${path}`;
+              const response = await fetch(testUrl, {
+                method: 'HEAD',
+                headers: { 'User-Agent': userAgent },
+                timeout: 5000
+              } as any);
+
+              // Consider 200, 404, 403 as valid responses (path exists in routing)
+              if ([200, 404, 403].includes(response.status)) {
+                matches++;
+                matchedFingerprints.push({
+                  type: 'path',
+                  provider,
+                  key: path,
+                  value: response.status.toString(),
+                  pattern: '200,404,403',
+                  weight: 40 / total
+                });
+              }
+            } catch (error) {
+              // Path doesn't exist or network error
+            }
+          }
+
+          if (matches > 0) {
+            const confidence = (matches / total) * 40; // Lower weight than headers
+            results.set(provider, confidence);
+          }
         }
       }
 
@@ -464,7 +696,7 @@ export class HostDetectionService {
       console.error('[HOST DETECTION] Path fingerprinting failed:', error);
     }
 
-    return results;
+    return { providers: results, fingerprints: matchedFingerprints };
   }
 
   /**
@@ -513,6 +745,36 @@ export class HostDetectionService {
       return pattern.test(value);
     }
     return value.toLowerCase().includes(pattern.toLowerCase());
+  }
+
+  /**
+   * Check if a value matches a database fingerprint pattern
+   */
+  private static matchesDatabasePattern(value: string, fingerprint: any): boolean {
+    const { fingerprint_value, fingerprint_pattern_type } = fingerprint;
+    const val = value.toLowerCase();
+    const pattern = fingerprint_value.toLowerCase();
+
+    switch (fingerprint_pattern_type) {
+      case 'exact':
+        return val === pattern;
+      case 'contains':
+        return val.includes(pattern);
+      case 'starts_with':
+        return val.startsWith(pattern);
+      case 'ends_with':
+        return val.endsWith(pattern);
+      case 'regex':
+        try {
+          const regex = new RegExp(fingerprint_value, 'i');
+          return regex.test(value);
+        } catch (error) {
+          console.error('[HOST DETECTION] Invalid regex pattern:', fingerprint_value);
+          return false;
+        }
+      default:
+        return val.includes(pattern);
+    }
   }
 
   /**
