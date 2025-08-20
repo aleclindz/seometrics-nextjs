@@ -7,6 +7,7 @@ import SocialProof from '@/components/SocialProof';
 import PricingSection from '@/components/PricingSection';
 import FAQSection from '@/components/FAQSection';
 import LandingFooter from '@/components/LandingFooter';
+import AuthRedirect from '@/components/AuthRedirect';
 import Script from 'next/script';
 
 export default function LandingPage() {
@@ -91,6 +92,9 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
+      {/* Handle authenticated user redirects client-side */}
+      <AuthRedirect />
+      
       <Script
         id="structured-data"
         type="application/ld+json"
