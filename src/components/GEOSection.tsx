@@ -207,7 +207,7 @@ export default function GEOSection() {
               While your competitors focus on yesterday&apos;s SEO, you&apos;ll be dominating tomorrow&apos;s AI-powered search landscape.
             </p>
             <a
-              href="/login"
+              href="/free-audit"
               className="bg-white text-violet-600 hover:bg-gray-100 px-8 py-4 rounded-lg font-semibold text-lg transition-colors inline-flex items-center"
             >
               Start Your GEO Journey

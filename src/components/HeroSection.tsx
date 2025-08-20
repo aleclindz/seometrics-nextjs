@@ -17,8 +17,8 @@ export default function HeroSection() {
     // Normalize domain (remove protocol, www, trailing slash)
     const normalizedDomain = domain.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
     
-    // Redirect to signup with domain pre-filled
-    window.location.href = `/login?domain=${encodeURIComponent(normalizedDomain)}&audit=true`;
+    // Redirect to free audit page with domain pre-filled
+    window.location.href = `/free-audit?domain=${encodeURIComponent(normalizedDomain)}`;
   };
 
   return (

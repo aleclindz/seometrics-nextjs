@@ -158,7 +158,7 @@ export default function FeatureCards() {
           {/* CTA */}
           <div className="text-center mt-16">
             <a
-              href="/login"
+              href="/free-audit"
               className="inline-flex items-center bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors shadow-lg hover:shadow-xl"
             >
               Start your free audit

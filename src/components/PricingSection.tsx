@@ -130,7 +130,7 @@ export default function PricingSection() {
 
                 {/* CTA Button */}
                 <a
-                  href="/login"
+                  href="/free-audit"
                   className={`w-full flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-lg transition-all duration-200 ${
                     plan.popular
                       ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl'

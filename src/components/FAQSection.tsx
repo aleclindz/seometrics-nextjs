@@ -93,7 +93,7 @@ export default function FAQSection() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
-                href="/login"
+                href="/free-audit"
                 className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors inline-flex items-center justify-center"
               >
                 Start free audit
