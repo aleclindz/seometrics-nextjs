@@ -46,19 +46,19 @@ export default function HeroSection() {
 
             {/* Domain Input Form */}
             <form onSubmit={handleAuditStart} className="mb-6">
-              <div className="flex flex-col sm:flex-row gap-3 max-w-md">
+              <div className="flex flex-col sm:flex-row gap-3 max-w-md flex-mobile-stack">
                 <input
                   type="text"
                   placeholder="yourdomain.com"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
-                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-transparent min-h-[44px] text-mobile-base"
                   required
                 />
                 <button
                   type="submit"
                   disabled={isLoading || !domain.trim()}
-                  className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl whitespace-nowrap"
+                  className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl whitespace-nowrap min-h-[44px] touch-target"
                 >
                   {isLoading ? 'Starting...' : 'Run a free audit'}
                 </button>
@@ -69,12 +69,12 @@ export default function HeroSection() {
             <div className="flex flex-col sm:flex-row gap-4 items-start mb-8">
               <button
                 onClick={() => setShowDemo(true)}
-                className="flex items-center text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 font-medium transition-colors"
+                className="flex items-center text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 font-medium transition-colors touch-target min-h-[44px] py-2 px-3"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 00.707-.293l4.414-4.414a1 1 0 111.414 1.414L12.707 11H9v4a1 1 0 01-1 1H7a1 1 0 01-1 1v-4a1 1 0 011-1z" />
                 </svg>
-                Watch 60-sec demo
+                <span className="text-mobile-base">Watch 60-sec demo</span>
               </button>
             </div>
 
@@ -148,14 +148,15 @@ export default function HeroSection() {
 
       {/* Demo Modal */}
       {showDemo && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowDemo(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal" onClick={() => setShowDemo(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">SEOAgent Demo</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">SEOAgent Demo</h3>
                 <button
                   onClick={() => setShowDemo(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 touch-target p-2"
+                  aria-label="Close demo modal"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -163,14 +164,14 @@ export default function HeroSection() {
                 </button>
               </div>
               <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-600 dark:text-gray-400">
-                  <div className="w-16 h-16 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="text-center text-gray-600 dark:text-gray-400 p-4">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 00.707-.293l4.414-4.414a1 1 0 111.414 1.414L12.707 11H9v4a1 1 0 01-1 1H7a1 1 0 01-1 1v-4a1 1 0 011-1z" />
                     </svg>
                   </div>
-                  <p className="font-medium">Demo video coming soon</p>
-                  <p className="text-sm mt-2">See how SEOAgent automatically fixes technical SEO issues</p>
+                  <p className="font-medium text-mobile-base">Demo video coming soon</p>
+                  <p className="text-mobile-sm mt-2">See how SEOAgent automatically fixes technical SEO issues</p>
                 </div>
               </div>
             </div>

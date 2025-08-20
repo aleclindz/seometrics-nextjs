@@ -27,56 +27,69 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
         <div className="flex items-center justify-between h-16 lg:border-b border-gray-200 dark:border-gray-700/60">
 
           {/* Header: Left side */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Mobile hamburger menu button */}
+            <button
+              className="lg:hidden btn-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 touch-target"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Toggle navigation menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            
             <a 
               href="https://calendly.com/alec-aleclindz/30min" 
               target="_blank"
               rel="noopener noreferrer"
-              className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300"
+              className="btn-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 touch-target"
               aria-label="Get support via Calendly"
             >
-              <span className="mr-2">🛟</span>
-              Support
+              <span className="mr-1 sm:mr-2">🛟</span>
+              <span className="hidden sm:inline">Support</span>
             </a>
             <a 
               href="https://seoagent.canny.io/" 
               target="_blank"
               rel="noopener noreferrer"
-              className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300"
+              className="btn-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-800 dark:text-gray-300 touch-target"
               aria-label="Share feedback on Canny"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
               </svg>
-              Feedback
+              <span className="hidden sm:inline">Feedback</span>
             </a>
           </div>
 
           {/* Header: Right side */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
 
             {/* AI Chat button */}
             <a
               href="/chat"
-              className="btn bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center"
+              className="btn-sm bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center touch-target"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
-              AI Chat
-              <div className="w-2 h-2 bg-green-400 rounded-full ml-2"></div>
+              <span className="hidden sm:inline">AI Chat</span>
+              <div className="w-2 h-2 bg-green-400 rounded-full sm:ml-2"></div>
             </a>
 
             {/* Dark mode toggle */}
-            <ThemeToggle />
+            <div className="touch-target">
+              <ThemeToggle />
+            </div>
 
-            {/* Divider */}
-            <hr className="w-px h-6 bg-gray-200 dark:bg-gray-700/60 border-none" />
+            {/* Divider - hidden on mobile */}
+            <hr className="w-px h-6 bg-gray-200 dark:bg-gray-700/60 border-none hidden sm:block" />
 
             {/* User button */}
             <div className="relative inline-flex">
               <button
-                className="inline-flex justify-center items-center group"
+                className="inline-flex justify-center items-center group touch-target min-h-[44px]"
                 aria-haspopup="true"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 aria-expanded={userMenuOpen}
@@ -86,7 +99,7 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="flex items-center truncate">
+                <div className="hidden sm:flex items-center truncate">
                   <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">
                     {user?.email}
                   </span>
@@ -98,17 +111,20 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
 
               {/* User dropdown menu */}
               {userMenuOpen && (
-                <div className="origin-top-right z-10 absolute top-full right-0 min-w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1">
-                  <div className="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
-                    <div className="font-medium text-gray-800 dark:text-gray-100">{user?.email}</div>
+                <div className="origin-top-right z-10 absolute top-full right-0 min-w-44 sm:min-w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1 dropdown-menu">
+                  <div className="pt-2 pb-3 px-4 mb-2 border-b border-gray-200 dark:border-gray-700/60">
+                    <div className="font-medium text-gray-800 dark:text-gray-100 text-sm sm:text-base">{user?.email}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 italic">User</div>
                   </div>
                   <ul>
                     <li>
                       <button 
-                        className="w-full text-left font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3" 
+                        className="w-full text-left font-medium text-base text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-3 px-4 touch-target min-h-[44px]" 
                         onClick={handleSignOut}
                       >
+                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
                         Sign Out
                       </button>
                     </li>
