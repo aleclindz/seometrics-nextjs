@@ -79,7 +79,19 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       const response = await fetch(`/api/websites?userToken=${user?.token}`);
       if (response.ok) {
         const data = await response.json();
-        setWebsites(data.websites || []);
+        const websitesList = data.websites || [];
+        setWebsites(websitesList);
+        
+        // If preselectedWebsiteId is a token (UUID), convert it to the actual ID
+        if (preselectedWebsiteId && typeof preselectedWebsiteId === 'string' && preselectedWebsiteId.includes('-')) {
+          const matchingWebsite = websitesList.find((w: Website) => w.website_token === preselectedWebsiteId);
+          if (matchingWebsite) {
+            setFormData(prev => ({
+              ...prev,
+              website_id: matchingWebsite.id.toString()
+            }));
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching websites:', err);

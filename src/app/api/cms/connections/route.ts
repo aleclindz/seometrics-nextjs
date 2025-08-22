@@ -139,6 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[CMS CONNECTIONS] Creating connection:', connection_name);
+    console.log('[CMS CONNECTIONS] website_id received:', website_id, typeof website_id);
 
     // Verify the website belongs to the user
     const { data: website, error: websiteError } = await supabase
