@@ -95,6 +95,41 @@ export async function POST(request: NextRequest) {
   }
 }
 
+function categorizeContentType(displayName: string, attributes: any, fieldCount: number): string {
+  const name = displayName.toLowerCase();
+  
+  if (fieldCount === 0) return 'empty';
+  if (name.includes('blog') || name.includes('post') || name.includes('article')) return 'blog';
+  if (name.includes('page') || name.includes('content')) return 'page';
+  if (name.includes('user') || name.includes('author') || name.includes('profile')) return 'user';
+  if (name.includes('category') || name.includes('tag') || name.includes('taxonomy')) return 'taxonomy';
+  if (name.includes('media') || name.includes('image') || name.includes('file')) return 'media';
+  if (name.includes('comment') || name.includes('review')) return 'interaction';
+  
+  return 'other';
+}
+
+function isSuitableForBlogging(attributes: any, fieldCount: number): number {
+  if (fieldCount === 0) return 0; // Empty content types get lowest priority
+  
+  let score = 0;
+  const attributeValues = Object.values(attributes);
+  
+  // High priority indicators
+  if (attributeValues.some((attr: any) => attr.type === 'richtext')) score += 10;
+  if (attributeValues.some((attr: any) => attr.type === 'text')) score += 7;
+  if (attributeValues.some((attr: any) => attr.type === 'string' && attr.required)) score += 5;
+  if (attributeValues.some((attr: any) => attr.type === 'uid')) score += 3;
+  if (attributeValues.some((attr: any) => attr.type === 'media')) score += 3;
+  
+  // Field count bonus
+  if (fieldCount >= 3) score += 5;
+  else if (fieldCount >= 2) score += 2;
+  else if (fieldCount === 1) score += 1;
+  
+  return score;
+}
+
 async function testStrapiConnection(baseUrl: string, apiToken: string, contentType: string = 'api::article::article') {
   const cleanUrl = baseUrl.replace(/\/$/, '');
   
@@ -123,6 +158,7 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
     // Test 0.5: Try to fetch content type schemas for better publishing
     console.log('[STRAPI TEST] Attempting to fetch content type schemas...');
     let discoveredSchemas = null;
+    let discoveredContentTypes: any[] = [];
     try {
       const schemaResponse = await fetch(`${cleanUrl}/api/content-type-builder/content-types`, {
         method: 'GET',
@@ -134,7 +170,55 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
       
       if (schemaResponse.ok) {
         discoveredSchemas = await schemaResponse.json();
-        console.log('[STRAPI TEST] Successfully fetched schemas:', Object.keys(discoveredSchemas?.data || {}));
+        console.log('[STRAPI TEST] Successfully fetched schemas');
+        
+        // Extract user-created content types (not plugins or admin types)
+        if (discoveredSchemas?.data) {
+          discoveredContentTypes = discoveredSchemas.data
+            .filter((contentType: any) => 
+              contentType.uid.startsWith('api::') && // User content types
+              contentType.schema.visible !== false // Visible to API
+              // Remove the attribute length filter to catch all user content types
+            )
+            .map((contentType: any) => {
+              const attributes = contentType.schema.attributes || {};
+              const fieldCount = Object.keys(attributes).length;
+              
+              return {
+                uid: contentType.uid,
+                apiID: contentType.apiID,
+                displayName: contentType.schema.displayName,
+                pluralName: contentType.schema.pluralName,
+                singularName: contentType.schema.singularName,
+                apiEndpoint: `api/${contentType.schema.pluralName}`,
+                attributes: attributes,
+                fieldCount: fieldCount,
+                hasRichText: Object.values(attributes).some((attr: any) => attr.type === 'richtext'),
+                hasMedia: Object.values(attributes).some((attr: any) => attr.type === 'media'),
+                hasUID: Object.values(attributes).some((attr: any) => attr.type === 'uid'),
+                hasString: Object.values(attributes).some((attr: any) => attr.type === 'string'),
+                hasText: Object.values(attributes).some((attr: any) => attr.type === 'text'),
+                hasRelation: Object.values(attributes).some((attr: any) => attr.type === 'relation'),
+                hasDraftAndPublish: contentType.schema.draftAndPublish || false,
+                isEmpty: fieldCount === 0,
+                // Categorize content types for better user experience
+                category: categorizeContentType(contentType.schema.displayName, attributes, fieldCount),
+                suitableForBlogging: isSuitableForBlogging(attributes, fieldCount)
+              };
+            })
+            // Sort by suitability for blogging, then by field count, then alphabetically
+            .sort((a: any, b: any) => {
+              if (a.suitableForBlogging !== b.suitableForBlogging) {
+                return b.suitableForBlogging - a.suitableForBlogging;
+              }
+              if (a.fieldCount !== b.fieldCount) {
+                return b.fieldCount - a.fieldCount;
+              }
+              return a.displayName.localeCompare(b.displayName);
+            });
+          
+          console.log('[STRAPI TEST] Discovered user content types:', discoveredContentTypes.map(ct => ct.displayName));
+        }
       } else {
         console.log('[STRAPI TEST] Schema discovery failed:', schemaResponse.status);
         // Try alternative admin endpoint
@@ -149,6 +233,49 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
         if (altSchemaResponse.ok) {
           discoveredSchemas = await altSchemaResponse.json();
           console.log('[STRAPI TEST] Successfully fetched schemas via admin endpoint');
+          // Process schemas same way as above
+          if (discoveredSchemas?.data) {
+            discoveredContentTypes = discoveredSchemas.data
+              .filter((contentType: any) => 
+                contentType.uid.startsWith('api::') &&
+                contentType.schema.visible !== false
+                // Remove the attribute length filter here too
+              )
+              .map((contentType: any) => {
+                const attributes = contentType.schema.attributes || {};
+                const fieldCount = Object.keys(attributes).length;
+                
+                return {
+                  uid: contentType.uid,
+                  apiID: contentType.apiID,
+                  displayName: contentType.schema.displayName,
+                  pluralName: contentType.schema.pluralName,
+                  singularName: contentType.schema.singularName,
+                  apiEndpoint: `api/${contentType.schema.pluralName}`,
+                  attributes: attributes,
+                  fieldCount: fieldCount,
+                  hasRichText: Object.values(attributes).some((attr: any) => attr.type === 'richtext'),
+                  hasMedia: Object.values(attributes).some((attr: any) => attr.type === 'media'),
+                  hasUID: Object.values(attributes).some((attr: any) => attr.type === 'uid'),
+                  hasString: Object.values(attributes).some((attr: any) => attr.type === 'string'),
+                  hasText: Object.values(attributes).some((attr: any) => attr.type === 'text'),
+                  hasRelation: Object.values(attributes).some((attr: any) => attr.type === 'relation'),
+                  hasDraftAndPublish: contentType.schema.draftAndPublish || false,
+                  isEmpty: fieldCount === 0,
+                  category: categorizeContentType(contentType.schema.displayName, attributes, fieldCount),
+                  suitableForBlogging: isSuitableForBlogging(attributes, fieldCount)
+                };
+              })
+              .sort((a: any, b: any) => {
+                if (a.suitableForBlogging !== b.suitableForBlogging) {
+                  return b.suitableForBlogging - a.suitableForBlogging;
+                }
+                if (a.fieldCount !== b.fieldCount) {
+                  return b.fieldCount - a.fieldCount;
+                }
+                return a.displayName.localeCompare(b.displayName);
+              });
+          }
         }
       }
     } catch (schemaError) {
@@ -162,8 +289,20 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
     console.log('[STRAPI TEST] Token length:', apiToken.length);
     console.log('[STRAPI TEST] Token preview:', apiToken.substring(0, 10) + '...');
     
-    // Try to discover working content type endpoints instead of hardcoded ones
-    const contentTypePatterns = [
+    // Try to discover working content type endpoints, prioritizing discovered content types
+    let contentTypePatterns: string[] = [];
+    
+    // First priority: Use discovered content types from schema
+    if (discoveredContentTypes.length > 0) {
+      contentTypePatterns = [
+        ...discoveredContentTypes.map(ct => ct.apiEndpoint), // e.g., "api/blog-posts"
+        ...discoveredContentTypes.map(ct => `api/${ct.apiID}`), // e.g., "api/blog-post"
+      ];
+      console.log('[STRAPI TEST] Using discovered content types:', contentTypePatterns);
+    }
+    
+    // Add fallback patterns if no content types discovered or as additional options
+    const fallbackPatterns = [
       contentType, // User provided (e.g., api::blog-post::blog-post)
       'api/blog-posts', // Common REST endpoint
       'api/articles', // Common alternative
@@ -171,8 +310,16 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
       'api/blog-post', // Singular form
       'api/article', // Singular article
       'api/news', // News content
-      'api/content' // Generic content
+      'api/content', // Generic content
+      'api/blogs', // Blogs plural
+      'api/blog', // Blog singular
+      'api/pages', // Pages
+      'api/page' // Page singular
     ];
+    
+    // Combine discovered and fallback patterns, removing duplicates
+    const allPatterns = contentTypePatterns.concat(fallbackPatterns);
+    contentTypePatterns = Array.from(new Set(allPatterns));
     
     let healthResponse: Response | null = null;
     let testUrl: string = '';
@@ -259,13 +406,19 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
           }
         };
       } else if (healthResponse.status === 404) {
+        const message = discoveredContentTypes.length > 0 ?
+          `No accessible content types found. We discovered ${discoveredContentTypes.length} content type${discoveredContentTypes.length > 1 ? 's' : ''} (${discoveredContentTypes.map(ct => ct.displayName).join(', ')}) but none are accessible via API.\n\nPlease check your API token permissions in Strapi Settings > API Tokens.` :
+          `No accessible content types found. Please ensure your API token has proper permissions and your Strapi instance has content types configured.\n\nTested endpoints: ${contentTypePatterns.slice(0, 5).join(', ')}${contentTypePatterns.length > 5 ? '...' : ''}`;
+        
         return {
           success: false,
-          message: `No content types found. Your Strapi might not have any of these common content types:\n\n${contentTypePatterns.join(', ')}\n\nPlease check your Strapi Content-Type Builder for available content types.`,
+          message: message,
           details: { 
             status: 404, 
-            error: 'No content types found',
-            testedEndpoints: contentTypePatterns
+            error: 'No accessible content types found',
+            testedEndpoints: contentTypePatterns,
+            discoveredContentTypes: discoveredContentTypes,
+            contentTypesCount: discoveredContentTypes.length
           }
         };
       } else {
@@ -373,7 +526,9 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
             contentType: workingEndpoint || contentType,
             discoveredEndpoint: workingEndpoint,
             userEmail: userData.email || userData.username,
-            schemas: discoveredSchemas
+            schemas: discoveredSchemas,
+            discoveredContentTypes: discoveredContentTypes,
+            contentTypesCount: discoveredContentTypes.length
           }
         };
       } else {
@@ -389,7 +544,9 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
             discoveredEndpoint: workingEndpoint,
             writeError: errorText,
             userEmail: userData.email || userData.username,
-            schemas: discoveredSchemas
+            schemas: discoveredSchemas,
+            discoveredContentTypes: discoveredContentTypes,
+            contentTypesCount: discoveredContentTypes.length
           }
         };
       }
@@ -415,8 +572,8 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
 
     return {
       success: true,
-      message: workingEndpoint ? 
-        `Connection successful! Full read and write access confirmed.\n\nDiscovered working endpoint: ${workingEndpoint}` :
+      message: discoveredContentTypes.length > 0 ?
+        `Connection successful! Discovered ${discoveredContentTypes.length} content type${discoveredContentTypes.length > 1 ? 's' : ''}. Full read and write access confirmed.` :
         'Connection successful! Full read and write access confirmed.',
       details: { 
         readAccess: true, 
@@ -425,7 +582,9 @@ async function testStrapiConnection(baseUrl: string, apiToken: string, contentTy
         discoveredEndpoint: workingEndpoint,
         userEmail: userData.email || userData.username,
         testEntryCreated: true,
-        schemas: discoveredSchemas // Include schema data for storage
+        schemas: discoveredSchemas, // Include schema data for storage
+        discoveredContentTypes: discoveredContentTypes,
+        contentTypesCount: discoveredContentTypes.length
       }
     };
 

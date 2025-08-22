@@ -10,12 +10,24 @@ interface Website {
 }
 
 interface DiscoveredContentType {
-  id: string;
-  name: string;
-  description: string;
-  endpoint: string;
-  entryCount?: number;
-  verified: boolean;
+  uid: string;
+  apiID: string;
+  displayName: string;
+  pluralName: string;
+  singularName: string;
+  apiEndpoint: string;
+  attributes: any;
+  fieldCount: number;
+  hasRichText: boolean;
+  hasMedia: boolean;
+  hasUID: boolean;
+  hasString: boolean;
+  hasText: boolean;
+  hasRelation: boolean;
+  hasDraftAndPublish: boolean;
+  isEmpty: boolean;
+  category: string;
+  suitableForBlogging: number;
 }
 
 interface CMSConnectionFormProps {
@@ -48,6 +60,19 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
   useEffect(() => {
     fetchUserWebsites();
   }, [user]);
+
+  const getCategoryColor = (category: string): string => {
+    switch (category) {
+      case 'blog': return 'text-emerald-600 dark:text-emerald-400';
+      case 'page': return 'text-blue-600 dark:text-blue-400';
+      case 'user': return 'text-purple-600 dark:text-purple-400';
+      case 'taxonomy': return 'text-orange-600 dark:text-orange-400';
+      case 'media': return 'text-pink-600 dark:text-pink-400';
+      case 'interaction': return 'text-cyan-600 dark:text-cyan-400';
+      case 'empty': return 'text-gray-500 dark:text-gray-400';
+      default: return 'text-gray-600 dark:text-gray-400';
+    }
+  };
 
   const fetchUserWebsites = async () => {
     try {
@@ -126,28 +151,33 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       setDiscovering(true);
       setError(null);
 
-      const response = await fetch(`/api/cms/discover-content-types?userToken=${user?.token}`, {
+      const response = await fetch('/api/cms/test-connection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          cms_type: formData.cms_type,
           base_url: formData.base_url,
           api_token: formData.api_token,
+          userToken: user?.token,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setDiscoveredTypes(data.discoveredTypes || []);
+        const discoveredTypes = data.details?.discoveredContentTypes || [];
+        setDiscoveredTypes(discoveredTypes);
         setCurrentStep(2);
         
-        // Auto-select recommended content type
-        if (data.recommended) {
+        // Auto-select the content type with the highest blogging suitability score
+        const recommended = discoveredTypes.length > 0 ? discoveredTypes[0] : null;
+        
+        if (recommended) {
           setFormData(prev => ({
             ...prev,
-            content_type: data.recommended.id
+            content_type: recommended.uid
           }));
         }
       } else {
@@ -342,26 +372,71 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         <div className="space-y-3">
           {discoveredTypes.map((type) => (
             <div
-              key={type.id}
+              key={type.uid}
               className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                formData.content_type === type.id
+                formData.content_type === type.uid
                   ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
                   : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
               }`}
-              onClick={() => setFormData(prev => ({ ...prev, content_type: type.id }))}
+              onClick={() => setFormData(prev => ({ ...prev, content_type: type.uid }))}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-white">{type.name}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">{type.description}</div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{type.id}</div>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium text-gray-900 dark:text-white">{type.displayName}</div>
+                    {type.suitableForBlogging >= 10 && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        ✨ Recommended
+                      </span>
+                    )}
+                    {type.isEmpty && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+                        Empty
+                      </span>
+                    )}
+                    {type.hasRichText && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                        Rich Text
+                      </span>
+                    )}
+                    {type.hasText && !type.hasRichText && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                        Text
+                      </span>
+                    )}
+                    {type.hasMedia && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                        Media
+                      </span>
+                    )}
+                    {type.hasUID && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400">
+                        UID/Slug
+                      </span>
+                    )}
+                    {type.hasDraftAndPublish && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                        Draft/Publish
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    API endpoint: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs">{type.apiEndpoint}</code>
+                  </div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-2">
+                    <span>{type.fieldCount} field{type.fieldCount !== 1 ? 's' : ''}</span>
+                    <span>•</span>
+                    <span className={`capitalize ${getCategoryColor(type.category)}`}>{type.category}</span>
+                    <span>•</span>
+                    <span className="text-gray-300 dark:text-gray-600">{type.uid}</span>
+                  </div>
                 </div>
-                <div className={`w-4 h-4 rounded-full border-2 ${
-                  formData.content_type === type.id
+                <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 ${
+                  formData.content_type === type.uid
                     ? 'border-violet-500 bg-violet-500'
-                    : 'border-gray-300'
+                    : 'border-gray-300 dark:border-gray-600'
                 }`}>
-                  {formData.content_type === type.id && (
+                  {formData.content_type === type.uid && (
                     <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
                   )}
                 </div>
@@ -371,7 +446,10 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         </div>
       ) : (
         <div className="text-center py-8">
-          <div className="text-gray-500 dark:text-gray-400">No content types found</div>
+          <div className="text-gray-500 dark:text-gray-400">No accessible content types found</div>
+          <div className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+            Check your API token permissions and ensure content types exist in Strapi
+          </div>
         </div>
       )}
 
@@ -455,7 +533,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
             </span></div>
           )}
           <div><span className="font-medium">Content Type:</span> <span className="text-gray-600 dark:text-gray-400">
-            {discoveredTypes.find(t => t.id === formData.content_type)?.name || formData.content_type}
+            {discoveredTypes.find(t => t.uid === formData.content_type)?.displayName || formData.content_type}
           </span></div>
         </div>
       </div>
