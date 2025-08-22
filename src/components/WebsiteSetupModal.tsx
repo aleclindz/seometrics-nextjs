@@ -692,6 +692,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {[
                       { type: 'strapi', name: 'Strapi', icon: '🚀', available: true },
+                      { type: 'wix', name: 'Wix', icon: '🌟', available: true },
                       { type: 'wordpress', name: 'WordPress', icon: '📝', available: false },
                       { type: 'webflow', name: 'Webflow', icon: '🌊', available: false },
                       { type: 'shopify', name: 'Shopify', icon: '🛒', available: false },
@@ -800,7 +801,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {[
-                      { type: 'vercel', name: 'Vercel', icon: '▲', available: false },
+                      { type: 'vercel', name: 'Vercel', icon: '▲', available: true },
                       { type: 'netlify', name: 'Netlify', icon: '🌐', available: false },
                       { type: 'github_pages', name: 'GitHub Pages', icon: '🐙', available: false },
                       { type: 'custom', name: 'Custom Host', icon: '🔧', available: false },

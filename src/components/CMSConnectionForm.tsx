@@ -259,28 +259,47 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
     </div>
   );
 
-  const renderStep1 = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Connect to your Strapi CMS</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter your Strapi URL and API token to get started</p>
-      </div>
+  const renderStep1 = () => {
+    const isWix = formData.cms_type === 'wix';
+    const isStrapi = formData.cms_type === 'strapi';
+    
+    return (
+      <div className="space-y-4">
+        <div className="text-center mb-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            Connect to your {isWix ? 'Wix' : 'Strapi'} CMS
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {isWix 
+              ? 'Enter your Wix Site ID and API token to get started'
+              : 'Enter your Strapi URL and API token to get started'
+            }
+          </p>
+        </div>
 
-      <div>
-        <label htmlFor="base_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Strapi Base URL *
-        </label>
-        <input
-          id="base_url"
-          type="url"
-          name="base_url"
-          value={formData.base_url}
-          onChange={handleInputChange}
-          placeholder="https://your-strapi-instance.railway.app"
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-          required
-        />
-      </div>
+        <div>
+          <label htmlFor="base_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {isWix ? 'Wix Site ID *' : 'Strapi Base URL *'}
+          </label>
+          <input
+            id="base_url"
+            type={isWix ? "text" : "url"}
+            name="base_url"
+            value={formData.base_url}
+            onChange={handleInputChange}
+            placeholder={isWix 
+              ? "Your Wix site ID (e.g., 12345678-1234-1234-1234-123456789abc)"
+              : "https://your-strapi-instance.railway.app"
+            }
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            required
+          />
+          {isWix && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p>Find your Site ID in your Wix dashboard under Settings → Business Info</p>
+            </div>
+          )}
+        </div>
 
       <div>
         <label htmlFor="api_token" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -292,21 +311,38 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
           name="api_token"
           value={formData.api_token}
           onChange={handleInputChange}
-          placeholder="Your Strapi API token"
+          placeholder={isWix ? "Your Wix API Key" : "Your Strapi API token"}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
           required
         />
         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 space-y-1">
-          <p>Generate this in your Strapi admin panel under Settings → API Tokens</p>
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded p-2 mt-2">
-            <p className="font-medium text-amber-800 dark:text-amber-200">⚠️ Important: Use Custom Token Type</p>
-            <p className="text-amber-700 dark:text-amber-300">Create a &ldquo;Custom&rdquo; token (not &ldquo;Full access&rdquo;) and enable:</p>
-            <ul className="list-disc list-inside text-amber-700 dark:text-amber-300 ml-2 space-y-0.5">
-              <li>Content-Type-Builder → read</li>
-              <li>Content-Manager → read, create, update</li>
-              <li>All your content types (blog-post, article, etc.)</li>
-            </ul>
-          </div>
+          {isWix ? (
+            <>
+              <p>Create an API key in your Wix dashboard under Dev Mode → API Keys</p>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2 mt-2">
+                <p className="font-medium text-blue-800 dark:text-blue-200">🔑 Wix API Key Setup</p>
+                <p className="text-blue-700 dark:text-blue-300">Create an API key with these permissions:</p>
+                <ul className="list-disc list-inside text-blue-700 dark:text-blue-300 ml-2 space-y-0.5">
+                  <li>Blog → Read, Write</li>
+                  <li>Site Properties → Read</li>
+                  <li>Wix Blog → Create posts, Manage drafts</li>
+                </ul>
+              </div>
+            </>
+          ) : (
+            <>
+              <p>Generate this in your Strapi admin panel under Settings → API Tokens</p>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded p-2 mt-2">
+                <p className="font-medium text-amber-800 dark:text-amber-200">⚠️ Important: Use Custom Token Type</p>
+                <p className="text-amber-700 dark:text-amber-300">Create a &ldquo;Custom&rdquo; token (not &ldquo;Full access&rdquo;) and enable:</p>
+                <ul className="list-disc list-inside text-amber-700 dark:text-amber-300 ml-2 space-y-0.5">
+                  <li>Content-Type-Builder → read</li>
+                  <li>Content-Manager → read, create, update</li>
+                  <li>All your content types (blog-post, article, etc.)</li>
+                </ul>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -368,8 +404,8 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
           </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep2 = () => (
     <div className="space-y-4">

@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
 
     if (cms_type === 'strapi') {
       testResult = await testStrapiConnection(base_url, actualApiToken, content_type);
+    } else if (cms_type === 'wix') {
+      testResult = await testWixConnection(base_url, actualApiToken, content_type);
     } else {
       return NextResponse.json(
         { error: `CMS type '${cms_type}' is not yet supported` },
@@ -128,6 +130,217 @@ function isSuitableForBlogging(attributes: any, fieldCount: number): number {
   else if (fieldCount === 1) score += 1;
   
   return score;
+}
+
+async function testWixConnection(siteId: string, apiToken: string, contentType: string = 'blog-posts') {
+  try {
+    console.log('[WIX TEST] Testing connection to Wix site:', siteId);
+    
+    // Test 1: Basic API connectivity with site info
+    const siteInfoUrl = `https://www.wixapis.com/site-properties/v4/properties`;
+    console.log('[WIX TEST] Testing basic connectivity...');
+    
+    const siteInfoResponse = await fetch(siteInfoUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': apiToken.startsWith('Bearer ') ? apiToken : `Bearer ${apiToken}`,
+        'wix-site-id': siteId,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!siteInfoResponse.ok) {
+      const errorText = await siteInfoResponse.text();
+      console.log('[WIX TEST] Site info failed:', siteInfoResponse.status, errorText);
+      
+      if (siteInfoResponse.status === 401) {
+        return {
+          success: false,
+          message: 'Invalid API token. Please check your Wix API token and ensure it has proper permissions.',
+          details: { status: 401, error: 'Unauthorized', tokenLength: apiToken.length }
+        };
+      } else if (siteInfoResponse.status === 403) {
+        return {
+          success: false,
+          message: 'API token lacks permissions. Please ensure your token has Blog permissions enabled.',
+          details: { status: 403, error: 'Forbidden' }
+        };
+      }
+      
+      return {
+        success: false,
+        message: `Connection failed with status ${siteInfoResponse.status}. Please verify your site ID and API token.`,
+        details: { status: siteInfoResponse.status, error: errorText }
+      };
+    }
+
+    const siteInfo = await siteInfoResponse.json();
+    console.log('[WIX TEST] Site info retrieved successfully');
+
+    // Test 2: Blog API access - Get blog info
+    const blogInfoUrl = `https://www.wixapis.com/blog/v3/blogs`;
+    console.log('[WIX TEST] Testing blog API access...');
+    
+    const blogResponse = await fetch(blogInfoUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': apiToken.startsWith('Bearer ') ? apiToken : `Bearer ${apiToken}`,
+        'wix-site-id': siteId,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!blogResponse.ok) {
+      const errorText = await blogResponse.text();
+      console.log('[WIX TEST] Blog API failed:', blogResponse.status, errorText);
+      
+      return {
+        success: false,
+        message: `Blog API access failed (${blogResponse.status}). Please ensure your site has a blog and your API token has Blog permissions.`,
+        details: { 
+          status: blogResponse.status, 
+          error: errorText,
+          siteInfo: siteInfo?.properties?.businessName || 'Unknown'
+        }
+      };
+    }
+
+    const blogData = await blogResponse.json();
+    const blogs = blogData.blogs || [];
+    console.log('[WIX TEST] Found blogs:', blogs.length);
+
+    if (blogs.length === 0) {
+      return {
+        success: false,
+        message: 'No blogs found on this Wix site. Please create a blog in your Wix dashboard first.',
+        details: { 
+          readAccess: true,
+          writeAccess: false,
+          siteInfo: siteInfo?.properties?.businessName || 'Unknown',
+          blogsCount: 0
+        }
+      };
+    }
+
+    // Test 3: Post creation test (create draft)
+    const primaryBlog = blogs[0];
+    console.log('[WIX TEST] Testing post creation on blog:', primaryBlog.title);
+    
+    const testPostUrl = `https://www.wixapis.com/blog/v3/draft-posts`;
+    const testPostData = {
+      blogId: primaryBlog.id,
+      title: 'SEOAgent Test Post - Safe to Delete',
+      richContent: {
+        nodes: [
+          {
+            type: 'PARAGRAPH',
+            id: 'test-paragraph',
+            nodes: [
+              {
+                type: 'TEXT',
+                id: 'test-text',
+                textData: {
+                  text: 'This is a test post created by SEOAgent to verify blog API access. You can safely delete this post.'
+                }
+              }
+            ]
+          }
+        ]
+      }
+    };
+
+    const createResponse = await fetch(testPostUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': apiToken.startsWith('Bearer ') ? apiToken : `Bearer ${apiToken}`,
+        'wix-site-id': siteId,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(testPostData)
+    });
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.log('[WIX TEST] Post creation failed:', createResponse.status, errorText);
+      
+      return {
+        success: true, // Connection works but write access limited
+        message: `Connection successful, but post creation failed (${createResponse.status}). You may have read-only access.`,
+        details: {
+          readAccess: true,
+          writeAccess: false,
+          siteInfo: siteInfo?.properties?.businessName || 'Unknown',
+          blogsCount: blogs.length,
+          primaryBlog: primaryBlog.title,
+          writeError: errorText
+        }
+      };
+    }
+
+    const createdPost = await createResponse.json();
+    console.log('[WIX TEST] Test post created successfully:', createdPost.draftPost?.id);
+
+    // Clean up: Delete the test post
+    if (createdPost.draftPost?.id) {
+      try {
+        const deleteUrl = `https://www.wixapis.com/blog/v3/draft-posts/${createdPost.draftPost.id}`;
+        await fetch(deleteUrl, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': apiToken.startsWith('Bearer ') ? apiToken : `Bearer ${apiToken}`,
+            'wix-site-id': siteId
+          }
+        });
+        console.log('[WIX TEST] Test post cleaned up');
+      } catch (cleanupError) {
+        console.log('[WIX TEST] Could not clean up test post:', cleanupError);
+      }
+    }
+
+    return {
+      success: true,
+      message: `Connection successful! Full blog access confirmed for "${primaryBlog.title}".`,
+      details: {
+        readAccess: true,
+        writeAccess: true,
+        siteInfo: siteInfo?.properties?.businessName || 'Unknown',
+        blogsCount: blogs.length,
+        primaryBlog: {
+          id: primaryBlog.id,
+          title: primaryBlog.title,
+          description: primaryBlog.description
+        },
+        discoveredContentTypes: [{
+          uid: 'wix::blog-posts',
+          apiID: 'blog-posts',
+          displayName: 'Blog Posts',
+          pluralName: 'blog-posts',
+          singularName: 'blog-post',
+          apiEndpoint: 'blog/v3/posts',
+          fieldCount: 5, // title, richContent, excerpt, featuredMedia, etc.
+          hasRichText: true,
+          hasMedia: true,
+          hasUID: true,
+          hasString: true,
+          hasText: true,
+          hasRelation: false,
+          hasDraftAndPublish: true,
+          isEmpty: false,
+          category: 'blog',
+          suitableForBlogging: 26 // High score like Strapi blog posts
+        }],
+        contentTypesCount: 1
+      }
+    };
+
+  } catch (error) {
+    console.error('[WIX TEST] Connection test error:', error);
+    return {
+      success: false,
+      message: 'Could not connect to Wix. Please check your site ID and API token.',
+      details: { error: error instanceof Error ? error.message : 'Unknown error' }
+    };
+  }
 }
 
 async function testStrapiConnection(baseUrl: string, apiToken: string, contentType: string = 'api::article::article') {
