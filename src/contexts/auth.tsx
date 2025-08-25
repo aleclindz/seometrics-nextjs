@@ -8,9 +8,10 @@ type AuthContextType = {
   user: (User & { token?: string }) | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
-  signUp: (email: string, password: string) => Promise<{ error: any }>
+  signUp: (email: string, password: string) => Promise<{ error: any, needsVerification?: boolean }>
   signOut: () => Promise<void>
   validateSession: () => Promise<void>
+  resendVerificationEmail: (email: string) => Promise<{ error: any }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -246,11 +247,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
-    return { error }
+    try {
+      setLoading(true)
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/confirm-email`
+        }
+      })
+      
+      setLoading(false)
+      
+      if (error) {
+        return { error }
+      }
+
+      // Check if user needs email verification
+      const needsVerification = !data.user?.email_confirmed_at
+      console.log('[AUTH] Signup successful, needs verification:', needsVerification)
+      
+      return { error: null, needsVerification }
+    } catch (err) {
+      setLoading(false)
+      return { error: err }
+    }
+  }
+
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      const response = await fetch('/api/auth/confirm-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        return { error: new Error(data.error || 'Failed to resend verification email') }
+      }
+
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
   }
 
   const signOut = async () => {
@@ -275,7 +318,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, validateSession }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, validateSession, resendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   )

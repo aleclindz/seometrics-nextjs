@@ -214,6 +214,9 @@ export class ActionItemService {
         case 'schema':
           verificationResult = await this.verifySchemaFix(actionItem);
           break;
+        case 'mobile':
+          verificationResult = await this.verifyMobileFix(actionItem);
+          break;
         default:
           verificationResult = true; // Assume verified for other types
           break;
@@ -1262,6 +1265,52 @@ For developers:
 
     // Check if all previously schema-less pages now have schema
     return schemas.every(s => s.schemas_generated > 0);
+  }
+
+  private static async verifyMobileFix(actionItem: ActionItem): Promise<boolean> {
+    try {
+      console.log(`[ACTION ITEMS] Starting mobile usability verification for ${actionItem.site_url}`);
+      
+      if (!actionItem.affected_urls || actionItem.affected_urls.length === 0) {
+        console.log('[ACTION ITEMS] No affected URLs to verify, assuming fixed');
+        return true;
+      }
+
+      // Check current mobile usability status from URL inspections
+      const { data: currentInspections, error } = await supabase
+        .from('url_inspections')
+        .select('inspected_url, mobile_usable, mobile_usability_issues')
+        .eq('user_token', actionItem.user_token)
+        .eq('site_url', actionItem.site_url)
+        .in('inspected_url', actionItem.affected_urls);
+
+      if (error) {
+        console.error('[ACTION ITEMS] Error checking mobile inspections:', error);
+        return false;
+      }
+
+      if (!currentInspections || currentInspections.length === 0) {
+        console.log('[ACTION ITEMS] No URL inspections found for mobile verification');
+        return false;
+      }
+
+      // Count how many URLs are now mobile-friendly
+      const mobileFriendlyUrls = currentInspections.filter(inspection => 
+        inspection.mobile_usable === true
+      );
+
+      const improvementThreshold = 0.8; // 80% of URLs should be mobile-friendly
+      const isVerified = mobileFriendlyUrls.length / currentInspections.length >= improvementThreshold;
+      
+      console.log(`[ACTION ITEMS] Mobile verification: ${mobileFriendlyUrls.length}/${currentInspections.length} URLs mobile-friendly`);
+      console.log(`[ACTION ITEMS] Mobile verification result: ${isVerified ? 'PASSED' : 'FAILED'}`);
+
+      return isVerified;
+
+    } catch (error) {
+      console.error('[ACTION ITEMS] Error verifying mobile fix:', error);
+      return false;
+    }
   }
 
   // Helper method to generate schema types based on URL patterns

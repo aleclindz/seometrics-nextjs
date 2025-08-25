@@ -11,7 +11,10 @@ function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { signIn, signUp, user } = useAuth()
+  const [needsVerification, setNeedsVerification] = useState(false)
+  const [verificationEmail, setVerificationEmail] = useState('')
+  const [resendingVerification, setResendingVerification] = useState(false)
+  const { signIn, signUp, user, resendVerificationEmail } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -34,22 +37,127 @@ function LoginForm() {
     setLoading(true)
     setError('')
 
-    const { error } = isSignUp 
-      ? await signUp(email, password)
-      : await signIn(email, password)
+    if (isSignUp) {
+      const { error, needsVerification: needsEmailVerification } = await signUp(email, password)
+      
+      if (error) {
+        setError(error.message)
+      } else if (needsEmailVerification) {
+        setNeedsVerification(true)
+        setVerificationEmail(email)
+        setError('')
+      } else {
+        // User can sign in immediately (shouldn't happen with email verification enabled)
+        setError('')
+        setIsSignUp(false)
+        setPassword('')
+      }
+    } else {
+      const { error } = await signIn(email, password)
+      
+      if (error) {
+        setError(error.message)
+      } else {
+        router.push('/')
+      }
+    }
+    
+    setLoading(false)
+  }
 
+  const handleResendVerification = async () => {
+    if (!verificationEmail) return
+    
+    setResendingVerification(true)
+    setError('')
+    
+    const { error } = await resendVerificationEmail(verificationEmail)
+    
     if (error) {
       setError(error.message)
-    } else if (!isSignUp) {
-      router.push('/')
     } else {
       setError('')
-      setIsSignUp(false)
-      setPassword('')
-      // For signup, show success message
-      alert('Registration successful! Please check your email and then sign in.')
+      // Show success message temporarily
+      setTimeout(() => {
+        setError('')
+      }, 3000)
     }
-    setLoading(false)
+    
+    setResendingVerification(false)
+  }
+
+  const handleBackToLogin = () => {
+    setNeedsVerification(false)
+    setIsSignUp(false)
+    setVerificationEmail('')
+    setEmail('')
+    setPassword('')
+    setError('')
+  }
+
+  // Show verification UI if user needs to verify email
+  if (needsVerification) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="flex justify-center">
+            <div className="w-16 h-16 rounded-lg flex items-center justify-center">
+              <Image 
+                src="/assets/agent_icon.png" 
+                alt="SEOAgent" 
+                width={64}
+                height={64}
+                style={{ height: '64px', width: '64px' }}
+              />
+            </div>
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+            Check your email
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+            We&apos;ve sent a verification link to
+          </p>
+          <p className="mt-1 text-center text-sm font-medium text-gray-900 dark:text-white">
+            {verificationEmail}
+          </p>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <div className="text-center space-y-4">
+              <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-4">
+                <div className="text-sm text-blue-700 dark:text-blue-400">
+                  Click the link in your email to verify your account, then return here to sign in.
+                </div>
+              </div>
+
+              {error && (
+                <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
+                  <div className="text-sm text-red-700 dark:text-red-400">{error}</div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <button
+                  onClick={handleResendVerification}
+                  disabled={resendingVerification}
+                  className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resendingVerification ? 'Resending...' : 'Resend verification email'}
+                </button>
+
+                <button
+                  onClick={handleBackToLogin}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-transparent hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Back to login
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
