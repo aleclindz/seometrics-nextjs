@@ -52,7 +52,7 @@ export default function Dashboard() {
           if (planData.success && planData.plan) {
             const planId = planData.plan.tier || 'free';
             const planLimits = {
-              free: 0,
+              free: 1,
               starter: 1,
               pro: 5,
               enterprise: -1
@@ -246,6 +246,49 @@ export default function Dashboard() {
               {!checkingGsc && !gscConnected && (
                 <div className="mb-8">
                   <GSCConnection onConnectionChange={handleGscConnectionChange} />
+                </div>
+              )}
+
+              {/* Free Plan Limitations and Upgrade Prompt */}
+              {!checkingGsc && gscConnected && userPlan?.plan_id === 'free' && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        🆓 Free Plan: Limited Features
+                      </h3>
+                      <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                        <p className="mb-3">
+                          You&apos;re on the <strong>Free plan</strong> with limited features. You can manage <strong>1 website</strong> with SEOAgent.js (including attribution link), 
+                          but article generation and advanced SEO tools require an upgrade.
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                          <div className="text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded-full">
+                            💡 Upgrade to remove attribution and unlock unlimited articles
+                          </div>
+                          <div className="flex space-x-2">
+                            <a
+                              href="/pricing"
+                              className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded font-medium transition-colors"
+                            >
+                              View Pricing
+                            </a>
+                            <a
+                              href="/account"
+                              className="text-xs border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-1 rounded font-medium transition-colors"
+                            >
+                              Manage Plan
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

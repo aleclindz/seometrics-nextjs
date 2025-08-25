@@ -1220,4 +1220,83 @@ window.addEventListener('error', function(event) {
 
 // Duplicate setupSitemapHandler removed - client-side detection not accessible to search crawlers
 
+// Attribution handling for Free tier users
+function handleAttribution() {
+    // Check if attribution is required for this website
+    const attributionApiUrl = 'https://seoagent.com/api/seoagent/check-attribution';
+    
+    fetch(`${attributionApiUrl}?token=${encodeURIComponent(idv)}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('[SEO-METRICS] Attribution check result:', data);
+            
+            if (data.requireAttribution) {
+                console.log('[SEO-METRICS] Free tier detected - adding attribution');
+                addAttributionLink();
+            } else {
+                console.log('[SEO-METRICS] Paid tier detected - no attribution required');
+            }
+        })
+        .catch(error => {
+            console.error('[SEO-METRICS] Attribution check failed:', error);
+            // Default to adding attribution on error (security)
+            addAttributionLink();
+        });
+}
+
+function addAttributionLink() {
+    // Check if attribution already exists to prevent duplicates
+    if (document.querySelector('[data-seoagent-attribution]')) {
+        console.log('[SEO-METRICS] Attribution already exists, skipping');
+        return;
+    }
+
+    // Create attribution element
+    const attribution = document.createElement('div');
+    attribution.setAttribute('data-seoagent-attribution', 'true');
+    attribution.style.cssText = `
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        z-index: 999999;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        text-decoration: none;
+        transition: opacity 0.3s;
+    `;
+    
+    // Create link
+    const link = document.createElement('a');
+    link.href = 'https://seoagent.com/?utm_source=attribution&utm_medium=seoagent_js';
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.style.cssText = 'color: #60a5fa; text-decoration: none;';
+    link.textContent = '⚡ Powered by SEOAgent';
+    
+    attribution.appendChild(link);
+    
+    // Add hover effects
+    attribution.addEventListener('mouseenter', () => {
+        attribution.style.opacity = '0.7';
+    });
+    
+    attribution.addEventListener('mouseleave', () => {
+        attribution.style.opacity = '1';
+    });
+    
+    // Add to page
+    document.body.appendChild(attribution);
+    console.log('[SEO-METRICS] Attribution link added successfully');
+}
+
+// Initialize attribution handling
+if (typeof idv !== 'undefined') {
+    handleAttribution();
+}
+
 console.log('SEO Metrics: SEOAgent.js loaded successfully - sitemap/robots now via hosting provider integrations');

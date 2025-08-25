@@ -121,7 +121,7 @@ export async function PUT(request: NextRequest) {
         .neq('website_token', websiteId); // Exclude current website from count
 
       const planLimits = {
-        free: 0, // Free plan: view only, no managed websites
+        free: 1, // Free plan: 1 managed website (with attribution)
         starter: 1, // Starter plan: 1 managed website
         pro: 5, // Pro plan: 5 managed websites
         enterprise: -1 // Enterprise: unlimited
@@ -133,7 +133,7 @@ export async function PUT(request: NextRequest) {
         let upgradeMessage = 'Contact support to increase your website limit';
         
         if (currentPlan === 'free') {
-          upgradeMessage = 'Upgrade to Starter plan ($29/month) to manage this website';
+          upgradeMessage = 'Upgrade to Starter plan ($29/month) to manage more websites and remove attribution';
         } else if (currentPlan === 'starter') {
           upgradeMessage = 'Upgrade to Pro plan ($79/month) to manage up to 5 websites';
         } else if (currentPlan === 'pro') {

@@ -42,17 +42,36 @@ export async function GET(request: NextRequest) {
     
     console.log('[SUBSCRIPTION API] user_plans query result:', { userPlan, error });
 
-    // If user plan doesn't exist, create a default starter plan
+    // If user plan doesn't exist, check the user's plan status from login_users table
     if (error && error.code === 'PGRST116') { // No rows returned
-      console.log('Creating default starter plan for user:', userToken)
+      console.log('No user_plans record found, checking login_users plan status for:', userToken)
+      
+      // Get user's plan from login_users table
+      const { data: loginUser, error: loginUserError } = await supabase
+        .from('login_users')
+        .select('plan')
+        .eq('token', userToken)
+        .single()
+      
+      if (loginUserError) {
+        console.error('Error fetching login user:', loginUserError)
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        )
+      }
+      
+      // Create appropriate plan based on login_users.plan value
+      const isFreePlan = loginUser.plan === 0
+      console.log(`Creating ${isFreePlan ? 'free' : 'starter'} plan for user:`, userToken)
       
       const { data: newPlan, error: insertError } = await supabase
         .from('user_plans')
         .insert({
           user_token: userToken,
-          tier: 'starter',
+          tier: isFreePlan ? 'free' : 'starter',
           sites_allowed: 1,
-          posts_allowed: -1, // Unlimited articles
+          posts_allowed: isFreePlan ? 0 : -1, // Free: 0 articles, Starter: unlimited
           status: 'active'
         })
         .select('*')
@@ -155,17 +174,36 @@ export async function POST(request: NextRequest) {
       .eq('user_token', userToken)
       .single();
 
-    // If user plan doesn't exist, create a default starter plan
+    // If user plan doesn't exist, check the user's plan status from login_users table
     if (error && error.code === 'PGRST116') { // No rows returned
-      console.log('Creating default starter plan for user:', userToken)
+      console.log('No user_plans record found, checking login_users plan status for:', userToken)
+      
+      // Get user's plan from login_users table
+      const { data: loginUser, error: loginUserError } = await supabase
+        .from('login_users')
+        .select('plan')
+        .eq('token', userToken)
+        .single()
+      
+      if (loginUserError) {
+        console.error('Error fetching login user:', loginUserError)
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        )
+      }
+      
+      // Create appropriate plan based on login_users.plan value
+      const isFreePlan = loginUser.plan === 0
+      console.log(`Creating ${isFreePlan ? 'free' : 'starter'} plan for user:`, userToken)
       
       const { data: newPlan, error: insertError } = await supabase
         .from('user_plans')
         .insert({
           user_token: userToken,
-          tier: 'starter',
+          tier: isFreePlan ? 'free' : 'starter',
           sites_allowed: 1,
-          posts_allowed: -1, // Unlimited articles
+          posts_allowed: isFreePlan ? 0 : -1, // Free: 0 articles, Starter: unlimited
           status: 'active'
         })
         .select('*')
