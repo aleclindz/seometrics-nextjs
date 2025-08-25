@@ -30,6 +30,10 @@ export function useOnboardingStatus() {
           const completed = data.survey?.survey_completed || false
           console.log('[ONBOARDING] Survey found, completed:', completed)
           setNeedsOnboarding(!completed)
+        } else if (response.status === 503) {
+          // Service unavailable - onboarding system not configured
+          console.warn('[ONBOARDING] Onboarding system not configured, skipping')
+          setNeedsOnboarding(false) // Skip onboarding if system not ready
         } else {
           console.error('[ONBOARDING] Error checking status:', response.status)
           // Default to showing onboarding on error (safer)

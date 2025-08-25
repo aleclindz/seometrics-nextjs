@@ -60,6 +60,17 @@ export async function POST(request: NextRequest) {
 
     if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = not found
       console.error('[ONBOARDING] Error checking existing survey:', checkError)
+      
+      // Check if table doesn't exist
+      if (checkError.message?.includes('relation "onboarding_surveys" does not exist') || 
+          checkError.code === '42P01') {
+        console.error('[ONBOARDING] onboarding_surveys table does not exist - migration needed')
+        return NextResponse.json(
+          { error: 'Onboarding system not yet configured. Please contact support.' },
+          { status: 503 } // Service unavailable
+        )
+      }
+      
       return NextResponse.json(
         { error: 'Database error checking existing survey' },
         { status: 500 }
@@ -264,6 +275,16 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
           { error: 'Survey not found' },
           { status: 404 }
+        )
+      }
+      
+      // Check if table doesn't exist
+      if (error.message?.includes('relation "onboarding_surveys" does not exist') || 
+          error.code === '42P01') {
+        console.error('[ONBOARDING] onboarding_surveys table does not exist - migration needed')
+        return NextResponse.json(
+          { error: 'Survey not found' },
+          { status: 404 } // Return 404 so onboarding still triggers
         )
       }
       
