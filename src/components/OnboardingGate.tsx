@@ -90,9 +90,11 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
           
           // Handle Pro offer redirect
           if (result.proOffer) {
-            console.log('[ONBOARDING GATE] Pro offer accepted, redirecting to Calendly')
-            // Show success page with Calendly link
-            window.location.href = result.proOffer.calendlyUrl
+            console.log('[ONBOARDING GATE] Pro offer accepted, opening Calendly and dashboard')
+            // Open Calendly in new tab
+            window.open(result.proOffer.calendlyUrl, '_blank')
+            // Navigate to dashboard in current tab
+            router.push('/')
           } else {
             console.log('[ONBOARDING GATE] No Pro offer, redirecting to dashboard')
             // Redirect to dashboard
