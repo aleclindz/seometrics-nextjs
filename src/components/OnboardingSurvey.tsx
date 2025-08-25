@@ -34,6 +34,7 @@ interface OnboardingSurveyProps {
 export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false }: OnboardingSurveyProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const { user } = useAuth()
   
   const [surveyData, setSurveyData] = useState<SurveyData>({
@@ -134,11 +135,12 @@ export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false
 
   const handleSubmit = async () => {
     setLoading(true)
+    setError('')
     try {
-      onComplete(surveyData)
-    } catch (error) {
-      console.error('Error submitting survey:', error)
-    } finally {
+      await onComplete(surveyData)
+    } catch (err) {
+      console.error('Error submitting survey:', err)
+      setError(err instanceof Error ? err.message : 'Failed to submit survey')
       setLoading(false)
     }
   }
@@ -423,7 +425,7 @@ export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false
                 Special Founder&apos;s Offer!
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Get 3 months of SEOAgent Pro absolutely free in exchange for a 15-minute onboarding call with our founder.
+                Get 1 month of SEOAgent Starter plan absolutely free in exchange for a 15-minute onboarding call with our founder.
               </p>
             </div>
 
@@ -432,7 +434,7 @@ export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false
               <ul className="space-y-2 text-gray-700 dark:text-gray-300">
                 <li className="flex items-center">
                   <span className="text-green-500 mr-2">✓</span>
-                  3 months of SEOAgent Pro ($237 value)
+                  1 month of SEOAgent Starter plan ($29 value)
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-2">✓</span>
@@ -444,7 +446,7 @@ export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-2">✓</span>
-                  Priority support during your free months
+                  Priority support during your free month
                 </li>
               </ul>
             </div>
@@ -461,7 +463,7 @@ export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false
                   className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Yes, I&apos;d like to book a 15-minute call with the founder and get 3 months of SEOAgent Pro free! 
+                  Yes, I&apos;d like to book a 15-minute call with the founder and get 1 month of SEOAgent Starter plan free! 
                   I understand this helps improve the product and I&apos;ll receive valuable personalized SEO insights.
                 </span>
               </label>
@@ -472,7 +474,7 @@ export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false
                     Perfect! After completing this survey, you&apos;ll be redirected to book your call.
                   </p>
                   <p className="text-xs text-blue-600 dark:text-blue-400">
-                    Your Pro account will be activated immediately after your call is confirmed.
+                    Your Starter plan will be activated immediately after your call is confirmed.
                   </p>
                 </div>
               )}
@@ -546,6 +548,14 @@ export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false
         </div>
 
         <div className="bg-white dark:bg-gray-800 py-8 px-6 shadow-lg sm:rounded-lg sm:px-10">
+          {error && (
+            <div className="mb-6 rounded-md bg-red-50 dark:bg-red-900/20 p-4">
+              <div className="text-sm text-red-700 dark:text-red-400">
+                Error: {error}
+              </div>
+            </div>
+          )}
+          
           {renderStepContent()}
 
           <div className="mt-8 flex justify-between">

@@ -59,32 +59,53 @@ export default function OnboardingGate({ children }: OnboardingGateProps) {
       if (!user?.token) return
 
       try {
+        console.log('[ONBOARDING GATE] Submitting survey data:', surveyData)
+        
         const response = await fetch('/api/onboarding/survey', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userToken: user.token,
-            ...surveyData
+            websiteBuildingMethod: surveyData.websiteBuildingMethod,
+            websiteBuildingMethodOther: surveyData.websiteBuildingMethodOther,
+            usesCms: surveyData.usesCms,
+            cmsType: surveyData.cmsType,
+            cmsTypeOther: surveyData.cmsTypeOther,
+            hostingProvider: surveyData.hostingProvider,
+            hostingProviderOther: surveyData.hostingProviderOther,
+            businessType: surveyData.businessType,
+            websiteAge: surveyData.websiteAge,
+            monthlyVisitors: surveyData.monthlyVisitors,
+            seoExperience: surveyData.seoExperience,
+            primarySeoGoal: surveyData.primarySeoGoal,
+            interestedInFounderCall: surveyData.interestedInFounderCall,
+            acceptedProOffer: surveyData.acceptedProOffer
           }),
         })
 
         if (response.ok) {
           const result = await response.json()
+          console.log('[ONBOARDING GATE] Survey saved successfully:', result)
           markOnboardingComplete()
           
           // Handle Pro offer redirect
           if (result.proOffer) {
+            console.log('[ONBOARDING GATE] Pro offer accepted, redirecting to Calendly')
             // Show success page with Calendly link
             window.location.href = result.proOffer.calendlyUrl
           } else {
+            console.log('[ONBOARDING GATE] No Pro offer, redirecting to dashboard')
             // Redirect to dashboard
             router.push('/')
           }
         } else {
-          throw new Error('Failed to save survey')
+          const errorData = await response.json()
+          console.error('[ONBOARDING GATE] Survey save failed:', response.status, errorData)
+          throw new Error(errorData.error || 'Failed to save survey')
         }
       } catch (error) {
         console.error('[ONBOARDING GATE] Error saving survey:', error)
+        throw error // Re-throw so the survey component can handle it
       }
     }
 

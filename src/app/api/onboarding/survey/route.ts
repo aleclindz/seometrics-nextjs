@@ -149,13 +149,13 @@ export async function POST(request: NextRequest) {
       surveyResult = data
     }
 
-    // If user accepted Pro offer, we should also update their user plan
+    // If user accepted Pro offer, we should also update their user plan  
     if (acceptedProOffer && proOfferRedemptionCode) {
-      console.log('[ONBOARDING] User accepted Pro offer, upgrading plan')
+      console.log('[ONBOARDING] User accepted Starter offer, upgrading plan')
       
-      // Calculate 3 months from now
-      const proExpiresAt = new Date()
-      proExpiresAt.setMonth(proExpiresAt.getMonth() + 3)
+      // Calculate 1 month from now
+      const starterExpiresAt = new Date()
+      starterExpiresAt.setMonth(starterExpiresAt.getMonth() + 1)
 
       // Check if user already has a plan
       const { data: existingPlan, error: planCheckError } = await supabase
@@ -168,15 +168,15 @@ export async function POST(request: NextRequest) {
         console.error('[ONBOARDING] Error checking existing plan:', planCheckError)
         // Don't fail the survey if plan update fails
       } else if (existingPlan) {
-        // Update existing plan to Pro
+        // Update existing plan to Starter
         const { error: planUpdateError } = await supabase
           .from('user_plans')
           .update({
-            tier: 'pro',
-            sites_allowed: 10,
-            posts_allowed: 50,
+            tier: 'starter',
+            sites_allowed: 1,
+            posts_allowed: 4,
             status: 'active',
-            expires_at: proExpiresAt.toISOString(),
+            expires_at: starterExpiresAt.toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('user_token', userToken)
@@ -184,25 +184,25 @@ export async function POST(request: NextRequest) {
         if (planUpdateError) {
           console.error('[ONBOARDING] Error updating plan:', planUpdateError)
         } else {
-          console.log('[ONBOARDING] Plan updated to Pro successfully')
+          console.log('[ONBOARDING] Plan updated to Starter successfully')
         }
       } else {
-        // Create new Pro plan
+        // Create new Starter plan
         const { error: planCreateError } = await supabase
           .from('user_plans')
           .insert({
             user_token: userToken,
-            tier: 'pro',
-            sites_allowed: 10,
-            posts_allowed: 50,
+            tier: 'starter',
+            sites_allowed: 1,
+            posts_allowed: 4,
             status: 'active',
-            expires_at: proExpiresAt.toISOString()
+            expires_at: starterExpiresAt.toISOString()
           })
 
         if (planCreateError) {
-          console.error('[ONBOARDING] Error creating Pro plan:', planCreateError)
+          console.error('[ONBOARDING] Error creating Starter plan:', planCreateError)
         } else {
-          console.log('[ONBOARDING] Pro plan created successfully')
+          console.log('[ONBOARDING] Starter plan created successfully')
         }
       }
     }
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
         proOffer: {
           redemptionCode: proOfferRedemptionCode,
           calendlyUrl: 'https://calendly.com/alec-baxter/15min',
-          message: 'Your Pro account has been activated! Please book your founder call to complete the process.'
+          message: 'Your Starter plan has been activated! Please book your founder call to complete the process.'
         }
       })
     }
