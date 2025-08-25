@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from 'next/script';
 import "./globals.css";
 import { AuthProvider } from '@/contexts/auth';
+import OnboardingGate from '@/components/OnboardingGate';
 
 export const metadata: Metadata = {
   title: "SEOAgent — AI SEO Agent that Fixes the Boring Stuff",
@@ -56,7 +57,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <AuthProvider>
-          {children}
+          <OnboardingGate>
+            {children}
+          </OnboardingGate>
         </AuthProvider>
         
         {/* SEOAgent.js */}

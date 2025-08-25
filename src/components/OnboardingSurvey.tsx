@@ -28,9 +28,10 @@ interface SurveyData {
 interface OnboardingSurveyProps {
   onComplete: (surveyData: SurveyData) => void
   onSkip?: () => void
+  mandatory?: boolean
 }
 
-export default function OnboardingSurvey({ onComplete, onSkip }: OnboardingSurveyProps) {
+export default function OnboardingSurvey({ onComplete, onSkip, mandatory = false }: OnboardingSurveyProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
@@ -549,11 +550,14 @@ export default function OnboardingSurvey({ onComplete, onSkip }: OnboardingSurve
 
           <div className="mt-8 flex justify-between">
             <button
-              onClick={currentStep === 1 ? onSkip : handlePrevious}
+              onClick={currentStep === 1 && !mandatory ? onSkip : handlePrevious}
               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
-              disabled={loading}
+              disabled={loading || (currentStep === 1 && mandatory)}
+              style={{ 
+                visibility: currentStep === 1 && mandatory ? 'hidden' : 'visible' 
+              }}
             >
-              {currentStep === 1 ? 'Skip Survey' : 'Previous'}
+              {currentStep === 1 && !mandatory ? 'Skip Survey' : 'Previous'}
             </button>
 
             {currentStep < maxSteps ? (
