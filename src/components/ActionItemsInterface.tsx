@@ -1119,6 +1119,65 @@ export default function ActionItemsInterface({ siteUrl, onRefresh }: ActionItems
             </div>
           )}
           
+          {/* Schema Suggestions for Missing Schema Issues */}
+          {(item.issue_type === 'schema_missing_all' || item.issue_type === 'schema_missing_pages') && 
+           item.metadata?.suggestedSchemas && (
+            <div className="bg-purple-50 border border-purple-200 rounded-md p-4">
+              <h5 className="font-medium text-purple-900 mb-3 flex items-center gap-2">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Schema Markup Suggestions
+              </h5>
+              
+              {item.metadata.suggestedSchemas.map((suggestion: any, index: number) => (
+                <div key={index} className="mb-4 last:mb-0">
+                  <div className="font-medium text-purple-800 mb-1">
+                    {suggestion.pageUrl === item.affected_urls?.[0]?.split('/').pop() || 'Page'}: 
+                    <span className="ml-1 text-sm font-normal">
+                      {suggestion.reason}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {suggestion.schemaTypes.map((schemaType: string, schemaIndex: number) => (
+                      <span
+                        key={schemaIndex}
+                        className="inline-block bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full"
+                      >
+                        {schemaType}
+                      </span>
+                    ))}
+                  </div>
+                  
+                  {suggestion.benefits && suggestion.benefits.length > 0 && (
+                    <div className="text-xs text-purple-700 ml-1">
+                      <span className="font-medium">Benefits:</span>
+                      <ul className="mt-1 space-y-0.5">
+                        {suggestion.benefits.map((benefit: string, benefitIndex: number) => (
+                          <li key={benefitIndex} className="flex items-start">
+                            <span className="text-purple-500 mr-1">•</span>
+                            <span>{benefit}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {suggestion.pageUrl && suggestion.pageUrl !== (item.affected_urls?.[0] || '') && (
+                    <div className="text-xs text-purple-600 mt-1 truncate">
+                      📄 {suggestion.pageUrl}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              <div className="mt-3 pt-3 border-t border-purple-200 text-xs text-purple-700">
+                <span className="font-medium">💡 Tip:</span> These schema types will be automatically added when you click &ldquo;Fix&rdquo; below.
+              </div>
+            </div>
+          )}
+          
           {/* Collapsible Affected URLs */}
           {item.affected_urls && item.affected_urls.length > 0 && (
             <Collapsible open={urlsOpen} onOpenChange={setUrlsOpen}>

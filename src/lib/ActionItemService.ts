@@ -742,6 +742,9 @@ For developers:
       .ilike('page_url', `${siteUrl}%`);
 
     if (!schemas || schemas.length === 0) {
+      // Generate basic schema suggestions for homepage
+      const basicSuggestions = this.generateSchemaTypesForUrl(siteUrl);
+      
       issues.push({
         type: 'schema_missing_all',
         category: 'schema',
@@ -752,11 +755,26 @@ For developers:
         fixRecommendation: 'Add appropriate schema markup to key pages (Organization, WebSite, Article, etc.).',
         affectedUrls: [siteUrl],
         estimatedImpact: 'medium',
-        estimatedEffort: 'medium'
+        estimatedEffort: 'medium',
+        metadata: { 
+          suggestedSchemas: [{
+            pageUrl: siteUrl,
+            schemaTypes: basicSuggestions,
+            reason: 'Homepage/base site schema markup'
+          }]
+        }
       });
     } else {
       const missingSchema = schemas.filter(s => s.schemas_generated === 0);
       if (missingSchema.length > 0) {
+        // Generate specific schema suggestions for each missing page
+        const detailedSuggestions = missingSchema.map(schema => ({
+          pageUrl: schema.page_url,
+          schemaTypes: this.generateSchemaTypesForUrl(schema.page_url),
+          reason: this.getSchemaReasonForUrl(schema.page_url),
+          benefits: this.getSchemasBenefits(this.generateSchemaTypesForUrl(schema.page_url))
+        }));
+
         issues.push({
           type: 'schema_missing_pages',
           category: 'schema',
@@ -768,7 +786,10 @@ For developers:
           affectedUrls: missingSchema.map(s => s.page_url),
           estimatedImpact: 'medium',
           estimatedEffort: 'medium',
-          metadata: { missingCount: missingSchema.length }
+          metadata: { 
+            missingCount: missingSchema.length,
+            suggestedSchemas: detailedSuggestions
+          }
         });
       }
     }
@@ -1241,5 +1262,101 @@ For developers:
 
     // Check if all previously schema-less pages now have schema
     return schemas.every(s => s.schemas_generated > 0);
+  }
+
+  // Helper method to generate schema types based on URL patterns
+  private static generateSchemaTypesForUrl(pageUrl: string): string[] {
+    const url = pageUrl.toLowerCase();
+    
+    if (url.includes('/blog/') || url.includes('/article/') || url.includes('/post/')) {
+      return ['Article', 'BreadcrumbList', 'Organization'];
+    } else if (url.includes('/product/') || url.includes('/shop/') || url.includes('/store/')) {
+      return ['Product', 'BreadcrumbList', 'Organization'];
+    } else if (url.includes('/about') || url.includes('/team')) {
+      return ['Organization', 'BreadcrumbList'];
+    } else if (url.includes('/contact')) {
+      return ['Organization', 'ContactPage', 'BreadcrumbList'];
+    } else if (url.includes('/service/') || url.includes('/services/')) {
+      return ['Service', 'Organization', 'BreadcrumbList'];
+    } else if (url.includes('/event/') || url.includes('/events/')) {
+      return ['Event', 'BreadcrumbList', 'Organization'];
+    } else if (url.includes('/location/') || url.includes('/locations/')) {
+      return ['LocalBusiness', 'BreadcrumbList', 'Organization'];
+    } else if (url === pageUrl.match(/^https?:\/\/[^\/]+\/?$/)?.[0]) {
+      // This is homepage
+      return ['WebSite', 'Organization'];
+    } else {
+      // Generic page
+      return ['WebPage', 'BreadcrumbList', 'Organization'];
+    }
+  }
+
+  // Helper method to explain why certain schemas are recommended
+  private static getSchemaReasonForUrl(pageUrl: string): string {
+    const url = pageUrl.toLowerCase();
+    
+    if (url.includes('/blog/') || url.includes('/article/') || url.includes('/post/')) {
+      return 'Article content detected - helps search engines understand content structure and display rich snippets';
+    } else if (url.includes('/product/') || url.includes('/shop/') || url.includes('/store/')) {
+      return 'Product page detected - enables rich product snippets with pricing, availability, and reviews';
+    } else if (url.includes('/about') || url.includes('/team')) {
+      return 'About page detected - helps establish entity information and brand authority';
+    } else if (url.includes('/contact')) {
+      return 'Contact page detected - enables location and business hours display in search results';
+    } else if (url.includes('/service/') || url.includes('/services/')) {
+      return 'Service page detected - helps display service offerings and business information';
+    } else if (url.includes('/event/') || url.includes('/events/')) {
+      return 'Event page detected - enables event rich snippets with dates, locations, and ticket information';
+    } else if (url.includes('/location/') || url.includes('/locations/')) {
+      return 'Location page detected - helps with local search visibility and business listings';
+    } else if (url === pageUrl.match(/^https?:\/\/[^\/]+\/?$/)?.[0]) {
+      return 'Homepage detected - establishes website identity and enables site-wide search features';
+    } else {
+      return 'Standard page detected - improves search engine understanding and navigation';
+    }
+  }
+
+  // Helper method to describe benefits of specific schema types
+  private static getSchemasBenefits(schemaTypes: string[]): string[] {
+    const benefits: string[] = [];
+    
+    schemaTypes.forEach(schemaType => {
+      switch (schemaType) {
+        case 'Article':
+          benefits.push('Rich article snippets with author, date, and reading time');
+          break;
+        case 'Product':
+          benefits.push('Product rich snippets with price, availability, and star ratings');
+          break;
+        case 'Organization':
+          benefits.push('Brand knowledge panel and business information display');
+          break;
+        case 'WebSite':
+          benefits.push('Site search box in Google results and enhanced site links');
+          break;
+        case 'LocalBusiness':
+          benefits.push('Local business listings with hours, phone, and directions');
+          break;
+        case 'Event':
+          benefits.push('Event rich snippets with dates, locations, and ticket links');
+          break;
+        case 'Service':
+          benefits.push('Service listings with descriptions and business details');
+          break;
+        case 'ContactPage':
+          benefits.push('Enhanced business contact information display');
+          break;
+        case 'BreadcrumbList':
+          benefits.push('Breadcrumb navigation in search results');
+          break;
+        case 'WebPage':
+          benefits.push('Improved page understanding and search result relevance');
+          break;
+        default:
+          benefits.push(`Enhanced ${schemaType} markup for better search visibility`);
+      }
+    });
+    
+    return benefits;
   }
 }
