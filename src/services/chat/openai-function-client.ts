@@ -39,6 +39,210 @@ export class OpenAIFunctionClient {
 
   private getFunctionSchemas() {
     return [
+      // ===== AGENT OPERATING SYSTEM TOOLS =====
+      {
+        name: 'create_idea',
+        description: 'Create a new idea from evidence and hypothesis that can be adopted into actionable plans',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: {
+              type: 'string',
+              description: 'Website URL this idea applies to'
+            },
+            title: {
+              type: 'string',
+              description: 'Clear, concise title for the idea'
+            },
+            hypothesis: {
+              type: 'string',
+              description: 'The hypothesis or reasoning behind this idea'
+            },
+            evidence: {
+              type: 'object',
+              description: 'Supporting evidence, data, or context for the idea'
+            },
+            ice_score: {
+              type: 'integer',
+              description: 'Impact/Confidence/Ease score (1-100) for prioritization',
+              minimum: 1,
+              maximum: 100
+            }
+          },
+          required: ['site_url', 'title']
+        }
+      },
+      {
+        name: 'adopt_idea',
+        description: 'Adopt an idea by creating concrete actions to execute it',
+        parameters: {
+          type: 'object',
+          properties: {
+            idea_id: {
+              type: 'string',
+              description: 'ID of the idea to adopt'
+            },
+            strategy: {
+              type: 'string',
+              description: 'High-level strategy for executing this idea'
+            },
+            actions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  action_type: { type: 'string' },
+                  title: { type: 'string' },
+                  description: { type: 'string' },
+                  priority_score: { type: 'integer' }
+                }
+              },
+              description: 'List of concrete actions to implement the idea'
+            }
+          },
+          required: ['idea_id', 'actions']
+        }
+      },
+      {
+        name: 'list_actions',
+        description: 'List current actions with filtering options',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: {
+              type: 'string',
+              description: 'Filter actions for specific website'
+            },
+            status: {
+              type: 'string',
+              enum: ['proposed', 'queued', 'scheduled', 'running', 'needs_verification', 'verified', 'completed', 'failed'],
+              description: 'Filter by action status'
+            },
+            limit: {
+              type: 'integer',
+              description: 'Maximum number of actions to return',
+              default: 20
+            }
+          },
+          required: []
+        }
+      },
+      {
+        name: 'run_action',
+        description: 'Execute a queued action within policy constraints',
+        parameters: {
+          type: 'object',
+          properties: {
+            action_id: {
+              type: 'string',
+              description: 'ID of the action to execute'
+            },
+            policy_overrides: {
+              type: 'object',
+              description: 'Optional policy overrides for this execution',
+              properties: {
+                environment: {
+                  type: 'string',
+                  enum: ['DRY_RUN', 'STAGING', 'PRODUCTION']
+                },
+                max_pages: { type: 'integer' },
+                max_patches: { type: 'integer' }
+              }
+            }
+          },
+          required: ['action_id']
+        }
+      },
+      {
+        name: 'update_action_status',
+        description: 'Update action status (for approvals, declines, etc)',
+        parameters: {
+          type: 'object',
+          properties: {
+            action_id: {
+              type: 'string',
+              description: 'ID of the action to update'
+            },
+            new_status: {
+              type: 'string',
+              enum: ['proposed', 'queued', 'declined', 'cancelled'],
+              description: 'New status for the action'
+            },
+            note: {
+              type: 'string',
+              description: 'Optional note explaining the status change'
+            }
+          },
+          required: ['action_id', 'new_status']
+        }
+      },
+      {
+        name: 'summarize_activity',
+        description: 'Get canonical summary of recent activity since last conversation',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: {
+              type: 'string',
+              description: 'Get summary for specific site, or all sites if omitted'
+            },
+            since: {
+              type: 'string',
+              description: 'ISO timestamp to get activity since (defaults to 24h ago)'
+            }
+          },
+          required: []
+        }
+      },
+      {
+        name: 'plan_crawl',
+        description: 'Plan and execute website crawl for technical SEO analysis',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: {
+              type: 'string',
+              description: 'Website to crawl'
+            },
+            crawl_type: {
+              type: 'string',
+              enum: ['technical_seo', 'content_audit', 'performance', 'full'],
+              description: 'Type of crawl to perform'
+            },
+            policy: {
+              type: 'object',
+              description: 'Crawl policy constraints',
+              properties: {
+                max_pages: { type: 'integer' },
+                crawl_depth: { type: 'integer' },
+                respect_robots: { type: 'boolean' }
+              }
+            }
+          },
+          required: ['site_url', 'crawl_type']
+        }
+      },
+      {
+        name: 'list_integrations',
+        description: 'Discover available capabilities and integrations for a site',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: {
+              type: 'string',
+              description: 'Website to check integrations for'
+            },
+            category: {
+              type: 'string',
+              enum: ['cms', 'seo', 'analytics', 'verification'],
+              description: 'Filter by capability category'
+            }
+          },
+          required: []
+        }
+      },
+      // ===== EXISTING TOOLS =====
+      {
       {
         name: 'connect_gsc',
         description: 'Connect Google Search Console for a website',
@@ -564,6 +768,23 @@ class FunctionCaller {
           return await this.auditSite(args);
         case 'get_site_status':
           return await this.getSiteStatus(args);
+        // Agent Operating System Functions
+        case 'create_idea':
+          return await this.createIdea(args);
+        case 'adopt_idea':
+          return await this.adoptIdea(args);
+        case 'list_actions':
+          return await this.listActions(args);
+        case 'run_action':
+          return await this.runAction(args);
+        case 'update_action_status':
+          return await this.updateActionStatus(args);
+        case 'summarize_activity':
+          return await this.summarizeActivity(args);
+        case 'plan_crawl':
+          return await this.planCrawl(args);
+        case 'list_integrations':
+          return await this.listIntegrations(args);
         default:
           return {
             success: false,
@@ -1094,6 +1315,421 @@ class FunctionCaller {
     }
 
     return actions;
+  }
+
+  // ===== AGENT OPERATING SYSTEM IMPLEMENTATIONS =====
+
+  private async createIdea(args: { site_url: string; title: string; hypothesis?: string; evidence?: any; ice_score?: number }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const response = await fetch('/api/agent/ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          siteUrl: args.site_url,
+          title: args.title,
+          hypothesis: args.hypothesis,
+          evidence: args.evidence || {},
+          iceScore: args.ice_score
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        data: {
+          idea_id: result.idea.id,
+          title: result.idea.title,
+          status: result.idea.status,
+          ice_score: result.idea.ice_score,
+          message: result.message
+        }
+      };
+
+    } catch (error) {
+      console.error('Create idea error:', error);
+      return { success: false, error: 'Failed to create idea' };
+    }
+  }
+
+  private async adoptIdea(args: { idea_id: string; strategy?: string; actions: any[] }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      // First, get the idea details
+      const ideaResponse = await fetch(`/api/agent/ideas?userToken=${userToken}&ideaId=${args.idea_id}`);
+      const ideaResult = await ideaResponse.json();
+      
+      if (!ideaResult.success || !ideaResult.ideas || ideaResult.ideas.length === 0) {
+        return { success: false, error: 'Idea not found' };
+      }
+
+      const idea = ideaResult.ideas[0];
+      const createdActions = [];
+
+      // Create each action
+      for (const actionSpec of args.actions) {
+        const actionResponse = await fetch('/api/agent/actions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userToken,
+            siteUrl: idea.site_url,
+            ideaId: args.idea_id,
+            actionType: actionSpec.action_type,
+            title: actionSpec.title,
+            description: actionSpec.description,
+            payload: actionSpec.payload || {},
+            policy: actionSpec.policy || { environment: 'DRY_RUN' },
+            priorityScore: actionSpec.priority_score || 50
+          })
+        });
+
+        const actionResult = await actionResponse.json();
+        if (actionResult.success) {
+          createdActions.push(actionResult.action);
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          idea_id: args.idea_id,
+          strategy: args.strategy,
+          actions_created: createdActions.length,
+          actions: createdActions.map(action => ({
+            id: action.id,
+            title: action.title,
+            type: action.action_type,
+            status: action.status
+          })),
+          message: `Idea adopted with ${createdActions.length} concrete actions created`
+        }
+      };
+
+    } catch (error) {
+      console.error('Adopt idea error:', error);
+      return { success: false, error: 'Failed to adopt idea' };
+    }
+  }
+
+  private async listActions(args: { site_url?: string; status?: string; limit?: number }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const params = new URLSearchParams({ userToken });
+      if (args.site_url) params.append('siteUrl', args.site_url);
+      if (args.status) params.append('status', args.status);
+      if (args.limit) params.append('limit', args.limit.toString());
+
+      const response = await fetch(`/api/agent/actions?${params.toString()}`);
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        data: {
+          actions: result.actions.map((action: any) => ({
+            id: action.id,
+            title: action.title,
+            type: action.action_type,
+            status: action.status,
+            priority: action.priority_score,
+            site_url: action.site_url,
+            idea_title: action.idea?.title,
+            created_at: action.created_at,
+            scheduled_for: action.scheduled_for
+          })),
+          stats: result.stats,
+          total_count: result.actions.length,
+          filter: {
+            site_url: args.site_url,
+            status: args.status
+          }
+        }
+      };
+
+    } catch (error) {
+      console.error('List actions error:', error);
+      return { success: false, error: 'Failed to list actions' };
+    }
+  }
+
+  private async runAction(args: { action_id: string; policy_overrides?: any }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const response = await fetch('/api/agent/actions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionId: args.action_id,
+          userToken,
+          status: 'queued',
+          queueForExecution: true,
+          updates: args.policy_overrides ? { policy: args.policy_overrides } : {}
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        data: {
+          action_id: args.action_id,
+          job_id: result.jobId,
+          status: result.action.status,
+          title: result.action.title,
+          message: result.message
+        }
+      };
+
+    } catch (error) {
+      console.error('Run action error:', error);
+      return { success: false, error: 'Failed to run action' };
+    }
+  }
+
+  private async updateActionStatus(args: { action_id: string; new_status: string; note?: string }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const response = await fetch('/api/agent/actions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionId: args.action_id,
+          userToken,
+          status: args.new_status,
+          updates: args.note ? { note: args.note } : {}
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        data: {
+          action_id: args.action_id,
+          previous_status: result.action.status,
+          new_status: args.new_status,
+          title: result.action.title,
+          message: result.message
+        }
+      };
+
+    } catch (error) {
+      console.error('Update action status error:', error);
+      return { success: false, error: 'Failed to update action status' };
+    }
+  }
+
+  private async summarizeActivity(args: { site_url?: string; since?: string }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const params = new URLSearchParams({ userToken });
+      if (args.site_url) params.append('siteUrl', args.site_url);
+      if (args.since) params.append('since', args.since);
+
+      const response = await fetch(`/api/agent/summary?${params.toString()}`);
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      const summary = result.summary;
+
+      return {
+        success: true,
+        data: {
+          narrative: summary.narrative,
+          activity_counts: summary.activity_counts,
+          completed_work: summary.completed_work.summary,
+          active_work: summary.active_work.summary,
+          upcoming_items: summary.upcoming_items.length,
+          top_ideas: summary.top_ideas.length,
+          needs_attention: summary.current_state.needs_attention,
+          period: result.period,
+          details: {
+            completed_breakdown: summary.completed_work.by_type,
+            active_breakdown: summary.active_work.by_status,
+            upcoming_actions: summary.upcoming_items,
+            top_ideas_list: summary.top_ideas
+          }
+        }
+      };
+
+    } catch (error) {
+      console.error('Summarize activity error:', error);
+      return { success: false, error: 'Failed to summarize activity' };
+    }
+  }
+
+  private async planCrawl(args: { site_url: string; crawl_type: string; policy?: any }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      // Create a crawl action
+      const actionResponse = await fetch('/api/agent/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          siteUrl: args.site_url,
+          actionType: 'technical_seo_crawl',
+          title: `${args.crawl_type.replace('_', ' ')} crawl for ${args.site_url}`,
+          description: `Automated ${args.crawl_type} analysis and issue detection`,
+          payload: {
+            crawl_type: args.crawl_type,
+            site_url: args.site_url
+          },
+          policy: {
+            environment: 'PRODUCTION',
+            maxPages: args.policy?.max_pages || 100,
+            crawlDepth: args.policy?.crawl_depth || 3,
+            respectRobots: args.policy?.respect_robots !== false,
+            ...args.policy
+          },
+          priorityScore: 70
+        })
+      });
+
+      const actionResult = await actionResponse.json();
+
+      if (!actionResult.success) {
+        return { success: false, error: actionResult.error };
+      }
+
+      // Immediately queue for execution
+      const executeResponse = await fetch('/api/agent/actions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionId: actionResult.action.id,
+          userToken,
+          status: 'queued',
+          queueForExecution: true
+        })
+      });
+
+      const executeResult = await executeResponse.json();
+
+      return {
+        success: true,
+        data: {
+          crawl_action_id: actionResult.action.id,
+          job_id: executeResult.jobId,
+          crawl_type: args.crawl_type,
+          site_url: args.site_url,
+          policy: actionResult.action.policy,
+          status: 'crawl_initiated',
+          message: `${args.crawl_type} crawl initiated for ${args.site_url}`
+        }
+      };
+
+    } catch (error) {
+      console.error('Plan crawl error:', error);
+      return { success: false, error: 'Failed to plan crawl' };
+    }
+  }
+
+  private async listIntegrations(args: { site_url?: string; category?: string }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const params = new URLSearchParams({ userToken });
+      if (args.site_url) params.append('siteUrl', args.site_url);
+      if (args.category) params.append('category', args.category);
+
+      const response = await fetch(`/api/agent/capabilities?${params.toString()}`);
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        data: {
+          available_capabilities: result.capabilities.available.map((cap: any) => ({
+            name: cap.capability_name,
+            category: cap.category,
+            description: cap.description,
+            status: cap.integration_status
+          })),
+          unavailable_capabilities: result.capabilities.unavailable.map((cap: any) => ({
+            name: cap.capability_name,
+            category: cap.category,
+            description: cap.description,
+            reason: cap.integration_status,
+            missing_integrations: cap.missing_integrations
+          })),
+          by_category: result.capabilities.by_category,
+          site_context: result.site_context,
+          summary: {
+            total_available: result.capabilities.available.length,
+            total_unavailable: result.capabilities.unavailable.length,
+            user_integrations: result.site_context?.user_integrations || []
+          }
+        }
+      };
+
+    } catch (error) {
+      console.error('List integrations error:', error);
+      return { success: false, error: 'Failed to list integrations' };
+    }
   }
 
   // New Agent Intelligence Functions for Technical SEO Integration

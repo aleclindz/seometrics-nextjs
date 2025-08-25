@@ -7,7 +7,7 @@ The SEOAgent chat interface is a modern, AI-powered conversational interface tha
 ## Features
 
 ### 🤖 AI-Powered Assistant
-- **OpenAI Integration**: Powered by GPT-4 with function calling capabilities
+- **OpenAI Integration**: Powered by GPT-4o-mini with function calling capabilities
 - **Natural Language Processing**: Understand user intents and execute actions
 - **Context Awareness**: Maintains conversation history and site context
 - **Structured Responses**: Function calls provide reliable, validated actions
