@@ -32,6 +32,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // First check login_users.plan to determine if user should be on free tier
+    console.log('[SUBSCRIPTION API] Checking login_users.plan for userToken:', userToken);
+    const { data: loginUser, error: loginUserError } = await supabase
+      .from('login_users')
+      .select('plan')
+      .eq('token', userToken)
+      .single()
+    
+    console.log('[SUBSCRIPTION API] login_users query result:', { loginUser, error: loginUserError });
+
     // Get user plan from database
     console.log('[SUBSCRIPTION API] Querying user_plans for userToken:', userToken);
     let { data: userPlan, error } = await supabase
@@ -92,6 +102,34 @@ export async function GET(request: NextRequest) {
         { error: 'User plan not found' },
         { status: 404 }
       )
+    }
+
+    // Override user_plans.tier if login_users.plan = 0 (Free tier priority)
+    if (loginUser && loginUser.plan === 0 && userPlan) {
+      console.log('[SUBSCRIPTION API] login_users.plan is 0, overriding to free tier');
+      
+      // Update the existing user_plans record to free tier if it's not already
+      if (userPlan.tier !== 'free') {
+        const { error: updateError } = await supabase
+          .from('user_plans')
+          .update({
+            tier: 'free',
+            sites_allowed: 1,
+            posts_allowed: 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_token', userToken);
+
+        if (updateError) {
+          console.error('[SUBSCRIPTION API] Error updating user plan to free:', updateError);
+        } else {
+          // Update local userPlan object to reflect the change
+          userPlan.tier = 'free';
+          userPlan.sites_allowed = 1;
+          userPlan.posts_allowed = 0;
+          console.log('[SUBSCRIPTION API] Successfully updated user plan to free tier');
+        }
+      }
     }
 
     // Get actual website count from websites table
@@ -167,6 +205,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // First check login_users.plan to determine if user should be on free tier
+    const { data: loginUser, error: loginUserError } = await supabase
+      .from('login_users')
+      .select('plan')
+      .eq('token', userToken)
+      .single()
+
     // Get user plan
     let { data: userPlan, error } = await supabase
       .from('user_plans')
@@ -224,6 +269,34 @@ export async function POST(request: NextRequest) {
         { error: 'User plan not found' },
         { status: 404 }
       )
+    }
+
+    // Override user_plans.tier if login_users.plan = 0 (Free tier priority) - POST method
+    if (loginUser && loginUser.plan === 0 && userPlan) {
+      console.log('[SUBSCRIPTION API POST] login_users.plan is 0, overriding to free tier');
+      
+      // Update the existing user_plans record to free tier if it's not already
+      if (userPlan.tier !== 'free') {
+        const { error: updateError } = await supabase
+          .from('user_plans')
+          .update({
+            tier: 'free',
+            sites_allowed: 1,
+            posts_allowed: 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_token', userToken);
+
+        if (updateError) {
+          console.error('[SUBSCRIPTION API POST] Error updating user plan to free:', updateError);
+        } else {
+          // Update local userPlan object to reflect the change
+          userPlan.tier = 'free';
+          userPlan.sites_allowed = 1;
+          userPlan.posts_allowed = 0;
+          console.log('[SUBSCRIPTION API POST] Successfully updated user plan to free tier');
+        }
+      }
     }
 
     switch (action) {
