@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     const completedSurveys = completionStats.filter(s => s.survey_completed).length
     const founderCallInterest = completionStats.filter(s => s.interested_in_founder_call).length
     const proOfferAcceptance = completionStats.filter(s => s.accepted_pro_offer).length
-    const completionRate = totalSurveys > 0 ? (completedSurveys / totalSurveys * 100).toFixed(1) : 0
+    const completionRate = totalSurveys > 0 ? (completedSurveys / totalSurveys * 100).toFixed(1) : '0'
 
     // Process building method distribution
     const buildingMethodCounts = buildingMethods.reduce((acc: any, survey: any) => {
@@ -175,9 +175,9 @@ export async function GET(request: NextRequest) {
         completedSurveys,
         completionRate: parseFloat(completionRate),
         founderCallInterest,
-        founderCallInterestRate: totalSurveys > 0 ? (founderCallInterest / totalSurveys * 100).toFixed(1) : 0,
+        founderCallInterestRate: totalSurveys > 0 ? (founderCallInterest / totalSurveys * 100).toFixed(1) : '0',
         proOfferAcceptance,
-        proOfferAcceptanceRate: totalSurveys > 0 ? (proOfferAcceptance / totalSurveys * 100).toFixed(1) : 0
+        proOfferAcceptanceRate: totalSurveys > 0 ? (proOfferAcceptance / totalSurveys * 100).toFixed(1) : '0'
       },
       distributions: {
         buildingMethods: buildingMethodCounts,
@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
           date,
           total: stats.total,
           completed: stats.completed,
-          completionRate: stats.total > 0 ? (stats.completed / stats.total * 100).toFixed(1) : 0
+          completionRate: stats.total > 0 ? (stats.completed / stats.total * 100).toFixed(1) : '0'
         })).sort((a, b) => a.date.localeCompare(b.date))
       },
       insights: {

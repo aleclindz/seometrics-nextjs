@@ -4,17 +4,17 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth'
 import Image from 'next/image'
 
-type WebsiteBuildingMethod = 'custom' | 'shopify' | 'wix' | 'squarespace' | 'wordpress' | 'webflow' | 'lovable' | 'replit' | 'github_pages' | 'other'
-type CMSType = 'none' | 'strapi' | 'contentful' | 'sanity' | 'ghost' | 'wordpress' | 'directus' | 'other'
-type HostingProvider = 'vercel' | 'netlify' | 'aws' | 'google_cloud' | 'github_pages' | 'cloudflare_pages' | 'digitalocean' | 'heroku' | 'railway' | 'render' | 'other'
+type WebsiteBuildingMethod = 'custom' | 'shopify' | 'wix' | 'squarespace' | 'wordpress' | 'webflow' | 'lovable' | 'replit' | 'github_pages' | 'other' | ''
+type CMSType = 'none' | 'strapi' | 'contentful' | 'sanity' | 'ghost' | 'wordpress' | 'directus' | 'other' | ''
+type HostingProvider = 'vercel' | 'netlify' | 'aws' | 'google_cloud' | 'github_pages' | 'cloudflare_pages' | 'digitalocean' | 'heroku' | 'railway' | 'render' | 'other' | ''
 
 interface SurveyData {
-  websiteBuildingMethod: WebsiteBuildingMethod | ''
+  websiteBuildingMethod: WebsiteBuildingMethod
   websiteBuildingMethodOther: string
   usesCms: boolean
-  cmsType: CMSType | ''
+  cmsType: CMSType
   cmsTypeOther: string
-  hostingProvider: HostingProvider | ''
+  hostingProvider: HostingProvider
   hostingProviderOther: string
   businessType: string
   websiteAge: string
@@ -182,7 +182,7 @@ export default function OnboardingSurvey({ onComplete, onSkip }: OnboardingSurve
               ))}
             </div>
 
-            {surveyData.websiteBuildingMethod === 'other' && (
+            {surveyData.websiteBuildingMethod === 'other' as WebsiteBuildingMethod && (
               <input
                 type="text"
                 placeholder="Please specify..."
@@ -246,8 +246,8 @@ export default function OnboardingSurvey({ onComplete, onSkip }: OnboardingSurve
               </div>
             )}
 
-            {((shouldShowCMSQuestions() && surveyData.cmsType === 'other') || 
-              (!shouldShowCMSQuestions() && surveyData.hostingProvider === 'other')) && (
+            {((shouldShowCMSQuestions() && surveyData.cmsType === 'other' as CMSType) || 
+              (!shouldShowCMSQuestions() && surveyData.hostingProvider === 'other' as HostingProvider)) && (
               <input
                 type="text"
                 placeholder="Please specify..."
@@ -292,7 +292,7 @@ export default function OnboardingSurvey({ onComplete, onSkip }: OnboardingSurve
                 ))}
               </div>
 
-              {surveyData.hostingProvider === 'other' && (
+              {surveyData.hostingProvider === 'other' as HostingProvider && (
                 <input
                   type="text"
                   placeholder="Please specify..."
@@ -488,19 +488,19 @@ export default function OnboardingSurvey({ onComplete, onSkip }: OnboardingSurve
     switch (currentStep) {
       case 1:
         return surveyData.websiteBuildingMethod && 
-          (surveyData.websiteBuildingMethod !== 'other' || surveyData.websiteBuildingMethodOther.trim())
+          (surveyData.websiteBuildingMethod !== ('other' as WebsiteBuildingMethod) || surveyData.websiteBuildingMethodOther.trim())
       case 2:
         if (shouldShowCMSQuestions()) {
           return surveyData.cmsType && 
-            (surveyData.cmsType !== 'other' || surveyData.cmsTypeOther.trim())
+            (surveyData.cmsType !== ('other' as CMSType) || surveyData.cmsTypeOther.trim())
         } else {
           return surveyData.hostingProvider && 
-            (surveyData.hostingProvider !== 'other' || surveyData.hostingProviderOther.trim())
+            (surveyData.hostingProvider !== ('other' as HostingProvider) || surveyData.hostingProviderOther.trim())
         }
       case 3:
         if (shouldShowCMSQuestions() && !surveyData.hostingProvider) {
           return surveyData.hostingProvider && 
-            (surveyData.hostingProvider !== 'other' || surveyData.hostingProviderOther.trim())
+            (surveyData.hostingProvider !== ('other' as HostingProvider) || surveyData.hostingProviderOther.trim())
         } else {
           return surveyData.businessType && surveyData.websiteAge && surveyData.monthlyVisitors
         }
