@@ -286,6 +286,31 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     }
   };
 
+  const handleVercelConnection = async () => {
+    if (!user?.token) return;
+    
+    try {
+      setHostLoading(true);
+      setHostError(null);
+      
+      // Initiate Vercel OAuth flow
+      const response = await fetch(`/api/hosting/vercel/oauth?userToken=${user.token}`);
+      const data = await response.json();
+      
+      if (response.ok && data.oauthUrl) {
+        // Redirect to Vercel OAuth
+        window.location.href = data.oauthUrl;
+      } else {
+        setHostError(data.error || 'Failed to initiate Vercel connection');
+      }
+    } catch (error) {
+      console.error('Error connecting to Vercel:', error);
+      setHostError('Failed to connect to Vercel. Please try again.');
+    } finally {
+      setHostLoading(false);
+    }
+  };
+
   const testSmartJSInstallation = async () => {
     if (!user?.token) return;
 
@@ -812,15 +837,30 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                           <h4 className="font-medium text-gray-900 dark:text-gray-100">{host.name}</h4>
                         </div>
                         <button
-                          onClick={() => {/* Add host connection functionality */}}
-                          disabled={!host.available}
+                          onClick={() => {
+                            if (host.type === 'vercel') {
+                              handleVercelConnection();
+                            } else {
+                              // Add other host connection functionality
+                            }
+                          }}
+                          disabled={!host.available || (host.type === 'vercel' && hostLoading)}
                           className={`w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md ${
                             host.available
                               ? 'border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/10 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-900/20'
                               : 'border-gray-300 text-gray-500 bg-gray-50 cursor-not-allowed dark:bg-gray-700/30 dark:border-gray-600 dark:text-gray-400'
                           }`}
                         >
-                          {host.available ? `Connect ${host.name}` : 'Coming Soon'}
+                          {host.type === 'vercel' && hostLoading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-violet-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                              Connecting...
+                            </>
+                          ) : host.available ? (
+                            `Connect ${host.name}`
+                          ) : (
+                            'Coming Soon'
+                          )}
                         </button>
                       </div>
                     ))}
