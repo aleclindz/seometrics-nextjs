@@ -40,25 +40,12 @@ export async function POST(request: NextRequest) {
     
     // Build chat context with selected site and conversation history
     const chatContext = {
-      userToken,
-      selectedSite,
-      conversationHistory: conversationHistory?.slice(-10) || [], // Last 10 messages for context
-      systemPrompt: `You are SEOAgent, an AI SEO assistant for the website "${selectedSite}". 
-      
-You help users with:
-- Technical SEO analysis and fixes
-- Content strategy and generation  
-- Performance monitoring and optimization
-- SEO automation and workflows
-
-When you perform actions or provide suggestions, format your response with:
-1. A clear, helpful explanation
-2. Use action cards when appropriate for:
-   - Technical fixes (with before/after code)
-   - Content suggestions (with keyword data)
-   - Progress updates (with completion status)
-
-Be conversational but professional. Always focus on actionable SEO advice.`
+      history: conversationHistory?.slice(-10) || [], // Last 10 messages for context
+      siteContext: {
+        selectedSite,
+        userSites: [] // TODO: Add user sites if needed
+      },
+      userToken
     };
 
     // Send message to OpenAI

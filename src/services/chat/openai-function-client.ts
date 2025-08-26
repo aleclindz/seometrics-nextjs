@@ -37,6 +37,70 @@ export class OpenAIFunctionClient {
     }
   }
 
+  // Check setup status for a website to prioritize setup messages
+  private async checkSetupStatus(userToken: string, siteUrl: string): Promise<{
+    gscConnected: boolean;
+    seoagentjsInstalled: boolean;
+    hasAuditScore: boolean;
+    isFullySetup: boolean;
+  } | null> {
+    try {
+      // This mirrors the logic from activity-summary route but simplified for chat context
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      
+      // Check GSC connection via sitemap submissions
+      const gscResponse = await fetch(`${baseUrl}/api/technical-seo/sitemap?userToken=${encodeURIComponent(userToken)}&siteUrl=${encodeURIComponent(siteUrl)}`);
+      let gscConnected = false;
+      if (gscResponse.ok) {
+        const gscData = await gscResponse.json();
+        gscConnected = gscData.success && gscData.sitemaps && gscData.sitemaps.length > 0;
+      }
+
+      // Check SEOAgent.js installation by website analysis
+      let seoagentjsInstalled = false;
+      try {
+        const siteResponse = await fetch(siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`, {
+          method: 'GET',
+          headers: { 'User-Agent': 'SEOAgent-StatusBot/1.0' },
+          signal: AbortSignal.timeout(3000) // 3 second timeout
+        });
+        
+        if (siteResponse.ok) {
+          const siteContent = await siteResponse.text();
+          const hasScript = siteContent.includes('seoagent.js') || siteContent.includes('SEO-METRICS');
+          const hasWebsiteToken = siteContent.includes('idv = ') || siteContent.includes('website_token');
+          seoagentjsInstalled = hasScript && hasWebsiteToken;
+        }
+      } catch (error) {
+        console.log('[SETUP CHECK] Could not check SEOAgent.js status:', error);
+      }
+
+      // Check if audit has been run (simplified)
+      let hasAuditScore = false;
+      try {
+        const actionItemsResponse = await fetch(`${baseUrl}/api/action-items?userToken=${encodeURIComponent(userToken)}&siteUrl=${encodeURIComponent(siteUrl)}&limit=1`);
+        if (actionItemsResponse.ok) {
+          const actionData = await actionItemsResponse.json();
+          hasAuditScore = actionData.success && actionData.actionItems && actionData.actionItems.length > 0;
+        }
+      } catch (error) {
+        console.log('[SETUP CHECK] Could not check audit status:', error);
+      }
+
+      const isFullySetup = gscConnected && seoagentjsInstalled;
+
+      return {
+        gscConnected,
+        seoagentjsInstalled,
+        hasAuditScore,
+        isFullySetup
+      };
+    } catch (error) {
+      console.error('[SETUP CHECK] Error checking setup status:', error);
+      return null;
+    }
+  }
+
   private getFunctionSchemas() {
     return [
       // ===== AGENT OPERATING SYSTEM TOOLS =====
@@ -681,6 +745,26 @@ export class OpenAIFunctionClient {
 - Offer to perform tasks using functions when appropriate
 - Provide specific, actionable recommendations
 - Use a friendly but professional tone`;
+
+    // Add setup-aware guidance based on current status
+    if (context.siteContext?.selectedSite && context.userToken) {
+      const setupStatus = await this.checkSetupStatus(context.userToken, context.siteContext.selectedSite);
+      
+      if (setupStatus && !setupStatus.isFullySetup) {
+        prompt += `\n\n**IMPORTANT - Setup Priority**: This user needs to complete their setup first. Focus on getting them connected:`;
+        if (!setupStatus.gscConnected) {
+          prompt += `\n- ❌ Google Search Console: Not connected - PRIORITY #1`;
+        }
+        if (!setupStatus.seoagentjsInstalled) {
+          prompt += `\n- ❌ SEOAgent.js Script: Not installed - PRIORITY #2`;  
+        }
+        prompt += `\n- When users greet you or ask general questions, prioritize explaining the setup process`;
+        prompt += `\n- Use functions like connect_gsc and get_site_status to help with setup`;
+        prompt += `\n- Be encouraging and explain how these connections unlock powerful automation`;
+      } else if (setupStatus && setupStatus.isFullySetup) {
+        prompt += `\n\n**Setup Status**: ✅ Fully connected! GSC connected and SEOAgent.js installed. Focus on optimization and automation.`;
+      }
+    }
 
     if (context.siteContext?.userSites?.length) {
       prompt += `\n\n**User's Websites**:\n`;
