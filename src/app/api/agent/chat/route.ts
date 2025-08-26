@@ -53,78 +53,38 @@ export async function POST(request: NextRequest) {
 
     // Process response and determine if we should include action cards
     let actionCard = null;
-    
-    // Detect if this should have an action card based on the response content
-    if (response.functionCall) {
-      const functionName = response.functionCall.name;
-      
-      if (functionName.includes('technical') || functionName.includes('fix')) {
-        actionCard = {
-          type: 'technical-fix',
-          data: {
-            title: 'Technical SEO Fix Applied',
-            description: 'SEO improvements have been made to your website',
-            status: 'completed',
-            beforeAfter: {
-              before: '<meta name="description" content="">',
-              after: '<meta name="description" content="Optimized meta description...">'
-            },
-            affectedPages: 1,
-            links: [
-              { label: 'View Changes', url: '#' },
-              { label: 'GSC Report', url: '#' }
-            ]
-          }
-        };
-      } else if (functionName.includes('content') || functionName.includes('generate')) {
-        actionCard = {
-          type: 'content-suggestion',
-          data: {
-            title: 'Content Opportunity Identified',
-            description: 'High-value content opportunity for your niche',
-            keywords: ['seo optimization', 'technical seo', 'website audit'],
-            searchVolume: 8100,
-            difficulty: 45,
-            intent: 'informational',
-            estimatedTraffic: 2400,
-            onAccept: () => console.log('Content accepted'),
-            onDismiss: () => console.log('Content dismissed')
-          }
-        };
-      } else if (functionName.includes('crawl') || functionName.includes('scan')) {
-        actionCard = {
-          type: 'progress',
-          data: {
-            title: 'Website Crawl in Progress',
-            description: 'Scanning your website for technical SEO issues',
-            progress: 65,
-            status: 'running',
-            estimatedTime: '2-3 minutes',
-            currentStep: 'Analyzing page structure and meta tags',
-            totalSteps: 5,
-            currentStepIndex: 3,
-            onPause: () => console.log('Crawl paused'),
-            onResume: () => console.log('Crawl resumed'),
-            onCancel: () => console.log('Crawl cancelled')
-          }
-        };
-      }
-    }
-
-    // Record activity if there was a function call
-    if (response.functionCall) {
-      await recordActivity(userToken, selectedSite || '', response.functionCall, actionCard);
-    }
-
-    // Parse any tool results for action card generation
     let functionCall = null;
+    
+    // Check if we have tool results to process
     if (response.toolResults && Object.keys(response.toolResults).length > 0) {
+      // Create a function call representation from the first tool result
       const firstToolResult = Object.values(response.toolResults)[0];
       functionCall = {
         name: 'executed_function',
         arguments: {},
         result: firstToolResult
       };
+      
+      // Generate action card based on the tool result
+      if (firstToolResult.success) {
+        actionCard = {
+          type: 'technical-fix',
+          data: {
+            title: 'SEO Function Executed',
+            description: 'AI agent successfully executed an SEO operation',
+            status: 'completed',
+            affectedPages: 1,
+            links: [
+              { label: 'View Details', url: '#' }
+            ]
+          }
+        };
+      }
+    }
+
+    // Record activity if there was a function call
+    if (functionCall) {
+      await recordActivity(userToken, selectedSite || '', functionCall, actionCard);
     }
 
     return NextResponse.json({

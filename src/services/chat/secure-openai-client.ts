@@ -226,7 +226,7 @@ export function isBrowser(): boolean {
 }
 
 // Legacy compatibility - export interface
-export { ChatContext };
+export type { ChatContext };
 
 // Function call result interface
 export interface FunctionCallResult {

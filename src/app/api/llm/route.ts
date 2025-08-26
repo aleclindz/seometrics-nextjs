@@ -123,8 +123,7 @@ export async function POST(request: NextRequest) {
         })),
         tool_choice: 'auto',
         temperature: 0.3, // Lower for tool accuracy
-        max_tokens: 1200,
-        timeout: 15000 // 15 second timeout
+        max_tokens: 1200
       });
 
       const choice = response.choices[0];
