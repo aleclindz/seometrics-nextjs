@@ -15,7 +15,7 @@ import {
   Lightbulb,
   Zap
 } from 'lucide-react';
-import { OpenAIFunctionClient } from '@/services/chat/openai-function-client';
+// Removed OpenAIFunctionClient import - now using server API
 
 interface AgentChatProps {
   userToken: string;
@@ -39,14 +39,9 @@ export default function AgentChat({ userToken, selectedSite, userSites }: AgentC
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [client, setClient] = useState<OpenAIFunctionClient | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Initialize OpenAI client
-    const openaiClient = new OpenAIFunctionClient(process.env.NEXT_PUBLIC_OPENAI_API_KEY!);
-    setClient(openaiClient);
-
     // Add welcome message
     const welcomeMessage: ChatMessage = {
       id: 'welcome',
@@ -74,7 +69,7 @@ What would you like to work on today?`,
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || !client || isLoading) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -84,11 +79,12 @@ What would you like to work on today?`,
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const messageText = input;
     setInput('');
     setIsLoading(true);
 
     try {
-      const context = {
+      const chatContext = {
         history: messages.map(m => ({
           role: m.role,
           content: m.content,
@@ -97,18 +93,29 @@ What would you like to work on today?`,
         siteContext: {
           selectedSite,
           userSites
-        },
-        userToken
+        }
       };
 
-      const response = await client.sendMessage(input, context);
+      const response = await fetch('/api/chat/ai-response', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userToken,
+          message: messageText,
+          chatContext
+        })
+      });
+
+      const data = await response.json();
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: response.content,
+        content: data.content,
         timestamp: new Date(),
-        functionCall: response.functionCall
+        functionCall: data.functionCall
       };
 
       setMessages(prev => [...prev, assistantMessage]);
