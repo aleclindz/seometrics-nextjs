@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { OpenAIFunctionClient } from '@/services/chat/openai-function-client';
+import { SecureOpenAIClient } from '@/services/chat/secure-openai-client';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create OpenAI client and prepare context
-    const openaiClient = new OpenAIFunctionClient(apiKey);
+    // Create secure OpenAI client (no API key needed - handled server-side)
+    const openaiClient = new SecureOpenAIClient();
     
     // Build chat context with selected site and conversation history
     const chatContext = {
@@ -116,26 +116,39 @@ export async function POST(request: NextRequest) {
       await recordActivity(userToken, selectedSite || '', response.functionCall, actionCard);
     }
 
+    // Parse any tool results for action card generation
+    let functionCall = null;
+    if (response.toolResults && Object.keys(response.toolResults).length > 0) {
+      const firstToolResult = Object.values(response.toolResults)[0];
+      functionCall = {
+        name: 'executed_function',
+        arguments: {},
+        result: firstToolResult
+      };
+    }
+
     return NextResponse.json({
       success: true,
       message: response.content,
-      functionCall: response.functionCall,
-      actionCard: actionCard
+      functionCall: functionCall,
+      actionCard: actionCard,
+      steps: response.steps,
+      model: response.model
     });
 
   } catch (error) {
     console.error('[AGENT CHAT API] Error:', error);
     
     // Provide user-friendly error messages
-    let errorMessage = "I&apos;m experiencing some technical difficulties. Please try again in a moment.";
+    let errorMessage = "I'm experiencing some technical difficulties. Please try again in a moment.";
     
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        errorMessage = "There&apos;s an issue with the AI service configuration. Please contact support.";
+        errorMessage = "There's an issue with the AI service configuration. Please contact support.";
       } else if (error.message.includes('rate limit')) {
-        errorMessage = "I&apos;m currently handling many requests. Please wait a moment and try again.";
+        errorMessage = "I'm currently handling many requests. Please wait a moment and try again.";
       } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        errorMessage = "I&apos;m having trouble connecting to my services. Please check your internet connection and try again.";
+        errorMessage = "I'm having trouble connecting to my services. Please check your internet connection and try again.";
       }
     }
     
@@ -156,7 +169,7 @@ function getTestResponse(message: string) {
     return {
       message: `👋 **Hello there!** 
 
-I&apos;m your SEO Agent for this website. I can help you with:
+I'm your SEO Agent for this website. I can help you with:
 
 **🔍 Technical SEO** - Scan for issues, fix meta tags, optimize sitemaps
 **📝 Content Strategy** - Generate blog topics, analyze keywords, create content
@@ -178,7 +191,7 @@ What would you like to work on?`,
     return {
       message: `🔍 **Starting Technical SEO Scan**
 
-I&apos;m analyzing your website for technical SEO issues. This includes checking:
+I'm analyzing your website for technical SEO issues. This includes checking:
 
 • Meta tags and titles
 • Schema markup
@@ -187,7 +200,7 @@ I&apos;m analyzing your website for technical SEO issues. This includes checking
 • Mobile optimization
 • Sitemap validation
 
-I&apos;ll show you exactly what I find and can auto-fix many common issues.`,
+I'll show you exactly what I find and can auto-fix many common issues.`,
       functionCall: {
         name: 'technical_seo_scan',
         arguments: { site_url: 'test-site' },
@@ -213,7 +226,7 @@ I&apos;ll show you exactly what I find and can auto-fix many common issues.`,
     return {
       message: `✨ **Content Strategy Analysis**
 
-Based on your website&apos;s niche and current content, I&apos;ve identified some high-opportunity topics:
+Based on your website's niche and current content, I've identified some high-opportunity topics:
 
 These suggestions are based on search volume, competition analysis, and content gaps in your current strategy.`,
       functionCall: {
@@ -240,7 +253,7 @@ These suggestions are based on search volume, competition analysis, and content 
     return {
       message: `📊 **Performance Summary**
 
-Here&apos;s your recent SEO performance data:
+Here's your recent SEO performance data:
 
 **Last 28 Days:**
 • Impressions: 45,200 (+12%)  
@@ -267,7 +280,7 @@ Your technical SEO improvements are showing positive results!`,
   return {
     message: `I heard you say: "${message}"
 
-I&apos;m your SEO Agent and I&apos;m here to help! I can assist with:
+I'm your SEO Agent and I'm here to help! I can assist with:
 
 🔍 **Technical SEO** - *"Scan my website for issues"*
 📝 **Content Strategy** - *"Generate blog topic ideas"*  

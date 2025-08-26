@@ -114,7 +114,11 @@ export default function TechnicalFixCard({
               variant="outline"
               size="sm"
               className="h-8 text-xs"
-              onClick={() => window.open(link.url, '_blank')}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.open(link.url, '_blank');
+                }
+              }}
             >
               <ExternalLink className="h-3 w-3 mr-1" />
               {link.label}
