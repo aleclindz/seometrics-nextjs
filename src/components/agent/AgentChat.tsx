@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import { 
   Send, 
   Bot, 
@@ -13,7 +15,8 @@ import {
   CheckCircle, 
   AlertCircle,
   Lightbulb,
-  Zap
+  Zap,
+  Settings
 } from 'lucide-react';
 // Removed OpenAIFunctionClient import - now using server API
 
@@ -39,26 +42,55 @@ export default function AgentChat({ userToken, selectedSite, userSites }: AgentC
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [websiteSetupData, setWebsiteSetupData] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Add welcome message
-    const welcomeMessage: ChatMessage = {
-      id: 'welcome',
-      role: 'assistant',
-      content: `👋 Hi! I'm your SEO Agent assistant. I can help you with:
+    // Add welcome message with setup guidance
+    const isFirstTime = !selectedSite || userSites?.length === 0;
+    
+    let welcomeContent = '';
+    
+    if (isFirstTime) {
+      welcomeContent = `👋 **Welcome to SEO Agent!** 
+
+I'm your AI-powered SEO assistant. To get started, I'll need you to connect your websites and tools:
+
+🔗 **Quick Setup Required:**
+- Connect Google Search Console
+- Link your CMS (WordPress, Strapi, etc.)
+- Add Smart.js tracking code
+- Connect hosting provider
+
+Click the **"Setup Website"** button below to configure everything in minutes.
+
+Once set up, I can help you with:
+🔍 **Technical SEO** • 📝 **Content Strategy** • 🤖 **Automation** • 📊 **Analytics**`;
+    } else {
+      welcomeContent = `👋 Hi! I'm your SEO Agent for **${selectedSite}**.
+
+I can help you with:
 
 🔍 **Technical SEO**: Crawl sites, fix issues, optimize performance
 📝 **Content Strategy**: Generate articles, analyze gaps, optimize existing content  
 🤖 **Automation**: Set up workflows, schedule tasks, monitor progress
 📊 **Analytics**: Check GSC data, analyze performance, track improvements
 
-What would you like to work on today?`,
+Need to update your integrations? Use the **setup button** above.
+
+What would you like to work on today?`;
+    }
+    
+    const welcomeMessage: ChatMessage = {
+      id: 'welcome',
+      role: 'assistant',
+      content: welcomeContent,
       timestamp: new Date()
     };
     
     setMessages([welcomeMessage]);
-  }, []);
+  }, [selectedSite, userSites]);
 
   useEffect(() => {
     scrollToBottom();
@@ -143,6 +175,42 @@ What would you like to work on today?`,
     }
   };
 
+  const openWebsiteSetup = () => {
+    // Create mock website data for setup modal
+    const websiteData = {
+      id: selectedSite || 'new-website',
+      url: selectedSite || '',
+      name: selectedSite || 'New Website',
+      gscStatus: 'none' as const,
+      cmsStatus: 'none' as const, 
+      smartjsStatus: 'inactive' as const,
+      hostStatus: 'none' as const
+    };
+    
+    setWebsiteSetupData(websiteData);
+    setShowSetupModal(true);
+  };
+
+  const handleSetupComplete = (updates: any) => {
+    // Handle setup completion - could refresh data or show success message
+    console.log('Setup completed with updates:', updates);
+    setShowSetupModal(false);
+    
+    // Add a success message to the chat
+    const successMessage: ChatMessage = {
+      id: `setup-success-${Date.now()}`,
+      role: 'assistant',
+      content: `✅ **Setup Complete!** 
+
+Your website integrations have been updated. I can now help you with more advanced SEO tasks and automation.
+
+What would you like to work on first?`,
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, successMessage]);
+  };
+
   const getFunctionIcon = (functionName: string) => {
     if (functionName.includes('idea')) return <Lightbulb className="h-4 w-4" />;
     if (functionName.includes('action') || functionName.includes('run')) return <Zap className="h-4 w-4" />;
@@ -202,13 +270,19 @@ What would you like to work on today?`,
         
         <div className={`max-w-[80%] ${isUser ? 'order-first' : ''}`}>
           <div
-            className={`px-4 py-2 rounded-lg whitespace-pre-wrap ${
+            className={`px-4 py-2 rounded-lg ${
               isUser
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-900'
             }`}
           >
-            {message.content}
+            {isUser ? (
+              <div className="whitespace-pre-wrap">{message.content}</div>
+            ) : (
+              <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-strong:text-gray-900 prose-p:text-gray-900 prose-li:text-gray-900">
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
+            )}
           </div>
           
           {message.functionCall && formatFunctionResult(message.functionCall)}
@@ -230,14 +304,25 @@ What would you like to work on today?`,
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Bot className="h-5 w-5" />
-          SEO Agent Chat
-          {selectedSite && (
-            <Badge variant="outline" className="ml-2">
-              {selectedSite}
-            </Badge>
-          )}
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            SEO Agent Chat
+            {selectedSite && (
+              <Badge variant="outline" className="ml-2">
+                {selectedSite}
+              </Badge>
+            )}
+          </div>
+          <Button
+            onClick={openWebsiteSetup}
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+          >
+            <Settings className="h-4 w-4 mr-1" />
+            Setup Website
+          </Button>
         </CardTitle>
       </CardHeader>
       
@@ -274,6 +359,7 @@ What would you like to work on today?`,
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
             size="icon"
+            className="bg-violet-600 hover:bg-violet-700 text-white"
           >
             <Send className="h-4 w-4" />
           </Button>
@@ -307,6 +393,16 @@ What would you like to work on today?`,
           </Button>
         </div>
       </CardContent>
+      
+      {/* Website Setup Modal */}
+      {showSetupModal && websiteSetupData && (
+        <WebsiteSetupModal
+          isOpen={showSetupModal}
+          onClose={() => setShowSetupModal(false)}
+          website={websiteSetupData}
+          onStatusUpdate={handleSetupComplete}
+        />
+      )}
     </Card>
   );
 }

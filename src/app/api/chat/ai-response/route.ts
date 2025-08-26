@@ -42,9 +42,23 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[AI RESPONSE API] Error:', error);
+    
+    // Provide more specific error messages based on error type
+    let errorMessage = "I'm experiencing some technical difficulties. Please try again in a moment.";
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        errorMessage = "There's an issue with the AI service configuration. Please contact support.";
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = "I'm currently handling many requests. Please wait a moment and try again.";
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorMessage = "I'm having trouble connecting to my services. Please check your internet connection and try again.";
+      }
+    }
+    
     return NextResponse.json(
       { 
-        content: "I'm experiencing some technical difficulties. Please try again in a moment.",
+        content: errorMessage,
         functionCall: null
       },
       { status: 200 }
