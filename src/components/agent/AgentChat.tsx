@@ -303,7 +303,7 @@ What would you like to work on first?`,
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex-shrink-0">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
@@ -326,9 +326,9 @@ What would you like to work on first?`,
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col">
+      <CardContent className="flex-1 flex flex-col min-h-0">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+        <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-0">
           {messages.map(renderMessage)}
           
           {isLoading && (
@@ -346,7 +346,7 @@ What would you like to work on first?`,
         </div>
         
         {/* Input */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -366,7 +366,7 @@ What would you like to work on first?`,
         </div>
         
         {/* Quick Actions */}
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2 mt-2 flex-shrink-0">
           <Button
             variant="outline"
             size="sm"

@@ -5,7 +5,10 @@ import { useState } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
-import AgentChat from '@/components/agent/AgentChat';
+import ChatInterface from '@/components/website-chat/ChatInterface';
+import MetricsDashboard from '@/components/website-chat/MetricsDashboard';
+import ActivityFeed from '@/components/website-chat/ActivityFeed';
+import SecondaryPanels from '@/components/website-chat/SecondaryPanels/SecondaryPanels';
 import { useAuth } from '@/contexts/auth';
 
 export default function WebsitePage() {
@@ -30,7 +33,7 @@ export default function WebsitePage() {
 
   return (
     <ProtectedRoute>
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         {/* Header */}
         <Header 
           sidebarOpen={sidebarOpen} 
@@ -47,32 +50,40 @@ export default function WebsitePage() {
             setSidebarExpanded={setSidebarExpanded}
           />
           
-          {/* Website Agent Chat Interface */}
-          <main className="flex-1 overflow-hidden">
-            <div className="h-full p-4">
-              {/* Website Header */}
-              <div className="mb-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
-                    {domain.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                      {domain}
-                    </h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      SEO Agent Chat
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Full-Screen Agent Chat */}
-              <div className="h-[calc(100%-80px)]">
-                <AgentChat 
+          {/* Main Content Area */}
+          <main className="flex-1 overflow-hidden flex flex-col">
+            {/* Metrics Dashboard - Floating Header */}
+            <div className="p-4 pb-2">
+              <MetricsDashboard 
+                domain={domain}
+                userToken={user.token || ''}
+              />
+            </div>
+            
+            {/* Secondary Panels - Control Bar */}
+            <div className="px-4 pb-2">
+              <SecondaryPanels 
+                domain={domain}
+                userToken={user.token || ''}
+              />
+            </div>
+            
+            {/* Chat Interface and Activity Feed - 3-Column Layout */}
+            <div className="flex-1 flex gap-4 p-4 pt-2 overflow-hidden">
+              {/* Chat Interface - Center Column */}
+              <div className="flex-1 min-w-0">
+                <ChatInterface 
                   userToken={user.token || ''}
                   selectedSite={domain}
                   userSites={[{ id: domain, url: domain, name: domain }]}
+                />
+              </div>
+              
+              {/* Activity Feed - Right Column */}
+              <div className="w-80 flex-shrink-0">
+                <ActivityFeed 
+                  domain={domain}
+                  userToken={user.token || ''}
                 />
               </div>
             </div>

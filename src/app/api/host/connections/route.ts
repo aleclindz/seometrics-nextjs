@@ -25,7 +25,28 @@ export async function GET(request: NextRequest) {
 
     // Filter by website if specified
     if (websiteId) {
-      query = query.eq('website_id', parseInt(websiteId));
+      // Check if websiteId is a domain string or an integer ID
+      if (isNaN(parseInt(websiteId))) {
+        // It's a domain string - find the website ID from the websites table
+        const { data: website, error: websiteError } = await supabaseAdmin
+          .from('websites')
+          .select('id')
+          .eq('user_token', userToken)
+          .eq('domain', websiteId)
+          .single();
+        
+        if (websiteError || !website) {
+          return NextResponse.json({ 
+            success: false, 
+            error: `Website not found for domain: ${websiteId}` 
+          }, { status: 404 });
+        }
+        
+        query = query.eq('website_id', website.id);
+      } else {
+        // It's an integer ID
+        query = query.eq('website_id', parseInt(websiteId));
+      }
     }
 
     const { data: connections, error } = await query;
@@ -73,6 +94,30 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Resolve websiteId to actual website ID if it's a domain string
+    let actualWebsiteId: number;
+    if (isNaN(parseInt(websiteId))) {
+      // It's a domain string - find the website ID from the websites table
+      const { data: website, error: websiteError } = await supabaseAdmin
+        .from('websites')
+        .select('id')
+        .eq('user_token', userToken)
+        .eq('domain', websiteId)
+        .single();
+      
+      if (websiteError || !website) {
+        return NextResponse.json({ 
+          success: false, 
+          error: `Website not found for domain: ${websiteId}` 
+        }, { status: 404 });
+      }
+      
+      actualWebsiteId = website.id;
+    } else {
+      // It's an integer ID
+      actualWebsiteId = parseInt(websiteId);
+    }
+
     // Encrypt API token if provided (basic implementation)
     const encryptedApiToken = apiToken ? Buffer.from(apiToken).toString('base64') : null;
 
@@ -80,7 +125,7 @@ export async function POST(request: NextRequest) {
       .from('host_connections')
       .insert({
         user_token: userToken,
-        website_id: parseInt(websiteId),
+        website_id: actualWebsiteId,
         host_type: hostType,
         connection_name: connectionName,
         api_token: encryptedApiToken,
