@@ -798,32 +798,6 @@ export class OpenAIFunctionClient {
     }
   }
 
-  // Create sample activity for first-time users
-  private async createSampleActivity(userToken: string, siteUrl?: string): Promise<void> {
-    try {
-      await fetch('/api/agent/record-activity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userToken,
-          functionName: 'create_idea',
-          functionArgs: {
-            title: 'Improve website speed and SEO performance',
-            description: 'Analyze page load times and implement technical SEO improvements',
-            evidence: ['Slow loading pages impact user experience', 'Core Web Vitals affect rankings'],
-            hypothesis: 'Optimizing images and implementing caching will improve both speed and SEO rankings',
-            site_url: siteUrl || 'example.com'
-          },
-          result: { success: true, data: { idea_created: true } },
-          executionTimeMs: 1200,
-          siteUrl: siteUrl || 'example.com'
-        })
-      });
-      console.log(`[AGENT] Created sample activity for ${userToken}`);
-    } catch (error) {
-      console.error('[AGENT] Failed to create sample activity:', error);
-    }
-  }
 }
 
 class FunctionCaller {
@@ -2203,5 +2177,32 @@ class FunctionCaller {
     }
 
     return actions;
+  }
+
+  // Create sample activity for first-time users
+  async createSampleActivity(userToken: string, siteUrl?: string): Promise<void> {
+    try {
+      await fetch('/api/agent/record-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          functionName: 'create_idea',
+          functionArgs: {
+            title: 'Improve website speed and SEO performance',
+            description: 'Analyze page load times and implement technical SEO improvements',
+            evidence: ['Slow loading pages impact user experience', 'Core Web Vitals affect rankings'],
+            hypothesis: 'Optimizing images and implementing caching will improve both speed and SEO rankings',
+            site_url: siteUrl || 'example.com'
+          },
+          result: { success: true, data: { idea_created: true } },
+          executionTimeMs: 1200,
+          siteUrl: siteUrl || 'example.com'
+        })
+      });
+      console.log(`[AGENT] Created sample activity for ${userToken}`);
+    } catch (error) {
+      console.error('[AGENT] Failed to create sample activity:', error);
+    }
   }
 }
