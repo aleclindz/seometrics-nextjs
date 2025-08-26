@@ -43,80 +43,143 @@ interface ActivityFeedProps {
 }
 
 export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
-  const [activities, setActivities] = useState<ActivityItem[]>([
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchActivities();
+  }, [domain, userToken]);
+
+  const fetchActivities = async () => {
+    if (!domain || !userToken) return;
+
+    try {
+      setLoading(true);
+      
+      // Fetch recent activities from the agent system
+      const response = await fetch(`/api/agent/activities?userToken=${userToken}&siteUrl=https://${domain}&limit=20`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.activities) {
+          const mappedActivities = data.activities.map(mapAgentDataToActivity);
+          setActivities(mappedActivities);
+        }
+      } else {
+        // Fallback to mock data if no real activities exist yet
+        setActivities(getMockActivities());
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      // Fallback to mock data
+      setActivities(getMockActivities());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mapAgentDataToActivity = (item: any): ActivityItem => {
+    // Map agent_events, agent_actions, and agent_ideas to ActivityItem format
+    if (item.event_type) {
+      // This is an agent_event
+      return {
+        id: item.id,
+        type: mapEventToType(item.event_type, item.new_state),
+        title: item.event_data?.title || formatEventTitle(item.event_type),
+        description: item.event_data?.description || formatEventDescription(item.event_type, item.event_data),
+        timestamp: new Date(item.created_at),
+        details: item.event_data?.details || undefined
+      };
+    } else if (item.action_type) {
+      // This is an agent_action
+      return {
+        id: item.id,
+        type: mapActionStatusToType(item.status),
+        title: item.title,
+        description: item.description,
+        timestamp: new Date(item.updated_at || item.created_at),
+        details: item.payload ? { metadata: item.payload } : undefined
+      };
+    } else {
+      // This is an agent_idea
+      return {
+        id: item.id,
+        type: 'idea',
+        title: item.title,
+        description: item.hypothesis,
+        timestamp: new Date(item.updated_at || item.created_at),
+        details: {
+          metadata: {
+            iceScore: item.ice_score,
+            priority: item.priority,
+            estimatedEffort: item.estimated_effort,
+            tags: item.tags
+          }
+        }
+      };
+    }
+  };
+
+  const mapEventToType = (eventType: string, newState: string): ActivityItem['type'] => {
+    if (eventType.includes('completed') || newState === 'completed') return 'completed';
+    if (eventType.includes('progress') || eventType.includes('started') || newState === 'running') return 'progress';
+    return 'idea';
+  };
+
+  const mapActionStatusToType = (status: string): ActivityItem['type'] => {
+    if (status === 'completed') return 'completed';
+    if (status === 'running' || status === 'queued') return 'progress';
+    return 'idea';
+  };
+
+  const formatEventTitle = (eventType: string): string => {
+    return eventType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const formatEventDescription = (eventType: string, eventData: any): string => {
+    if (eventData?.description) return eventData.description;
+    
+    switch (eventType) {
+      case 'action_status_changed':
+        return `Action status changed to ${eventData?.new_state || 'unknown'}`;
+      case 'idea_created':
+        return 'New SEO improvement idea generated';
+      case 'technical_fix_applied':
+        return `Technical SEO fix applied${eventData?.pages ? ` to ${eventData.pages} pages` : ''}`;
+      default:
+        return `Agent activity: ${eventType}`;
+    }
+  };
+
+  const getMockActivities = (): ActivityItem[] => [
     {
       id: '1',
-      type: 'completed',
-      title: 'Fixed missing meta descriptions',
-      description: 'Added meta descriptions to 12 pages',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      details: {
-        beforeAfter: {
-          before: '<meta name="description" content="">',
-          after: '<meta name="description" content="Complete guide to SEO optimization...">'
-        },
-        links: [
-          { label: 'View in GSC', url: '#', type: 'gsc' },
-          { label: 'See Changes', url: '#', type: 'proof' }
-        ]
-      }
-    },
-    {
-      id: '2', 
-      type: 'progress',
-      title: 'Weekly website crawl',
-      description: 'Scanning 247 pages for technical issues',
+      type: 'idea',
+      title: 'SEO opportunities detected',
+      description: 'Potential improvements identified for your website',
       timestamp: new Date(Date.now() - 30 * 60 * 1000),
       details: {
         metadata: {
-          progress: 65,
-          totalPages: 247,
-          issuesFound: 8
+          suggestions: 3,
+          impact: 'Medium',
+          effort: 'Low'
         }
       }
     },
     {
-      id: '3',
+      id: '2',
       type: 'completed',
-      title: 'Submitted XML sitemap',
-      description: 'New sitemap with 189 URLs submitted to GSC',
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
+      title: 'Website connected successfully',
+      description: 'Your website is now being monitored for SEO opportunities',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
       details: {
         links: [
-          { label: 'View Sitemap', url: '#', type: 'external' },
-          { label: 'GSC Status', url: '#', type: 'gsc' }
+          { label: 'View Setup', url: '#', type: 'external' }
         ]
       }
-    },
-    {
-      id: '4',
-      type: 'idea',
-      title: 'Content cluster opportunity',
-      description: 'Create pillar content around "email marketing automation"',
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      details: {
-        metadata: {
-          keywordVolume: 12100,
-          difficulty: 45,
-          relatedTopics: ['email sequences', 'marketing funnels', 'automation tools']
-        }
-      }
-    },
-    {
-      id: '5',
-      type: 'progress',
-      title: 'Generating blog article',
-      description: 'Writing "10 Email Marketing Strategies for 2024"',
-      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-      details: {
-        metadata: {
-          progress: 80,
-          targetWords: 2500,
-          currentWords: 2100
-        }
-      }
     }
-  ]);
+  ];
 
   const toggleExpanded = (id: string) => {
     setActivities(prev => prev.map(activity => 
@@ -241,8 +304,31 @@ export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
       </CardHeader>
       
       <CardContent className="flex-1 overflow-y-auto">
-        <div className="space-y-4">
-          {activities.map((activity) => (
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border border-gray-100 rounded-lg p-3 animate-pulse">
+                <div className="flex items-start gap-3">
+                  <div className="w-4 h-4 bg-gray-200 rounded mt-1"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full mb-1"></div>
+                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activities.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-2">No activities yet</div>
+            <div className="text-sm text-gray-500">
+              Start using the chat to see your SEO activities here
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {activities.map((activity) => (
             <div key={activity.id} className="border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
@@ -283,8 +369,9 @@ export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

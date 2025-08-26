@@ -19,7 +19,7 @@ interface MetricsDashboardProps {
 }
 
 interface MetricsData {
-  monthlyVisitors: {
+  impressions: {
     value: number;
     change: number;
     trend: 'up' | 'down' | 'neutral';
@@ -33,6 +33,7 @@ interface MetricsData {
     value: number;
     change: number;
     trend: 'up' | 'down' | 'neutral';
+    comingSoon: boolean;
   };
   techSeoScore: {
     value: number;
@@ -44,17 +45,119 @@ interface MetricsData {
     value: number;
     change: number;
     trend: 'up' | 'down' | 'neutral';
+    comingSoon: boolean;
   };
 }
 
 export default function MetricsDashboard({ domain, userToken }: MetricsDashboardProps) {
   const [metrics, setMetrics] = useState<MetricsData>({
-    monthlyVisitors: { value: 12400, change: 15, trend: 'up' },
-    clicks: { value: 8900, change: 8, trend: 'up' },
-    backlinks: { value: 342, change: -2, trend: 'down' },
+    impressions: { value: 0, change: 0, trend: 'neutral' },
+    clicks: { value: 0, change: 0, trend: 'neutral' },
+    backlinks: { value: 0, change: 0, trend: 'neutral', comingSoon: true },
     techSeoScore: { value: 87, maxValue: 100, change: 12, trend: 'up' },
-    geoVisibility: { value: 23, change: 45, trend: 'up' }
+    geoVisibility: { value: 0, change: 0, trend: 'neutral', comingSoon: true }
   });
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchGSCMetrics();
+  }, [domain, userToken]);
+
+  const fetchGSCMetrics = async () => {
+    if (!domain || !userToken) return;
+
+    try {
+      setLoading(true);
+      
+      // Calculate date range (last 28 days)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 28);
+      
+      // Calculate previous period (28 days before that) for comparison
+      const prevEndDate = new Date(startDate);
+      const prevStartDate = new Date(startDate);
+      prevStartDate.setDate(prevStartDate.getDate() - 28);
+
+      // Format dates for API
+      const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+      // Fetch current period data
+      const currentResponse = await fetch('/api/gsc/performance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteUrl: `https://${domain}`,
+          startDate: formatDate(startDate),
+          endDate: formatDate(endDate),
+          userToken
+        })
+      });
+
+      // Fetch previous period data for comparison
+      const prevResponse = await fetch('/api/gsc/performance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteUrl: `https://${domain}`,
+          startDate: formatDate(prevStartDate),
+          endDate: formatDate(prevEndDate),
+          userToken
+        })
+      });
+
+      if (currentResponse.ok) {
+        const currentData = await currentResponse.json();
+        let prevData = null;
+        
+        if (prevResponse.ok) {
+          prevData = await prevResponse.json();
+        }
+
+        if (currentData.success && currentData.data) {
+          const current = currentData.data.total;
+          const previous = prevData?.success && prevData?.data ? prevData.data.total : null;
+
+          // Calculate changes
+          const calculateChange = (current: number, previous: number | null) => {
+            if (!previous || previous === 0) return 0;
+            return Math.round(((current - previous) / previous) * 100);
+          };
+
+          const getTrend = (change: number): 'up' | 'down' | 'neutral' => {
+            if (change > 0) return 'up';
+            if (change < 0) return 'down';
+            return 'neutral';
+          };
+
+          const impressionsChange = calculateChange(current.impressions, previous?.impressions);
+          const clicksChange = calculateChange(current.clicks, previous?.clicks);
+
+          setMetrics(prev => ({
+            ...prev,
+            impressions: {
+              value: current.impressions || 0,
+              change: impressionsChange,
+              trend: getTrend(impressionsChange)
+            },
+            clicks: {
+              value: current.clicks || 0,
+              change: clicksChange,
+              trend: getTrend(clicksChange)
+            }
+          }));
+        }
+      } else if (currentResponse.status === 404) {
+        // No GSC connection found - this is expected for some sites
+        console.log('No GSC connection found for domain:', domain);
+      }
+    } catch (error) {
+      console.error('Error fetching GSC metrics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -91,20 +194,26 @@ export default function MetricsDashboard({ domain, userToken }: MetricsDashboard
 
           {/* Metrics Grid */}
           <div className="flex items-center gap-6">
-            {/* Monthly Visitors */}
+            {/* Impressions */}
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-blue-500" />
               <div className="text-right">
                 <div className="flex items-center gap-1">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {formatNumber(metrics.monthlyVisitors.value)}
-                  </span>
-                  {getTrendIcon(metrics.monthlyVisitors.trend)}
-                  <span className={`text-xs ${getTrendColor(metrics.monthlyVisitors.trend)}`}>
-                    {metrics.monthlyVisitors.change > 0 ? '+' : ''}{metrics.monthlyVisitors.change}%
-                  </span>
+                  {loading ? (
+                    <div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatNumber(metrics.impressions.value)}
+                      </span>
+                      {getTrendIcon(metrics.impressions.trend)}
+                      <span className={`text-xs ${getTrendColor(metrics.impressions.trend)}`}>
+                        {metrics.impressions.change > 0 ? '+' : ''}{metrics.impressions.change}%
+                      </span>
+                    </>
+                  )}
                 </div>
-                <div className="text-xs text-gray-500">Visitors</div>
+                <div className="text-xs text-gray-500">Impressions</div>
               </div>
             </div>
 
@@ -113,13 +222,19 @@ export default function MetricsDashboard({ domain, userToken }: MetricsDashboard
               <MousePointer className="h-4 w-4 text-green-500" />
               <div className="text-right">
                 <div className="flex items-center gap-1">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {formatNumber(metrics.clicks.value)}
-                  </span>
-                  {getTrendIcon(metrics.clicks.trend)}
-                  <span className={`text-xs ${getTrendColor(metrics.clicks.trend)}`}>
-                    {metrics.clicks.change > 0 ? '+' : ''}{metrics.clicks.change}%
-                  </span>
+                  {loading ? (
+                    <div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatNumber(metrics.clicks.value)}
+                      </span>
+                      {getTrendIcon(metrics.clicks.trend)}
+                      <span className={`text-xs ${getTrendColor(metrics.clicks.trend)}`}>
+                        {metrics.clicks.change > 0 ? '+' : ''}{metrics.clicks.change}%
+                      </span>
+                    </>
+                  )}
                 </div>
                 <div className="text-xs text-gray-500">Clicks</div>
               </div>
@@ -130,13 +245,21 @@ export default function MetricsDashboard({ domain, userToken }: MetricsDashboard
               <Link className="h-4 w-4 text-purple-500" />
               <div className="text-right">
                 <div className="flex items-center gap-1">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {formatNumber(metrics.backlinks.value)}
-                  </span>
-                  {getTrendIcon(metrics.backlinks.trend)}
-                  <span className={`text-xs ${getTrendColor(metrics.backlinks.trend)}`}>
-                    {metrics.backlinks.change > 0 ? '+' : ''}{metrics.backlinks.change}%
-                  </span>
+                  {metrics.backlinks.comingSoon ? (
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                      Coming Soon
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatNumber(metrics.backlinks.value)}
+                      </span>
+                      {getTrendIcon(metrics.backlinks.trend)}
+                      <span className={`text-xs ${getTrendColor(metrics.backlinks.trend)}`}>
+                        {metrics.backlinks.change > 0 ? '+' : ''}{metrics.backlinks.change}%
+                      </span>
+                    </>
+                  )}
                 </div>
                 <div className="text-xs text-gray-500">Backlinks</div>
               </div>
@@ -164,13 +287,21 @@ export default function MetricsDashboard({ domain, userToken }: MetricsDashboard
               <Bot className="h-4 w-4 text-indigo-500" />
               <div className="text-right">
                 <div className="flex items-center gap-1">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {metrics.geoVisibility.value}%
-                  </span>
-                  {getTrendIcon(metrics.geoVisibility.trend)}
-                  <span className={`text-xs ${getTrendColor(metrics.geoVisibility.trend)}`}>
-                    {metrics.geoVisibility.change > 0 ? '+' : ''}{metrics.geoVisibility.change}%
-                  </span>
+                  {metrics.geoVisibility.comingSoon ? (
+                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                      Coming Soon
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {metrics.geoVisibility.value}%
+                      </span>
+                      {getTrendIcon(metrics.geoVisibility.trend)}
+                      <span className={`text-xs ${getTrendColor(metrics.geoVisibility.trend)}`}>
+                        {metrics.geoVisibility.change > 0 ? '+' : ''}{metrics.geoVisibility.change}%
+                      </span>
+                    </>
+                  )}
                 </div>
                 <div className="text-xs text-gray-500">GEO Visibility</div>
               </div>
