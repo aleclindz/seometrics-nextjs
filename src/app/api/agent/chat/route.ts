@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SecureOpenAIClient } from '@/services/chat/secure-openai-client';
 import { createClient } from '@supabase/supabase-js';
+import OpenAI from 'openai';
+import { FunctionCaller } from '@/services/chat/function-caller';
+import { getFunctionSchemas, validateFunctionArgs } from '@/services/chat/function-schemas';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,66 +37,145 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create secure OpenAI client (no API key needed - handled server-side)
-    const openaiClient = new SecureOpenAIClient();
+    // Get OpenAI API key from environment
+    if (!apiKey) {
+      // Fallback to test responses when OpenAI key is not available
+      const testResponse = getTestResponse(message);
+      
+      // Record activity for test responses too
+      if (testResponse.functionCall) {
+        await recordActivity(userToken, selectedSite || '', testResponse.functionCall, testResponse.actionCard);
+      }
+      
+      return NextResponse.json({
+        success: true,
+        message: testResponse.message,
+        functionCall: testResponse.functionCall,
+        actionCard: testResponse.actionCard
+      });
+    }
+
+    // Create OpenAI client (server-side only)
+    const openai = new OpenAI({ apiKey });
+    const functionCaller = new FunctionCaller();
+
+    // Build system prompt
+    const systemPrompt = await buildSystemPrompt(userToken, selectedSite);
     
-    // Build chat context with selected site and conversation history
-    const chatContext = {
-      history: conversationHistory?.slice(-10) || [], // Last 10 messages for context
-      siteContext: {
-        selectedSite,
-        userSites: [] // TODO: Add user sites if needed
-      },
-      userToken
+    // Build messages array
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...(conversationHistory?.slice(-10) || []),
+      { role: 'user', content: message }
+    ];
+
+    // Get function schemas
+    const functionSchemas = getFunctionSchemas();
+
+    // Multi-turn tool execution loop
+    let toolResults: Record<string, any> = {};
+    let guard = 0;
+    const MAX_TOOL_STEPS = 3; // Reduced for chat responsiveness
+
+    while (guard++ < MAX_TOOL_STEPS) {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini', // Use mini for faster chat responses
+        messages,
+        tools: functionSchemas.map(func => ({
+          type: 'function' as const,
+          function: func
+        })),
+        tool_choice: 'auto',
+        temperature: 0.4,
+        max_tokens: 800
+      });
+
+      const choice = response.choices[0];
+      const messageContent = choice.message;
+
+      // If no tool calls, we're done
+      if (!messageContent.tool_calls?.length) {
+        const finalResponse = {
+          content: messageContent.content || 'I can help you with SEO tasks. What would you like me to do?',
+          toolResults,
+          steps: guard - 1
+        };
+        
+        // Process the response
+        const processedResponse = await processOpenAIResponse(finalResponse, userToken, selectedSite);
+        return NextResponse.json(processedResponse);
+      }
+
+      // Execute all tool calls
+      await Promise.all(messageContent.tool_calls.map(async (toolCall) => {
+        if (toolCall.type !== 'function') return;
+        
+        const functionName = toolCall.function.name;
+        let functionArgs: any;
+        
+        try {
+          functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+        } catch (error) {
+          console.error('[AGENT CHAT] Invalid function arguments:', error);
+          toolResults[toolCall.id] = { 
+            success: false, 
+            error: 'Invalid function arguments' 
+          };
+          return;
+        }
+
+        // Validate arguments
+        const validation = validateFunctionArgs(functionName, functionArgs);
+        if (!validation.success) {
+          console.error('[AGENT CHAT] Argument validation failed:', validation.error);
+          toolResults[toolCall.id] = { 
+            success: false, 
+            error: validation.error 
+          };
+          return;
+        }
+        
+        functionArgs = validation.data;
+
+        // Execute the function
+        try {
+          const result = await functionCaller.executeFunction(functionName, functionArgs);
+          toolResults[toolCall.id] = result;
+          
+          console.log(`[AGENT CHAT] Executed ${functionName}:`, result.success);
+        } catch (error) {
+          console.error(`[AGENT CHAT] Function execution failed:`, error);
+          toolResults[toolCall.id] = { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Execution failed' 
+          };
+        }
+
+        // Add tool result to messages
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(toolResults[toolCall.id])
+        } as any);
+      }));
+
+      // Add the assistant message
+      messages.push({
+        role: 'assistant',
+        content: messageContent.content || '',
+        tool_calls: messageContent.tool_calls
+      } as any);
+    }
+
+    // Final response after max steps
+    const finalResponse = {
+      content: "I've completed several SEO tasks for you. How else can I help?",
+      toolResults,
+      steps: guard - 1
     };
 
-    // Send message to OpenAI
-    const response = await openaiClient.sendMessage(message, chatContext);
-
-    // Process response and determine if we should include action cards
-    let actionCard = null;
-    let functionCall = null;
-    
-    // Check if we have tool results to process
-    if (response.toolResults && Object.keys(response.toolResults).length > 0) {
-      // Create a function call representation from the first tool result
-      const firstToolResult = Object.values(response.toolResults)[0];
-      functionCall = {
-        name: 'executed_function',
-        arguments: {},
-        result: firstToolResult
-      };
-      
-      // Generate action card based on the tool result
-      if (firstToolResult.success) {
-        actionCard = {
-          type: 'technical-fix',
-          data: {
-            title: 'SEO Function Executed',
-            description: 'AI agent successfully executed an SEO operation',
-            status: 'completed',
-            affectedPages: 1,
-            links: [
-              { label: 'View Details', url: '#' }
-            ]
-          }
-        };
-      }
-    }
-
-    // Record activity if there was a function call
-    if (functionCall) {
-      await recordActivity(userToken, selectedSite || '', functionCall, actionCard);
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: response.content,
-      functionCall: functionCall,
-      actionCard: actionCard,
-      steps: response.steps,
-      model: response.model
-    });
+    const processedResponse = await processOpenAIResponse(finalResponse, userToken, selectedSite);
+    return NextResponse.json(processedResponse);
 
   } catch (error) {
     console.error('[AGENT CHAT API] Error:', error);
@@ -338,4 +419,75 @@ function getDescriptionForFunction(functionName: string): string {
     default:
       return `Executed ${functionName.replace(/_/g, ' ')} operation`;
   }
+}
+
+// Process OpenAI response and generate action cards
+async function processOpenAIResponse(response: any, userToken: string, selectedSite: string) {
+  let actionCard = null;
+  let functionCall = null;
+  
+  // Check if we have tool results to process
+  if (response.toolResults && Object.keys(response.toolResults).length > 0) {
+    // Create a function call representation from the first tool result
+    const firstToolResult = Object.values(response.toolResults)[0] as any;
+    functionCall = {
+      name: 'executed_function',
+      arguments: {},
+      result: firstToolResult
+    };
+    
+    // Generate action card based on the tool result
+    if (firstToolResult.success) {
+      actionCard = {
+        type: 'technical-fix',
+        data: {
+          title: 'SEO Function Executed',
+          description: 'AI agent successfully executed an SEO operation',
+          status: 'completed',
+          affectedPages: 1,
+          links: [
+            { label: 'View Details', url: '#' }
+          ]
+        }
+      };
+    }
+  }
+
+  // Record activity if there was a function call
+  if (functionCall) {
+    await recordActivity(userToken, selectedSite || '', functionCall, actionCard);
+  }
+
+  return {
+    success: true,
+    message: response.content,
+    functionCall: functionCall,
+    actionCard: actionCard,
+    steps: response.steps
+  };
+}
+
+// Build system prompt with setup awareness
+async function buildSystemPrompt(userToken: string, selectedSite: string): Promise<string> {
+  let prompt = `You are SEOAgent, an expert SEO assistant for SEOAgent.com. You help users with:
+
+1. **Google Search Console Integration**: Connect websites, sync performance data, analyze search metrics
+2. **Content Optimization**: Generate SEO articles, analyze content gaps, optimize existing pages
+3. **Technical SEO**: Monitor SEOAgent.js performance, check website health, provide recommendations
+4. **CMS Management**: Connect WordPress, Webflow, and other platforms for content publishing
+5. **Performance Analytics**: Track rankings, traffic, and conversion metrics
+
+**Available Functions**: You have access to powerful functions to help users. When a user asks to do something, use the appropriate function rather than just explaining how to do it.
+
+**Communication Style**: 
+- Be helpful, concise, and action-oriented
+- Offer to perform tasks using functions when appropriate
+- Provide specific, actionable recommendations
+- Use a friendly but professional tone`;
+
+  if (selectedSite) {
+    prompt += `\n\n**Currently Selected Site**: ${selectedSite}`;
+  }
+
+  return prompt;
 }
