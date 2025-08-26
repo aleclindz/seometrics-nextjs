@@ -7,6 +7,11 @@
 ## Overview
 This document provides a complete overview of the SEOAgent PostgreSQL database schema. The database uses Supabase with Row Level Security (RLS) policies for data protection.
 
+**Last Updated:** August 26, 2025  
+**Migration Version:** 040 (Clean Database Schema)  
+**Agent Operating System:** ✅ Active (Primary SEO System)  
+**Legacy Tables:** ❌ Removed (Archived in agent_events)
+
 ---
 
 ## 🔐 Core Authentication & User Management
@@ -414,403 +419,281 @@ CREATE TABLE url_inspections (
 );
 ```
 
-### `robots_analyses`
-**Purpose**: robots.txt analysis results
+## 🤖 Agent Operating System (Primary SEO System)
+
+### `agent_ideas`
+**Purpose**: Evidence-based SEO improvement backlog
 ```sql
-CREATE TABLE robots_analyses (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES login_users(id) ON DELETE CASCADE NOT NULL,
-    user_token TEXT NOT NULL,
-    site_url TEXT NOT NULL,
-    exists BOOLEAN NOT NULL DEFAULT false,
-    accessible BOOLEAN NOT NULL DEFAULT false,
-    size INTEGER NOT NULL DEFAULT 0,
-    content TEXT DEFAULT '',
-    issues JSONB DEFAULT '[]',
-    suggestions JSONB DEFAULT '[]',
-    crawl_delay INTEGER,
-    sitemap_urls JSONB DEFAULT '[]',
-    user_agents JSONB DEFAULT '[]',
-    allowed_paths JSONB DEFAULT '[]',
-    disallowed_paths JSONB DEFAULT '[]',
-    analyzed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_token, site_url)
-);
-```
-
-### `sitemap_submissions`
-**Purpose**: Track sitemap submissions to GSC
-```sql
-CREATE TABLE sitemap_submissions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
-    site_url TEXT NOT NULL,
-    sitemap_url TEXT NOT NULL,
-    status VARCHAR(50) DEFAULT 'submitted', -- 'submitted', 'processed', 'error', 'deleted'
-    submission_method VARCHAR(20) DEFAULT 'api', -- 'api', 'manual'
-    warnings INTEGER DEFAULT 0,
-    errors INTEGER DEFAULT 0,
-    last_downloaded TIMESTAMP WITH TIME ZONE,
-    is_pending BOOLEAN DEFAULT true,
-    is_sitemaps_index BOOLEAN DEFAULT false,
-    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_token, site_url, sitemap_url)
-);
-```
-**⚠️ IMPORTANT**: The `sitemap_submissions` table does **NOT** contain these columns that were referenced in code:
-- `generated_at` - **DOES NOT EXIST**
-- `sitemap_content` - **DOES NOT EXIST**
-- `url_count` - **DOES NOT EXIST**
-- `gsc_property` - **DOES NOT EXIST**
-
-### `technical_seo_fixes`
-**Purpose**: Track automated SEO fixes applied to websites
-```sql
-CREATE TABLE technical_seo_fixes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
-    site_url TEXT NOT NULL,
-    fix_types TEXT[] NOT NULL, -- array of fix types
-    results JSONB DEFAULT '{}',
-    status VARCHAR(50) DEFAULT 'completed', -- 'completed', 'partial', 'failed'
-    fix_count INTEGER DEFAULT 0,
-    duration_ms INTEGER,
-    applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-### `schema_generations`
-**Purpose**: Track schema markup generations by seoagent.js
-```sql
-CREATE TABLE schema_generations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    website_token VARCHAR(255) NOT NULL,
-    page_url TEXT NOT NULL,
-    schemas_generated INTEGER DEFAULT 0,
-    schema_types TEXT[] DEFAULT '{}',
-    generation_method VARCHAR(50) DEFAULT 'smart_js', -- 'smart_js', 'api', 'manual'
-    generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-**Note**: No RLS policies - uses service role access
-
----
-
-## 📊 SEO Audit System
-
-### `seo_audits`
-**Purpose**: Store audit runs and results
-```sql
-CREATE TABLE seo_audits (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
-    website_id UUID,
-    website_url TEXT NOT NULL,
-    audit_type VARCHAR(50) DEFAULT 'full', -- 'full', 'technical', 'content', 'performance'
-    status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'running', 'completed', 'failed'
-    pages_crawled INTEGER DEFAULT 0,
-    pages_total INTEGER DEFAULT 0,
-    current_step VARCHAR(100),
-    progress_percentage INTEGER DEFAULT 0,
-    overall_score INTEGER, -- 0-100
-    total_issues INTEGER DEFAULT 0,
-    critical_issues INTEGER DEFAULT 0,
-    warning_issues INTEGER DEFAULT 0,
-    info_issues INTEGER DEFAULT 0,
-    user_agent TEXT DEFAULT 'SEOAgent/1.0 (+https://seoagent.com)',
-    crawl_depth INTEGER DEFAULT 3,
-    max_pages INTEGER DEFAULT 100,
-    error_message TEXT,
-    error_details JSONB DEFAULT '{}',
-    started_at TIMESTAMP WITH TIME ZONE,
-    completed_at TIMESTAMP WITH TIME ZONE,
-    duration_seconds INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-### `audit_issues`
-**Purpose**: Individual problems found during audits
-```sql
-CREATE TABLE audit_issues (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    audit_id UUID REFERENCES seo_audits(id) ON DELETE CASCADE,
-    user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
-    page_url TEXT NOT NULL,
-    issue_type VARCHAR(100) NOT NULL,
-    severity VARCHAR(20) NOT NULL, -- 'critical', 'warning', 'info'
-    category VARCHAR(50) NOT NULL, -- 'technical', 'content', 'performance', 'accessibility'
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    recommendation TEXT NOT NULL,
-    element_selector TEXT,
-    element_content TEXT,
-    expected_content TEXT,
-    impact_score INTEGER DEFAULT 0, -- 1-10
-    fix_difficulty VARCHAR(20) DEFAULT 'medium', -- 'easy', 'medium', 'hard'
-    status VARCHAR(20) DEFAULT 'active', -- 'active', 'fixed', 'ignored'
-    fixed_at TIMESTAMP WITH TIME ZONE,
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-### `audit_pages`
-**Purpose**: Track crawled pages during audits
-```sql
-CREATE TABLE audit_pages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    audit_id UUID REFERENCES seo_audits(id) ON DELETE CASCADE,
-    user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
-    url TEXT NOT NULL,
-    title TEXT,
-    meta_description TEXT,
-    status_code INTEGER,
-    load_time_ms INTEGER,
-    content_size_bytes INTEGER,
-    word_count INTEGER,
-    h1_count INTEGER DEFAULT 0,
-    h2_count INTEGER DEFAULT 0,
-    h3_count INTEGER DEFAULT 0,
-    internal_links INTEGER DEFAULT 0,
-    external_links INTEGER DEFAULT 0,
-    images_count INTEGER DEFAULT 0,
-    images_without_alt INTEGER DEFAULT 0,
-    has_meta_title BOOLEAN DEFAULT false,
-    has_meta_description BOOLEAN DEFAULT false,
-    has_h1 BOOLEAN DEFAULT false,
-    has_canonical BOOLEAN DEFAULT false,
-    is_indexable BOOLEAN DEFAULT true,
-    lighthouse_performance INTEGER, -- 0-100
-    lighthouse_seo INTEGER, -- 0-100
-    lighthouse_accessibility INTEGER, -- 0-100
-    page_content TEXT, -- limited content for analysis
-    response_headers JSONB DEFAULT '{}',
-    lighthouse_data JSONB DEFAULT '{}',
-    crawled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
----
-
-## 📈 Activity Monitoring
-
-### `activity_summaries`
-**Purpose**: Cache AI-generated activity summaries
-```sql
-CREATE TABLE activity_summaries (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES login_users(id) ON DELETE CASCADE NOT NULL,
-    user_token TEXT NOT NULL,
-    site_url TEXT NOT NULL,
-    summary_text TEXT NOT NULL,
-    activity_period_start TIMESTAMP WITH TIME ZONE NOT NULL,
-    activity_period_end TIMESTAMP WITH TIME ZONE NOT NULL,
-    activity_hash TEXT NOT NULL, -- hash of activity data to detect changes
-    activity_count INTEGER NOT NULL DEFAULT 0,
-    generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '7 days'),
-    last_user_visit TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_token, site_url)
-);
-```
-
-### `api_usage`
-**Purpose**: Track API endpoint usage
-```sql
-CREATE TABLE api_usage (
-    id SERIAL PRIMARY KEY,
-    user_token VARCHAR(255) REFERENCES login_users(token) ON DELETE CASCADE,
-    endpoint VARCHAR(255) NOT NULL,
-    count INTEGER DEFAULT 1,
-    date DATE DEFAULT CURRENT_DATE
-);
-```
-
----
-
-## 🔍 SEO Action Items System
-
-### `seo_action_items`
-**Purpose**: Track detected SEO issues and their resolution lifecycle
-```sql
-CREATE TABLE seo_action_items (
+CREATE TABLE agent_ideas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_token VARCHAR(255) NOT NULL REFERENCES login_users(token) ON DELETE CASCADE,
     site_url TEXT NOT NULL,
-    issue_type VARCHAR(100) NOT NULL,
-    issue_category VARCHAR(50) NOT NULL, -- 'indexing', 'sitemap', 'robots', 'schema', 'mobile', 'performance', 'meta_tags', 'alt_tags', 'core_vitals', 'security'
-    severity VARCHAR(20) NOT NULL, -- 'critical', 'high', 'medium', 'low'
     title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    impact_description TEXT,
-    fix_recommendation TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'detected', -- 'detected', 'assigned', 'in_progress', 'completed', 'verified', 'closed', 'dismissed'
-    affected_urls TEXT[] DEFAULT '{}',
-    reference_id VARCHAR(255),
-    reference_table VARCHAR(100),
-    detected_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    assigned_at TIMESTAMP WITH TIME ZONE,
-    started_at TIMESTAMP WITH TIME ZONE,
+    hypothesis TEXT,
+    evidence JSONB DEFAULT '{}',
+    ice_score INTEGER, -- Impact/Confidence/Ease scoring (1-100)
+    status agent_idea_status DEFAULT 'open',
+    
+    -- Lifecycle tracking
+    adopted_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
-    verified_at TIMESTAMP WITH TIME ZONE,
-    dismissed_at TIMESTAMP WITH TIME ZONE,
-    next_check_at TIMESTAMP WITH TIME ZONE,
-    fix_type VARCHAR(100),
-    fix_details JSONB DEFAULT '{}',
-    verification_status VARCHAR(20), -- 'pending', 'verified', 'failed', 'needs_recheck'
-    verification_attempts INTEGER DEFAULT 0,
-    verification_details JSONB DEFAULT '{}',
-    metadata JSONB DEFAULT '{}',
-    priority_score INTEGER DEFAULT 50,
-    estimated_impact VARCHAR(20), -- 'high', 'medium', 'low'
+    rejected_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Metadata
+    priority INTEGER DEFAULT 50,
     estimated_effort VARCHAR(20), -- 'easy', 'medium', 'hard'
+    tags TEXT[] DEFAULT '{}',
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 **Key Points**:
-- Comprehensive issue tracking from detection to resolution
-- Priority scoring system for issue triage
-- Reference linking to source tables (url_inspections, sitemap_submissions, etc.)
-- Unique constraint prevents duplicate active issues
+- Transform insights into actionable SEO improvements
+- Evidence-based approach with ICE scoring
+- Full lifecycle tracking from idea to completion
 
----
-
-## 🗂️ Content Management Extensions
-
-### `website_analysis`
-**Purpose**: Website content analysis and topic discovery
+### `agent_actions`
+**Purpose**: Executable SEO work units derived from ideas
 ```sql
-CREATE TABLE website_analysis (
-    id SERIAL PRIMARY KEY,
-    website_id INTEGER NOT NULL REFERENCES websites(id) ON DELETE CASCADE,
-    content_topics JSONB DEFAULT '[]',
-    target_keywords JSONB DEFAULT '[]',
-    secondary_keywords JSONB DEFAULT '[]',
-    competitor_urls JSONB DEFAULT '[]',
-    brand_voice JSONB DEFAULT '{}',
-    content_gaps JSONB DEFAULT '[]',
-    sitemap_urls JSONB DEFAULT '[]',
-    analysis_status VARCHAR(50) DEFAULT 'pending',
-    last_analyzed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+CREATE TABLE agent_actions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    idea_id UUID REFERENCES agent_ideas(id) ON DELETE CASCADE,
+    user_token VARCHAR(255) NOT NULL REFERENCES login_users(token) ON DELETE CASCADE,
+    site_url TEXT NOT NULL,
+    
+    -- Action definition
+    action_type VARCHAR(100) NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    payload JSONB DEFAULT '{}',
+    policy JSONB DEFAULT '{}',
+    
+    -- State management
+    status agent_action_status DEFAULT 'proposed',
+    priority_score INTEGER DEFAULT 50,
+    
+    -- Scheduling
+    scheduled_for TIMESTAMP WITH TIME ZONE,
+    recurring_pattern VARCHAR(100),
+    next_occurrence TIMESTAMP WITH TIME ZONE,
+    
+    -- Lifecycle tracking
+    queued_at TIMESTAMP WITH TIME ZONE,
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    failed_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Error handling
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 3,
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(website_id)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
-### `content_templates`
-**Purpose**: Content templates for consistent article generation
+### `agent_runs`
+**Purpose**: Bounded execution contexts for actions
 ```sql
-CREATE TABLE content_templates (
-    id SERIAL PRIMARY KEY,
-    template_name VARCHAR(255) NOT NULL,
-    template_type VARCHAR(100) NOT NULL, -- 'article_outline', 'introduction', 'conclusion', 'cta'
-    industry VARCHAR(100), -- 'technology', 'marketing', 'health', 'finance'
-    content_template TEXT NOT NULL,
-    variables JSONB DEFAULT '[]',
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(template_name, template_type, industry)
+CREATE TABLE agent_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action_id UUID NOT NULL REFERENCES agent_actions(id) ON DELETE CASCADE,
+    user_token VARCHAR(255) NOT NULL REFERENCES login_users(token) ON DELETE CASCADE,
+    
+    -- Idempotency and safety
+    idempotency_key VARCHAR(255) UNIQUE NOT NULL,
+    policy JSONB NOT NULL,
+    
+    -- Execution tracking
+    status agent_run_status DEFAULT 'queued',
+    stats JSONB DEFAULT '{}',
+    
+    -- Budget consumption
+    budget_consumed JSONB DEFAULT '{}',
+    
+    -- Timing
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    duration_ms INTEGER,
+    
+    -- Results
+    output_data JSONB DEFAULT '{}',
+    error_details TEXT,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
+### `agent_patches`
+**Purpose**: Atomic, reversible website changes
+```sql
+CREATE TABLE agent_patches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id UUID NOT NULL REFERENCES agent_runs(id) ON DELETE CASCADE,
+    user_token VARCHAR(255) NOT NULL REFERENCES login_users(token) ON DELETE CASCADE,
+    
+    -- Target specification
+    target_url TEXT NOT NULL,
+    selector TEXT,
+    element_type VARCHAR(50),
+    
+    -- Change specification
+    change_type VARCHAR(50) NOT NULL,
+    before_value TEXT,
+    after_value TEXT,
+    
+    -- Context and reasoning
+    rationale TEXT NOT NULL,
+    risk_level risk_level DEFAULT 'low',
+    
+    -- State management
+    status agent_patch_status DEFAULT 'suggested',
+    
+    -- Application tracking
+    applied_at TIMESTAMP WITH TIME ZONE,
+    reverted_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Verification
+    verification_status VARCHAR(20),
+    verification_details JSONB DEFAULT '{}',
+    
+    -- Revert capability
+    revert_patch_id UUID REFERENCES agent_patches(id),
+    is_revert BOOLEAN DEFAULT FALSE,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### `agent_capabilities`
+**Purpose**: Dynamic registry of what the agent system can do
+```sql
+CREATE TABLE agent_capabilities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    capability_name VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    description TEXT,
+    parameters_schema JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    -- Site-specific availability
+    available_for_sites TEXT[],
+    required_integrations TEXT[],
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(capability_name)
+);
+```
+
+### `agent_events`
+**Purpose**: Complete immutable audit trail of all agent activity
+```sql
+CREATE TABLE agent_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_token VARCHAR(255) NOT NULL REFERENCES login_users(token) ON DELETE CASCADE,
+    
+    -- Event identification
+    event_type VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(20) NOT NULL,
+    entity_id UUID NOT NULL,
+    
+    -- Event data
+    event_data JSONB DEFAULT '{}',
+    previous_state VARCHAR(50),
+    new_state VARCHAR(50),
+    
+    -- Context
+    triggered_by VARCHAR(50),
+    metadata JSONB DEFAULT '{}',
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+**Key Points**:
+- Immutable ledger of all agent operations
+- Includes archived legacy data from migration 040
+- Provides complete audit trail for compliance
+
 ---
 
-## 🛡️ Row Level Security (RLS) Overview
+## 📊 Analytics & Performance Data
 
-**Enabled Tables**: Most tables except GSC-related tables (gsc_connections, gsc_properties, gsc_performance_data) which use token-based auth via service role.
+## 🗑️ Legacy Tables (Migration 040)
 
-**Policy Pattern**: Users can access records linked to their `user_token` through the `login_users` table relationship. Service role has full access to all tables for API operations.
+**The following tables have been removed and replaced by the Agent Operating System:**
 
-**Authentication Integration**: Uses Supabase auth (`auth.uid()`) linked to custom token system via `login_users.auth_user_id`.
+- `seo_action_items` → `agent_ideas` + `agent_actions`
+- `robots_analyses` → Agent technical SEO capabilities
+- `sitemap_submissions` → Agent sitemap management
+- `technical_seo_fixes` → `agent_patches`
+- `schema_generations` → Agent schema capabilities
+- `seo_audits` + `audit_issues` + `audit_pages` → Agent workflow system
+- `activity_summaries` → Agent `summarize_activity` tool
+- `api_usage` → Consolidated with `usage_tracking`
+- `website_analysis` → Agent intelligence system
 
----
-
-## 🔧 Database Extensions & Functions
-
-### Extensions
-- `uuid-ossp`: For UUID generation
-
-### Key Functions
-- `update_updated_at_column()`: Trigger function to update updated_at timestamps
-- `handle_new_user()`: Creates login_users record when auth.users is created
-- `validate_article_status_transition()`: Enforces valid article status transitions
-- `cleanup_expired_activity_summaries()`: Removes expired activity summaries
-
-### Custom Types
-- `article_status` ENUM: 'pending', 'generating', 'generated', 'publishing', 'published', 'generation_failed', 'publishing_failed'
+**Historical data preserved in `agent_events` table with `event_type: 'legacy_data_archived'`**
 
 ---
 
-## 📋 Key Indexes for Performance
+## 📈 Current Database Statistics
+
+**Active Tables**: 16 core tables  
+**Legacy Tables Removed**: 11 tables (Migration 040)  
+**Agent System Tables**: 6 tables  
+**Core Features**: Authentication, Subscriptions, Content, CMS, GSC, Agent System
+
+## 📊 Agent System Indexes
 
 ```sql
--- Website Management
-CREATE INDEX idx_websites_user_token ON websites(user_token);
-CREATE INDEX idx_websites_managed ON websites(user_token, is_managed);
-CREATE INDEX idx_websites_excluded ON websites(user_token, is_excluded_from_sync);
+-- Agent Ideas
+CREATE INDEX IF NOT EXISTS idx_agent_ideas_user_token ON agent_ideas(user_token);
+CREATE INDEX IF NOT EXISTS idx_agent_ideas_status ON agent_ideas(status);
+CREATE INDEX IF NOT EXISTS idx_agent_ideas_site_url ON agent_ideas(site_url);
+CREATE INDEX IF NOT EXISTS idx_agent_ideas_priority ON agent_ideas(priority DESC);
 
--- Article System
-CREATE INDEX idx_articles_user_token ON articles(user_token);
-CREATE INDEX idx_article_queue_user_token ON article_queue(user_token);
-CREATE INDEX idx_article_queue_status ON article_queue(status);
-CREATE INDEX idx_article_queue_website_id ON article_queue(website_id);
+-- Agent Actions  
+CREATE INDEX IF NOT EXISTS idx_agent_actions_user_token ON agent_actions(user_token);
+CREATE INDEX IF NOT EXISTS idx_agent_actions_status ON agent_actions(status);
+CREATE INDEX IF NOT EXISTS idx_agent_actions_idea_id ON agent_actions(idea_id);
+CREATE INDEX IF NOT EXISTS idx_agent_actions_scheduled_for ON agent_actions(scheduled_for);
+CREATE INDEX IF NOT EXISTS idx_agent_actions_priority ON agent_actions(priority_score DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_actions_type ON agent_actions(action_type);
 
--- Technical SEO
-CREATE INDEX idx_url_inspections_user_token ON url_inspections(user_token);
-CREATE INDEX idx_url_inspections_site_url ON url_inspections(site_url);
-CREATE INDEX idx_sitemap_submissions_user_token ON sitemap_submissions(user_token);
-CREATE INDEX idx_technical_seo_fixes_user_token ON technical_seo_fixes(user_token);
-
--- Subscription & Usage
-CREATE INDEX idx_user_plans_user_token ON user_plans(user_token);
-CREATE INDEX idx_usage_tracking_user_token ON usage_tracking(user_token);
-CREATE INDEX idx_usage_tracking_month_year ON usage_tracking(month_year);
-
--- SEO Action Items
-CREATE INDEX idx_seo_action_items_user_token ON seo_action_items(user_token);
-CREATE INDEX idx_seo_action_items_site_url ON seo_action_items(site_url);
-CREATE INDEX idx_seo_action_items_status ON seo_action_items(status);
-CREATE INDEX idx_seo_action_items_severity ON seo_action_items(severity);
-CREATE INDEX idx_seo_action_items_category ON seo_action_items(issue_category);
-CREATE INDEX idx_seo_action_items_priority ON seo_action_items(priority_score DESC);
-CREATE INDEX idx_seo_action_items_detected_at ON seo_action_items(detected_at);
+-- Agent Events
+CREATE INDEX IF NOT EXISTS idx_agent_events_user_token ON agent_events(user_token);
+CREATE INDEX IF NOT EXISTS idx_agent_events_entity_type_id ON agent_events(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_agent_events_event_type ON agent_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_agent_events_created_at ON agent_events(created_at DESC);
 ```
 
 ---
 
-## ⚠️ Common Pitfalls to Avoid
+## ⚠️ Important Notes
 
-1. **Missing Columns**: Always check this file before assuming a column exists
-2. **RLS Policies**: Remember that GSC tables (gsc_*) don't use RLS - they use service role access
-3. **Token vs ID**: Most tables use `user_token` (VARCHAR) not `user_id` (INTEGER)
-4. **ENUM Types**: `article_status` is a custom ENUM type, not a VARCHAR
-5. **Unique Constraints**: Many tables have composite unique constraints - check before inserting
+1. **Agent System Active**: All SEO operations now use the Agent Operating System
+2. **Legacy APIs Deprecated**: Update all code to use `/api/agent/*` endpoints
+3. **Data Integrity**: Historical data preserved in `agent_events` audit trail
+4. **RLS Policies**: All agent tables use Row Level Security tied to `user_token`
+5. **Migration 040**: Clean schema removes 11 legacy tables, keeps 16 core tables
 
 ---
 
 ## 🔄 Recent Schema Changes
 
-- **2025-08-13**: Added `seo_action_items` table for comprehensive SEO issue tracking and management
-- **2025-08-07**: Fixed sitemap_submissions table documentation - removed non-existent columns (generated_at, sitemap_content, url_count, gsc_property)
-- **Website Management**: Added is_managed and is_excluded_from_sync columns to websites table
-- **Article Queue**: Enhanced with granular status tracking and CMS integration fields
-- **Activity Summaries**: Added caching system for AI-generated activity reports
+- **2025-08-26 (Migration 040)**: 🚀 **MAJOR CLEANUP** - Removed 11 legacy SEO tables, Agent Operating System is now primary
+- **2025-08-22**: Added Agent Operating System (6 new tables with state machines)
+- **2025-08-13**: Added `seo_action_items` table (now removed in favor of agent system)
+- **Website Management**: Added `is_managed` and `is_excluded_from_sync` columns
+- **Subscription System**: Complete billing and quota management
 
 ---
 
-**📝 Last Updated**: August 13, 2025
-**📋 Migration Files Analyzed**: All files in `/supabase/migrations/` up to `034_create_seo_action_items_table.sql`
+**📝 Last Updated**: August 26, 2025  
+**📋 Migration Version**: 040 (Clean Database Schema)  
+**🤖 Agent System**: Active and Primary

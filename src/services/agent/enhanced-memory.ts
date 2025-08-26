@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { AgentMemory } from './agent-memory';
+import { AgentMemory, ActionOutcome } from './agent-memory';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,8 +52,18 @@ export class EnhancedAgentMemory extends AgentMemory {
     }
   ): Promise<void> {
     try {
-      // Update existing memory system
-      await this.recordAction(actionType, { outcome, ...details }, outcome, details);
+      // Update existing memory system  
+      await this.recordAction(
+        actionType, 
+        { outcome, ...details }, 
+        outcome as ActionOutcome,
+        {
+          successMetrics: details.effectiveness_score ? { effectiveness_score: details.effectiveness_score } : undefined,
+          errorDetails: outcome === 'failure' ? details.blockers_encountered?.join(', ') : undefined,
+          executionTimeMs: details.execution_time_minutes ? details.execution_time_minutes * 60 * 1000 : undefined,
+          metadata: details
+        }
+      );
 
       // Enhanced learning for agent system
       await this.updateAgentLearnings(websiteToken, userToken, actionType, outcome, details);
@@ -223,10 +233,10 @@ export class EnhancedAgentMemory extends AgentMemory {
     }
 
     // Remove duplicates and limit arrays
-    learnings.successful_workflows = [...new Set(learnings.successful_workflows)].slice(0, 10);
-    learnings.failed_approaches = [...new Set(learnings.failed_approaches)].slice(0, 10);
+    learnings.successful_workflows = Array.from(new Set(learnings.successful_workflows)).slice(0, 10);
+    learnings.failed_approaches = Array.from(new Set(learnings.failed_approaches)).slice(0, 10);
     learnings.site_specific_learnings.effective_strategies = 
-      [...new Set(learnings.site_specific_learnings.effective_strategies)].slice(0, 15);
+      Array.from(new Set(learnings.site_specific_learnings.effective_strategies)).slice(0, 15);
 
     this.agentLearnings.set(websiteToken, learnings);
 
@@ -261,7 +271,7 @@ export class EnhancedAgentMemory extends AgentMemory {
     // Add blockers
     if (details.blockers_encountered) {
       memory.common_blockers.push(...details.blockers_encountered);
-      memory.common_blockers = [...new Set(memory.common_blockers)].slice(0, 10);
+      memory.common_blockers = Array.from(new Set(memory.common_blockers)).slice(0, 10);
     }
 
     // Update satisfaction
@@ -287,7 +297,7 @@ export class EnhancedAgentMemory extends AgentMemory {
       recommended.push('new_site_seo_setup');
     }
 
-    return [...new Set(recommended)].slice(0, 5);
+    return Array.from(new Set(recommended)).slice(0, 5);
   }
 
   private getOptimalSettings(learnings: AgentLearning, context: any): Record<string, any> {

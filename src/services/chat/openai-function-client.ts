@@ -243,7 +243,6 @@ export class OpenAIFunctionClient {
       },
       // ===== EXISTING TOOLS =====
       {
-      {
         name: 'connect_gsc',
         description: 'Connect Google Search Console for a website',
         parameters: {

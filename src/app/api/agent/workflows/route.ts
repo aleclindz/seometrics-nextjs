@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         idea.evidence
       );
 
-      const allTemplates = WorkflowEngine.getWorkflowTemplates(category, search);
+      const allTemplates = WorkflowEngine.getWorkflowTemplates(category || undefined, search || undefined);
 
       return NextResponse.json({
         success: true,
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Otherwise, return all workflows
-    const templates = WorkflowEngine.getWorkflowTemplates(category, search);
+    const templates = WorkflowEngine.getWorkflowTemplates(category || undefined, search || undefined);
 
     // Group by category for easier consumption
     const byCategory = templates.reduce((acc: Record<string, any[]>, template) => {

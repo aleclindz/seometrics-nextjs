@@ -3,13 +3,9 @@ import IORedis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 
 // Redis connection configuration
-const redisConnection = new IORedis(
-  process.env.REDIS_URL || 'redis://localhost:6379',
-  {
-    maxRetriesPerRequest: 3,
-    retryDelayOnFailover: 100,
-  }
-);
+const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null, // Required for BullMQ
+});
 
 // Supabase client for database operations
 const supabase = createClient(
@@ -209,7 +205,7 @@ export class AgentQueueManager {
     }
 
     // Determine which queue to use based on action type
-    let queueName = QUEUE_NAMES.AGENT_ACTIONS;
+    let queueName: string = QUEUE_NAMES.AGENT_ACTIONS;
     if (actionType.includes('content')) queueName = QUEUE_NAMES.CONTENT_GENERATION;
     else if (actionType.includes('seo') || actionType.includes('technical')) queueName = QUEUE_NAMES.TECHNICAL_SEO;
     else if (actionType.includes('cms') || actionType.includes('publish')) queueName = QUEUE_NAMES.CMS_PUBLISHING;
