@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useFeatures } from '@/hooks/useFeatures';
-import UpgradeBadge from './UpgradeBadge';
+import { useAuth } from '@/contexts/auth';
+import { Globe, Loader2, Settings, Home } from 'lucide-react';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -14,16 +14,68 @@ interface SidebarProps {
   setSidebarExpanded: (expanded: boolean) => void;
 }
 
+interface Website {
+  site_url: string;
+  permission_level: string;
+  verified: boolean;
+}
+
 export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, setSidebarExpanded }: SidebarProps) {
   const pathname = usePathname();
-  const { features, hasFeature } = useFeatures();
+  const { user } = useAuth();
+  const [websites, setWebsites] = useState<Website[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const isActive = (path: string) => {
-    if (path === '/') {
-      return pathname === '/';
+    if (path === '/dashboard') {
+      return pathname === '/dashboard' || pathname === '/';
     }
     return pathname.startsWith(path);
   };
+
+  const isWebsiteActive = (siteUrl: string) => {
+    return pathname.includes(`/website/${encodeURIComponent(siteUrl)}`);
+  };
+
+  const getDomainFromUrl = (url: string) => {
+    try {
+      // Remove protocol prefixes like sc-domain:
+      const cleanUrl = url.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '');
+      return cleanUrl.replace(/\/$/, ''); // Remove trailing slash
+    } catch {
+      return url;
+    }
+  };
+
+  const getWebsiteIcon = (domain: string) => {
+    return domain.charAt(0).toUpperCase();
+  };
+
+  useEffect(() => {
+    const fetchWebsites = async () => {
+      if (!user?.token) return;
+      
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/gsc/properties?userToken=${user.token}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.properties) {
+            // Filter to only verified properties
+            const verifiedSites = data.properties.filter((site: Website) => site.verified);
+            setWebsites(verifiedSites);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch GSC properties:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWebsites();
+  }, [user?.token]);
 
   return (
     <div className="min-w-fit">
@@ -58,7 +110,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
             </svg>
           </button>
           {/* Logo/Icon */}
-          <Link className="block" href="/">
+          <Link className="block" href="/dashboard">
             {/* Full logo for expanded sidebar */}
             <Image 
               src="/assets/SEOAgent_logo.png" 
@@ -80,93 +132,119 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
           </Link>
         </div>
 
-        {/* Links */}
-        <div className="space-y-8">
-          {/* Pages group */}
+        {/* Navigation */}
+        <div className="space-y-6 flex-1">
+          {/* Dashboard */}
           <div>
-            <h3 className="text-xs uppercase text-gray-400 dark:text-gray-500 font-semibold pl-3">
-              <span className={`hidden lg:block ${sidebarExpanded ? 'lg:hidden' : ''} 2xl:hidden text-center w-6`} aria-hidden="true">🤖</span>
-              <span className={`lg:hidden ${sidebarExpanded ? 'lg:block' : ''} 2xl:block`}>SEO Agent</span>
-            </h3>
-            <ul className="mt-3">
-              
-              {/* Dashboard */}
-              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors ${
-                isActive('/') 
+            <ul>
+              <li className={`pl-4 pr-3 py-2 rounded-lg mb-2 transition-colors ${
+                isActive('/dashboard') 
                   ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}>
-                <Link className="block text-gray-800 dark:text-gray-100 truncate transition" href="/">
+                <Link className="block text-gray-800 dark:text-gray-100 truncate transition" href="/dashboard">
                   <div className="flex items-center">
-                    <svg className={`shrink-0 fill-current transition-colors ${
-                      isActive('/') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
-                    }`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                      <path d="M5.936.278A7.983 7.983 0 0 1 8 0a8 8 0 1 1-8 8c0-.722.104-1.413.278-2.064a1 1 0 1 1 1.932.516A5.99 5.99 0 0 0 2 8a6 6 0 1 0 6-6c-.53 0-1.045.076-1.548.21A1 1 0 1 1 5.936.278Z"></path>
-                      <path d="M6.068 7.482A2.003 2.003 0 0 0 8 10a2 2 0 1 0-.518-3.932L3.707 2.293a1 1 0 0 0-1.414 1.414l3.775 3.775Z"></path>
-                    </svg>
+                    <Home className={`shrink-0 transition-colors ${
+                      isActive('/dashboard') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'
+                    }`} size={16} />
                     <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
                       Dashboard
                     </span>
                   </div>
                 </Link>
               </li>
+            </ul>
+          </div>
 
-
-              {/* Content Writer */}
-              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
-                isActive('/content-writer') 
-                  ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}>
-                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/content-writer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center min-w-0">
-                      <svg className={`shrink-0 fill-current transition-colors ${
-                        isActive('/content-writer') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
-                      }`} width="16" height="16" viewBox="0 0 16 16">
-                        <path d="M13.95.879a3 3 0 0 0-4.243 0L1.293 9.293a1 1 0 0 0-.274.51l-1 5a1 1 0 0 0 1.177 1.177l5-1a1 1 0 0 0 .511-.273l8.414-8.414a3 3 0 0 0 0-4.242L13.95.879ZM11.12 2.293a1 1 0 0 1 1.414 0l1.172 1.172a1 1 0 0 1 0 1.414l-8.2 8.2-3.232.646.646-3.232 8.2-8.2Z"></path>
-                        <path d="M10 14a1 1 0 1 0 0 2h5a1 1 0 1 0 0-2h-5Z"></path>
-                      </svg>
-                      <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
-                        Content Writer
-                      </span>
-                    </div>
-                    {!hasFeature('articleGeneration') && (
-                      <div className={`ml-2 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
-                        <UpgradeBadge feature="Content Writer" plan="starter" size="sm" />
-                      </div>
-                    )}
+          {/* Websites Section */}
+          <div className="flex-1">
+            <h3 className="text-xs uppercase text-gray-400 dark:text-gray-500 font-semibold pl-3 mb-3">
+              <span className={`hidden lg:block ${sidebarExpanded ? 'lg:hidden' : ''} 2xl:hidden text-center w-6`} aria-hidden="true">🌐</span>
+              <span className={`lg:hidden ${sidebarExpanded ? 'lg:block' : ''} 2xl:block`}>Websites</span>
+            </h3>
+            
+            <ul className="space-y-1">
+              {loading ? (
+                <li className="pl-4 pr-3 py-2">
+                  <div className="flex items-center">
+                    <Loader2 className="animate-spin text-gray-400" size={16} />
+                    <span className={`text-sm text-gray-500 ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
+                      Loading...
+                    </span>
                   </div>
-                </Link>
-              </li>
+                </li>
+              ) : websites.length > 0 ? (
+                websites.map((website) => {
+                  const domain = getDomainFromUrl(website.site_url);
+                  const websiteActive = isWebsiteActive(domain);
+                  
+                  return (
+                    <li key={website.site_url} className={`pl-4 pr-3 py-2 rounded-lg transition-colors ${
+                      websiteActive
+                        ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}>
+                      <Link 
+                        className="block text-gray-800 dark:text-gray-100 truncate transition" 
+                        href={`/website/${encodeURIComponent(domain)}`}
+                      >
+                        <div className="flex items-center">
+                          <div className={`shrink-0 w-4 h-4 rounded flex items-center justify-center text-xs font-bold transition-colors ${
+                            websiteActive 
+                              ? 'bg-violet-500 text-white' 
+                              : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+                          }`}>
+                            {getWebsiteIcon(domain)}
+                          </div>
+                          <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200 truncate`}>
+                            {domain}
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })
+              ) : (
+                <li className="pl-4 pr-3 py-2">
+                  <div className="flex items-center">
+                    <Globe className="text-gray-400" size={16} />
+                    <span className={`text-sm text-gray-500 ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
+                      No websites
+                    </span>
+                  </div>
+                  <p className={`text-xs text-gray-400 mt-1 ml-8 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
+                    Connect Google Search Console
+                  </p>
+                </li>
+              )}
+            </ul>
+          </div>
 
-
-              {/* Account */}
-              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 transition-colors group ${
+          {/* Account at bottom */}
+          <div className="mt-auto">
+            <ul>
+              <li className={`pl-4 pr-3 py-2 rounded-lg transition-colors ${
                 isActive('/account') 
                   ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}>
-                <Link className="block text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white truncate transition" href="/account">
+                <Link className="block text-gray-800 dark:text-gray-100 truncate transition" href="/account">
                   <div className="flex items-center">
-                    <svg className={`shrink-0 fill-current transition-colors ${
-                      isActive('/account') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-violet-500'
-                    }`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                      <path d="M10.5 1a3.502 3.502 0 0 1 3.355 2.5H15a1 1 0 1 1 0 2h-1.145a3.502 3.502 0 0 1-6.71 0H1a1 1 0 0 1 0-2h6.145A3.502 3.502 0 0 1 10.5 1ZM9 4.5a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM5.5 9a3.502 3.502 0 0 1 3.355 2.5H15a1 1 0 1 1 0 2H8.855a3.502 3.502 0 0 1-6.71 0H1a1 1 0 1 1 0-2h1.145A3.502 3.502 0 0 1 5.5 9ZM4 12.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0Z" fillRule="evenodd"></path>
-                    </svg>
+                    <Settings className={`shrink-0 transition-colors ${
+                      isActive('/account') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'
+                    }`} size={16} />
                     <span className={`text-sm font-medium ml-4 lg:opacity-0 ${sidebarExpanded ? 'lg:opacity-100' : ''} 2xl:opacity-100 duration-200`}>
                       Account
                     </span>
                   </div>
                 </Link>
               </li>
-
             </ul>
           </div>
         </div>
 
         {/* Expand / collapse button */}
-        <div className="pt-3 hidden lg:inline-flex 2xl:hidden justify-end mt-auto">
+        <div className="pt-3 hidden lg:inline-flex 2xl:hidden justify-end">
           <div className="w-12 pl-4 pr-3 py-2">
             <button 
               className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 transition-colors" 
@@ -179,7 +257,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
