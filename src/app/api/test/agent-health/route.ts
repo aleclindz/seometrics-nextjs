@@ -33,8 +33,7 @@ export async function GET(request: NextRequest) {
       // Test a simple query
       const { data, error } = await supabase
         .from('login_users')
-        .select('count(*)')
-        .limit(1);
+        .select('token', { count: 'exact', head: true });
         
       results.checks.database = {
         status: error ? 'fail' : 'pass',
