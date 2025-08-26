@@ -39,15 +39,17 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
 
   const getDomainFromUrl = (url: string) => {
     try {
+      if (!url) return '';
       // Remove protocol prefixes like sc-domain:
       const cleanUrl = url.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '');
       return cleanUrl.replace(/\/$/, ''); // Remove trailing slash
     } catch {
-      return url;
+      return url || '';
     }
   };
 
   const getWebsiteIcon = (domain: string) => {
+    if (!domain || domain.length === 0) return '?';
     return domain.charAt(0).toUpperCase();
   };
 
@@ -174,11 +176,14 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
                   </div>
                 </li>
               ) : websites.length > 0 ? (
-                websites.map((website) => {
-                  const domain = getDomainFromUrl(website.site_url);
-                  const websiteActive = isWebsiteActive(domain);
-                  
-                  return (
+                websites
+                  .filter((website) => website.site_url) // Filter out websites without URLs
+                  .map((website) => {
+                    const domain = getDomainFromUrl(website.site_url);
+                    if (!domain) return null; // Skip if domain couldn't be parsed
+                    const websiteActive = isWebsiteActive(domain);
+                    
+                    return (
                     <li key={website.site_url} className={`pl-4 pr-3 py-2 rounded-lg transition-colors ${
                       websiteActive
                         ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
@@ -204,6 +209,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
                     </li>
                   );
                 })
+                  .filter(Boolean) // Remove null values
               ) : (
                 <li className="pl-4 pr-3 py-2">
                   <div className="flex items-center">
