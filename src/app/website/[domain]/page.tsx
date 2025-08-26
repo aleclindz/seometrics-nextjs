@@ -10,8 +10,15 @@ import { useAuth } from '@/contexts/auth';
 
 export default function WebsitePage() {
   const params = useParams();
-  const domain = decodeURIComponent(params.domain as string);
+  const rawDomain = decodeURIComponent(params.domain as string);
+  
+  // Clean the domain by removing sc-domain: prefix and protocol
+  const domain = rawDomain.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  
   const { user } = useAuth();
+  
+  console.log('WebsitePage: Raw domain from URL:', rawDomain);
+  console.log('WebsitePage: Cleaned domain:', domain);
   
   // Sidebar state management
   const [sidebarOpen, setSidebarOpen] = useState(true);

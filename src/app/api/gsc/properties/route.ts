@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Auto-populate websites table from GSC property
-        const domain = site.siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const domain = site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
         
         // Check if website already exists or was excluded
         const { data: existingWebsite } = await supabase
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
 
     // Return properties with additional info
     const formattedProperties = sites.map(site => ({
-      siteUrl: site.siteUrl,
+      siteUrl: site.siteUrl ? site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '') : '',
       permissionLevel: site.permissionLevel,
       verified: true
     }));

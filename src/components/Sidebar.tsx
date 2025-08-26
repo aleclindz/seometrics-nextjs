@@ -15,8 +15,8 @@ interface SidebarProps {
 }
 
 interface Website {
-  site_url: string;
-  permission_level: string;
+  siteUrl: string;
+  permissionLevel: string;
   verified: boolean;
 }
 
@@ -55,19 +55,35 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
 
   useEffect(() => {
     const fetchWebsites = async () => {
-      if (!user?.token) return;
+      if (!user?.token) {
+        console.log('Sidebar: No user token available');
+        return;
+      }
       
       try {
         setLoading(true);
+        console.log('Sidebar: Fetching websites from GSC API...');
         const response = await fetch(`/api/gsc/properties?userToken=${user.token}`);
+        
+        console.log('Sidebar: GSC API response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
+          console.log('Sidebar: GSC API response data:', data);
+          
           if (data.success && data.properties) {
             // Filter to only verified properties
             const verifiedSites = data.properties.filter((site: Website) => site.verified);
+            console.log('Sidebar: Verified sites found:', verifiedSites.length);
             setWebsites(verifiedSites);
+          } else {
+            console.log('Sidebar: No properties found or API call unsuccessful');
+            setWebsites([]);
           }
+        } else {
+          console.error('Sidebar: GSC API request failed with status:', response.status);
+          const errorData = await response.text();
+          console.error('Sidebar: Error response:', errorData);
         }
       } catch (error) {
         console.error('Failed to fetch GSC properties:', error);
@@ -177,14 +193,14 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, sidebarExpanded, 
                 </li>
               ) : websites.length > 0 ? (
                 websites
-                  .filter((website) => website.site_url) // Filter out websites without URLs
+                  .filter((website) => website.siteUrl) // Filter out websites without URLs
                   .map((website) => {
-                    const domain = getDomainFromUrl(website.site_url);
+                    const domain = website.siteUrl; // Already cleaned by API
                     if (!domain) return null; // Skip if domain couldn't be parsed
                     const websiteActive = isWebsiteActive(domain);
                     
                     return (
-                    <li key={website.site_url} className={`pl-4 pr-3 py-2 rounded-lg transition-colors ${
+                    <li key={website.siteUrl} className={`pl-4 pr-3 py-2 rounded-lg transition-colors ${
                       websiteActive
                         ? 'bg-[linear-gradient(135deg,var(--tw-gradient-stops))] from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]' 
                         : 'hover:bg-gray-100 dark:hover:bg-gray-700'
