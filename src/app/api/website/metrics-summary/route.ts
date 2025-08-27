@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -57,53 +58,119 @@ export async function POST(request: NextRequest) {
 
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
-    // Fetch GSC performance data (clicks with trend)
+    // Fetch GSC performance data (clicks with trend) - Direct database approach
     let clicksData: { value: number; change: number; trend: 'up' | 'down' | 'neutral' } = { value: 0, change: 0, trend: 'neutral' };
     
     try {
-      const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gsc/performance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteUrl,
-          startDate: formatDate(startDate),
-          endDate: formatDate(endDate),
-          userToken
-        })
-      });
+      console.log('[METRICS SUMMARY] Looking for GSC property for:', siteUrl);
+      
+      // First, find the GSC property ID for this site URL using comprehensive URL matching
+      const urlVariations = UrlNormalizationService.generateUrlVariations(siteUrl);
+      const urlVariants = [
+        siteUrl,                           // Original request
+        urlVariations.domainProperty,      // sc-domain:translateyoutubevideos.com
+        urlVariations.httpsUrl,            // https://translateyoutubevideos.com  
+        urlVariations.gscFormat,           // https://translateyoutubevideos.com
+        siteUrl.replace('https://', '').replace('http://', '') // translateyoutubevideos.com
+      ];
 
-      if (gscResponse.ok) {
-        const currentData = await gscResponse.json();
-        
-        // Get previous period for comparison
-        const prevResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gsc/performance`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            siteUrl,
-            startDate: formatDate(prevStartDate),
-            endDate: formatDate(prevEndDate),
-            userToken
-          })
-        });
-
-        if (currentData.success && currentData.data) {
-          const currentClicks = currentData.data.total.clicks || 0;
-          clicksData.value = currentClicks;
-
-          if (prevResponse.ok) {
-            const prevData = await prevResponse.json();
-            if (prevData.success && prevData.data) {
-              const prevClicks = prevData.data.total.clicks || 0;
-              if (prevClicks > 0) {
-                clicksData.change = Math.round(((currentClicks - prevClicks) / prevClicks) * 100);
-                clicksData.trend = clicksData.change > 0 ? 'up' : clicksData.change < 0 ? 'down' : 'neutral';
-              }
-            }
-          }
+      console.log('[METRICS SUMMARY] Trying URL variants:', urlVariants);
+      
+      let property = null;
+      for (const variant of urlVariants) {
+        const { data, error } = await supabase
+          .from('gsc_properties')
+          .select('*')
+          .eq('user_token', userToken)
+          .eq('site_url', variant)
+          .eq('is_active', true)
+          .single();
+          
+        if (data && !error) {
+          property = data;
+          console.log('[METRICS SUMMARY] Found GSC property with URL variant:', variant, 'Property ID:', property.id);
+          break;
         }
+      }
+
+      if (!property) {
+        console.log('[METRICS SUMMARY] No GSC property found for any URL variant');
+        
+        // Debug: show available properties
+        const { data: allProps } = await supabase
+          .from('gsc_properties')
+          .select('site_url, id')
+          .eq('user_token', userToken)
+          .eq('is_active', true);
+        
+        console.log('[METRICS SUMMARY] Available GSC properties:', allProps?.map(p => ({ url: p.site_url, id: p.id })));
       } else {
-        console.log('[METRICS SUMMARY] GSC data not available - using fallback');
+        // Get performance data directly from database using property ID
+        console.log('[METRICS SUMMARY] Fetching performance data for property:', property.id);
+        
+        // Current period data - look for overlapping date ranges
+        const { data: currentPerfData } = await supabase
+          .from('gsc_performance_data')
+          .select('*')
+          .eq('property_id', property.id)
+          .eq('user_token', userToken)
+          .lte('date_start', formatDate(endDate))
+          .gte('date_end', formatDate(startDate))
+          .order('date_start', { ascending: false })
+          .limit(1);
+
+        // Previous period data - look for overlapping date ranges  
+        const { data: prevPerfData } = await supabase
+          .from('gsc_performance_data')
+          .select('*')
+          .eq('property_id', property.id)
+          .eq('user_token', userToken)
+          .lte('date_start', formatDate(prevEndDate))
+          .gte('date_end', formatDate(prevStartDate))
+          .order('date_start', { ascending: false })
+          .limit(1);
+
+        if (currentPerfData && currentPerfData.length > 0) {
+          const currentRecord = currentPerfData[0];
+          const currentClicks = currentRecord.total_clicks || 0;
+          clicksData.value = currentClicks;
+          
+          console.log('[METRICS SUMMARY] Found current period data:', { 
+            clicks: currentClicks, 
+            impressions: currentRecord.total_impressions,
+            dateRange: `${currentRecord.date_start} to ${currentRecord.date_end}`
+          });
+
+          if (prevPerfData && prevPerfData.length > 0) {
+            const prevRecord = prevPerfData[0];
+            const prevClicks = prevRecord.total_clicks || 0;
+            if (prevClicks > 0) {
+              clicksData.change = Math.round(((currentClicks - prevClicks) / prevClicks) * 100);
+              clicksData.trend = clicksData.change > 0 ? 'up' : clicksData.change < 0 ? 'down' : 'neutral';
+            }
+            console.log('[METRICS SUMMARY] Calculated trend:', { 
+              prevClicks, 
+              currentClicks, 
+              change: clicksData.change, 
+              trend: clicksData.trend,
+              prevDateRange: `${prevRecord.date_start} to ${prevRecord.date_end}`
+            });
+          }
+        } else {
+          console.log('[METRICS SUMMARY] No performance data found for the specified date range');
+          
+          // Debug: Check what data exists for this property
+          const { data: allPerfData } = await supabase
+            .from('gsc_performance_data')
+            .select('date_start, date_end, total_clicks, total_impressions')
+            .eq('property_id', property.id)
+            .eq('user_token', userToken)
+            .order('date_start', { ascending: false })
+            .limit(10);
+          
+          console.log('[METRICS SUMMARY] Available performance data for property:', allPerfData);
+          console.log('[METRICS SUMMARY] Requested date range:', `${formatDate(startDate)} to ${formatDate(endDate)}`);
+        }
       }
     } catch (error) {
       console.log('[METRICS SUMMARY] Error fetching GSC data:', error);
