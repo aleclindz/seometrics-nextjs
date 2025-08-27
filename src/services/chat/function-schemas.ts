@@ -56,11 +56,237 @@ export type AuditSiteArgs = z.infer<typeof AuditSiteSchema>;
 export interface FunctionDefinition {
   schema: any; // OpenAI function schema
   validator: z.ZodSchema; // Zod validation schema
-  category: 'setup' | 'optimization' | 'content' | 'monitoring';
+  category: 'setup' | 'optimization' | 'content' | 'monitoring' | 'analytics' | 'seo' | 'cms' | 'verification';
   requiresSetup: boolean;
 }
 
 export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
+  // Agent capability functions
+  'GSC.sync_data': {
+    schema: {
+      name: 'GSC.sync_data',
+      description: 'Sync Google Search Console data',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL to sync GSC data for' },
+          date_range: { type: 'string', description: 'Date range for data sync (e.g., "30d", "3m")', default: '30d' }
+        },
+        required: ['site_url'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().url(),
+      date_range: z.string().optional().default('30d')
+    }),
+    category: 'analytics',
+    requiresSetup: true
+  },
+
+  'CONTENT.optimize_existing': {
+    schema: {
+      name: 'CONTENT.optimize_existing',
+      description: 'Optimize existing page content for better SEO performance',
+      parameters: {
+        type: 'object',
+        properties: {
+          page_url: { type: 'string', description: 'URL of the page to optimize' },
+          target_keywords: { type: 'array', items: { type: 'string' }, description: 'Keywords to optimize for' }
+        },
+        required: ['page_url', 'target_keywords'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      page_url: z.string().url(),
+      target_keywords: z.array(z.string())
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
+  'SEO.apply_fixes': {
+    schema: {
+      name: 'SEO.apply_fixes',
+      description: 'Apply automated technical SEO fixes to a website',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL to apply fixes to' },
+          fix_types: { type: 'array', items: { type: 'string' }, description: 'Types of fixes to apply' }
+        },
+        required: ['site_url', 'fix_types'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().url(),
+      fix_types: z.array(z.string())
+    }),
+    category: 'seo',
+    requiresSetup: false
+  },
+
+  'SEO.analyze_technical': {
+    schema: {
+      name: 'SEO.analyze_technical',
+      description: 'Analyze technical SEO issues on a website',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL to analyze' },
+          check_mobile: { type: 'boolean', description: 'Include mobile-specific checks', default: true }
+        },
+        required: ['site_url'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().url(),
+      check_mobile: z.boolean().optional().default(true)
+    }),
+    category: 'seo',
+    requiresSetup: false
+  },
+
+  'SEO.crawl_website': {
+    schema: {
+      name: 'SEO.crawl_website',
+      description: 'Crawl website for comprehensive technical SEO analysis',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL to crawl' },
+          max_pages: { type: 'integer', description: 'Maximum pages to crawl', default: 50 },
+          crawl_depth: { type: 'integer', description: 'Maximum crawl depth', default: 3 }
+        },
+        required: ['site_url'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().url(),
+      max_pages: z.number().int().min(1).max(1000).optional().default(50),
+      crawl_depth: z.number().int().min(1).max(10).optional().default(3)
+    }),
+    category: 'seo',
+    requiresSetup: false
+  },
+
+  'SITEMAP.generate_submit': {
+    schema: {
+      name: 'SITEMAP.generate_submit',
+      description: 'Generate and submit sitemap to search engines',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL to generate sitemap for' },
+          submit_to_gsc: { type: 'boolean', description: 'Submit to Google Search Console', default: true }
+        },
+        required: ['site_url'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().url(),
+      submit_to_gsc: z.boolean().optional().default(true)
+    }),
+    category: 'seo',
+    requiresSetup: false
+  },
+
+  'CMS.strapi_publish': {
+    schema: {
+      name: 'CMS.strapi_publish',
+      description: 'Publish content to Strapi CMS',
+      parameters: {
+        type: 'object',
+        properties: {
+          content: { type: 'object', description: 'Content to publish' },
+          publish: { type: 'boolean', description: 'Publish immediately or save as draft', default: true }
+        },
+        required: ['content'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      content: z.object({}).passthrough(),
+      publish: z.boolean().optional().default(true)
+    }),
+    category: 'cms',
+    requiresSetup: true
+  },
+
+  'VERIFY.check_changes': {
+    schema: {
+      name: 'VERIFY.check_changes',
+      description: 'Verify that applied changes are working correctly',
+      parameters: {
+        type: 'object',
+        properties: {
+          target_url: { type: 'string', description: 'URL to verify changes on' },
+          expected_changes: { type: 'array', items: { type: 'string' }, description: 'List of expected changes to verify' }
+        },
+        required: ['target_url', 'expected_changes'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      target_url: z.string().url(),
+      expected_changes: z.array(z.string())
+    }),
+    category: 'verification',
+    requiresSetup: false
+  },
+
+  'CMS.wordpress_publish': {
+    schema: {
+      name: 'CMS.wordpress_publish',
+      description: 'Publish content to WordPress',
+      parameters: {
+        type: 'object',
+        properties: {
+          content: { type: 'object', description: 'Content to publish' },
+          publish: { type: 'boolean', description: 'Publish immediately or save as draft', default: true }
+        },
+        required: ['content'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      content: z.object({}).passthrough(),
+      publish: z.boolean().optional().default(true)
+    }),
+    category: 'cms',
+    requiresSetup: true
+  },
+
+  'CONTENT.generate_article': {
+    schema: {
+      name: 'CONTENT.generate_article',
+      description: 'Generate SEO-optimized article content',
+      parameters: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: 'Article topic or title' },
+          keywords: { type: 'array', items: { type: 'string' }, description: 'Target keywords for SEO' },
+          word_count: { type: 'integer', description: 'Target word count', default: 1500 }
+        },
+        required: ['topic', 'keywords'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      topic: z.string(),
+      keywords: z.array(z.string()),
+      word_count: z.number().int().min(300).max(5000).optional().default(1500)
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
+  // Legacy functions for backwards compatibility
   connect_gsc: {
     schema: {
       name: 'connect_gsc',
