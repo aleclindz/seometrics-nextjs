@@ -206,22 +206,33 @@ export default function SetupStatusCard({ domain, userToken }: SetupStatusCardPr
     );
   }
 
-  if (setupStatus.isFullySetup && isMinimized) {
+  if (isMinimized) {
     return (
-      <Card className="mb-4 border-green-200 bg-green-50">
+      <Card className={`mb-4 ${setupStatus.isFullySetup ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
         <CardContent className="p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-sm font-medium text-green-800">
-                Setup Complete - SEOAgent Fully Active
-              </span>
+              {setupStatus.isFullySetup ? (
+                <>
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-800">
+                    Setup Complete - SEOAgent Fully Active
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Settings className="w-5 h-5 text-orange-600" />
+                  <span className="text-sm font-medium text-orange-800">
+                    Website Setup ({setupStatus.setupProgress}% Complete)
+                  </span>
+                </>
+              )}
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsMinimized(false)}
-              className="h-6 px-2 text-green-700 hover:text-green-800"
+              className={`h-6 px-2 ${setupStatus.isFullySetup ? 'text-green-700 hover:text-green-800' : 'text-orange-700 hover:text-orange-800'}`}
             >
               Show Details
             </Button>
@@ -251,16 +262,14 @@ export default function SetupStatusCard({ domain, userToken }: SetupStatusCardPr
               <span className="text-xs text-gray-600">
                 {setupStatus.setupProgress}% Complete
               </span>
-              {setupStatus.isFullySetup && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsMinimized(true)}
-                  className="h-6 px-2 text-gray-600 hover:text-gray-700"
-                >
-                  Minimize
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsMinimized(true)}
+                className="h-6 px-2 text-gray-600 hover:text-gray-700"
+              >
+                Minimize
+              </Button>
             </div>
           </div>
 

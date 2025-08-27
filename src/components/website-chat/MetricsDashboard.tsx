@@ -166,19 +166,6 @@ export default function MetricsDashboard({ domain, userToken }: MetricsDashboard
               </div>
             </div>
 
-            {/* Backlinks */}
-            <div className="flex items-center gap-2">
-              <Link className="h-4 w-4 text-purple-500" />
-              <div className="text-right">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                    Coming Soon
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500">Backlinks</div>
-              </div>
-            </div>
-
             {/* Tech Score */}
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4 text-orange-500" />
@@ -199,6 +186,19 @@ export default function MetricsDashboard({ domain, userToken }: MetricsDashboard
                   )}
                 </div>
                 <div className="text-xs text-gray-500">Tech Score</div>
+              </div>
+            </div>
+
+            {/* Backlinks */}
+            <div className="flex items-center gap-2">
+              <Link className="h-4 w-4 text-purple-500" />
+              <div className="text-right">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                    Coming Soon
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500">Backlinks</div>
               </div>
             </div>
 

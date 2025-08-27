@@ -367,39 +367,6 @@ What would you like to work on first?`,
             </Button>
           </div>
           
-          {/* Quick Actions */}
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInput('Scan my website for technical SEO issues')}
-              disabled={isLoading}
-              className="bg-white hover:bg-gray-50"
-            >
-              <Target className="h-3 w-3 mr-2" />
-              Technical Audit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInput('Generate content ideas for my niche')}
-              disabled={isLoading}
-              className="bg-white hover:bg-gray-50"
-            >
-              <Sparkles className="h-3 w-3 mr-2" />
-              Content Ideas
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInput('Show me my GSC performance summary')}
-              disabled={isLoading}
-              className="bg-white hover:bg-gray-50"
-            >
-              <Zap className="h-3 w-3 mr-2" />
-              Performance
-            </Button>
-          </div>
         </div>
       </CardContent>
     </Card>

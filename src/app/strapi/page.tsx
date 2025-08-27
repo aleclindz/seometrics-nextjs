@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle, Zap, Globe, RefreshCw, Link2, BarChart3, Shield, Clock } from 'lucide-react';
+import LandingHeader from '@/components/LandingHeader';
+import LandingFooter from '@/components/LandingFooter';
 
 export const metadata: Metadata = {
   title: 'SEOAgent for Strapi - Automated SEO for Headless CMS | Put Your Technical SEO on Autopilot',
@@ -23,24 +25,7 @@ export const metadata: Metadata = {
 export default function StrapiPage() {
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">SEO</span>
-            </div>
-            <span className="font-semibold text-gray-900">Agent</span>
-          </Link>
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
-            <Link href="/pricing" className="text-gray-600 hover:text-gray-900">Pricing</Link>
-            <Link href="/login" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-              Get Started
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <LandingHeader />
 
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -449,30 +434,7 @@ export default function StrapiPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 bg-gray-900 text-white">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <Image 
-                src="/assets/SEOAgent_logo.png" 
-                alt="SEOAgent" 
-                width={140}
-                height={36}
-                style={{ height: '36px', width: 'auto' }}
-              />
-            </div>
-            <nav className="flex items-center space-x-6 text-sm">
-              <Link href="/pricing" className="text-gray-400 hover:text-white">Pricing</Link>
-              <Link href="/login" className="text-gray-400 hover:text-white">Login</Link>
-              <Link href="/contact" className="text-gray-400 hover:text-white">Contact</Link>
-            </nav>
-          </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-            <p>&copy; 2025 SEOAgent. Built for the modern web.</p>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
