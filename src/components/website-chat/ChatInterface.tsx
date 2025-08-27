@@ -48,23 +48,75 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Enhanced welcome message
+    // Initialize with setup-aware welcome message
+    initializeChat();
+  }, [selectedSite, userToken]);
+
+  const initializeChat = async () => {
+    if (!selectedSite || !userToken) return;
+
+    // Check setup status first
+    let setupMessage = '';
+    try {
+      // Check GSC connection
+      const gscResponse = await fetch(`/api/gsc/connection?userToken=${userToken}`);
+      let gscConnected = false;
+      if (gscResponse.ok) {
+        const gscData = await gscResponse.json();
+        gscConnected = gscData.connected;
+      }
+
+      // Check SEOAgent.js status
+      const smartjsResponse = await fetch('/api/smartjs/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          websiteUrl: selectedSite.startsWith('http') ? selectedSite : `https://${selectedSite}`
+        })
+      });
+      let seoagentjsInstalled = false;
+      if (smartjsResponse.ok) {
+        const smartjsData = await smartjsResponse.json();
+        seoagentjsInstalled = smartjsData.success && smartjsData.data.active;
+      }
+
+      // Create setup-aware welcome message
+      if (!gscConnected || !seoagentjsInstalled) {
+        setupMessage = `\n\n🔧 **Setup Required**: I notice you need to complete some setup steps to unlock my full capabilities:`;
+        if (!gscConnected) {
+          setupMessage += `\n• ❌ **Google Search Console**: Not connected - I need this for performance data`;
+        } else {
+          setupMessage += `\n• ✅ **Google Search Console**: Connected`;
+        }
+        if (!seoagentjsInstalled) {
+          setupMessage += `\n• ❌ **SEOAgent.js**: Not installed - I need this for automated technical SEO fixes`;
+        } else {
+          setupMessage += `\n• ✅ **SEOAgent.js**: Active and running`;
+        }
+        setupMessage += `\n\n💡 **Complete your setup above** to enable powerful automation features. I can help with basic analysis for now, but the real magic happens when everything is connected!`;
+      } else {
+        setupMessage = `\n\n✅ **Fully Setup**: Excellent! Your Google Search Console and SEOAgent.js are connected. I have full access to automate your SEO.`;
+      }
+    } catch (error) {
+      console.error('Error checking setup status:', error);
+    }
+
     const welcomeMessage: ChatMessage = {
       id: 'welcome',
       role: 'assistant',
       content: `🚀 **Welcome to your SEO Command Center!**
 
-I&apos;m your AI SEO agent for **${selectedSite || 'your website'}**. I can help you with:
+I&apos;m your AI SEO agent for **${selectedSite}**. I can help you with:
 
 **🔍 Technical SEO** - Fix crawl issues, optimize page speed, manage sitemaps
 **📝 Content Strategy** - Generate articles, find keyword opportunities, optimize existing content  
 **🤖 Automation** - Set up monitoring, schedule tasks, create workflows
-**📊 Performance** - Analyze GSC data, track rankings, measure improvements
+**📊 Performance** - Analyze GSC data, track rankings, measure improvements${setupMessage}
 
 **Quick commands to try:**
-• *"Scan my website for technical issues"*
+• *"Check my website's technical SEO status"*
 • *"Generate 5 blog topic ideas for [keyword]"*  
-• *"Fix my missing meta descriptions"*
+• *"What SEO issues should I fix first?"*
 • *"Show me my top performing content"*
 
 What would you like to work on first?`,
@@ -72,7 +124,7 @@ What would you like to work on first?`,
     };
     
     setMessages([welcomeMessage]);
-  }, [selectedSite]);
+  };
 
   useEffect(() => {
     scrollToBottom();

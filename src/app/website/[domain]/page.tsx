@@ -8,7 +8,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/website-chat/ChatInterface';
 import MetricsDashboard from '@/components/website-chat/MetricsDashboard';
 import ActivityFeed from '@/components/website-chat/ActivityFeed';
-import SecondaryPanels from '@/components/website-chat/SecondaryPanels/SecondaryPanels';
+import SetupStatusCard from '@/components/website-chat/SetupStatusCard';
 import { useAuth } from '@/contexts/auth';
 
 export default function WebsitePage() {
@@ -60,13 +60,14 @@ export default function WebsitePage() {
               />
             </div>
             
-            {/* Secondary Panels - Control Bar */}
-            <div className="px-4 pb-2">
-              <SecondaryPanels 
+            {/* Setup Status Card */}
+            <div className="px-4">
+              <SetupStatusCard 
                 domain={domain}
                 userToken={user.token || ''}
               />
             </div>
+            
             
             {/* Chat Interface and Activity Feed - 3-Column Layout */}
             <div className="flex-1 flex gap-4 p-4 pt-2 overflow-hidden">

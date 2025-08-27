@@ -45,34 +45,55 @@ export class OpenAIFunctionClient {
     isFullySetup: boolean;
   } | null> {
     try {
-      // This mirrors the logic from activity-summary route but simplified for chat context
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       
-      // Check GSC connection via sitemap submissions
-      const gscResponse = await fetch(`${baseUrl}/api/technical-seo/sitemap?userToken=${encodeURIComponent(userToken)}&siteUrl=${encodeURIComponent(siteUrl)}`);
+      // First, get setup status from our new database-backed API
+      const setupResponse = await fetch(`${baseUrl}/api/website/setup-status?userToken=${encodeURIComponent(userToken)}&domain=${encodeURIComponent(siteUrl)}`);
+      let setupData = null;
+      if (setupResponse.ok) {
+        const result = await setupResponse.json();
+        if (result.success) {
+          setupData = result.data;
+        }
+      }
+
+      // If we have database data and it's recent (within last hour), use it
+      const now = new Date();
+      const lastUpdated = setupData?.lastUpdated ? new Date(setupData.lastUpdated) : null;
+      const isRecent = lastUpdated && (now.getTime() - lastUpdated.getTime()) < 3600000; // 1 hour
+
+      if (setupData && isRecent) {
+        return {
+          gscConnected: setupData.gscStatus === 'connected',
+          seoagentjsInstalled: setupData.seoagentjsStatus === 'active',
+          hasAuditScore: setupData.setupProgress > 0, // Simplified - if any progress exists
+          isFullySetup: setupData.isFullySetup || false
+        };
+      }
+
+      // Fallback to live checking if no recent database data
+      console.log('[SETUP CHECK] No recent database data, performing live checks');
+      
+      // Check GSC connection via API
+      const gscResponse = await fetch(`${baseUrl}/api/gsc/connection?userToken=${encodeURIComponent(userToken)}`);
       let gscConnected = false;
       if (gscResponse.ok) {
         const gscData = await gscResponse.json();
-        gscConnected = gscData.success && gscData.sitemaps && gscData.sitemaps.length > 0;
+        gscConnected = gscData.connected || false;
       }
 
-      // Check SEOAgent.js installation by website analysis
+      // Check SEOAgent.js installation via smartjs API
+      const smartjsResponse = await fetch(`${baseUrl}/api/smartjs/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          websiteUrl: siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`
+        })
+      });
       let seoagentjsInstalled = false;
-      try {
-        const siteResponse = await fetch(siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`, {
-          method: 'GET',
-          headers: { 'User-Agent': 'SEOAgent-StatusBot/1.0' },
-          signal: AbortSignal.timeout(3000) // 3 second timeout
-        });
-        
-        if (siteResponse.ok) {
-          const siteContent = await siteResponse.text();
-          const hasScript = siteContent.includes('seoagent.js') || siteContent.includes('SEO-METRICS');
-          const hasWebsiteToken = siteContent.includes('idv = ') || siteContent.includes('website_token');
-          seoagentjsInstalled = hasScript && hasWebsiteToken;
-        }
-      } catch (error) {
-        console.log('[SETUP CHECK] Could not check SEOAgent.js status:', error);
+      if (smartjsResponse.ok) {
+        const smartjsData = await smartjsResponse.json();
+        seoagentjsInstalled = smartjsData.success && smartjsData.data?.active;
       }
 
       // Check if audit has been run (simplified)
@@ -88,6 +109,24 @@ export class OpenAIFunctionClient {
       }
 
       const isFullySetup = gscConnected && seoagentjsInstalled;
+
+      // Update database with fresh status
+      if (!isRecent) {
+        try {
+          await fetch(`${baseUrl}/api/website/setup-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userToken,
+              domain: siteUrl,
+              gscStatus: gscConnected ? 'connected' : 'none',
+              seoagentjsStatus: seoagentjsInstalled ? 'active' : 'inactive'
+            })
+          });
+        } catch (error) {
+          console.log('[SETUP CHECK] Could not update database status:', error);
+        }
+      }
 
       return {
         gscConnected,
