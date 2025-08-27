@@ -20,98 +20,154 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameters: userToken, siteUrl' }, { status: 400 });
     }
 
-    // Get URL inspections data - try multiple URL formats
+    // Get URL inspections data - try multiple URL formats with error handling
     let inspections = null;
     let inspectionsError = null;
     
     console.log('[TECHNICAL SEO SUMMARY] Looking for inspections with siteUrl:', siteUrl);
     
-    // Generate all possible URL variants using the normalization service
-    const urlVariations = UrlNormalizationService.generateUrlVariations(siteUrl);
-    const urlVariants = [
-      siteUrl,                           // Original request
-      urlVariations.domainProperty,      // sc-domain:translateyoutubevideos.com
-      urlVariations.httpsUrl,            // https://translateyoutubevideos.com  
-      urlVariations.gscFormat,           // https://translateyoutubevideos.com
-      siteUrl.replace('https://', '').replace('http://', '') // translateyoutubevideos.com
-    ];
+    try {
+      // Generate all possible URL variants using the normalization service
+      const urlVariations = UrlNormalizationService.generateUrlVariations(siteUrl);
+      const urlVariants = [
+        siteUrl,                           // Original request
+        urlVariations.domainProperty,      // sc-domain:translateyoutubevideos.com
+        urlVariations.httpsUrl,            // https://translateyoutubevideos.com  
+        urlVariations.gscFormat,           // https://translateyoutubevideos.com
+        siteUrl.replace('https://', '').replace('http://', '') // translateyoutubevideos.com
+      ];
 
-    console.log('[TECHNICAL SEO SUMMARY] Trying URL variants:', urlVariants);
-    
-    for (const variant of urlVariants) {
-      const { data, error } = await supabase
-        .from('url_inspections')
-        .select('*')
-        .eq('user_token', userToken)
-        .eq('site_url', variant)
-        .order('inspected_at', { ascending: false });
-        
-      console.log(`[TECHNICAL SEO SUMMARY] ${variant}: ${data?.length || 0} results`);
-        
-      if (data && data.length > 0 && !error) {
-        inspections = data;
-        console.log('[TECHNICAL SEO SUMMARY] Found inspections with URL variant:', variant);
-        break;
-      } else if (error && error.code !== 'PGRST116') {
-        // PGRST116 is "not found", other errors are actual issues
-        inspectionsError = error;
+      console.log('[TECHNICAL SEO SUMMARY] Trying URL variants:', urlVariants);
+      
+      for (const variant of urlVariants) {
+        const { data, error } = await supabase
+          .from('url_inspections')
+          .select('*')
+          .eq('user_token', userToken)
+          .eq('site_url', variant)
+          .order('inspected_at', { ascending: false });
+          
+        console.log(`[TECHNICAL SEO SUMMARY] ${variant}: ${data?.length || 0} results`);
+          
+        if (data && data.length > 0 && !error) {
+          inspections = data;
+          console.log('[TECHNICAL SEO SUMMARY] Found inspections with URL variant:', variant);
+          break;
+        } else if (error && error.code !== 'PGRST116') {
+          // PGRST116 is "not found", other errors are actual issues
+          inspectionsError = error;
+        }
+      }
+
+      if (inspectionsError && inspectionsError.code !== '42P01') {
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching inspections:', inspectionsError);
+        return NextResponse.json({ error: 'Failed to fetch inspection data' }, { status: 500 });
+      }
+    } catch (error: any) {
+      if (error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] url_inspections table not found, using fallback data');
+      } else {
+        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching inspections:', error);
       }
     }
 
-    if (inspectionsError) {
-      console.error('[TECHNICAL SEO SUMMARY] Error fetching inspections:', inspectionsError);
-      return NextResponse.json({ error: 'Failed to fetch inspection data' }, { status: 500 });
+    // Get audit data if available (with error handling)
+    let audits = null;
+    try {
+      const result = await supabase
+        .from('seo_audits')
+        .select('*')
+        .eq('user_token', userToken)
+        .eq('website_url', siteUrl)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      audits = result.data;
+      if (result.error && result.error.code !== '42P01') {
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching audits:', result.error);
+      } else if (result.error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] seo_audits table not found, skipping audit data');
+      }
+    } catch (error: any) {
+      if (error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] seo_audits table not found, using fallback data');
+      } else {
+        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching audits:', error);
+      }
     }
 
-    // Get audit data if available
-    const { data: audits, error: auditsError } = await supabase
-      .from('seo_audits')
-      .select('*')
-      .eq('user_token', userToken)
-      .eq('website_url', siteUrl)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (auditsError) {
-      console.error('[TECHNICAL SEO SUMMARY] Error fetching audits:', auditsError);
+    // Get recent audit issues (with error handling)
+    let issues = null;
+    try {
+      const result = await supabase
+        .from('audit_issues')
+        .select('*')
+        .eq('user_token', userToken)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      issues = result.data;
+      if (result.error && result.error.code !== '42P01') {
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching issues:', result.error);
+      } else if (result.error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] audit_issues table not found, skipping issues data');
+      }
+    } catch (error: any) {
+      if (error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] audit_issues table not found, using fallback data');
+      } else {
+        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching issues:', error);
+      }
     }
 
-    // Get recent audit issues
-    const { data: issues, error: issuesError } = await supabase
-      .from('audit_issues')
-      .select('*')
-      .eq('user_token', userToken)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (issuesError) {
-      console.error('[TECHNICAL SEO SUMMARY] Error fetching issues:', issuesError);
+    // Get schema generation data from smart.js activity (with error handling)
+    let schemaGenerations = null;
+    try {
+      const result = await supabase
+        .from('schema_generations')
+        .select('*')
+        .eq('website_token', siteUrl.replace('https://', '').replace('http://', ''))
+        .order('generated_at', { ascending: false })
+        .limit(100);
+      
+      schemaGenerations = result.data;
+      if (result.error && result.error.code !== '42P01') {
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching schema generations:', result.error);
+      } else if (result.error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] schema_generations table not found, skipping schema data');
+      }
+    } catch (error: any) {
+      if (error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] schema_generations table not found, using fallback data');
+      } else {
+        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching schema generations:', error);
+      }
     }
 
-    // Get schema generation data from smart.js activity
-    const { data: schemaGenerations, error: schemaError } = await supabase
-      .from('schema_generations')
-      .select('*')
-      .eq('website_token', siteUrl.replace('https://', '').replace('http://', ''))
-      .order('generated_at', { ascending: false })
-      .limit(100);
-
-    if (schemaError) {
-      console.error('[TECHNICAL SEO SUMMARY] Error fetching schema generations:', schemaError);
-    }
-
-    // Get sitemap data
-    const { data: sitemaps, error: sitemapError } = await supabase
-      .from('sitemap_submissions')
-      .select('*')
-      .eq('user_token', userToken)
-      .eq('site_url', siteUrl)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (sitemapError) {
-      console.error('[TECHNICAL SEO SUMMARY] Error fetching sitemap data:', sitemapError);
+    // Get sitemap data (with error handling)
+    let sitemaps = null;
+    try {
+      const result = await supabase
+        .from('sitemap_submissions')
+        .select('*')
+        .eq('user_token', userToken)
+        .eq('site_url', siteUrl)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      sitemaps = result.data;
+      if (result.error && result.error.code !== '42P01') {
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching sitemap data:', result.error);
+      } else if (result.error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] sitemap_submissions table not found, skipping sitemap data');
+      }
+    } catch (error: any) {
+      if (error?.code === '42P01') {
+        console.log('[TECHNICAL SEO SUMMARY] sitemap_submissions table not found, using fallback data');
+      } else {
+        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching sitemap data:', error);
+      }
     }
 
     // Get robots.txt analysis data (handle case where table doesn't exist)

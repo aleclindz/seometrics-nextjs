@@ -29,6 +29,9 @@ export default function LandingHeader() {
             <a href="#features" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
               Features
             </a>
+            <Link href="/strapi" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
+              Strapi
+            </Link>
             <a href="#social-proof" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
               Testimonials
             </a>
@@ -80,6 +83,9 @@ export default function LandingHeader() {
               <a href="#features" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
                 Features
               </a>
+              <Link href="/strapi" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
+                Strapi
+              </Link>
               <a href="#social-proof" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
                 Testimonials
               </a>

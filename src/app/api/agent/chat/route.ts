@@ -106,7 +106,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(processedResponse);
       }
 
-      // Execute all tool calls
+      // First, add the assistant message with tool_calls
+      messages.push({
+        role: 'assistant',
+        content: messageContent.content || '',
+        tool_calls: messageContent.tool_calls
+      } as any);
+
+      // Then execute all tool calls and add responses
       await Promise.all(messageContent.tool_calls.map(async (toolCall) => {
         if (toolCall.type !== 'function') return;
         
@@ -150,21 +157,16 @@ export async function POST(request: NextRequest) {
             error: error instanceof Error ? error.message : 'Execution failed' 
           };
         }
+      }));
 
-        // Add tool result to messages
+      // Add all tool results to messages after execution
+      messageContent.tool_calls.forEach((toolCall) => {
         messages.push({
           role: 'tool',
           tool_call_id: toolCall.id,
           content: JSON.stringify(toolResults[toolCall.id])
         } as any);
-      }));
-
-      // Add the assistant message
-      messages.push({
-        role: 'assistant',
-        content: messageContent.content || '',
-        tool_calls: messageContent.tool_calls
-      } as any);
+      });
     }
 
     // Final response after max steps

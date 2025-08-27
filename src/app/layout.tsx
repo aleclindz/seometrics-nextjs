@@ -62,6 +62,20 @@ export default function RootLayout({
           </OnboardingGate>
         </AuthProvider>
         
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-V6T409KL12"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-V6T409KL12');
+          `}
+        </Script>
+        
         {/* SEOAgent.js */}
         <Script src="https://seoagent.com/smart.js" strategy="afterInteractive" />
         <Script id="seoagent-config" strategy="afterInteractive">

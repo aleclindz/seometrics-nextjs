@@ -9,13 +9,38 @@ import { z } from 'zod';
  * - Schema registry for dynamic tool exposure
  */
 
+// Custom URL validation that accepts domains with or without protocol
+const flexibleUrlSchema = z.string().transform((val, ctx) => {
+  // Handle domain without protocol or special GSC formats
+  if (val.startsWith('sc-domain:')) {
+    return val; // Keep GSC domain format as is
+  }
+  
+  // If it's just a domain, add https://
+  if (!val.startsWith('http://') && !val.startsWith('https://')) {
+    return `https://${val}`;
+  }
+  
+  // Validate as URL
+  try {
+    new URL(val);
+    return val;
+  } catch (error) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Must be a valid URL or domain'
+    });
+    return z.NEVER;
+  }
+});
+
 // Zod validation schemas
 export const ConnectGSCSchema = z.object({
-  site_url: z.string().url('Must be a valid URL')
+  site_url: flexibleUrlSchema
 });
 
 export const SyncGSCDataSchema = z.object({
-  site_url: z.string().url('Must be a valid URL')
+  site_url: flexibleUrlSchema
 });
 
 export const GenerateArticleSchema = z.object({
@@ -23,11 +48,11 @@ export const GenerateArticleSchema = z.object({
   target_keywords: z.array(z.string()).optional(),
   content_type: z.enum(['blog_post', 'landing_page', 'guide']).default('blog_post'),
   word_count: z.number().min(300).max(5000).default(1500),
-  site_url: z.string().url().optional()
+  site_url: flexibleUrlSchema.optional()
 });
 
 export const CreateIdeaSchema = z.object({
-  site_url: z.string().url('Must be a valid URL'),
+  site_url: flexibleUrlSchema,
   title: z.string().min(1, 'Title is required'),
   hypothesis: z.string().min(10, 'Hypothesis must be at least 10 characters'),
   evidence: z.record(z.any()).default({}),
@@ -35,11 +60,11 @@ export const CreateIdeaSchema = z.object({
 });
 
 export const GetSiteStatusSchema = z.object({
-  site_url: z.string().url('Must be a valid URL')
+  site_url: flexibleUrlSchema
 });
 
 export const AuditSiteSchema = z.object({
-  site_url: z.string().url('Must be a valid URL'),
+  site_url: flexibleUrlSchema,
   include_gsc_data: z.boolean().default(true),
   audit_type: z.enum(['technical', 'content', 'performance', 'full']).default('full')
 });
@@ -77,7 +102,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: z.object({
-      site_url: z.string().url(),
+      site_url: flexibleUrlSchema,
       date_range: z.string().optional().default('30d')
     }),
     category: 'analytics',
@@ -99,7 +124,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: z.object({
-      page_url: z.string().url(),
+      page_url: flexibleUrlSchema,
       target_keywords: z.array(z.string())
     }),
     category: 'content',
@@ -121,7 +146,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: z.object({
-      site_url: z.string().url(),
+      site_url: flexibleUrlSchema,
       fix_types: z.array(z.string())
     }),
     category: 'seo',
@@ -143,7 +168,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: z.object({
-      site_url: z.string().url(),
+      site_url: flexibleUrlSchema,
       check_mobile: z.boolean().optional().default(true)
     }),
     category: 'seo',
@@ -166,7 +191,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: z.object({
-      site_url: z.string().url(),
+      site_url: flexibleUrlSchema,
       max_pages: z.number().int().min(1).max(1000).optional().default(50),
       crawl_depth: z.number().int().min(1).max(10).optional().default(3)
     }),
@@ -189,7 +214,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: z.object({
-      site_url: z.string().url(),
+      site_url: flexibleUrlSchema,
       submit_to_gsc: z.boolean().optional().default(true)
     }),
     category: 'seo',
@@ -233,7 +258,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: z.object({
-      target_url: z.string().url(),
+      target_url: flexibleUrlSchema,
       expected_changes: z.array(z.string())
     }),
     category: 'verification',
