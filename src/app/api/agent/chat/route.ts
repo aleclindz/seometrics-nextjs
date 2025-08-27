@@ -492,7 +492,7 @@ async function processOpenAIResponse(response: any, userToken: string, selectedS
 }
 
 // Build system prompt with setup awareness
-async function buildSystemPrompt(userToken: string, selectedSite: string): Promise<string> {
+function buildSystemPrompt(userToken: string, selectedSite: string): string {
   let prompt = `You are SEOAgent, an expert SEO assistant for SEOAgent.com. You help users with:
 
 1. **Google Search Console Integration**: Connect websites, sync performance data, analyze search metrics

@@ -16,6 +16,45 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'User token required' }, { status: 400 });
     }
 
+    console.log('[HOST CONNECTIONS] Fetching connections for user:', userToken);
+    if (websiteId) {
+      console.log('[HOST CONNECTIONS] Filtering by websiteId:', websiteId);
+    }
+
+    // Try to check if table exists first
+    try {
+      const tableCheck = await supabaseAdmin
+        .from('host_connections')
+        .select('count')
+        .limit(1);
+      
+      if (tableCheck.error) {
+        console.error('[HOST CONNECTIONS] Table check error:', tableCheck.error);
+        
+        if (tableCheck.error.code === '42P01' || 
+            tableCheck.error.message?.includes('relation') || 
+            tableCheck.error.message?.includes('does not exist')) {
+          console.log('[HOST CONNECTIONS] Table does not exist, returning empty state');
+          return NextResponse.json({
+            success: true,
+            connections: [],
+            message: 'Host connections feature not yet available - database migration required'
+          });
+        }
+      }
+    } catch (tableError: any) {
+      console.error('[HOST CONNECTIONS] Table check failed:', tableError);
+      if (tableError.message?.includes('relation') || 
+          tableError.message?.includes('does not exist') ||
+          tableError.code === '42P01') {
+        return NextResponse.json({
+          success: true,
+          connections: [],
+          message: 'Host connections not yet set up - migrations pending'
+        });
+      }
+    }
+
     // Build query
     let query = supabaseAdmin
       .from('host_connections')
