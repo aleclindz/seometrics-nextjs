@@ -1,10 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+// Helper function to find website by domain with URL variations
+async function findWebsiteByDomain(userToken: string, domainInput: string) {
+  // Generate URL variations to match different formats in database
+  const variations = UrlNormalizationService.generateUrlVariations(domainInput);
+  const searchTerms = [
+    domainInput,
+    variations.domainProperty, // sc-domain:example.com
+    variations.httpsUrl,       // https://example.com
+    variations.httpUrl,        // http://example.com
+    variations.wwwHttpsUrl,    // https://www.example.com
+    variations.wwwHttpUrl      // http://www.example.com
+  ];
+
+  for (const searchTerm of searchTerms) {
+    const { data: website, error } = await supabaseAdmin
+      .from('websites')
+      .select('id')
+      .eq('user_token', userToken)
+      .eq('domain', searchTerm)
+      .single();
+    
+    if (!error && website) {
+      return website;
+    }
+  }
+
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,15 +96,10 @@ export async function GET(request: NextRequest) {
     if (websiteId) {
       // Check if websiteId is a domain string or an integer ID
       if (isNaN(parseInt(websiteId))) {
-        // It's a domain string - find the website ID from the websites table
-        const { data: website, error: websiteError } = await supabaseAdmin
-          .from('websites')
-          .select('id')
-          .eq('user_token', userToken)
-          .eq('domain', websiteId)
-          .single();
+        // It's a domain string - find the website ID using URL variations
+        const website = await findWebsiteByDomain(userToken, websiteId);
         
-        if (websiteError || !website) {
+        if (!website) {
           return NextResponse.json({ 
             success: false, 
             error: `Website not found for domain: ${websiteId}` 
@@ -136,15 +161,10 @@ export async function POST(request: NextRequest) {
     // Resolve websiteId to actual website ID if it's a domain string
     let actualWebsiteId: number;
     if (isNaN(parseInt(websiteId))) {
-      // It's a domain string - find the website ID from the websites table
-      const { data: website, error: websiteError } = await supabaseAdmin
-        .from('websites')
-        .select('id')
-        .eq('user_token', userToken)
-        .eq('domain', websiteId)
-        .single();
+      // It's a domain string - find the website ID using URL variations
+      const website = await findWebsiteByDomain(userToken, websiteId);
       
-      if (websiteError || !website) {
+      if (!website) {
         return NextResponse.json({ 
           success: false, 
           error: `Website not found for domain: ${websiteId}` 
