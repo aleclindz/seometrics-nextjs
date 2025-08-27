@@ -454,10 +454,13 @@ export default function StrapiPage() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">SEO</span>
-              </div>
-              <span className="font-semibold">Agent</span>
+              <Image 
+                src="/assets/SEOAgent_logo.png" 
+                alt="SEOAgent" 
+                width={140}
+                height={36}
+                style={{ height: '36px', width: 'auto' }}
+              />
             </div>
             <nav className="flex items-center space-x-6 text-sm">
               <Link href="/pricing" className="text-gray-400 hover:text-white">Pricing</Link>
@@ -466,7 +469,7 @@ export default function StrapiPage() {
             </nav>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-            <p>&copy; 2024 SEOAgent. Built for the modern web.</p>
+            <p>&copy; 2025 SEOAgent. Built for the modern web.</p>
           </div>
         </div>
       </footer>

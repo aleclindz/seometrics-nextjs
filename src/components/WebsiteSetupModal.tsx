@@ -212,15 +212,12 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
 
     try {
       setCmsLoading(true);
-      const response = await fetch(`/api/cms/connections?userToken=${user.token}`);
+      const response = await fetch(`/api/cms/connections?userToken=${user.token}&domain=${website.url}`);
       const data = await response.json();
       
       if (data.success) {
-        // Filter connections for this website
-        const websiteConnections = data.connections.filter((conn: any) => 
-          conn.website_id === parseInt(website.id) || !conn.website_id
-        );
-        setCmsConnections(websiteConnections);
+        // Connections are already filtered by domain in the API call
+        setCmsConnections(data.connections);
       }
     } catch (error) {
       console.error('Error fetching CMS connections:', error);
@@ -245,22 +242,42 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
 
     try {
       setHostLoading(true);
-      const response = await fetch(`/api/host/connections?userToken=${user.token}&websiteId=${website.id}`);
-      const data = await response.json();
+      setHostError(null);
       
-      if (data.success) {
-        setHostConnections(data.connections);
-        // Update parent status if we have active connections
-        const hasActiveConnection = data.connections.some((conn: HostConnection) => 
-          conn.deployment_status === 'active'
-        );
-        if (hasActiveConnection && website.hostStatus !== 'connected') {
-          onStatusUpdate?.({ hostStatus: 'connected' });
+      const response = await fetch(`/api/host/connections?userToken=${user.token}&websiteId=${website.url}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success) {
+          setHostConnections(data.connections);
+          // Update parent status if we have active connections
+          const hasActiveConnection = data.connections.some((conn: HostConnection) => 
+            conn.deployment_status === 'active'
+          );
+          if (hasActiveConnection && website.hostStatus !== 'connected') {
+            onStatusUpdate?.({ hostStatus: 'connected' });
+          }
+        } else {
+          console.log('[HOST CONNECTIONS] API returned unsuccessful response:', data.error);
+          // Don't show error to user for missing features
         }
+      } else if (response.status === 404) {
+        // Host connections API/table not yet available, silently handle
+        console.log('[HOST CONNECTIONS] Host connections feature not yet available (404)');
+      } else {
+        // Other HTTP errors
+        console.error('[HOST CONNECTIONS] HTTP error:', response.status, response.statusText);
+        setHostError('Failed to load host connections');
       }
     } catch (error) {
       console.error('Error fetching host connections:', error);
-      setHostError('Failed to fetch host connections');
+      // Only show error for actual network/unexpected errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setHostError('Network error loading host connections');
+      } else {
+        console.log('[HOST CONNECTIONS] Silently handling error - feature may not be available yet');
+      }
     } finally {
       setHostLoading(false);
     }
@@ -416,25 +433,6 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
             </button>
           </div>
           
-          {/* Connection Status Overview */}
-          <div className="flex items-center space-x-4 mt-4">
-            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(website.gscStatus)}`}>
-              {getStatusIcon(website.gscStatus)}
-              <span>Search Console</span>
-            </div>
-            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(website.smartjsStatus)}`}>
-              {getStatusIcon(website.smartjsStatus)}
-              <span>SEOAgent.js</span>
-            </div>
-            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(website.cmsStatus)}`}>
-              {getStatusIcon(website.cmsStatus)}
-              <span>CMS</span>
-            </div>
-            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(website.hostStatus || 'none')}`}>
-              {getStatusIcon(website.hostStatus || 'none')}
-              <span>Hosting</span>
-            </div>
-          </div>
         </div>
 
         {/* Tab Navigation */}

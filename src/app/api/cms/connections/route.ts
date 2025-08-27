@@ -68,9 +68,18 @@ export async function GET(request: NextRequest) {
         `)
         .eq('user_token', userToken);
       
-      // If domain is specified, filter by it
+      // If domain is specified, filter by it using domain variations
       if (domain) {
-        query = query.eq('websites.domain', domain);
+        // Generate domain variations to handle sc-domain: format and other formats
+        const domainVariations = [
+          domain,                           // translateyoutubevideos.com
+          `sc-domain:${domain}`,            // sc-domain:translateyoutubevideos.com
+          `https://${domain}`,              // https://translateyoutubevideos.com
+          domain.replace('https://', '').replace('http://', '') // clean domain
+        ];
+        
+        // Use OR condition to match any of the domain variations
+        query = query.in("websites.domain", domainVariations);
       }
       
       const result = await query.order('created_at', { ascending: false });
