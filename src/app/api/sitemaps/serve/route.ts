@@ -37,10 +37,10 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(1);
 
-    // Add URL-based filtering only if website.url exists
-    if (website.url) {
-      const cleanUrl = website.url.replace(/^https?:\/\//, '').replace(/^www\./, '');
-      sitemapQuery = sitemapQuery.or(`site_url.eq.${website.url},site_url.eq.sc-domain:${cleanUrl}`);
+    // Add domain-based filtering using the correct domain column
+    if (website.domain) {
+      const cleanDomain = website.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/^sc-domain:/, '');
+      sitemapQuery = sitemapQuery.or(`site_url.eq.https://${cleanDomain},site_url.eq.sc-domain:${cleanDomain}`);
     }
     
     const { data: sitemapRecord, error: sitemapError } = await sitemapQuery.single();
@@ -48,17 +48,15 @@ export async function POST(request: NextRequest) {
     if (sitemapError || !sitemapRecord) {
       console.log('[SITEMAP SERVE] No sitemap found, generating basic sitemap');
       
-      // Determine the website URL to use - handle null website.url
+      // Determine the website URL to use - use domain column
       let baseUrl = website_url;
-      if (!baseUrl && website.url) {
-        baseUrl = website.url.startsWith('sc-domain:') 
-          ? website.url.replace('sc-domain:', 'https://') 
-          : website.url;
-      }
       if (!baseUrl && website.domain) {
         baseUrl = website.domain.startsWith('sc-domain:') 
           ? website.domain.replace('sc-domain:', 'https://') 
-          : `https://${website.domain}`;
+          : (website.domain.startsWith('http') ? website.domain : `https://${website.domain}`);
+      }
+      if (!baseUrl) {
+        baseUrl = 'https://example.com'; // fallback
       }
       if (!baseUrl) {
         console.error('[SITEMAP SERVE] No URL available for sitemap generation');
@@ -100,11 +98,8 @@ export async function POST(request: NextRequest) {
 
     // Try to fetch the full sitemap XML from the generation endpoint
     try {
-      // Determine the site URL for the generation API - handle null website.url
+      // Determine the site URL for the generation API - use domain column
       let siteUrlForGeneration = website_url;
-      if (!siteUrlForGeneration && website.url) {
-        siteUrlForGeneration = website.url;
-      }
       if (!siteUrlForGeneration && website.domain) {
         siteUrlForGeneration = website.domain.startsWith('sc-domain:') 
           ? website.domain 

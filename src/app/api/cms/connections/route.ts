@@ -68,18 +68,11 @@ export async function GET(request: NextRequest) {
         `)
         .eq('user_token', userToken);
       
-      // If domain is specified, filter by it using domain variations
+      // If domain is specified, filter by it using multiple separate queries
       if (domain) {
-        // Generate domain variations to handle sc-domain: format and other formats
-        const domainVariations = [
-          domain,                           // translateyoutubevideos.com
-          `sc-domain:${domain}`,            // sc-domain:translateyoutubevideos.com
-          `https://${domain}`,              // https://translateyoutubevideos.com
-          domain.replace('https://', '').replace('http://', '') // clean domain
-        ];
-        
-        // Use OR condition to match any of the domain variations
-        query = query.in("websites.domain", domainVariations);
+        // Try the most likely domain format first: sc-domain:domain
+        const scDomainFormat = `sc-domain:${domain}`;
+        query = query.eq('websites.domain', scDomainFormat);
       }
       
       const result = await query.order('created_at', { ascending: false });
