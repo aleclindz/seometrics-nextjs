@@ -7,10 +7,10 @@
 ## Overview
 This document provides a complete overview of the SEOAgent PostgreSQL database schema. The database uses Supabase with Row Level Security (RLS) policies for data protection.
 
-**Last Updated:** August 26, 2025  
-**Migration Version:** 040 (Clean Database Schema)  
+**Last Updated:** August 27, 2025  
+**Migration Version:** Current (Verified from Live Database)  
 **Agent Operating System:** ✅ Active (Primary SEO System)  
-**Legacy Tables:** ❌ Removed (Archived in agent_events)
+**Agent Memory System:** ✅ Active (`agent_memory` + `agent_learning` tables)
 
 ---
 
@@ -590,6 +590,53 @@ CREATE TABLE agent_capabilities (
 );
 ```
 
+### `agent_memory`
+**Purpose**: Persistent context and learning for website-specific AI agents
+```sql
+CREATE TABLE agent_memory (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    website_token TEXT NOT NULL,
+    user_token TEXT NOT NULL,
+    memory_type TEXT NOT NULL, -- 'context', 'patterns', 'preferences', 'insights', 'strategies'
+    memory_key TEXT NOT NULL,
+    memory_data JSONB NOT NULL,
+    confidence_score DOUBLE PRECISION DEFAULT 0.8,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(website_token, user_token, memory_type, memory_key)
+);
+```
+**Key Points**:
+- Stores persistent context for each website's AI agent
+- Memory types: context, patterns, preferences, insights, strategies
+- Automatic expiration support for temporary memories
+- Confidence scoring for memory reliability
+
+### `agent_learning`
+**Purpose**: Action execution tracking for agent learning and improvement
+```sql
+CREATE TABLE agent_learning (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    website_token TEXT NOT NULL,
+    user_token TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    action_context JSONB NOT NULL,
+    outcome TEXT NOT NULL, -- 'success', 'failure', 'partial'
+    success_metrics JSONB,
+    error_details TEXT,
+    execution_time_ms INTEGER,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+**Key Points**:
+- Records every agent action execution and outcome
+- Enables success rate analysis by action type
+- Powers agent recommendations and pattern learning
+- Supports performance optimization over time
+
 ### `agent_events`
 **Purpose**: Complete immutable audit trail of all agent activity
 ```sql
@@ -664,7 +711,17 @@ CREATE INDEX IF NOT EXISTS idx_agent_actions_idea_id ON agent_actions(idea_id);
 CREATE INDEX IF NOT EXISTS idx_agent_actions_scheduled_for ON agent_actions(scheduled_for);
 CREATE INDEX IF NOT EXISTS idx_agent_actions_priority ON agent_actions(priority_score DESC);
 CREATE INDEX IF NOT EXISTS idx_agent_actions_type ON agent_actions(action_type);
-
+-- Agent Memory
+CREATE INDEX IF NOT EXISTS idx_agent_memory_user_token ON agent_memory(user_token);
+CREATE INDEX IF NOT EXISTS idx_agent_memory_website_token ON agent_memory(website_token);
+CREATE INDEX IF NOT EXISTS idx_agent_memory_type_key ON agent_memory(memory_type, memory_key);
+CREATE INDEX IF NOT EXISTS idx_agent_memory_expires_at ON agent_memory(expires_at);
+-- Agent Learning
+CREATE INDEX IF NOT EXISTS idx_agent_learning_user_token ON agent_learning(user_token);
+CREATE INDEX IF NOT EXISTS idx_agent_learning_website_token ON agent_learning(website_token);
+CREATE INDEX IF NOT EXISTS idx_agent_learning_action_type ON agent_learning(action_type);
+CREATE INDEX IF NOT EXISTS idx_agent_learning_outcome ON agent_learning(outcome);
+CREATE INDEX IF NOT EXISTS idx_agent_learning_created_at ON agent_learning(created_at DESC);
 -- Agent Events
 CREATE INDEX IF NOT EXISTS idx_agent_events_user_token ON agent_events(user_token);
 CREATE INDEX IF NOT EXISTS idx_agent_events_entity_type_id ON agent_events(entity_type, entity_id);
@@ -694,6 +751,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_events_created_at ON agent_events(created_a
 
 ---
 
-**📝 Last Updated**: August 26, 2025  
-**📋 Migration Version**: 040 (Clean Database Schema)  
-**🤖 Agent System**: Active and Primary
+**📝 Last Updated**: August 27, 2025 (Added Memory & Learning Tables)  
+**📋 Migration Version**: Current (Verified from Live Database)  
+**🤖 Agent System**: Active and Primary with Memory System
