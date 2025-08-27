@@ -26,35 +26,36 @@ export async function POST(request: NextRequest) {
     
     console.log('[TECHNICAL SEO SUMMARY] Looking for inspections with siteUrl:', siteUrl);
     
-    // Try exact match first
-    const { data: inspections1, error: error1 } = await supabase
-      .from('url_inspections')
-      .select('*')
-      .eq('user_token', userToken)
-      .eq('site_url', siteUrl)
-      .order('inspected_at', { ascending: false });
+    // Generate all possible URL variants using the normalization service
+    const urlVariations = UrlNormalizationService.generateUrlVariations(siteUrl);
+    const urlVariants = [
+      siteUrl,                           // Original request
+      urlVariations.domainProperty,      // sc-domain:translateyoutubevideos.com
+      urlVariations.httpsUrl,            // https://translateyoutubevideos.com  
+      urlVariations.gscFormat,           // https://translateyoutubevideos.com
+      siteUrl.replace('https://', '').replace('http://', '') // translateyoutubevideos.com
+    ];
+
+    console.log('[TECHNICAL SEO SUMMARY] Trying URL variants:', urlVariants);
     
-    console.log('[TECHNICAL SEO SUMMARY] Exact match results:', inspections1?.length || 0);
-    
-    if (inspections1?.length) {
-      inspections = inspections1;
-    } else {
-      // Handle different URL formats to match database using normalization service
-      const scDomainUrl = UrlNormalizationService.urlToDomainProperty(siteUrl);
-      
-      console.log('[TECHNICAL SEO SUMMARY] Trying sc-domain format:', scDomainUrl);
-      
-      const { data: inspections2, error: error2 } = await supabase
+    for (const variant of urlVariants) {
+      const { data, error } = await supabase
         .from('url_inspections')
         .select('*')
         .eq('user_token', userToken)
-        .eq('site_url', scDomainUrl)
+        .eq('site_url', variant)
         .order('inspected_at', { ascending: false });
-      
-      console.log('[TECHNICAL SEO SUMMARY] SC-domain match results:', inspections2?.length || 0);
-      
-      inspections = inspections2;
-      inspectionsError = error2;
+        
+      console.log(`[TECHNICAL SEO SUMMARY] ${variant}: ${data?.length || 0} results`);
+        
+      if (data && data.length > 0 && !error) {
+        inspections = data;
+        console.log('[TECHNICAL SEO SUMMARY] Found inspections with URL variant:', variant);
+        break;
+      } else if (error && error.code !== 'PGRST116') {
+        // PGRST116 is "not found", other errors are actual issues
+        inspectionsError = error;
+      }
     }
 
     if (inspectionsError) {

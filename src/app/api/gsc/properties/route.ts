@@ -115,13 +115,29 @@ export async function GET(request: NextRequest) {
         // Auto-populate websites table from GSC property
         const domain = site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
         
-        // Check if website already exists or was excluded
-        const { data: existingWebsite } = await supabase
-          .from('websites')
-          .select('website_token, is_excluded_from_sync')
-          .eq('user_token', userToken)
-          .eq('domain', domain)
-          .single();
+        // Check if website already exists in any format (prevent duplicates)
+        const domainVariants = [
+          domain,                    // translateyoutubevideos.com
+          `sc-domain:${domain}`,     // sc-domain:translateyoutubevideos.com
+          `https://${domain}`,       // https://translateyoutubevideos.com
+          `http://${domain}`         // http://translateyoutubevideos.com
+        ];
+        
+        let existingWebsite = null;
+        for (const variant of domainVariants) {
+          const { data } = await supabase
+            .from('websites')
+            .select('website_token, is_excluded_from_sync, domain, is_managed, meta_tags, image_tags')
+            .eq('user_token', userToken)
+            .eq('domain', variant)
+            .single();
+            
+          if (data) {
+            existingWebsite = data;
+            console.log('[GSC PROPERTIES] Found existing website with domain variant:', variant);
+            break;
+          }
+        }
 
         if (!existingWebsite) {
           // Generate a unique token for the website
