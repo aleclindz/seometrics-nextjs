@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 import CMSConnectionForm from './CMSConnectionForm';
+import LovableSetupInstructions from './LovableSetupInstructions';
 
 interface WebsiteSetupModalProps {
   isOpen: boolean;
@@ -323,6 +324,47 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     } catch (error) {
       console.error('Error connecting to Vercel:', error);
       setHostError('Failed to connect to Vercel. Please try again.');
+    } finally {
+      setHostLoading(false);
+    }
+  };
+
+  const handleLovableConnection = async () => {
+    if (!user?.token) return;
+    
+    try {
+      setHostLoading(true);
+      setHostError(null);
+      
+      // Create a Lovable connection entry
+      const response = await fetch('/api/host/connections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userToken: user.token,
+          websiteId: website.url,
+          hostType: 'lovable',
+          connectionName: 'Lovable Project',
+          domain: UrlNormalizationService.normalize(website.url),
+          autoDeploy: false, // Manual setup
+          outputDirectory: 'dist'
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Refresh connections and show success
+        await fetchHostConnections();
+        onStatusUpdate?.({ hostStatus: 'connected' });
+      } else {
+        setHostError(data.error || 'Failed to create Lovable connection');
+      }
+    } catch (error) {
+      console.error('Error creating Lovable connection:', error);
+      setHostError('Failed to connect to Lovable. Please try again.');
     } finally {
       setHostLoading(false);
     }
@@ -789,49 +831,62 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                 </div>
               ) : hostConnections.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">Connected Hosting Platforms</h4>
-                    <button
-                      onClick={() => {/* Add host connection functionality */}}
-                      className="inline-flex items-center px-3 py-1 text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400"
-                    >
-                      Add Connection
-                    </button>
-                  </div>
-                  {hostConnections.map((connection) => (
-                    <div key={connection.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  {/* Check if there's a Lovable connection and show setup instructions */}
+                  {hostConnections.some(conn => conn.host_type === 'lovable') ? (
+                    <LovableSetupInstructions 
+                      domain={website.url}
+                      onComplete={() => {
+                        // Refresh connections to update status
+                        fetchHostConnections();
+                      }}
+                    />
+                  ) : (
+                    <>
                       <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h5 className="font-medium text-gray-900 dark:text-gray-100 capitalize">
-                              {connection.host_type}
-                            </h5>
-                            {connection.auto_deploy_enabled && (
-                              <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/20 dark:text-green-300 rounded-full">
-                                Auto Deploy
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {connection.project_name || connection.connection_name}
-                          </p>
-                          {connection.domain && (
-                            <p className="text-xs text-blue-600 dark:text-blue-400">
-                              {connection.domain}
-                            </p>
-                          )}
-                          {connection.last_deployment_at && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              Last deployed: {new Date(connection.last_deployment_at).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(connection.deployment_status)}`}>
-                          {connection.deployment_status}
-                        </div>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100">Connected Hosting Platforms</h4>
+                        <button
+                          onClick={() => {/* Add host connection functionality */}}
+                          className="inline-flex items-center px-3 py-1 text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                        >
+                          Add Connection
+                        </button>
                       </div>
-                    </div>
-                  ))}
+                      {hostConnections.map((connection) => (
+                        <div key={connection.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <h5 className="font-medium text-gray-900 dark:text-gray-100 capitalize">
+                                  {connection.host_type}
+                                </h5>
+                                {connection.auto_deploy_enabled && (
+                                  <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/20 dark:text-green-300 rounded-full">
+                                    Auto Deploy
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {connection.project_name || connection.connection_name}
+                              </p>
+                              {connection.domain && (
+                                <p className="text-xs text-blue-600 dark:text-blue-400">
+                                  {connection.domain}
+                                </p>
+                              )}
+                              {connection.last_deployment_at && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  Last deployed: {new Date(connection.last_deployment_at).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(connection.deployment_status)}`}>
+                              {connection.deployment_status}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -845,6 +900,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {[
                       { type: 'vercel', name: 'Vercel', icon: '▲', available: true },
+                      { type: 'lovable', name: 'Lovable', icon: '💖', available: true },
                       { type: 'netlify', name: 'Netlify', icon: '🌐', available: false },
                       { type: 'github_pages', name: 'GitHub Pages', icon: '🐙', available: false },
                       { type: 'custom', name: 'Custom Host', icon: '🔧', available: false },
@@ -858,18 +914,20 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                           onClick={() => {
                             if (host.type === 'vercel') {
                               handleVercelConnection();
+                            } else if (host.type === 'lovable') {
+                              handleLovableConnection();
                             } else {
                               // Add other host connection functionality
                             }
                           }}
-                          disabled={!host.available || (host.type === 'vercel' && hostLoading)}
+                          disabled={!host.available || ((host.type === 'vercel' || host.type === 'lovable') && hostLoading)}
                           className={`w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md ${
                             host.available
                               ? 'border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/10 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-900/20'
                               : 'border-gray-300 text-gray-500 bg-gray-50 cursor-not-allowed dark:bg-gray-700/30 dark:border-gray-600 dark:text-gray-400'
                           }`}
                         >
-                          {host.type === 'vercel' && hostLoading ? (
+                          {(host.type === 'vercel' || host.type === 'lovable') && hostLoading ? (
                             <>
                               <div className="w-4 h-4 border-2 border-violet-600 border-t-transparent rounded-full animate-spin mr-2"></div>
                               Connecting...

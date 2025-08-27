@@ -145,6 +145,20 @@ export class HostDetectionService {
       },
       pathFingerprints: ['/admin', '/cart.js', '/products.json']
     },
+    lovable: {
+      headers: {
+        'server': /nginx/i, // Lovable typically uses nginx
+        'x-powered-by': /lovable/i,
+        // Add more specific headers as they become available
+      },
+      dns: {
+        cname: ['lovable.dev', 'lovableproject.com'],
+        // Add more Lovable-specific DNS patterns
+      },
+      pathFingerprints: [
+        // Add Lovable-specific paths if any
+      ]
+    },
     wordpress_com: {
       headers: {
         'x-hacker': /WordPress\.com/i,
@@ -266,6 +280,20 @@ export class HostDetectionService {
         token: 'SHOPIFY_ACCESS_TOKEN'
       },
       deploymentMethods: ['Theme files', 'Shopify Plus Scripts']
+    },
+    lovable: {
+      name: 'Lovable',
+      type: 'hosting',
+      confidence: 0,
+      capabilities: [
+        { type: 'sitemap_redirect', automated: false, requiresAuth: false, documentation: 'https://docs.lovable.dev/hosting/seo' },
+        { type: 'robots_redirect', automated: false, requiresAuth: false, documentation: 'https://docs.lovable.dev/hosting/seo' },
+        { type: 'serverless_function', automated: false, requiresAuth: false }
+      ],
+      authRequirements: {
+        apiKey: false // Manual setup via code files or Vercel rewrites
+      },
+      deploymentMethods: ['App Router route files', 'Vercel rewrites configuration']
     }
   };
 
