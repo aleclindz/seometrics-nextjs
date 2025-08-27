@@ -87,8 +87,8 @@ export default function SetupStatusCard({ domain, userToken }: SetupStatusCardPr
         seoagentjsStatus = smartjsData.success && smartjsData.data.active ? 'active' : 'inactive';
       }
 
-      // Check CMS connections
-      const cmsResponse = await fetch(`/api/cms/connections?userToken=${userToken}`);
+      // Check CMS connections for this specific domain
+      const cmsResponse = await fetch(`/api/cms/connections?userToken=${userToken}&domain=${domain}`);
       let cmsStatus: 'connected' | 'none' = 'none';
       if (cmsResponse.ok) {
         const cmsData = await cmsResponse.json();

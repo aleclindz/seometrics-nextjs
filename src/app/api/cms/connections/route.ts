@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userToken = searchParams.get('userToken');
+    const domain = searchParams.get('domain'); // Optional domain filter
 
     if (!userToken) {
       return NextResponse.json(
@@ -22,6 +23,9 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('[CMS CONNECTIONS] Fetching connections for user:', userToken);
+    if (domain) {
+      console.log('[CMS CONNECTIONS] Filtering by domain:', domain);
+    }
 
     // Try to get CMS connections with robust error handling
     let connections = [];
@@ -56,14 +60,20 @@ export async function GET(request: NextRequest) {
       }
       
       // Table exists, now get the actual connections
-      const result = await supabase
+      let query = supabase
         .from('cms_connections')
         .select(`
           *,
           websites!inner(domain)
         `)
-        .eq('user_token', userToken)
-        .order('created_at', { ascending: false });
+        .eq('user_token', userToken);
+      
+      // If domain is specified, filter by it
+      if (domain) {
+        query = query.eq('websites.domain', domain);
+      }
+      
+      const result = await query.order('created_at', { ascending: false });
       
       if (result.error) {
         console.error('[CMS CONNECTIONS] Query error:', result.error);
