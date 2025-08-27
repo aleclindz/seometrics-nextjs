@@ -347,7 +347,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
           websiteId: website.url,
           hostType: 'lovable',
           connectionName: 'Lovable Project',
-          domain: UrlNormalizationService.normalize(website.url),
+          domain: UrlNormalizationService.domainPropertyToHttps(website.url),
           autoDeploy: false, // Manual setup
           outputDirectory: 'dist'
         }),

@@ -45,7 +45,7 @@ async function storeConversationMessage(
 // Generate or extract conversation ID from conversation history
 function getOrCreateConversationId(conversationHistory?: any[]): string {
   // Try to extract conversation_id from metadata in history
-  if (conversationHistory?.length > 0) {
+  if (conversationHistory && conversationHistory.length > 0) {
     const lastMessage = conversationHistory[conversationHistory.length - 1];
     if (lastMessage?.metadata?.conversation_id) {
       return lastMessage.metadata.conversation_id;
