@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     // Create OpenAI client (server-side only)
     const openai = new OpenAI({ apiKey });
-    const functionCaller = new FunctionCaller();
+    const functionCaller = new FunctionCaller(userToken);
 
     // Build system prompt
     const systemPrompt = await buildSystemPrompt(userToken, selectedSite);
