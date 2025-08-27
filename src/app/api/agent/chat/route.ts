@@ -4,6 +4,58 @@ import OpenAI from 'openai';
 import { FunctionCaller } from '@/services/chat/function-caller';
 import { getFunctionSchemas, validateFunctionArgs } from '@/services/chat/function-schemas';
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// Store conversation message (async, non-blocking)
+async function storeConversationMessage(
+  userToken: string,
+  websiteToken: string,
+  conversationId: string,
+  messageRole: 'user' | 'assistant' | 'system',
+  messageContent: string,
+  messageOrder: number,
+  functionCall?: any,
+  actionCard?: any,
+  metadata?: any
+): Promise<void> {
+  try {
+    await supabase
+      .from('agent_conversations')
+      .insert({
+        user_token: userToken,
+        website_token: websiteToken || userToken, // Fallback if no websiteToken
+        conversation_id: conversationId,
+        message_role: messageRole,
+        message_content: messageContent,
+        function_call: functionCall,
+        action_card: actionCard,
+        message_order: messageOrder,
+        metadata: metadata || {}
+      });
+  } catch (error) {
+    // Silently fail if table doesn't exist or other storage errors
+    // This ensures chat functionality continues even if conversation storage fails
+    console.log('[CONVERSATION STORAGE] Failed to store message (non-blocking):', error);
+  }
+}
+
+// Generate or extract conversation ID from conversation history
+function getOrCreateConversationId(conversationHistory?: any[]): string {
+  // Try to extract conversation_id from metadata in history
+  if (conversationHistory?.length > 0) {
+    const lastMessage = conversationHistory[conversationHistory.length - 1];
+    if (lastMessage?.metadata?.conversation_id) {
+      return lastMessage.metadata.conversation_id;
+    }
+  }
+  
+  // Generate new conversation ID
+  return crypto.randomUUID();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, userToken, selectedSite, conversationHistory } = await request.json();
@@ -18,6 +70,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get or create conversation ID for this chat session
+    const conversationId = getOrCreateConversationId(conversationHistory);
+    const websiteToken = selectedSite || userToken;
+    
+    // Calculate next message order
+    const userMessageOrder = (conversationHistory?.length || 0) + 1;
+    const assistantMessageOrder = userMessageOrder + 1;
+
+    // Store user message (async, non-blocking)
+    storeConversationMessage(
+      userToken,
+      websiteToken,
+      conversationId,
+      'user',
+      message,
+      userMessageOrder
+    ).catch(error => {
+      console.log('[CONVERSATION STORAGE] User message storage failed (non-blocking):', error);
+    });
+
     // Get OpenAI API key from server environment
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -28,30 +100,58 @@ export async function POST(request: NextRequest) {
       if (testResponse.functionCall) {
         await recordActivity(userToken, selectedSite || '', testResponse.functionCall, testResponse.actionCard);
       }
+
+      // Store test conversation messages (async, non-blocking)
+      storeConversationMessage(
+        userToken,
+        websiteToken,
+        conversationId,
+        'assistant',
+        testResponse.message,
+        assistantMessageOrder,
+        testResponse.functionCall,
+        testResponse.actionCard,
+        { test_response: true }
+      ).catch(error => {
+        console.log('[CONVERSATION STORAGE] Test response storage failed (non-blocking):', error);
+      });
       
       return NextResponse.json({
         success: true,
         message: testResponse.message,
         functionCall: testResponse.functionCall,
-        actionCard: testResponse.actionCard
+        actionCard: testResponse.actionCard,
+        conversationId
       });
     }
 
+    // This duplicate check can be removed since we handled it above
     // Get OpenAI API key from environment
     if (!apiKey) {
-      // Fallback to test responses when OpenAI key is not available
+      // This case is already handled above, but keeping for safety
       const testResponse = getTestResponse(message);
       
-      // Record activity for test responses too
-      if (testResponse.functionCall) {
-        await recordActivity(userToken, selectedSite || '', testResponse.functionCall, testResponse.actionCard);
-      }
+      // Store test conversation messages (async, non-blocking) 
+      storeConversationMessage(
+        userToken,
+        websiteToken,
+        conversationId,
+        'assistant',
+        testResponse.message,
+        assistantMessageOrder,
+        testResponse.functionCall,
+        testResponse.actionCard,
+        { test_response: true }
+      ).catch(error => {
+        console.log('[CONVERSATION STORAGE] Test response storage failed (non-blocking):', error);
+      });
       
       return NextResponse.json({
         success: true,
         message: testResponse.message,
         functionCall: testResponse.functionCall,
-        actionCard: testResponse.actionCard
+        actionCard: testResponse.actionCard,
+        conversationId
       });
     }
 
@@ -102,7 +202,16 @@ export async function POST(request: NextRequest) {
         };
         
         // Process the response
-        const processedResponse = await processOpenAIResponse(finalResponse, userToken, selectedSite);
+        const processedResponse = await processOpenAIResponse(
+          finalResponse, 
+          userToken, 
+          selectedSite,
+          {
+            conversationId,
+            websiteToken,
+            messageOrder: assistantMessageOrder
+          }
+        );
         return NextResponse.json(processedResponse);
       }
 
@@ -176,7 +285,16 @@ export async function POST(request: NextRequest) {
       steps: guard - 1
     };
 
-    const processedResponse = await processOpenAIResponse(finalResponse, userToken, selectedSite);
+    const processedResponse = await processOpenAIResponse(
+      finalResponse, 
+      userToken, 
+      selectedSite,
+      {
+        conversationId,
+        websiteToken,
+        messageOrder: assistantMessageOrder
+      }
+    );
     return NextResponse.json(processedResponse);
 
   } catch (error) {
@@ -446,7 +564,16 @@ function getDescriptionForFunction(functionName: string): string {
 }
 
 // Process OpenAI response and generate action cards
-async function processOpenAIResponse(response: any, userToken: string, selectedSite: string) {
+async function processOpenAIResponse(
+  response: any, 
+  userToken: string, 
+  selectedSite: string,
+  conversationData?: {
+    conversationId: string;
+    websiteToken: string;
+    messageOrder: number;
+  }
+) {
   let actionCard = null;
   let functionCall = null;
   
@@ -482,12 +609,30 @@ async function processOpenAIResponse(response: any, userToken: string, selectedS
     await recordActivity(userToken, selectedSite || '', functionCall, actionCard);
   }
 
+  // Store assistant message (async, non-blocking)
+  if (conversationData) {
+    storeConversationMessage(
+      userToken,
+      conversationData.websiteToken,
+      conversationData.conversationId,
+      'assistant',
+      response.content,
+      conversationData.messageOrder,
+      functionCall,
+      actionCard,
+      { steps: response.steps }
+    ).catch(error => {
+      console.log('[CONVERSATION STORAGE] Assistant message storage failed (non-blocking):', error);
+    });
+  }
+
   return {
     success: true,
     message: response.content,
     functionCall: functionCall,
     actionCard: actionCard,
-    steps: response.steps
+    steps: response.steps,
+    conversationId: conversationData?.conversationId // Include conversation ID in response
   };
 }
 

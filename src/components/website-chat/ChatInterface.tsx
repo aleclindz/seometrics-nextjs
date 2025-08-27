@@ -45,6 +45,8 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,6 +57,50 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
   const initializeChat = async () => {
     if (!selectedSite || !userToken) return;
 
+    setIsLoadingHistory(true);
+
+    try {
+      // Try to load existing conversation history for this website
+      const historyResponse = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${encodeURIComponent(selectedSite)}&limit=1`);
+      
+      if (historyResponse.ok) {
+        const historyData = await historyResponse.json();
+        
+        if (historyData.success && historyData.conversations && historyData.conversations.length > 0) {
+          // Found existing conversation - load the most recent one
+          const recentConversation = historyData.conversations[0];
+          setConversationId(recentConversation.conversation_id);
+          
+          // Get full conversation messages
+          const conversationResponse = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${encodeURIComponent(selectedSite)}&conversationId=${recentConversation.conversation_id}`);
+          
+          if (conversationResponse.ok) {
+            const conversationData = await conversationResponse.json();
+            
+            if (conversationData.success && conversationData.conversation && conversationData.conversation.messages.length > 0) {
+              // Convert database messages to ChatMessage format
+              const loadedMessages: ChatMessage[] = conversationData.conversation.messages.map((msg: any) => ({
+                id: msg.id,
+                role: msg.message_role,
+                content: msg.message_content,
+                timestamp: new Date(msg.created_at),
+                functionCall: msg.function_call,
+                actionCard: msg.action_card
+              }));
+              
+              setMessages(loadedMessages);
+              setIsLoadingHistory(false);
+              return; // Exit early - we loaded existing conversation
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading conversation history:', error);
+      // Continue with welcome message if history loading fails
+    }
+
+    // No existing conversation found or error loading - show welcome message
     // Check setup status first
     let setupMessage = '';
     try {
@@ -101,6 +147,10 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
       console.error('Error checking setup status:', error);
     }
 
+    // Generate new conversation ID for new conversation
+    const newConversationId = crypto.randomUUID();
+    setConversationId(newConversationId);
+
     const welcomeMessage: ChatMessage = {
       id: 'welcome',
       role: 'assistant',
@@ -124,6 +174,7 @@ What would you like to work on first?`,
     };
     
     setMessages([welcomeMessage]);
+    setIsLoadingHistory(false);
   };
 
   useEffect(() => {
@@ -158,13 +209,19 @@ What would you like to work on first?`,
           message: input.trim(),
           userToken: userToken,
           selectedSite: selectedSite,
-          conversationHistory: messages.slice(-10) // Last 10 messages for context
+          conversationHistory: messages.slice(-10), // Last 10 messages for context
+          conversationId: conversationId // Include conversation ID for persistence
         }),
       });
 
       const data = await response.json();
       
       if (data.success) {
+        // Update conversation ID if provided (for new conversations)
+        if (data.conversationId && data.conversationId !== conversationId) {
+          setConversationId(data.conversationId);
+        }
+
         const assistantMessage: ChatMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
@@ -326,7 +383,21 @@ What would you like to work on first?`,
       <CardContent className="flex-1 flex flex-col min-h-0 p-0">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 min-h-0">
-          {messages.map(renderMessage)}
+          {isLoadingHistory && (
+            <div className="flex gap-4 justify-start mb-6">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
+                <Bot className="h-5 w-5 text-white" />
+              </div>
+              <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl shadow-sm">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  <span className="text-gray-500">Loading conversation history...</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {!isLoadingHistory && messages.map(renderMessage)}
           
           {isLoading && (
             <div className="flex gap-4 justify-start mb-6">

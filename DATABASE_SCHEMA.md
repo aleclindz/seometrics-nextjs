@@ -666,6 +666,36 @@ CREATE TABLE agent_events (
 - Includes archived legacy data from migration 040
 - Provides complete audit trail for compliance
 
+### `agent_conversations`
+**Purpose**: Persistent chat conversation history for each website's SEO agent
+```sql
+CREATE TABLE agent_conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_token TEXT NOT NULL,
+    website_token TEXT NOT NULL,
+    conversation_id UUID NOT NULL, -- Groups messages in a conversation thread
+    message_role TEXT NOT NULL CHECK (message_role IN ('user', 'assistant', 'system')),
+    message_content TEXT NOT NULL,
+    function_call JSONB, -- Store OpenAI function calls
+    action_card JSONB, -- Store action cards from responses
+    message_order INTEGER NOT NULL, -- Order within conversation (1, 2, 3...)
+    session_id TEXT, -- Browser session identifier for grouping
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Ensure unique message ordering within conversations
+    UNIQUE(conversation_id, message_order)
+);
+```
+**Key Points**:
+- Groups related messages into conversation threads via `conversation_id`
+- Stores complete chat transcripts with function calls and UI action cards
+- Sequential message ordering within conversations (`message_order`)
+- Full conversation persistence and history retrieval
+- Supports session-based grouping for analytics
+- Enables conversation resume across browser sessions
+
 ---
 
 ## 📊 Analytics & Performance Data
@@ -722,6 +752,13 @@ CREATE INDEX IF NOT EXISTS idx_agent_learning_website_token ON agent_learning(we
 CREATE INDEX IF NOT EXISTS idx_agent_learning_action_type ON agent_learning(action_type);
 CREATE INDEX IF NOT EXISTS idx_agent_learning_outcome ON agent_learning(outcome);
 CREATE INDEX IF NOT EXISTS idx_agent_learning_created_at ON agent_learning(created_at DESC);
+-- Agent Conversations
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_user_token ON agent_conversations(user_token);
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_website_token ON agent_conversations(website_token);
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_conversation_id ON agent_conversations(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_created_at ON agent_conversations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_user_website ON agent_conversations(user_token, website_token);
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_role ON agent_conversations(message_role);
 -- Agent Events
 CREATE INDEX IF NOT EXISTS idx_agent_events_user_token ON agent_events(user_token);
 CREATE INDEX IF NOT EXISTS idx_agent_events_entity_type_id ON agent_events(entity_type, entity_id);
