@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { DomainQueryService } from '@/lib/database/DomainQueryService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,19 +20,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fallback: Check setup status manually since database functions may not exist yet
+    // Use DomainQueryService for robust domain lookup
     console.log('[SETUP STATUS] Checking setup status for:', domain);
     
     try {
-      // Check if the table exists first
-      const { data: tableCheck, error: tableError } = await supabase
-        .from('website_setup_status')
-        .select('*')
-        .eq('user_token', userToken)
-        .eq('domain', domain)
-        .limit(1);
+      // Check if the table exists first using domain query service
+      const setupStatusResult = await DomainQueryService.queryTableByDomain(
+        'website_setup_status',
+        userToken, 
+        domain,
+        '*'
+      );
 
-      if (tableError && tableError.code === '42P01') {
+      if (!setupStatusResult.success && setupStatusResult.error?.includes('does not exist')) {
         // Table doesn't exist, return default status
         console.log('[SETUP STATUS] Table does not exist, returning defaults');
         return NextResponse.json({
@@ -48,13 +49,13 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      if (tableError) {
-        console.error('Error accessing setup status table:', tableError);
-        throw tableError;
+      if (!setupStatusResult.success && !setupStatusResult.error?.includes('does not exist')) {
+        console.error('Error accessing setup status table:', setupStatusResult.error);
+        throw new Error(setupStatusResult.error);
       }
 
-      if (tableCheck && tableCheck.length > 0) {
-        const record = tableCheck[0];
+      if (setupStatusResult.success && setupStatusResult.data && setupStatusResult.data.length > 0) {
+        const record = setupStatusResult.data[0];
         return NextResponse.json({
           success: true,
           data: {
@@ -129,16 +130,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fallback: Manual upsert since database functions may not exist yet
+    // Use DomainQueryService for robust domain-based operations
     let data;
     try {
-      // Check if table exists and if record already exists
-      const { data: existingRecord, error: selectError } = await supabase
-        .from('website_setup_status')
-        .select('*')
-        .eq('user_token', userToken)
-        .eq('domain', domain)
-        .single();
+      // Check if table exists and if record already exists using DomainQueryService
+      const existingStatusResult = await DomainQueryService.queryTableByDomain(
+        'website_setup_status',
+        userToken,
+        domain,
+        '*'
+      );
+      
+      let existingRecord = null;
+      let selectError = null;
+      
+      if (existingStatusResult.success && existingStatusResult.data && existingStatusResult.data.length > 0) {
+        existingRecord = existingStatusResult.data[0];
+      } else if (!existingStatusResult.success && !existingStatusResult.error?.includes('does not exist')) {
+        selectError = { code: 'QUERY_ERROR', message: existingStatusResult.error };
+      } else if (existingStatusResult.error?.includes('does not exist')) {
+        selectError = { code: '42P01', message: 'relation "website_setup_status" does not exist' };
+      }
 
       if (selectError && selectError.code === '42P01') {
         // Table doesn't exist, just return success for now
@@ -168,7 +180,7 @@ export async function POST(request: NextRequest) {
 
       let error;
       if (existingRecord && !selectError) {
-        // Update existing record
+        // Update existing record - use the matched domain format from DomainQueryService
         const updateData: any = {
           updated_at: new Date().toISOString(),
           setup_progress: setupProgress,
@@ -186,19 +198,23 @@ export async function POST(request: NextRequest) {
           .from('website_setup_status')
           .update(updateData)
           .eq('user_token', userToken)
-          .eq('domain', domain)
+          .eq('domain', existingRecord.domain) // Use exact domain format from existing record
           .select()
           .single();
         
         data = updateResult.data;
         error = updateResult.error;
       } else {
-        // Insert new record
+        // Insert new record - normalize domain for consistency
+        const normalizedDomain = domain.startsWith('sc-domain:') 
+          ? domain 
+          : `sc-domain:${domain.replace(/^https?:\/\//, '').replace(/^www\./, '')}`;
+          
         const insertResult = await supabase
           .from('website_setup_status')
           .insert({
             user_token: userToken,
-            domain: domain,
+            domain: normalizedDomain,
             gsc_status: gscStatus || 'none',
             seoagentjs_status: seoagentjsStatus || 'inactive',
             cms_status: cmsStatus || 'none',
@@ -262,12 +278,30 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update setup preferences
+    // Update setup preferences - first try to find existing record with DomainQueryService
+    const existingStatusResult = await DomainQueryService.queryTableByDomain(
+      'website_setup_status',
+      userToken,
+      domain,
+      '*'
+    );
+    
+    let targetDomain = domain;
+    if (existingStatusResult.success && existingStatusResult.data && existingStatusResult.data.length > 0) {
+      // Use the exact domain format from existing record
+      targetDomain = existingStatusResult.data[0].domain;
+    } else {
+      // Normalize domain for new records
+      targetDomain = domain.startsWith('sc-domain:') 
+        ? domain 
+        : `sc-domain:${domain.replace(/^https?:\/\//, '').replace(/^www\./, '')}`;
+    }
+    
     const { data, error } = await supabase
       .from('website_setup_status')
       .upsert({
         user_token: userToken,
-        domain: domain,
+        domain: targetDomain,
         setup_dismissed: setupDismissed,
         setup_dismissed_at: setupDismissed ? new Date().toISOString() : null
       }, {

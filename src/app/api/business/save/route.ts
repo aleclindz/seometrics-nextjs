@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { DomainQueryService } from '@/lib/database/DomainQueryService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -73,10 +74,7 @@ export async function POST(request: NextRequest) {
       const { error: updateError } = await supabase
         .from('websites')
         .update({
-          business_type: businessInfo.businessType || 'unknown',
-          business_info: businessInfo,
-          business_confirmed: true,
-          business_updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString()
         })
         .eq('website_token', websiteToken)
         .eq('user_token', userToken);
@@ -89,29 +87,27 @@ export async function POST(request: NextRequest) {
       console.log(`[SAVE BUSINESS] Updated website ${websiteToken} with business info`);
 
     } else if (businessInfo.website) {
-      // Create new website with business information
+      // Create new website with business information using DomainQueryService
       const domain = extractDomainFromUrl(businessInfo.website);
       
-      const { data: newWebsite, error: createError } = await supabase
-        .from('websites')
-        .insert({
-          user_token: userToken,
-          domain: domain,
-          business_type: businessInfo.businessType || 'unknown',
-          business_info: businessInfo,
-          business_confirmed: true,
-          is_managed: true
-        })
-        .select('id, website_token')
-        .single();
+      const createResult = await DomainQueryService.createWebsiteWithDomain(
+        userToken,
+        domain,
+        {
+          website_token: crypto.randomUUID(),
+          is_managed: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      );
 
-      if (createError) {
-        console.error('[SAVE BUSINESS] Error creating website:', createError);
+      if (!createResult.success) {
+        console.error('[SAVE BUSINESS] Error creating website:', createResult.error);
         return NextResponse.json({ error: 'Failed to create website' }, { status: 500 });
       }
 
-      websiteId = newWebsite.id;
-      console.log(`[SAVE BUSINESS] Created new website ${newWebsite.website_token} with business info`);
+      websiteId = createResult.data!.id;
+      console.log(`[SAVE BUSINESS] Created new website ${createResult.data!.website_token} with business info`);
     }
 
     // Trigger schema generation if we have local business info

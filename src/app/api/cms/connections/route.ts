@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CMSManager } from '@/lib/cms/cms-manager';
+import { DomainQueryService } from '@/lib/database/DomainQueryService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,11 +69,19 @@ export async function GET(request: NextRequest) {
         `)
         .eq('user_token', userToken);
       
-      // If domain is specified, filter by it using multiple separate queries
+      // If domain is specified, filter by it - first find the website to get correct domain format
       if (domain) {
-        // Try the most likely domain format first: sc-domain:domain
-        const scDomainFormat = `sc-domain:${domain}`;
-        query = query.eq('websites.domain', scDomainFormat);
+        const websiteResult = await DomainQueryService.findWebsiteByDomain(userToken, domain, 'id');
+        if (!websiteResult.success) {
+          return NextResponse.json({
+            success: true,
+            connections: [], // No connections for non-existent website
+            message: `No website found for domain: ${domain}`
+          });
+        }
+        
+        // Filter by the specific website ID instead of domain
+        query = query.eq('website_id', websiteResult.data!.id);
       }
       
       const result = await query.order('created_at', { ascending: false });

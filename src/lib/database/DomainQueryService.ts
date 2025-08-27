@@ -1,0 +1,393 @@
+/**
+ * Universal Domain Query Service
+ * 
+ * Eliminates sc-domain prefix issues by providing centralized domain lookup
+ * functionality that handles all URL format variations automatically.
+ * 
+ * This service replaces scattered `.eq('domain', ...)` queries throughout
+ * the codebase with a single, reliable method that works regardless of
+ * how domains are stored in the database.
+ */
+
+import { createClient } from '@supabase/supabase-js';
+import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export interface DomainQueryResult<T = any> {
+  success: boolean;
+  data: T | null;
+  matchedDomain?: string; // Which domain variation matched
+  error?: string;
+}
+
+export interface BulkDomainQueryResult<T = any> {
+  success: boolean;
+  results: Array<{
+    inputDomain: string;
+    data: T | null;
+    matchedDomain?: string;
+  }>;
+  totalFound: number;
+  error?: string;
+}
+
+export interface WebsiteRecord {
+  id: number;
+  website_token: string;
+  user_token: string;
+  domain: string;
+  language?: string;
+  is_managed?: boolean;
+  is_excluded_from_sync?: boolean;
+  meta_tags?: number;
+  image_tags?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export class DomainQueryService {
+  /**
+   * Find a website by domain, trying all possible URL variations
+   * This is the most commonly used method and replaces most direct domain queries
+   */
+  static async findWebsiteByDomain(
+    userToken: string, 
+    domainInput: string,
+    selectFields = '*'
+  ): Promise<DomainQueryResult<WebsiteRecord>> {
+    try {
+      if (!userToken || !domainInput) {
+        return {
+          success: false,
+          data: null,
+          error: 'userToken and domainInput are required'
+        };
+      }
+
+      // Generate all possible URL variations
+      const variations = UrlNormalizationService.generateUrlVariations(domainInput);
+      const searchTerms = [
+        domainInput,                    // Direct input
+        variations.domainProperty,      // sc-domain:example.com
+        variations.httpsUrl,           // https://example.com  
+        variations.httpUrl,            // http://example.com
+        variations.wwwHttpsUrl,        // https://www.example.com
+        variations.wwwHttpUrl,         // http://www.example.com
+        domainInput.replace(/^https?:\/\//, '').replace(/^www\./, ''), // Clean domain
+        `sc-domain:${domainInput.replace(/^https?:\/\//, '').replace(/^www\./, '')}` // sc-domain clean
+      ];
+
+      // Remove duplicates
+      const uniqueSearchTerms = Array.from(new Set(searchTerms));
+
+      console.log(`[DOMAIN QUERY] Searching for website with domain variations:`, {
+        input: domainInput,
+        userToken: userToken.substring(0, 8) + '...',
+        variations: uniqueSearchTerms.length
+      });
+
+      // Try each variation until we find a match
+      for (const searchTerm of uniqueSearchTerms) {
+        const { data, error } = await supabase
+          .from('websites')
+          .select(selectFields)
+          .eq('user_token', userToken)
+          .eq('domain', searchTerm)
+          .single();
+        
+        if (!error && data) {
+          console.log(`[DOMAIN QUERY] ✅ Found website with domain: ${searchTerm}`);
+          return {
+            success: true,
+            data: data as unknown as WebsiteRecord,
+            matchedDomain: searchTerm
+          };
+        }
+      }
+
+      console.log(`[DOMAIN QUERY] ❌ No website found for domain: ${domainInput}`);
+      return {
+        success: false,
+        data: null,
+        error: `No website found for domain: ${domainInput}`
+      };
+
+    } catch (error) {
+      console.error('[DOMAIN QUERY] Error in findWebsiteByDomain:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Find multiple websites by domains in a single operation
+   * More efficient than multiple individual queries
+   */
+  static async findWebsitesByDomains(
+    userToken: string,
+    domainInputs: string[],
+    selectFields = '*'
+  ): Promise<BulkDomainQueryResult<WebsiteRecord>> {
+    try {
+      if (!userToken || !domainInputs || domainInputs.length === 0) {
+        return {
+          success: false,
+          results: [],
+          totalFound: 0,
+          error: 'userToken and domainInputs array are required'
+        };
+      }
+
+      const results = [];
+      let totalFound = 0;
+
+      // Process each domain
+      for (const domainInput of domainInputs) {
+        const result = await this.findWebsiteByDomain(userToken, domainInput, selectFields);
+        
+        results.push({
+          inputDomain: domainInput,
+          data: result.data,
+          matchedDomain: result.matchedDomain
+        });
+
+        if (result.success) {
+          totalFound++;
+        }
+      }
+
+      return {
+        success: true,
+        results,
+        totalFound
+      };
+
+    } catch (error) {
+      console.error('[DOMAIN QUERY] Error in findWebsitesByDomains:', error);
+      return {
+        success: false,
+        results: [],
+        totalFound: 0,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Generic domain query for any table with domain field
+   * Use this for non-website tables that also need domain matching
+   */
+  static async queryTableByDomain<T = any>(
+    tableName: string,
+    userToken: string,
+    domainInput: string,
+    selectFields = '*',
+    additionalFilters?: Record<string, any>
+  ): Promise<DomainQueryResult<T[]>> {
+    try {
+      if (!tableName || !userToken || !domainInput) {
+        return {
+          success: false,
+          data: null,
+          error: 'tableName, userToken and domainInput are required'
+        };
+      }
+
+      // Generate URL variations
+      const variations = UrlNormalizationService.generateUrlVariations(domainInput);
+      const searchTerms = [
+        domainInput,
+        variations.domainProperty,
+        variations.httpsUrl,
+        variations.httpUrl,
+        variations.wwwHttpsUrl,
+        variations.wwwHttpUrl
+      ];
+
+      const uniqueSearchTerms = Array.from(new Set(searchTerms));
+
+      // Try each variation
+      for (const searchTerm of uniqueSearchTerms) {
+        let query = supabase
+          .from(tableName)
+          .select(selectFields)
+          .eq('user_token', userToken)
+          .eq('domain', searchTerm);
+
+        // Apply additional filters if provided
+        if (additionalFilters) {
+          Object.entries(additionalFilters).forEach(([key, value]) => {
+            query = query.eq(key, value);
+          });
+        }
+
+        const { data, error } = await query;
+        
+        if (!error && data && data.length > 0) {
+          return {
+            success: true,
+            data: data as unknown as T[],
+            matchedDomain: searchTerm
+          };
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: `No records found in ${tableName} for domain: ${domainInput}`
+      };
+
+    } catch (error) {
+      console.error(`[DOMAIN QUERY] Error in queryTableByDomain for ${tableName}:`, error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Check if a domain exists in the websites table
+   * Lightweight version for existence checks
+   */
+  static async domainExists(userToken: string, domainInput: string): Promise<boolean> {
+    try {
+      const result = await this.findWebsiteByDomain(userToken, domainInput, 'id');
+      return result.success && result.data !== null;
+    } catch (error) {
+      console.error('[DOMAIN QUERY] Error in domainExists:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get all domain variations for debugging/logging
+   */
+  static getDomainVariations(domainInput: string): string[] {
+    const variations = UrlNormalizationService.generateUrlVariations(domainInput);
+    return [
+      domainInput,
+      variations.domainProperty,
+      variations.httpsUrl,
+      variations.httpUrl, 
+      variations.wwwHttpsUrl,
+      variations.wwwHttpUrl
+    ];
+  }
+
+  /**
+   * Update domain field using proper domain format
+   * Helps when creating/updating records with domains
+   */
+  static async updateWebsiteDomain(
+    userToken: string,
+    websiteId: number | string,
+    newDomain: string
+  ): Promise<DomainQueryResult<WebsiteRecord>> {
+    try {
+      // Normalize the domain to sc-domain format for consistency
+      const normalizedDomain = newDomain.startsWith('sc-domain:') 
+        ? newDomain 
+        : `sc-domain:${newDomain.replace(/^https?:\/\//, '').replace(/^www\./, '')}`;
+
+      const { data, error } = await supabase
+        .from('websites')
+        .update({ 
+          domain: normalizedDomain,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_token', userToken)
+        .eq(typeof websiteId === 'string' ? 'website_token' : 'id', websiteId)
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          data: null,
+          error: error.message
+        };
+      }
+
+      return {
+        success: true,
+        data: data as unknown as WebsiteRecord
+      };
+
+    } catch (error) {
+      console.error('[DOMAIN QUERY] Error in updateWebsiteDomain:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Create website with properly formatted domain
+   */
+  static async createWebsiteWithDomain(
+    userToken: string,
+    domainInput: string,
+    additionalData?: Partial<WebsiteRecord>
+  ): Promise<DomainQueryResult<WebsiteRecord>> {
+    try {
+      // Normalize the domain to sc-domain format for consistency
+      const normalizedDomain = domainInput.startsWith('sc-domain:')
+        ? domainInput
+        : `sc-domain:${domainInput.replace(/^https?:\/\//, '').replace(/^www\./, '')}`;
+
+      const websiteData = {
+        user_token: userToken,
+        domain: normalizedDomain,
+        ...additionalData
+      };
+
+      const { data, error } = await supabase
+        .from('websites')
+        .insert(websiteData)
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          data: null,
+          error: error.message
+        };
+      }
+
+      return {
+        success: true,
+        data: data as unknown as WebsiteRecord
+      };
+
+    } catch (error) {
+      console.error('[DOMAIN QUERY] Error in createWebsiteWithDomain:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Legacy compatibility wrapper
+   * For gradual migration of existing code
+   */
+  static async legacyFindWebsite(userToken: string, domain: string): Promise<WebsiteRecord | null> {
+    const result = await this.findWebsiteByDomain(userToken, domain);
+    return result.data;
+  }
+}

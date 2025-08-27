@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { DomainQueryService } from '@/lib/database/DomainQueryService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,39 +31,32 @@ export async function POST(request: NextRequest) {
     const userToken = existingUser.token;
     console.log('[MANUAL-SITEMAP-FIX] Using user token:', userToken.substring(0, 8) + '...');
 
-    // Step 2: Check if website exists
+    // Step 2: Check if website exists using DomainQueryService
     let websiteRecord;
-    const { data: existingWebsite } = await supabase
-      .from('websites')
-      .select('*')
-      .or(`domain.eq.${targetDomain},domain.eq.sc-domain:${targetDomain},url.ilike.%${targetDomain}%`)
-      .single();
+    const websiteResult = await DomainQueryService.findWebsiteByDomain(userToken, targetDomain);
 
-    if (existingWebsite) {
-      websiteRecord = existingWebsite;
+    if (websiteResult.success && websiteResult.data) {
+      websiteRecord = websiteResult.data;
       console.log('[MANUAL-SITEMAP-FIX] Found existing website:', websiteRecord.website_token);
     } else {
-      // Create website record
-      const websiteData = {
-        user_token: userToken,
-        website_token: `translateyoutubevideos_${Date.now()}`,
-        domain: targetDomain,
-        is_managed: true,
-        created_at: new Date().toISOString()
-      };
+      // Create website record using DomainQueryService
+      const createResult = await DomainQueryService.createWebsiteWithDomain(
+        userToken,
+        targetDomain,
+        {
+          website_token: `translateyoutubevideos_${Date.now()}`,
+          is_managed: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      );
 
-      const { data: newWebsite, error: createError } = await supabase
-        .from('websites')
-        .insert(websiteData)
-        .select()
-        .single();
-
-      if (createError) {
-        return NextResponse.json({ error: 'Failed to create website', details: createError.message }, { status: 500 });
+      if (!createResult.success) {
+        return NextResponse.json({ error: 'Failed to create website', details: createResult.error }, { status: 500 });
       }
 
-      websiteRecord = newWebsite;
-      console.log('[MANUAL-SITEMAP-FIX] Created website:', websiteRecord.website_token);
+      websiteRecord = createResult.data;
+      console.log('[MANUAL-SITEMAP-FIX] Created website:', websiteRecord!.website_token);
     }
 
     // Step 3: Create and store sitemap XML
@@ -172,7 +166,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Manual sitemap fix completed successfully',
         results: {
-          websiteToken: websiteRecord.website_token,
+          websiteToken: websiteRecord?.website_token,
           sitemapId: sitemapEntry.id,
           xmlLength: sitemapXML.length,
           testEndpoint: testUrl,
@@ -191,7 +185,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Sitemap stored but API test failed',
         results: {
-          websiteToken: websiteRecord.website_token,
+          websiteToken: websiteRecord?.website_token,
           sitemapId: sitemapEntry.id,
           xmlLength: sitemapXML.length,
           testError: testError instanceof Error ? testError.message : String(testError)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
+import { DomainQueryService } from '@/lib/database/DomainQueryService';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -115,48 +116,37 @@ export async function GET(request: NextRequest) {
         // Auto-populate websites table from GSC property
         const domain = site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
         
-        // Check if website already exists in any format (prevent duplicates)
-        const domainVariants = [
-          domain,                    // translateyoutubevideos.com
-          `sc-domain:${domain}`,     // sc-domain:translateyoutubevideos.com
-          `https://${domain}`,       // https://translateyoutubevideos.com
-          `http://${domain}`         // http://translateyoutubevideos.com
-        ];
+        // Use DomainQueryService to check if website already exists (prevents duplicates)
+        const websiteResult = await DomainQueryService.findWebsiteByDomain(
+          userToken,
+          domain,
+          'website_token, is_excluded_from_sync, domain, is_managed, meta_tags, image_tags'
+        );
         
         let existingWebsite = null;
-        for (const variant of domainVariants) {
-          const { data } = await supabase
-            .from('websites')
-            .select('website_token, is_excluded_from_sync, domain, is_managed, meta_tags, image_tags')
-            .eq('user_token', userToken)
-            .eq('domain', variant)
-            .single();
-            
-          if (data) {
-            existingWebsite = data;
-            console.log('[GSC PROPERTIES] Found existing website with domain variant:', variant);
-            break;
-          }
+        if (websiteResult.success && websiteResult.data) {
+          existingWebsite = websiteResult.data;
+          console.log('[GSC PROPERTIES] Found existing website with domain:', websiteResult.matchedDomain);
         }
 
         if (!existingWebsite) {
-          // Generate a unique token for the website
+          // Generate a unique token for the website and create it with proper domain format
           const websiteToken = crypto.randomUUID();
           
-          const { error: websiteError } = await supabase
-            .from('websites')
-            .insert({
+          const createResult = await DomainQueryService.createWebsiteWithDomain(
+            userToken,
+            domain,
+            {
               website_token: websiteToken,
-              user_token: userToken,
-              domain: domain,
               is_managed: false, // New websites start as unmanaged
               is_excluded_from_sync: false,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
-            });
-
-          if (websiteError) {
-            console.error('[GSC PROPERTIES] Error creating website from GSC property:', websiteError);
+            }
+          );
+          
+          if (!createResult.success) {
+            console.error('[GSC PROPERTIES] Error creating website from GSC property:', createResult.error);
           } else {
             console.log('[GSC PROPERTIES] Successfully created website from GSC:', domain);
           }
@@ -175,32 +165,15 @@ export async function GET(request: NextRequest) {
       if (site.siteUrl) {
         const cleanDomain = site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
         
-        // Check if this domain exists in the websites table and is managed
-        const domainVariants = [
-          cleanDomain,                    // translateyoutubevideos.com
-          `sc-domain:${cleanDomain}`,     // sc-domain:translateyoutubevideos.com
-          `https://${cleanDomain}`,       // https://translateyoutubevideos.com
-          `http://${cleanDomain}`         // http://translateyoutubevideos.com
-        ];
+        // Use DomainQueryService to check if this domain exists and is managed
+        const websiteResult = await DomainQueryService.findWebsiteByDomain(
+          userToken,
+          cleanDomain,
+          'is_managed'
+        );
         
-        let isManaged = false;
-        for (const variant of domainVariants) {
-          const { data: website } = await supabase
-            .from('websites')
-            .select('is_managed')
-            .eq('user_token', userToken)
-            .eq('domain', variant)
-            .eq('is_managed', true)
-            .single();
-            
-          if (website) {
-            isManaged = true;
-            break;
-          }
-        }
-        
-        // Only include if it's managed
-        if (isManaged) {
+        // Only include if website exists and is managed
+        if (websiteResult.success && websiteResult.data && websiteResult.data.is_managed) {
           managedProperties.push({
             siteUrl: cleanDomain,
             permissionLevel: site.permissionLevel,
