@@ -364,7 +364,7 @@ export default function Dashboard() {
                                 <td className="p-2">
                                   <div className="text-left">
                                     <a
-                                      href={`/website/${encodeURIComponent(website.domain)}`}
+                                      href={`/website/${encodeURIComponent(UrlNormalizationService.domainPropertyToHttps(website.domain).replace(/^https?:\/\//, ''))}`}
                                       className="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-violet-100 dark:bg-gray-700 dark:hover:bg-violet-900/20 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-violet-600 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
                                     >
                                       {UrlNormalizationService.domainPropertyToHttps(website.domain).replace(/^https?:\/\//, '')}
