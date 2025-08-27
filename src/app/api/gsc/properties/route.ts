@@ -168,16 +168,51 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Return properties with additional info
-    const formattedProperties = sites.map(site => ({
-      siteUrl: site.siteUrl ? site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '') : '',
-      permissionLevel: site.permissionLevel,
-      verified: true
-    }));
+    // Filter properties to only include managed websites
+    const managedProperties = [];
+    
+    for (const site of sites) {
+      if (site.siteUrl) {
+        const cleanDomain = site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+        
+        // Check if this domain exists in the websites table and is managed
+        const domainVariants = [
+          cleanDomain,                    // translateyoutubevideos.com
+          `sc-domain:${cleanDomain}`,     // sc-domain:translateyoutubevideos.com
+          `https://${cleanDomain}`,       // https://translateyoutubevideos.com
+          `http://${cleanDomain}`         // http://translateyoutubevideos.com
+        ];
+        
+        let isManaged = false;
+        for (const variant of domainVariants) {
+          const { data: website } = await supabase
+            .from('websites')
+            .select('is_managed')
+            .eq('user_token', userToken)
+            .eq('domain', variant)
+            .eq('is_managed', true)
+            .single();
+            
+          if (website) {
+            isManaged = true;
+            break;
+          }
+        }
+        
+        // Only include if it's managed
+        if (isManaged) {
+          managedProperties.push({
+            siteUrl: cleanDomain,
+            permissionLevel: site.permissionLevel,
+            verified: true
+          });
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      properties: formattedProperties,
+      properties: managedProperties,
       connection: {
         email: connection.email,
         connected_at: connection.created_at
