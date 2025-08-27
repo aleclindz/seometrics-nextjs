@@ -180,24 +180,46 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[AGENT CHAT API] Error:', error);
     
-    // Provide user-friendly error messages
-    let errorMessage = "I'm experiencing some technical difficulties. Please try again in a moment.";
+    // Provide detailed error messages for debugging
+    let errorMessage = "I'm experiencing technical difficulties.";
+    let debugInfo = "";
     
     if (error instanceof Error) {
-      if (error.message.includes('API key')) {
+      if (error.message.includes('Invalid \'tools[0].function.name\'')) {
+        errorMessage = "There's an issue with my function definitions. I've detected invalid function names that need to be fixed.";
+        debugInfo = "Function name validation error - check for invalid characters in tool names.";
+      } else if (error.message.includes('API key')) {
         errorMessage = "There's an issue with the AI service configuration. Please contact support.";
+        debugInfo = "OpenAI API key issue";
       } else if (error.message.includes('rate limit')) {
         errorMessage = "I'm currently handling many requests. Please wait a moment and try again.";
+        debugInfo = "OpenAI rate limit exceeded";
       } else if (error.message.includes('network') || error.message.includes('fetch')) {
         errorMessage = "I'm having trouble connecting to my services. Please check your internet connection and try again.";
+        debugInfo = "Network connectivity issue";
+      } else if (error.message.includes('Property not found')) {
+        errorMessage = "I couldn't access your Google Search Console data. Please check your GSC connection in settings.";
+        debugInfo = "GSC property access denied";
+      } else {
+        // Include specific error details for debugging
+        errorMessage = `I encountered an error: ${error.message.substring(0, 200)}`;
+        debugInfo = error.message;
       }
     }
+    
+    // Log detailed error for debugging
+    console.error('[AGENT CHAT API] Detailed error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      debugInfo
+    });
     
     return NextResponse.json({
       success: true,
       message: errorMessage,
       functionCall: null,
-      actionCard: null
+      actionCard: null,
+      debugInfo: process.env.NODE_ENV === 'development' ? debugInfo : undefined
     });
   }
 }

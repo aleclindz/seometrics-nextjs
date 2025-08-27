@@ -62,9 +62,9 @@ export interface FunctionDefinition {
 
 export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   // Agent capability functions
-  'GSC.sync_data': {
+  'GSC_sync_data': {
     schema: {
-      name: 'GSC.sync_data',
+      name: 'GSC_sync_data',
       description: 'Sync Google Search Console data',
       parameters: {
         type: 'object',
@@ -84,9 +84,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: true
   },
 
-  'CONTENT.optimize_existing': {
+  'CONTENT_optimize_existing': {
     schema: {
-      name: 'CONTENT.optimize_existing',
+      name: 'CONTENT_optimize_existing',
       description: 'Optimize existing page content for better SEO performance',
       parameters: {
         type: 'object',
@@ -106,9 +106,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
-  'SEO.apply_fixes': {
+  'SEO_apply_fixes': {
     schema: {
-      name: 'SEO.apply_fixes',
+      name: 'SEO_apply_fixes',
       description: 'Apply automated technical SEO fixes to a website',
       parameters: {
         type: 'object',
@@ -128,9 +128,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
-  'SEO.analyze_technical': {
+  'SEO_analyze_technical': {
     schema: {
-      name: 'SEO.analyze_technical',
+      name: 'SEO_analyze_technical',
       description: 'Analyze technical SEO issues on a website',
       parameters: {
         type: 'object',
@@ -150,9 +150,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
-  'SEO.crawl_website': {
+  'SEO_crawl_website': {
     schema: {
-      name: 'SEO.crawl_website',
+      name: 'SEO_crawl_website',
       description: 'Crawl website for comprehensive technical SEO analysis',
       parameters: {
         type: 'object',
@@ -174,9 +174,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
-  'SITEMAP.generate_submit': {
+  'SITEMAP_generate_submit': {
     schema: {
-      name: 'SITEMAP.generate_submit',
+      name: 'SITEMAP_generate_submit',
       description: 'Generate and submit sitemap to search engines',
       parameters: {
         type: 'object',
@@ -196,9 +196,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
-  'CMS.strapi_publish': {
+  'CMS_strapi_publish': {
     schema: {
-      name: 'CMS.strapi_publish',
+      name: 'CMS_strapi_publish',
       description: 'Publish content to Strapi CMS',
       parameters: {
         type: 'object',
@@ -218,9 +218,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: true
   },
 
-  'VERIFY.check_changes': {
+  'VERIFY_check_changes': {
     schema: {
-      name: 'VERIFY.check_changes',
+      name: 'VERIFY_check_changes',
       description: 'Verify that applied changes are working correctly',
       parameters: {
         type: 'object',
@@ -240,9 +240,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
-  'CMS.wordpress_publish': {
+  'CMS_wordpress_publish': {
     schema: {
-      name: 'CMS.wordpress_publish',
+      name: 'CMS_wordpress_publish',
       description: 'Publish content to WordPress',
       parameters: {
         type: 'object',
@@ -262,9 +262,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: true
   },
 
-  'CONTENT.generate_article': {
+  'CONTENT_generate_article': {
     schema: {
-      name: 'CONTENT.generate_article',
+      name: 'CONTENT_generate_article',
       description: 'Generate SEO-optimized article content',
       parameters: {
         type: 'object',

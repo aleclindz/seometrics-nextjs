@@ -58,16 +58,16 @@ export async function POST(request: NextRequest) {
 
 async function testAllCapabilities(userToken: string, siteUrl: string): Promise<TestResult[]> {
   const capabilities = [
-    'GSC.sync_data',
-    'CONTENT.optimize_existing', 
-    'SEO.apply_fixes',
-    'SEO.analyze_technical',
-    'SEO.crawl_website',
-    'SITEMAP.generate_submit',
-    'CMS.strapi_publish',
-    'VERIFY.check_changes',
-    'CMS.wordpress_publish',
-    'CONTENT.generate_article'
+    'GSC_sync_data',
+    'CONTENT_optimize_existing', 
+    'SEO_apply_fixes',
+    'SEO_analyze_technical',
+    'SEO_crawl_website',
+    'SITEMAP_generate_submit',
+    'CMS_strapi_publish',
+    'VERIFY_check_changes',
+    'CMS_wordpress_publish',
+    'CONTENT_generate_article'
   ];
 
   const results: TestResult[] = [];
@@ -126,32 +126,32 @@ async function executeCapabilityTest(capability: string, args: any, userToken: s
 
 function getTestArgs(capability: string, siteUrl: string): any {
   const testArgs: Record<string, any> = {
-    'GSC.sync_data': {
+    'GSC_sync_data': {
       site_url: siteUrl,
       date_range: '30d'
     },
-    'CONTENT.optimize_existing': {
+    'CONTENT_optimize_existing': {
       page_url: `${siteUrl}/blog/test-post`,
       target_keywords: ['seo optimization', 'technical seo']
     },
-    'SEO.apply_fixes': {
+    'SEO_apply_fixes': {
       site_url: siteUrl,
       fix_types: ['meta_tags', 'alt_text', 'canonical_urls']
     },
-    'SEO.analyze_technical': {
+    'SEO_analyze_technical': {
       site_url: siteUrl,
       check_mobile: true
     },
-    'SEO.crawl_website': {
+    'SEO_crawl_website': {
       site_url: siteUrl,
       max_pages: 10,
       crawl_depth: 2
     },
-    'SITEMAP.generate_submit': {
+    'SITEMAP_generate_submit': {
       site_url: siteUrl,
       submit_to_gsc: true
     },
-    'CMS.strapi_publish': {
+    'CMS_strapi_publish': {
       content: {
         title: 'Test Article',
         body: 'This is a test article for capability testing.',
@@ -159,11 +159,11 @@ function getTestArgs(capability: string, siteUrl: string): any {
       },
       publish: false
     },
-    'VERIFY.check_changes': {
+    'VERIFY_check_changes': {
       target_url: `${siteUrl}/test-page`,
       expected_changes: ['meta description updated', 'title tag optimized']
     },
-    'CMS.wordpress_publish': {
+    'CMS_wordpress_publish': {
       content: {
         title: 'Test WordPress Article',
         content: 'This is a test article for WordPress publishing.',
@@ -171,7 +171,7 @@ function getTestArgs(capability: string, siteUrl: string): any {
       },
       publish: false
     },
-    'CONTENT.generate_article': {
+    'CONTENT_generate_article': {
       topic: 'SEO Best Practices',
       keywords: ['seo', 'optimization', 'search rankings'],
       word_count: 800

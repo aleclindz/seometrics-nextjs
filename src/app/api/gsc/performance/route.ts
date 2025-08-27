@@ -38,17 +38,61 @@ export async function POST(request: NextRequest) {
     console.log('[GSC PERFORMANCE] Found GSC connection:', { id: connection.id, created_at: connection.created_at });
 
     // Check if user has access to this property
-    const { data: property, error: propertyError } = await supabase
-      .from('gsc_properties')
-      .select('*')
-      .eq('connection_id', connection.id)
-      .eq('site_url', siteUrl)
-      .eq('is_active', true)
-      .single();
+    // Try multiple URL formats to handle sc-domain: prefix and protocol variations
+    const urlVariants = [
+      siteUrl,                                                    // https://translateyoutubevideos.com
+      `sc-domain:${siteUrl}`,                                    // sc-domain:https://translateyoutubevideos.com
+      `sc-domain:${siteUrl.replace('https://', '')}`,            // sc-domain:translateyoutubevideos.com
+      `sc-domain:${siteUrl.replace('http://', '')}`,             // sc-domain:translateyoutubevideos.com
+      siteUrl.replace('https://', '').replace('http://', '')      // translateyoutubevideos.com
+    ];
 
-    if (propertyError || !property) {
-      console.log('[GSC PERFORMANCE] Property not found or no access');
-      return NextResponse.json({ error: 'Property not found or no access' }, { status: 403 });
+    console.log('[GSC PERFORMANCE] Trying URL variants:', urlVariants);
+    
+    let property = null;
+    let propertyError = null;
+    
+    for (const variant of urlVariants) {
+      const { data, error } = await supabase
+        .from('gsc_properties')
+        .select('*')
+        .eq('connection_id', connection.id)
+        .eq('site_url', variant)
+        .eq('is_active', true)
+        .single();
+        
+      if (data && !error) {
+        property = data;
+        console.log('[GSC PERFORMANCE] Found property with URL variant:', variant);
+        break;
+      } else if (error && error.code !== 'PGRST116') {
+        // PGRST116 is "not found", other errors are actual issues
+        propertyError = error;
+      }
+    }
+
+    if (propertyError) {
+      console.error('[GSC PERFORMANCE] Database error:', propertyError);
+      return NextResponse.json({ error: 'Database error checking property access' }, { status: 500 });
+    }
+
+    if (!property) {
+      console.log('[GSC PERFORMANCE] Property not found for any URL variant. Available properties for this connection:');
+      
+      // Debug: show available properties for this connection
+      const { data: allProps } = await supabase
+        .from('gsc_properties')
+        .select('site_url')
+        .eq('connection_id', connection.id)
+        .eq('is_active', true);
+      
+      console.log('[GSC PERFORMANCE] Available properties:', allProps?.map(p => p.site_url));
+      
+      return NextResponse.json({ 
+        error: 'Property not found or no access',
+        availableProperties: allProps?.map(p => p.site_url),
+        requestedUrl: siteUrl
+      }, { status: 403 });
     }
 
     // Check if token is expired and refresh if needed

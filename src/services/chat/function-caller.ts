@@ -51,25 +51,25 @@ export class FunctionCaller {
           return await this.planCrawl(args);
         
         // Agent capability functions
-        case 'GSC.sync_data':
+        case 'GSC_sync_data':
           return await this.syncGSCData(args);
-        case 'CONTENT.optimize_existing':
+        case 'CONTENT_optimize_existing':
           return await this.optimizeExistingContent(args);
-        case 'SEO.apply_fixes':
+        case 'SEO_apply_fixes':
           return await this.applySEOFixes(args);
-        case 'SEO.analyze_technical':
+        case 'SEO_analyze_technical':
           return await this.analyzeTechnicalSEO(args);
-        case 'SEO.crawl_website':
+        case 'SEO_crawl_website':
           return await this.crawlWebsite(args);
-        case 'SITEMAP.generate_submit':
+        case 'SITEMAP_generate_submit':
           return await this.generateSubmitSitemap(args);
-        case 'CMS.strapi_publish':
+        case 'CMS_strapi_publish':
           return await this.publishToStrapi(args);
-        case 'VERIFY.check_changes':
+        case 'VERIFY_check_changes':
           return await this.verifyChanges(args);
-        case 'CMS.wordpress_publish':
+        case 'CMS_wordpress_publish':
           return await this.publishToWordPress(args);
-        case 'CONTENT.generate_article':
+        case 'CONTENT_generate_article':
           return await this.generateArticle(args);
         
         default:
