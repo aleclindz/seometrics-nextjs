@@ -118,8 +118,9 @@ export async function POST(request: NextRequest) {
           svsResult = result.value;
         } else {
           // This is a traditional audit result
-          if (Array.isArray(result.value)) {
-            allIssues.push(...result.value);
+          const auditResult = result.value;
+          if (Array.isArray(auditResult)) {
+            allIssues.push(...auditResult);
           }
         }
       } else {

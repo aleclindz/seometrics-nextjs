@@ -206,7 +206,7 @@ Return as JSON with all required fields. Make the content engaging, informative,
   async generateBatch(requests: SVSOptimizedContentRequest[]): Promise<SVSOptimizedContentResult[]> {
     console.log(`[SVS CONTENT] Starting batch generation of ${requests.length} articles`);
     
-    const results = [];
+    const results: SVSOptimizedContentResult[] = [];
     const batchSize = 3; // Limit concurrent requests to avoid rate limits
 
     for (let i = 0; i < requests.length; i += batchSize) {
