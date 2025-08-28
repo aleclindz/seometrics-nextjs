@@ -51,7 +51,7 @@ export default function WebsitePage() {
           />
           
           {/* Main Content Area */}
-          <main className="flex-1 overflow-hidden flex flex-col pt-16">
+          <main className="flex-1 overflow-hidden flex flex-col pt-4">
             {/* Metrics Dashboard - Floating Header */}
             <div className="p-4 pb-2">
               <MetricsDashboard 

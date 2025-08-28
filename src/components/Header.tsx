@@ -66,17 +66,6 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
           {/* Header: Right side */}
           <div className="flex items-center space-x-2 sm:space-x-3">
 
-            {/* AI Chat button */}
-            <a
-              href="/chat"
-              className="btn-sm bg-violet-600 hover:bg-violet-700 text-white inline-flex items-center touch-target"
-            >
-              <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-              <span className="hidden sm:inline">AI Chat</span>
-              <div className="w-2 h-2 bg-green-400 rounded-full sm:ml-2"></div>
-            </a>
 
             {/* Dark mode toggle */}
             <div className="touch-target">
