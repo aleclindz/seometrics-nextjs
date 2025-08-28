@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     let performanceData = null;
     try {
       const result = await supabase
-        .from('gsc_performance')
+        .from('gsc_performance_data')
         .select('*')
         .eq('user_token', userToken)
         .order('date_start', { ascending: false })
@@ -205,28 +205,95 @@ export async function POST(request: NextRequest) {
     let mobileFriendly = inspections?.filter(i => i.mobile_usable).length || 0;
     let withSchema = inspections?.filter(i => i.rich_results_items > 0).length || 0;
 
-    // If no inspection data, use performance data to estimate pages
-    if (totalPages === 0 && performanceData?.length) {
-      console.log('[TECHNICAL SEO SUMMARY] Using GSC performance data as fallback for page count');
+    // Process GSC performance data for comprehensive insights
+    let performanceInsights = null;
+    if (performanceData?.length) {
+      console.log('[TECHNICAL SEO SUMMARY] Processing GSC performance data for insights');
       
-      // Extract unique pages from performance data
-      const uniquePages = new Set();
+      // Aggregate all performance data
+      let totalClicks = 0;
+      let totalImpressions = 0;
+      const allKeywords: any[] = [];
+      const allPages: any[] = [];
+      const allCountries: any[] = [];
+      const allDevices: any[] = [];
+      const uniquePages = new Set<string>();
+      
       performanceData.forEach(perf => {
+        totalClicks += perf.total_clicks || 0;
+        totalImpressions += perf.total_impressions || 0;
+        
+        // Process queries/keywords
+        if (perf.queries && Array.isArray(perf.queries)) {
+          allKeywords.push(...perf.queries);
+        }
+        
+        // Process pages
         if (perf.pages && Array.isArray(perf.pages)) {
+          allPages.push(...perf.pages);
           perf.pages.forEach((pageData: any) => {
             if (pageData.page) {
               uniquePages.add(pageData.page);
             }
           });
         }
+        
+        // Process countries
+        if (perf.countries && Array.isArray(perf.countries)) {
+          allCountries.push(...perf.countries);
+        }
+        
+        // Process devices
+        if (perf.devices && Array.isArray(perf.devices)) {
+          allDevices.push(...perf.devices);
+        }
       });
       
-      totalPages = uniquePages.size;
-      console.log(`[TECHNICAL SEO SUMMARY] Found ${totalPages} unique pages from GSC performance data:`, Array.from(uniquePages));
+      // Sort keywords by clicks
+      const topKeywords = allKeywords
+        .sort((a, b) => (b.clicks || 0) - (a.clicks || 0))
+        .slice(0, 10);
       
-      // Estimate indexable and mobile-friendly (assume good performance = indexed)
-      indexablePages = totalPages; // If it has performance data, it's likely indexed
-      mobileFriendly = totalPages; // Assume mobile-friendly if no issues found
+      // Sort pages by clicks
+      const topPages = allPages
+        .sort((a, b) => (b.clicks || 0) - (a.clicks || 0))
+        .slice(0, 10);
+      
+      // Calculate average CTR and position
+      const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions * 100) : 0;
+      const avgPosition = performanceData.reduce((sum, perf) => sum + (parseFloat(perf.avg_position) || 0), 0) / performanceData.length;
+      
+      performanceInsights = {
+        totalClicks,
+        totalImpressions,
+        avgCtr: parseFloat(avgCtr.toFixed(2)),
+        avgPosition: parseFloat(avgPosition.toFixed(1)),
+        topKeywords,
+        topPages,
+        countries: allCountries,
+        devices: allDevices,
+        uniquePagesCount: uniquePages.size,
+        dataRangeStart: performanceData[0]?.date_start,
+        dataRangeEnd: performanceData[0]?.date_end
+      };
+      
+      console.log(`[TECHNICAL SEO SUMMARY] Performance insights:`, {
+        totalClicks,
+        totalImpressions,
+        avgCtr,
+        topKeywordsCount: topKeywords.length,
+        uniquePagesCount: uniquePages.size
+      });
+      
+      // Use performance data for page count if no inspections
+      if (totalPages === 0) {
+        totalPages = uniquePages.size;
+        console.log(`[TECHNICAL SEO SUMMARY] Using ${totalPages} pages from GSC performance data`);
+        
+        // Estimate indexable and mobile-friendly (assume good performance = indexed)
+        indexablePages = totalPages;
+        mobileFriendly = totalPages;
+      }
     }
     
     // If still no data, use agent activity as final fallback
@@ -460,6 +527,7 @@ export async function POST(request: NextRequest) {
         withSchema,
         lastAuditAt
       },
+      performance: performanceInsights,
       fixes: {
         automated: automatedFixes,
         pending: pendingFixes,

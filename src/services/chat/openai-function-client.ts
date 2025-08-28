@@ -648,6 +648,30 @@ export class OpenAIFunctionClient {
         }
       },
       {
+        name: 'get_keyword_insights',
+        description: 'Get detailed keyword performance insights including top keywords, click data, impressions, and optimization opportunities',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: { 
+              type: 'string', 
+              description: 'Website URL to analyze keyword performance for' 
+            },
+            days: {
+              type: 'number',
+              description: 'Number of days to analyze (default: 30)',
+              default: 30
+            },
+            include_pages: {
+              type: 'boolean',
+              description: 'Whether to include top performing pages analysis (default: false)',
+              default: false
+            }
+          },
+          required: ['site_url']
+        }
+      },
+      {
         name: 'get_site_status',
         description: 'Get comprehensive status overview of a website including all integrations',
         parameters: {

@@ -51,6 +51,8 @@ export class FunctionCaller {
           return await this.planCrawl(args);
         case 'run_url_inspections':
           return await this.runUrlInspections(args);
+        case 'get_keyword_insights':
+          return await this.getKeywordInsights(args);
         
         // Agent capability functions
         case 'GSC_sync_data':
@@ -322,19 +324,50 @@ export class FunctionCaller {
       if (response.success && response.data) {
         const auditData = response.data;
         const overview = auditData.overview || {};
+        const performance = auditData.performance || null;
         const issues = auditData.issues || [];
         const fixes = auditData.fixes || {};
         
         // Create detailed audit message based on actual data
         let auditMessage = `## Technical SEO Audit Results for ${args.site_url}\n\n`;
         
+        // Add performance insights if available
+        if (performance && performance.totalClicks > 0) {
+          auditMessage += `**📈 Performance Insights (${performance.dataRangeStart} to ${performance.dataRangeEnd}):**\n`;
+          auditMessage += `- Total Clicks: ${performance.totalClicks.toLocaleString()}\n`;
+          auditMessage += `- Total Impressions: ${performance.totalImpressions.toLocaleString()}\n`;
+          auditMessage += `- Average CTR: ${performance.avgCtr}%\n`;
+          auditMessage += `- Average Position: ${performance.avgPosition}\n\n`;
+          
+          // Top performing keywords
+          if (performance.topKeywords && performance.topKeywords.length > 0) {
+            auditMessage += `**🔑 Top Performing Keywords:**\n`;
+            const topKeywords = performance.topKeywords.slice(0, 5);
+            topKeywords.forEach((keyword: any, index: number) => {
+              auditMessage += `${index + 1}. "${keyword.query}" - ${keyword.clicks} clicks, ${keyword.impressions} impressions (Pos ${keyword.position})\n`;
+            });
+            auditMessage += `\n`;
+          }
+          
+          // Top performing pages
+          if (performance.topPages && performance.topPages.length > 0) {
+            auditMessage += `**📄 Top Performing Pages:**\n`;
+            const topPages = performance.topPages.slice(0, 3);
+            topPages.forEach((page: any, index: number) => {
+              const shortUrl = page.page.replace(args.site_url, '');
+              auditMessage += `${index + 1}. ${shortUrl || 'Homepage'} - ${page.clicks} clicks\n`;
+            });
+            auditMessage += `\n`;
+          }
+        }
+        
         // Add audit metrics
-        auditMessage += `**Audit Overview:**\n`;
-        auditMessage += `- Total Pages Analyzed: ${overview.totalPages || 0}\n`;
+        auditMessage += `**🔍 Technical Analysis:**\n`;
+        auditMessage += `- Pages Analyzed: ${overview.totalPages || 0}\n`;
         auditMessage += `- Indexable Pages: ${overview.indexablePages || 0}\n`;
-        auditMessage += `- Mobile-Friendly Pages: ${overview.mobileFriendly || 0}\n`;
-        auditMessage += `- Pages with Schema: ${overview.withSchema || 0}\n`;
-        auditMessage += `- Technical Issues Found: ${issues.length || 0}\n\n`;
+        auditMessage += `- Mobile-Friendly: ${overview.mobileFriendly || 0}\n`;
+        auditMessage += `- With Schema Markup: ${overview.withSchema || 0}\n`;
+        auditMessage += `- Technical Issues: ${issues.length || 0}\n\n`;
         
         // Add fixes information
         if (fixes.automated || fixes.pending) {
@@ -396,6 +429,7 @@ export class FunctionCaller {
           data: {
             message: auditMessage,
             overview,
+            performance,
             issues,
             fixes,
             metrics: {
@@ -403,9 +437,12 @@ export class FunctionCaller {
               indexablePages: overview.indexablePages || 0,
               mobileFriendly: overview.mobileFriendly || 0,
               withSchema: overview.withSchema || 0,
-              issuesCount: issues.length || 0
+              issuesCount: issues.length || 0,
+              totalClicks: performance?.totalClicks || 0,
+              totalImpressions: performance?.totalImpressions || 0,
+              avgCtr: performance?.avgCtr || 0
             },
-            hasData: (overview.totalPages || 0) > 0,
+            hasData: (overview.totalPages || 0) > 0 || (performance?.totalClicks || 0) > 0,
             audit_type: args.audit_type || 'full'
           }
         };
@@ -846,6 +883,152 @@ export class FunctionCaller {
         data: {
           message: `## URL Inspections Failed for ${args.site_url}\n\n**❌ Unexpected Error:**\n\n${error instanceof Error ? error.message : 'Unknown error'}\n\n**Troubleshooting:**\n- Check your Google Search Console connection\n- Ensure the website domain is correctly formatted\n- Verify you have permissions for this GSC property\n- Contact support if the issue persists`,
           urlsInspected: 0,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      };
+    }
+  }
+
+  private async getKeywordInsights(args: { site_url: string; days?: number; include_pages?: boolean }): Promise<FunctionCallResult> {
+    try {
+      console.log('[FUNCTION CALLER] Getting keyword insights for:', args.site_url);
+
+      const days = args.days || 30;
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      // Get GSC performance data
+      const response = await this.fetchAPI('/api/gsc/performance', {
+        method: 'POST',
+        body: JSON.stringify({
+          siteUrl: args.site_url,
+          userToken: this.userToken,
+          startDate,
+          endDate
+        })
+      });
+
+      if (response.success && response.data) {
+        const performanceData = response.data;
+        
+        let message = `## Keyword Performance Insights for ${args.site_url}\n\n`;
+        message += `**📊 Performance Summary (${startDate} to ${endDate}):**\n`;
+        message += `- Total Clicks: ${performanceData.totalClicks?.toLocaleString() || 0}\n`;
+        message += `- Total Impressions: ${performanceData.totalImpressions?.toLocaleString() || 0}\n`;
+        message += `- Average CTR: ${performanceData.avgCtr || 0}%\n`;
+        message += `- Average Position: ${performanceData.avgPosition || 'N/A'}\n\n`;
+
+        // Top performing keywords
+        if (performanceData.queries && performanceData.queries.length > 0) {
+          message += `**🔑 Keywords Getting the Most Clicks:**\n`;
+          const topKeywords = performanceData.queries
+            .sort((a: any, b: any) => (b.clicks || 0) - (a.clicks || 0))
+            .slice(0, 10);
+
+          topKeywords.forEach((keyword: any, index: number) => {
+            const ctr = keyword.impressions > 0 ? ((keyword.clicks / keyword.impressions) * 100).toFixed(1) : '0.0';
+            message += `${index + 1}. **"${keyword.query}"**\n`;
+            message += `   - Clicks: ${keyword.clicks} | Impressions: ${keyword.impressions} | CTR: ${ctr}% | Avg Position: ${keyword.position}\n`;
+          });
+          message += `\n`;
+
+          // High impression, low click keywords (opportunities)
+          const opportunityKeywords = performanceData.queries
+            .filter((k: any) => k.impressions > 50 && k.clicks < 5 && k.position < 20)
+            .sort((a: any, b: any) => (b.impressions || 0) - (a.impressions || 0))
+            .slice(0, 5);
+
+          if (opportunityKeywords.length > 0) {
+            message += `**💡 Optimization Opportunities (High Impressions, Low Clicks):**\n`;
+            opportunityKeywords.forEach((keyword: any, index: number) => {
+              const ctr = ((keyword.clicks / keyword.impressions) * 100).toFixed(1);
+              message += `${index + 1}. "${keyword.query}" - ${keyword.impressions} impressions, only ${keyword.clicks} clicks (CTR: ${ctr}%)\n`;
+            });
+            message += `\n`;
+          }
+
+          // Keywords ranking on page 2 (positions 11-20)
+          const page2Keywords = performanceData.queries
+            .filter((k: any) => k.position >= 11 && k.position <= 20 && k.clicks > 0)
+            .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+            .slice(0, 5);
+
+          if (page2Keywords.length > 0) {
+            message += `**📈 Page 2 Keywords (Quick Win Opportunities):**\n`;
+            page2Keywords.forEach((keyword: any, index: number) => {
+              message += `${index + 1}. "${keyword.query}" - Position ${keyword.position} (${keyword.clicks} clicks)\n`;
+            });
+            message += `\n`;
+          }
+        }
+
+        // Top performing pages if requested
+        if (args.include_pages && performanceData.pages && performanceData.pages.length > 0) {
+          message += `**📄 Top Performing Pages:**\n`;
+          const topPages = performanceData.pages
+            .sort((a: any, b: any) => (b.clicks || 0) - (a.clicks || 0))
+            .slice(0, 5);
+
+          topPages.forEach((page: any, index: number) => {
+            const shortUrl = page.page.replace(args.site_url, '') || '/';
+            const ctr = page.impressions > 0 ? ((page.clicks / page.impressions) * 100).toFixed(1) : '0.0';
+            message += `${index + 1}. ${shortUrl}\n`;
+            message += `   - Clicks: ${page.clicks} | Impressions: ${page.impressions} | CTR: ${ctr}%\n`;
+          });
+          message += `\n`;
+        }
+
+        // Geographic insights
+        if (performanceData.countries && performanceData.countries.length > 0) {
+          message += `**🌍 Geographic Performance:**\n`;
+          const topCountries = performanceData.countries
+            .sort((a: any, b: any) => (b.clicks || 0) - (a.clicks || 0))
+            .slice(0, 5);
+
+          topCountries.forEach((country: any, index: number) => {
+            message += `${index + 1}. ${country.country.toUpperCase()}: ${country.clicks} clicks\n`;
+          });
+          message += `\n`;
+        }
+
+        message += `**✅ Key Takeaways:**\n`;
+        if (performanceData.queries && performanceData.queries.length > 0) {
+          const topKeyword = performanceData.queries.sort((a: any, b: any) => (b.clicks || 0) - (a.clicks || 0))[0];
+          message += `- Your top keyword is "${topKeyword.query}" with ${topKeyword.clicks} clicks\n`;
+        }
+        message += `- ${days}-day performance shows ${performanceData.totalClicks} total organic clicks\n`;
+        message += `- Average search position: ${performanceData.avgPosition || 'Not available'}\n`;
+        
+        return {
+          success: true,
+          data: {
+            message,
+            summary: {
+              totalClicks: performanceData.totalClicks || 0,
+              totalImpressions: performanceData.totalImpressions || 0,
+              avgCtr: performanceData.avgCtr || 0,
+              avgPosition: performanceData.avgPosition || 0,
+              topKeywords: performanceData.queries?.slice(0, 5) || [],
+              keywordCount: performanceData.queries?.length || 0
+            },
+            rawData: performanceData
+          }
+        };
+      } else {
+        return {
+          success: false,
+          data: {
+            message: `## Keyword Insights Not Available for ${args.site_url}\n\n**❌ No Performance Data Found**\n\nI couldn't retrieve keyword performance data. This could be because:\n- Google Search Console is not connected\n- The website has no organic search traffic in the selected period\n- GSC data synchronization is pending\n\n**Next Steps:**\n1. Ensure Google Search Console is properly connected\n2. Check that the website has organic traffic\n3. Try running GSC data sync: "Sync my GSC data"\n4. Consider a longer time period (currently checking ${days} days)`,
+            error: response.error || 'No performance data available'
+          }
+        };
+      }
+    } catch (error) {
+      console.error('[FUNCTION CALLER] Keyword insights error:', error);
+      return {
+        success: false,
+        data: {
+          message: `## Keyword Insights Failed for ${args.site_url}\n\n**❌ Error Retrieving Data:**\n\n${error instanceof Error ? error.message : 'Unknown error'}\n\n**This could be due to:**\n- API connectivity issues\n- Missing GSC connection\n- Database synchronization problems\n\n**Try:**\n- Check your Google Search Console connection\n- Run "Sync my GSC data" first\n- Try again in a few minutes`,
           error: error instanceof Error ? error.message : 'Unknown error'
         }
       };
