@@ -14,25 +14,54 @@ async function detectSEOAgentStatus(domain: string, cleanedDomain?: string): Pro
     // Use cleaned_domain if available, otherwise use DomainUtils
     const cleanDomain = cleanedDomain || DomainUtils.cleanDomain(domain);
     
-    // Build proper URL using DomainUtils
-    const testUrl = DomainUtils.buildSEOAgentUrl(cleanDomain);
-    console.log(`[SETUP STATUS] Testing SEOAgent.js at: ${testUrl}`);
+    // Build proper website URL
+    const websiteUrl = DomainUtils.buildUrl(cleanDomain);
+    console.log(`[SETUP STATUS] Checking SEOAgent.js installation on: ${websiteUrl}`);
     
-    // Try to fetch the SEOAgent.js file with AbortController for timeout
+    // Fetch the website HTML to check for script tag
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
-    const response = await fetch(testUrl, {
-      method: 'HEAD',
+    const response = await fetch(websiteUrl, {
+      headers: {
+        'User-Agent': 'SEOAgent-Setup-Check/1.0 (+https://seoagent.com/setup-status)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
       signal: controller.signal
     });
     
     clearTimeout(timeoutId);
-    const isActive = response.ok;
-    console.log(`[SETUP STATUS] SEOAgent.js status for ${cleanDomain}: ${isActive ? 'active' : 'inactive'}`);
+    
+    if (!response.ok) {
+      console.log(`[SETUP STATUS] Failed to fetch ${websiteUrl}: HTTP ${response.status}`);
+      return 'inactive';
+    }
+    
+    const html = await response.text();
+    
+    // Check for SEOAgent.js script tag (either local or external from seoagent.com)
+    const seoAgentRegex = /<script[^>]*src\s*=\s*['"](.*?seoagent\.js.*?)['"][^>]*>/i;
+    const seoAgentMatch = html.match(seoAgentRegex);
+    
+    // Check for IDV configuration
+    const idvRegex = /const\s+idv\s*=\s*['"`]([^'"`]+)['"`]/i;
+    const idvMatch = html.match(idvRegex);
+    
+    const hasScript = !!seoAgentMatch;
+    const hasIdv = !!idvMatch;
+    const isActive = hasScript && hasIdv;
+    
+    console.log(`[SETUP STATUS] SEOAgent.js detection for ${cleanDomain}:`, {
+      hasScript,
+      hasIdv,
+      isActive,
+      scriptSrc: seoAgentMatch?.[1] || 'none',
+      idvToken: idvMatch?.[1] || 'none'
+    });
+    
     return isActive ? 'active' : 'inactive';
   } catch (error) {
-    console.log(`[SETUP STATUS] SEOAgent.js not detected for ${domain}:`, error);
+    console.log(`[SETUP STATUS] SEOAgent.js detection failed for ${domain}:`, error);
     return 'inactive';
   }
 }

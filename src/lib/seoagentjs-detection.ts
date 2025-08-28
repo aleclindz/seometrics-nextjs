@@ -13,7 +13,7 @@ export interface SmartJSStatus {
 }
 
 /**
- * Check if smart.js is installed on a website by fetching the HTML and looking for the script
+ * Check if SEOAgent.js is installed on a website by fetching the HTML and looking for the script
  */
 export async function checkSmartJSInstallation(websiteUrl: string): Promise<SmartJSStatus> {
   const result: SmartJSStatus = {
@@ -50,7 +50,8 @@ export async function checkSmartJSInstallation(websiteUrl: string): Promise<Smar
 
     const response = await fetch(websiteUrl, {
       headers: {
-        'User-Agent': 'SEOAgent-Bot/1.0'
+        'User-Agent': 'SEOAgent-Detection/1.0 (+https://seoagent.com/detection)',
+        'Accept': 'text/html,application/xhtml+xml'
       },
       signal: controller.signal
     });
@@ -64,13 +65,14 @@ export async function checkSmartJSInstallation(websiteUrl: string): Promise<Smar
 
     const html = await response.text();
 
-    // Check for seoagent.js script tag (updated from smart.js)
+    // Check for seoagent.js script tag (local or external from seoagent.com)
     const seoAgentRegex = /<script[^>]*src\s*=\s*['"](.*?seoagent\.js.*?)['"][^>]*>/i;
     const seoAgentMatch = html.match(seoAgentRegex);
     
     if (seoAgentMatch) {
       result.scriptFound = true;
       result.installed = true;
+      console.log(`[SEOAGENT DETECTION] Script found: ${seoAgentMatch[1]}`);
     }
 
     // Check for IDV configuration
@@ -79,14 +81,22 @@ export async function checkSmartJSInstallation(websiteUrl: string): Promise<Smar
     
     if (idvMatch) {
       result.idvFound = true;
+      console.log(`[SEOAGENT DETECTION] IDV found: ${idvMatch[1]}`);
     }
 
     // Consider it active if both script and IDV are found
     result.active = result.scriptFound && result.idvFound;
 
+    console.log(`[SEOAGENT DETECTION] Final status for ${websiteUrl}:`, {
+      scriptFound: result.scriptFound,
+      idvFound: result.idvFound, 
+      active: result.active
+    });
+
     return result;
 
   } catch (error) {
+    console.error(`[SEOAGENT DETECTION] Error checking ${websiteUrl}:`, error);
     result.error = error instanceof Error ? error.message : 'Unknown error';
     return result;
   }

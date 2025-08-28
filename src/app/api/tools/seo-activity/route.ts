@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { randomUUID } from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,6 +21,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[SEO-ACTIVITY] Recording ${activityData.activity_type}: ${activityData.title}`);
     
+    // Generate a UUID for entity_id if not provided (required by database schema)
+    const entityId = activityData.entity_id || randomUUID();
+    
     // Store the activity in agent_events table
     const { data, error } = await supabase
       .from('agent_events')
@@ -27,7 +31,7 @@ export async function POST(request: NextRequest) {
         user_token: activityData.user_token,
         event_type: 'seo_automation',
         entity_type: 'seo_activity',
-        entity_id: activityData.entity_id || null,
+        entity_id: entityId,
         event_data: JSON.stringify({
           title: activityData.title,
           description: activityData.description || '',
