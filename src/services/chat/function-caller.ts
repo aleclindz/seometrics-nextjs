@@ -361,13 +361,15 @@ export class FunctionCaller {
           }
         }
         
-        // Add audit metrics
-        auditMessage += `**🔍 Technical Analysis:**\n`;
-        auditMessage += `- Pages Analyzed: ${overview.totalPages || 0}\n`;
-        auditMessage += `- Indexable Pages: ${overview.indexablePages || 0}\n`;
-        auditMessage += `- Mobile-Friendly: ${overview.mobileFriendly || 0}\n`;
-        auditMessage += `- With Schema Markup: ${overview.withSchema || 0}\n`;
-        auditMessage += `- Technical Issues: ${issues.length || 0}\n\n`;
+        // Add URL inspection data if available
+        if (overview.totalPages > 0) {
+          auditMessage += `**🔍 URL Inspection Analysis:**\n`;
+          auditMessage += `- Pages Inspected: ${overview.totalPages || 0}\n`;
+          auditMessage += `- Indexable Pages: ${overview.indexablePages || 0}\n`;
+          auditMessage += `- Mobile-Friendly Pages: ${overview.mobileFriendly || 0}\n`;
+          auditMessage += `- Pages with Schema Markup: ${overview.withSchema || 0}\n`;
+          auditMessage += `- Technical Issues Found: ${issues.length || 0}\n\n`;
+        }
         
         // Add fixes information
         if (fixes.automated || fixes.pending) {
@@ -408,10 +410,14 @@ export class FunctionCaller {
           auditMessage += `- Detects structured data and rich results\n`;
           auditMessage += `- Provides specific technical SEO recommendations\n`;
         } else {
-          auditMessage += `**✅ Data Sources:**\n`;
-          auditMessage += `- Google Search Console inspections: ${overview.totalPages} pages\n`;
-          auditMessage += `- Technical analysis: Complete\n`;
-          auditMessage += `- Last updated: ${overview.lastAuditAt ? new Date(overview.lastAuditAt).toLocaleString() : 'Unknown'}\n\n`;
+          auditMessage += `**📊 Data Sources:**\n`;
+          if (performance && performance.totalClicks > 0) {
+            auditMessage += `- GSC Performance Data: ${performance.dataRangeStart} to ${performance.dataRangeEnd}\n`;
+          }
+          if (overview.totalPages > 0) {
+            auditMessage += `- URL Inspections: ${overview.totalPages} pages analyzed\n`;
+          }
+          auditMessage += `- Last audit: ${overview.lastAuditAt ? new Date(overview.lastAuditAt).toLocaleDateString() : 'Today'}\n\n`;
         }
         
         // Add activity summary
