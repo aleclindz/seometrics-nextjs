@@ -110,8 +110,8 @@ export default function MetricsDashboard({ domain, userToken }: MetricsDashboard
   };
 
   return (
-    <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-sm">
-      <div className="px-6 py-3">
+    <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-sm rounded-xl">
+      <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Site Info */}
           <div className="flex items-center gap-3">

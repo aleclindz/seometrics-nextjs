@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
       const { data: website, error: websiteError } = await supabase
         .from('websites')
         .select('*')
-        .or(`domain.eq.${domain},domain.eq.sc-domain:${domain},domain.ilike.%${domain}%,url.ilike.%${domain}%`)
+        .or(`domain.eq.${domain},domain.eq.sc-domain:${domain},domain.ilike.%${domain}%`)
         .single();
         
       if (websiteError || !website) {
