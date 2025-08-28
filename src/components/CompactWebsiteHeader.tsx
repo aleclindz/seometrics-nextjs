@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 
 interface CompactWebsiteHeaderProps {
   domain: string;
@@ -25,6 +26,7 @@ export const CompactWebsiteHeader: React.FC<CompactWebsiteHeaderProps> = ({
   setupStatus,
   isActive
 }) => {
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
   const connectedCount = [
     setupStatus.gscConnected,
     setupStatus.seoagentjsActive,
@@ -97,8 +99,11 @@ export const CompactWebsiteHeader: React.FC<CompactWebsiteHeaderProps> = ({
             </div>
           </div>
 
-          {/* Setup Status Compact */}
-          <div className="flex items-center gap-2">
+          {/* Setup Status Compact - Clickable */}
+          <button 
+            onClick={() => setIsSetupModalOpen(true)}
+            className="flex items-center gap-2 hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-gray-600">
               <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path>
               <circle cx="12" cy="12" r="3"></circle>
@@ -114,7 +119,7 @@ export const CompactWebsiteHeader: React.FC<CompactWebsiteHeaderProps> = ({
               </div>
               <div className="text-xs text-gray-500">Setup</div>
             </div>
-          </div>
+          </button>
 
           {/* Coming Soon Items */}
           <div className="flex items-center gap-2">
@@ -188,6 +193,25 @@ export const CompactWebsiteHeader: React.FC<CompactWebsiteHeaderProps> = ({
           </div>
         </div>
       )}
+
+      {/* Setup Modal */}
+      <WebsiteSetupModal
+        isOpen={isSetupModalOpen}
+        onClose={() => setIsSetupModalOpen(false)}
+        website={{
+          id: domain,
+          url: domain,
+          name: domain,
+          gscStatus: setupStatus.gscConnected ? 'connected' : 'none',
+          cmsStatus: setupStatus.cmsConnected ? 'connected' : 'none',
+          smartjsStatus: setupStatus.seoagentjsActive ? 'active' : 'inactive',
+          hostStatus: setupStatus.hostingConnected ? 'connected' : 'none'
+        }}
+        onStatusUpdate={(updates) => {
+          // Optional: Add callback to refresh setup status
+          console.log('Setup status updated:', updates);
+        }}
+      />
     </div>
   );
 };

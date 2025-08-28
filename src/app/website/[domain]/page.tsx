@@ -77,7 +77,7 @@ export default function WebsitePage() {
             </div>
             
             {/* Chat Interface and Activity Feed - 2-Column Layout */}
-            <div className="flex-1 flex gap-4 p-4 pt-2 pb-2 overflow-hidden">
+            <div className="flex-1 flex gap-4 p-4 pt-2 pb-0 overflow-hidden">
               {/* Chat Interface - Main Column */}
               <div className="flex-1 min-w-0">
                 <ChatInterface 
