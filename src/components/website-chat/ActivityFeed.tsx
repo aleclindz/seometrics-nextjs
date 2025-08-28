@@ -62,12 +62,27 @@ export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
       if (response.ok) {
         const data = await response.json();
         
-        if (data.success && data.activities) {
+        if (data.success && data.activities && data.activities.length > 0) {
           const mappedActivities = data.activities.map(mapAgentDataToActivity);
-          setActivities(mappedActivities);
+          
+          // Check if all activities are generic "executed_function" type - if so, use mock data instead
+          const hasGenericActivities = mappedActivities.every(activity => 
+            activity.title === 'Executed Function' || 
+            activity.description.includes('Executed executed function operation')
+          );
+          
+          if (hasGenericActivities) {
+            console.log('[ACTIVITY FEED] All activities are generic, using mock data instead');
+            setActivities(getMockActivities());
+          } else {
+            setActivities(mappedActivities);
+          }
+        } else {
+          // No activities found, use mock data
+          setActivities(getMockActivities());
         }
       } else {
-        // Fallback to mock data if no real activities exist yet
+        // Fallback to mock data if API call fails
         setActivities(getMockActivities());
       }
     } catch (error) {

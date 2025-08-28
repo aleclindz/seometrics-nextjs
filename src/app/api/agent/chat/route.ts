@@ -546,6 +546,29 @@ async function recordActivity(userToken: string, siteUrl: string, functionCall: 
   }
 }
 
+function getFunctionDisplayName(functionName: string): string {
+  switch (functionName) {
+    case 'technical_seo_scan':
+      return 'Technical SEO Scan';
+    case 'generate_content_ideas':
+      return 'Content Ideas Generated';
+    case 'get_performance_summary':
+      return 'Performance Analysis';
+    case 'create_idea':
+      return 'SEO Idea Created';
+    case 'run_action':
+      return 'SEO Action Executed';
+    case 'check_indexing_status':
+      return 'Indexing Status Check';
+    case 'analyze_page_performance':
+      return 'Page Performance Analysis';
+    case 'optimize_meta_tags':
+      return 'Meta Tags Optimization';
+    default:
+      return functionName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+  }
+}
+
 function getDescriptionForFunction(functionName: string): string {
   switch (functionName) {
     case 'technical_seo_scan':
@@ -558,6 +581,12 @@ function getDescriptionForFunction(functionName: string): string {
       return 'Created new SEO improvement opportunity';
     case 'run_action':
       return 'Executed automated SEO optimization task';
+    case 'check_indexing_status':
+      return 'Checked Google indexing status for website pages';
+    case 'analyze_page_performance':
+      return 'Analyzed Core Web Vitals and page speed metrics';
+    case 'optimize_meta_tags':
+      return 'Optimized meta titles and descriptions for better SEO';
     default:
       return `Executed ${functionName.replace(/_/g, ' ')} operation`;
   }
@@ -577,23 +606,24 @@ async function processOpenAIResponse(
   let actionCard = null;
   let functionCall = null;
   
-  // Check if we have tool results to process
-  if (response.toolResults && Object.keys(response.toolResults).length > 0) {
-    // Create a function call representation from the first tool result
-    const firstToolResult = Object.values(response.toolResults)[0] as any;
+  // Only record activities for actual OpenAI function calls, not generic tool results
+  if (response.function_call || (response.tool_calls && response.tool_calls.length > 0)) {
+    // Process actual OpenAI function calls
+    const actualFunctionCall = response.function_call || response.tool_calls[0];
+    
     functionCall = {
-      name: 'executed_function',
-      arguments: {},
-      result: firstToolResult
+      name: actualFunctionCall.function?.name || actualFunctionCall.name,
+      arguments: actualFunctionCall.function?.arguments || actualFunctionCall.arguments,
+      result: response.toolResults ? Object.values(response.toolResults)[0] : null
     };
     
-    // Generate action card based on the tool result
-    if (firstToolResult.success) {
+    // Generate action card based on the actual function
+    if (functionCall.result?.success) {
       actionCard = {
         type: 'technical-fix',
         data: {
-          title: 'SEO Function Executed',
-          description: 'AI agent successfully executed an SEO operation',
+          title: getFunctionDisplayName(functionCall.name),
+          description: getDescriptionForFunction(functionCall.name),
           status: 'completed',
           affectedPages: 1,
           links: [
@@ -602,12 +632,11 @@ async function processOpenAIResponse(
         }
       };
     }
-  }
-
-  // Record activity if there was a function call
-  if (functionCall) {
+    
+    // Only record activity for real function calls
     await recordActivity(userToken, selectedSite || '', functionCall, actionCard);
   }
+  // Don't record generic "executed_function" activities anymore
 
   // Store assistant message (async, non-blocking)
   if (conversationData) {
