@@ -75,7 +75,17 @@ export async function POST(request: NextRequest) {
     
     console.log(`[TECHNICAL SEO SUMMARY] Final inspections result: ${inspections?.length || 0} records found`);
     if (inspections?.length) {
-      console.log('[TECHNICAL SEO SUMMARY] Sample inspection:', inspections[0]);
+      console.log('[TECHNICAL SEO SUMMARY] Sample inspection:', {
+        url: inspections[0].inspected_url,
+        can_be_indexed: inspections[0].can_be_indexed,
+        mobile_usable: inspections[0].mobile_usable,
+        rich_results_items: inspections[0].rich_results_items,
+        inspected_at: inspections[0].inspected_at
+      });
+    } else {
+      console.log('[TECHNICAL SEO SUMMARY] 💡 To get URL inspection data:');
+      console.log('[TECHNICAL SEO SUMMARY]   - Ask the agent: "Run URL inspections for my site"');
+      console.log('[TECHNICAL SEO SUMMARY]   - Or wait for the weekly CRON job to run');
     }
 
     // Get recent agent activity data (replaces legacy audit data)

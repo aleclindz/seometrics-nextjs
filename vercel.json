@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/regenerate-sitemaps",
       "schedule": "0 2 * * 1"
+    },
+    {
+      "path": "/api/cron/url-inspections",
+      "schedule": "0 4 * * 1"
     }
   ],
   "redirects": [

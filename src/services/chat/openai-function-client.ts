@@ -624,6 +624,30 @@ export class OpenAIFunctionClient {
         }
       },
       {
+        name: 'run_url_inspections',
+        description: 'Run Google Search Console URL inspections to get indexability, mobile usability, and rich results data',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: { 
+              type: 'string', 
+              description: 'Website URL to inspect' 
+            },
+            urls: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Specific URLs to inspect (optional - will auto-discover from GSC data if not provided)'
+            },
+            check_all_pages: {
+              type: 'boolean',
+              description: 'Whether to inspect all pages found in GSC performance data (default: false)',
+              default: false
+            }
+          },
+          required: ['site_url']
+        }
+      },
+      {
         name: 'get_site_status',
         description: 'Get comprehensive status overview of a website including all integrations',
         parameters: {

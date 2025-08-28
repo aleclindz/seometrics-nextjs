@@ -49,6 +49,8 @@ export class FunctionCaller {
           return await this.listIntegrations(args);
         case 'plan_crawl':
           return await this.planCrawl(args);
+        case 'run_url_inspections':
+          return await this.runUrlInspections(args);
         
         // Agent capability functions
         case 'GSC_sync_data':
@@ -358,14 +360,20 @@ export class FunctionCaller {
           auditMessage += `**⚠️ Limited Data Available:**\n`;
           auditMessage += `- No GSC URL inspection data found for this domain\n`;
           auditMessage += `- This is likely because:\n`;
-          auditMessage += `  - The domain needs GSC verification\n`;
           auditMessage += `  - URL inspections haven't been run yet\n`;
+          auditMessage += `  - The domain needs GSC verification\n`;
           auditMessage += `  - The domain format doesn't match database records\n\n`;
           
-          auditMessage += `**Next Steps:**\n`;
-          auditMessage += `- Ensure Google Search Console is properly connected\n`;
-          auditMessage += `- Run URL inspections from GSC dashboard\n`;
-          auditMessage += `- Consider running a fresh crawl of the website\n`;
+          auditMessage += `**🚀 Get Comprehensive Data:**\n`;
+          auditMessage += `- **Ask me**: "Run URL inspections for ${args.site_url}"\n`;
+          auditMessage += `- **Automatic**: URL inspections run weekly for all managed sites\n`;
+          auditMessage += `- **Manual**: Run inspections from Google Search Console dashboard\n\n`;
+          
+          auditMessage += `**Why URL Inspections Matter:**\n`;
+          auditMessage += `- Shows exact indexability status for each page\n`;
+          auditMessage += `- Identifies mobile usability issues\n`;
+          auditMessage += `- Detects structured data and rich results\n`;
+          auditMessage += `- Provides specific technical SEO recommendations\n`;
         } else {
           auditMessage += `**✅ Data Sources:**\n`;
           auditMessage += `- Google Search Console inspections: ${overview.totalPages} pages\n`;
@@ -682,6 +690,165 @@ export class FunctionCaller {
     } catch (error) {
       console.error(`[FUNCTION CALLER] API call failed:`, { url: fullUrl, error });
       throw error;
+    }
+  }
+
+  private async runUrlInspections(args: { site_url: string; urls?: string[]; check_all_pages?: boolean }): Promise<FunctionCallResult> {
+    try {
+      console.log('[FUNCTION CALLER] Running URL inspections for:', args.site_url);
+
+      // If no URLs provided, get them from GSC performance data
+      let urlsToInspect = args.urls || [];
+      
+      if (urlsToInspect.length === 0 || args.check_all_pages) {
+        console.log('[FUNCTION CALLER] No URLs provided, fetching from GSC performance data...');
+        
+        // Get recent performance data to find active URLs
+        const performanceResponse = await this.fetchAPI('/api/gsc/performance', {
+          method: 'POST',
+          body: JSON.stringify({
+            siteUrl: args.site_url,
+            userToken: this.userToken,
+            startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
+            endDate: new Date().toISOString().split('T')[0]
+          })
+        });
+
+        if (performanceResponse.success && performanceResponse.data) {
+          // Extract URLs from performance data
+          const urlsSet = new Set<string>();
+          
+          // Add homepage by default
+          const cleanDomain = args.site_url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+          urlsSet.add(`https://${cleanDomain}/`);
+          
+          // Add URLs from performance data (pages with clicks)
+          if (performanceResponse.data.pages && Array.isArray(performanceResponse.data.pages)) {
+            performanceResponse.data.pages.forEach((pageData: any) => {
+              if (pageData.page && pageData.clicks > 0) {
+                urlsSet.add(pageData.page);
+              }
+            });
+          }
+          
+          urlsToInspect = Array.from(urlsSet).slice(0, 15); // Limit to 15 URLs
+          console.log(`[FUNCTION CALLER] Found ${urlsToInspect.length} URLs from performance data`);
+        } else {
+          // Fallback to just homepage
+          const cleanDomain = args.site_url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+          urlsToInspect = [`https://${cleanDomain}/`];
+          console.log('[FUNCTION CALLER] Using homepage as fallback URL');
+        }
+      }
+
+      if (urlsToInspect.length === 0) {
+        return {
+          success: false,
+          data: {
+            message: `## URL Inspections Failed\n\n**❌ No URLs to Inspect**\n\nI couldn't find any URLs to inspect for ${args.site_url}. This could be because:\n- No GSC performance data available\n- Website not properly connected to Google Search Console\n- No pages with traffic in the last 30 days\n\n**Next Steps:**\n1. Ensure GSC is properly connected\n2. Check that the website has some organic traffic\n3. Try specifying URLs manually`,
+            urlsInspected: 0,
+            error: 'No URLs found'
+          }
+        };
+      }
+
+      console.log(`[FUNCTION CALLER] Inspecting ${urlsToInspect.length} URLs:`, urlsToInspect);
+
+      // Call the URL inspection API
+      const response = await this.fetchAPI('/api/gsc/url-inspection', {
+        method: 'POST',
+        body: JSON.stringify({
+          siteUrl: args.site_url,
+          urls: urlsToInspect,
+          userToken: this.userToken
+        })
+      });
+
+      if (response.success && response.results) {
+        const results = response.results;
+        const successfulInspections = results.filter((r: any) => r.success).length;
+        const failedInspections = results.filter((r: any) => !r.success).length;
+        
+        // Analyze results
+        const indexablePages = results.filter((r: any) => r.success && r.data?.indexStatusResult?.verdict === 'PASS').length;
+        const nonIndexablePages = results.filter((r: any) => r.success && r.data?.indexStatusResult?.verdict !== 'PASS').length;
+        const mobileFriendlyPages = results.filter((r: any) => r.success && r.data?.mobileUsabilityResult?.verdict === 'PASS').length;
+        const richResultsPages = results.filter((r: any) => r.success && r.data?.richResultsResult?.detectedItems?.length > 0).length;
+
+        let message = `## URL Inspections Complete for ${args.site_url}\n\n`;
+        message += `**📊 Inspection Summary:**\n`;
+        message += `- URLs Inspected: ${successfulInspections}/${urlsToInspect.length}\n`;
+        message += `- Indexable Pages: ${indexablePages}\n`;
+        message += `- Non-Indexable Pages: ${nonIndexablePages}\n`;
+        message += `- Mobile-Friendly: ${mobileFriendlyPages}\n`;
+        message += `- Rich Results Found: ${richResultsPages}\n\n`;
+
+        if (failedInspections > 0) {
+          message += `**⚠️ Issues Found:**\n`;
+          message += `- ${failedInspections} inspections failed (API limits or errors)\n\n`;
+        }
+
+        // Highlight key issues
+        const issues = [];
+        if (nonIndexablePages > 0) {
+          issues.push(`🔴 ${nonIndexablePages} pages are not indexable`);
+        }
+        if (mobileFriendlyPages < successfulInspections) {
+          issues.push(`🟡 ${successfulInspections - mobileFriendlyPages} pages have mobile usability issues`);
+        }
+        if (richResultsPages === 0) {
+          issues.push(`🔵 No structured data found on inspected pages`);
+        }
+
+        if (issues.length > 0) {
+          message += `**🚨 Key Issues:**\n`;
+          issues.forEach(issue => {
+            message += `- ${issue}\n`;
+          });
+          message += `\n`;
+        }
+
+        message += `**✅ Next Steps:**\n`;
+        message += `- The URL inspection data has been saved to your database\n`;
+        message += `- Run a technical SEO audit to see detailed analysis\n`;
+        message += `- Address any indexability or mobile usability issues found\n`;
+
+        return {
+          success: true,
+          data: {
+            message,
+            summary: {
+              urlsInspected: successfulInspections,
+              totalUrls: urlsToInspect.length,
+              indexablePages,
+              nonIndexablePages,
+              mobileFriendlyPages,
+              richResultsPages,
+              failedInspections
+            },
+            results
+          }
+        };
+      } else {
+        return {
+          success: false,
+          data: {
+            message: `## URL Inspections Failed for ${args.site_url}\n\n**❌ Inspection Error:**\n\n${response.error || 'Unknown error occurred'}\n\n**This could be due to:**\n- Google Search Console API limits\n- Missing GSC connection or permissions\n- Invalid URLs provided\n- Network connectivity issues\n\n**Try Again:**\n- Wait a few minutes and retry\n- Check your GSC connection status\n- Ensure you have access to this property in GSC`,
+            urlsInspected: 0,
+            error: response.error || 'API call failed'
+          }
+        };
+      }
+    } catch (error) {
+      console.error('[FUNCTION CALLER] URL inspections error:', error);
+      return {
+        success: false,
+        data: {
+          message: `## URL Inspections Failed for ${args.site_url}\n\n**❌ Unexpected Error:**\n\n${error instanceof Error ? error.message : 'Unknown error'}\n\n**Troubleshooting:**\n- Check your Google Search Console connection\n- Ensure the website domain is correctly formatted\n- Verify you have permissions for this GSC property\n- Contact support if the issue persists`,
+          urlsInspected: 0,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      };
     }
   }
 }
