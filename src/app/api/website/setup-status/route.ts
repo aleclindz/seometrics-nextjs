@@ -14,12 +14,16 @@ async function detectSEOAgentStatus(domain: string): Promise<string> {
     const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '');
     const testUrl = `https://${cleanDomain}`;
     
-    // Try to fetch the SEOAgent.js file
+    // Try to fetch the SEOAgent.js file with AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(`${testUrl}/seoagent.js`, {
       method: 'HEAD',
-      timeout: 5000
+      signal: controller.signal
     });
     
+    clearTimeout(timeoutId);
     return response.ok ? 'active' : 'inactive';
   } catch (error) {
     console.log(`[SETUP STATUS] SEOAgent.js not detected for ${domain}:`, error);
