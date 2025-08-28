@@ -24,6 +24,8 @@ export async function POST(request: NextRequest) {
     let inspections = null;
     let inspectionsError = null;
     
+    console.log('[TECHNICAL SEO SUMMARY] === AUDIT DEBUG START ===');
+    console.log('[TECHNICAL SEO SUMMARY] Input parameters:', { userToken, siteUrl });
     console.log('[TECHNICAL SEO SUMMARY] Looking for inspections with siteUrl:', siteUrl);
     
     try {
@@ -47,11 +49,11 @@ export async function POST(request: NextRequest) {
           .eq('site_url', variant)
           .order('inspected_at', { ascending: false });
           
-        console.log(`[TECHNICAL SEO SUMMARY] ${variant}: ${data?.length || 0} results`);
+        console.log(`[TECHNICAL SEO SUMMARY] URL variant ${variant}: ${data?.length || 0} results`, error ? `(error: ${error.code})` : '');
           
         if (data && data.length > 0 && !error) {
           inspections = data;
-          console.log('[TECHNICAL SEO SUMMARY] Found inspections with URL variant:', variant);
+          console.log('[TECHNICAL SEO SUMMARY] ✅ Found inspections with URL variant:', variant, `(${data.length} records)`);
           break;
         } else if (error && error.code !== 'PGRST116') {
           // PGRST116 is "not found", other errors are actual issues
@@ -65,13 +67,19 @@ export async function POST(request: NextRequest) {
       }
     } catch (error: any) {
       if (error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] url_inspections table not found, using fallback data');
+        console.log('[TECHNICAL SEO SUMMARY] ⚠️ url_inspections table not found, using fallback data');
       } else {
-        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching inspections:', error);
+        console.error('[TECHNICAL SEO SUMMARY] ❌ Unexpected error fetching inspections:', error);
       }
+    }
+    
+    console.log(`[TECHNICAL SEO SUMMARY] Final inspections result: ${inspections?.length || 0} records found`);
+    if (inspections?.length) {
+      console.log('[TECHNICAL SEO SUMMARY] Sample inspection:', inspections[0]);
     }
 
     // Get recent agent activity data (replaces legacy audit data)
+    console.log('[TECHNICAL SEO SUMMARY] Fetching recent agent activity...');
     let recentActivity = null;
     try {
       const result = await supabase
@@ -83,6 +91,12 @@ export async function POST(request: NextRequest) {
         .limit(50);
       
       recentActivity = result.data;
+      console.log(`[TECHNICAL SEO SUMMARY] Agent activity query result:`, {
+        found: result.data?.length || 0,
+        error: result.error,
+        sampleEvent: result.data?.[0]?.event_type || 'none'
+      });
+      
       if (result.error && result.error.code !== '42P01') {
         console.error('[TECHNICAL SEO SUMMARY] Error fetching agent activity:', result.error);
       }
@@ -91,16 +105,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Get GSC performance data for insights
+    console.log('[TECHNICAL SEO SUMMARY] Fetching GSC performance data for user:', userToken);
     let performanceData = null;
     try {
       const result = await supabase
-        .from('gsc_performance_data')
+        .from('gsc_performance')
         .select('*')
         .eq('user_token', userToken)
-        .order('date', { ascending: false })
+        .order('date_start', { ascending: false })
         .limit(30);
       
       performanceData = result.data;
+      console.log(`[TECHNICAL SEO SUMMARY] GSC performance query result:`, {
+        found: result.data?.length || 0,
+        error: result.error,
+        sampleData: result.data?.[0] || 'none'
+      });
+      
       if (result.error && result.error.code !== '42P01') {
         console.error('[TECHNICAL SEO SUMMARY] Error fetching GSC performance:', result.error);
       }
@@ -174,8 +195,34 @@ export async function POST(request: NextRequest) {
     let mobileFriendly = inspections?.filter(i => i.mobile_usable).length || 0;
     let withSchema = inspections?.filter(i => i.rich_results_items > 0).length || 0;
 
-    // If no GSC data, use agent activity as fallback
+    // If no inspection data, use performance data to estimate pages
+    if (totalPages === 0 && performanceData?.length) {
+      console.log('[TECHNICAL SEO SUMMARY] Using GSC performance data as fallback for page count');
+      
+      // Extract unique pages from performance data
+      const uniquePages = new Set();
+      performanceData.forEach(perf => {
+        if (perf.pages && Array.isArray(perf.pages)) {
+          perf.pages.forEach((pageData: any) => {
+            if (pageData.page) {
+              uniquePages.add(pageData.page);
+            }
+          });
+        }
+      });
+      
+      totalPages = uniquePages.size;
+      console.log(`[TECHNICAL SEO SUMMARY] Found ${totalPages} unique pages from GSC performance data:`, Array.from(uniquePages));
+      
+      // Estimate indexable and mobile-friendly (assume good performance = indexed)
+      indexablePages = totalPages; // If it has performance data, it's likely indexed
+      mobileFriendly = totalPages; // Assume mobile-friendly if no issues found
+    }
+    
+    // If still no data, use agent activity as final fallback
     if (totalPages === 0 && schemaActivity?.length) {
+      console.log('[TECHNICAL SEO SUMMARY] Using agent activity as final fallback for page count');
+      
       // Count unique pages from schema activity
       const uniquePages = new Set(
         schemaActivity
@@ -187,6 +234,8 @@ export async function POST(request: NextRequest) {
         activity.event_type === 'schema_generated' || 
         (activity.metadata?.schemas_added && activity.metadata.schemas_added > 0)
       ).length;
+      
+      console.log(`[TECHNICAL SEO SUMMARY] Found ${totalPages} unique pages from agent activity`);
       
       // Assume all pages processed by agent are indexable and mobile-friendly
       indexablePages = totalPages;
@@ -428,13 +477,21 @@ export async function POST(request: NextRequest) {
       issues: processedIssues
     };
 
-    console.log(`[TECHNICAL SEO SUMMARY] Returning data for ${siteUrl}:`, {
+    console.log('[TECHNICAL SEO SUMMARY] === AUDIT PROCESSING COMPLETE ===');
+    console.log(`[TECHNICAL SEO SUMMARY] Final data summary for ${siteUrl}:`, {
       totalPages,
       indexablePages,
       mobileFriendly,
       withSchema,
-      issuesCount: processedIssues.length
+      issuesCount: processedIssues.length,
+      hasInspections: !!inspections?.length,
+      hasPerformanceData: !!performanceData?.length,
+      hasRecentActivity: !!recentActivity?.length,
+      hasSchemaActivity: !!schemaActivity?.length
     });
+    console.log('[TECHNICAL SEO SUMMARY] Performance data sample:', performanceData?.[0] || 'none');
+    console.log('[TECHNICAL SEO SUMMARY] Recent activity sample:', recentActivity?.[0] || 'none');
+    console.log('[TECHNICAL SEO SUMMARY] === AUDIT DEBUG END ===');
 
     return NextResponse.json({
       success: true,
