@@ -53,6 +53,11 @@ CREATE TABLE websites (
     image_tags INTEGER DEFAULT 0,
     is_managed BOOLEAN DEFAULT false,
     is_excluded_from_sync BOOLEAN DEFAULT false,
+    gsc_status VARCHAR(20) DEFAULT 'none' CHECK (gsc_status IN ('none', 'connected', 'error')),
+    seoagentjs_status VARCHAR(20) DEFAULT 'inactive' CHECK (seoagentjs_status IN ('inactive', 'active', 'error')),
+    cms_status VARCHAR(20) DEFAULT 'none' CHECK (cms_status IN ('none', 'connected', 'error')),
+    hosting_status VARCHAR(20) DEFAULT 'none' CHECK (hosting_status IN ('none', 'connected', 'error')),
+    last_status_check TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -60,6 +65,12 @@ CREATE TABLE websites (
 **Key Points**:
 - `is_managed` - for selective website management
 - `is_excluded_from_sync` - exclude from GSC sync
+- **Connection Status Columns (Migration 041)**:
+  - `gsc_status` - Google Search Console connection status (none/connected/error)
+  - `seoagentjs_status` - SEOAgent.js script installation status (inactive/active/error)
+  - `cms_status` - CMS connection status (none/connected/error)
+  - `hosting_status` - Hosting provider connection status (none/connected/error)
+  - `last_status_check` - Last time connection statuses were verified
 
 ---
 
