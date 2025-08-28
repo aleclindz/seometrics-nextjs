@@ -118,7 +118,9 @@ export async function POST(request: NextRequest) {
           svsResult = result.value;
         } else {
           // This is a traditional audit result
-          allIssues.push(...result.value);
+          if (Array.isArray(result.value)) {
+            allIssues.push(...result.value);
+          }
         }
       } else {
         console.error(`Audit ${index} failed:`, result.reason);

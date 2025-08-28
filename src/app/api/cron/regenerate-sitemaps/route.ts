@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { DomainUtils } from '@/lib/utils/DomainUtils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -71,9 +72,10 @@ export async function POST(request: NextRequest) {
 
     // Process each website
     for (const website of websites || []) {
-      // Determine the website URL to use - handle null website.url (outside try block for catch access)
-      const websiteUrl = website.url || website.domain;
-      const displayUrl = websiteUrl || website.domain || 'Unknown';
+      // Use cleaned domain to avoid sc-domain: prefix issues
+      const cleanDomain = website.cleaned_domain || DomainUtils.cleanDomain(website.domain);
+      const websiteUrl = website.url || DomainUtils.buildUrl(cleanDomain);
+      const displayUrl = cleanDomain || 'Unknown';
       
       try {
         
@@ -95,8 +97,8 @@ export async function POST(request: NextRequest) {
         const sixDaysAgo = new Date();
         sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
 
-        // Safely construct domain for query
-        const safeDomain = websiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '');
+        // Use clean domain for database queries
+        const safeDomain = cleanDomain;
         const { data: recentSitemap } = await supabase
           .from('sitemap_submissions')
           .select('*')

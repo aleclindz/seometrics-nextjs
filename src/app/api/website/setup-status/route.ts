@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { DomainQueryService } from '@/lib/database/DomainQueryService';
+import { DomainUtils } from '@/lib/utils/DomainUtils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,23 +9,28 @@ const supabase = createClient(
 );
 
 // Helper function to detect SEOAgent.js status
-async function detectSEOAgentStatus(domain: string): Promise<string> {
+async function detectSEOAgentStatus(domain: string, cleanedDomain?: string): Promise<string> {
   try {
-    // Clean domain for URL construction
-    const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '');
-    const testUrl = `https://${cleanDomain}`;
+    // Use cleaned_domain if available, otherwise use DomainUtils
+    const cleanDomain = cleanedDomain || DomainUtils.cleanDomain(domain);
+    
+    // Build proper URL using DomainUtils
+    const testUrl = DomainUtils.buildSEOAgentUrl(cleanDomain);
+    console.log(`[SETUP STATUS] Testing SEOAgent.js at: ${testUrl}`);
     
     // Try to fetch the SEOAgent.js file with AbortController for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    const response = await fetch(`${testUrl}/seoagent.js`, {
+    const response = await fetch(testUrl, {
       method: 'HEAD',
       signal: controller.signal
     });
     
     clearTimeout(timeoutId);
-    return response.ok ? 'active' : 'inactive';
+    const isActive = response.ok;
+    console.log(`[SETUP STATUS] SEOAgent.js status for ${cleanDomain}: ${isActive ? 'active' : 'inactive'}`);
+    return isActive ? 'active' : 'inactive';
   } catch (error) {
     console.log(`[SETUP STATUS] SEOAgent.js not detected for ${domain}:`, error);
     return 'inactive';
@@ -93,11 +99,12 @@ export async function GET(request: NextRequest) {
     
     // Query websites table for current status using DomainQueryService
     // Note: Check both host_status and hosting_status for compatibility
+    // Include cleaned_domain for proper URL construction
     const websiteResult = await DomainQueryService.queryTableByDomain(
       'websites',
       userToken, 
       domain,
-      'gsc_status, seoagentjs_status, cms_status, host_status, hosting_status, last_status_check, domain'
+      'gsc_status, seoagentjs_status, cms_status, host_status, hosting_status, last_status_check, domain, cleaned_domain'
     );
 
     if (!websiteResult.success || !websiteResult.data || websiteResult.data.length === 0) {
@@ -147,7 +154,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Refresh SEOAgent.js status by checking if script is accessible
-      seoagentjsStatus = await detectSEOAgentStatus(website.domain);
+      // Use cleaned_domain to avoid sc-domain: prefix issues
+      seoagentjsStatus = await detectSEOAgentStatus(website.domain, website.cleaned_domain);
       
       // Refresh CMS status
       cmsStatus = await checkCMSStatus(userToken);

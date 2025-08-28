@@ -58,6 +58,7 @@ CREATE TABLE websites (
     cms_status VARCHAR(20) DEFAULT 'none' CHECK (cms_status IN ('none', 'connected', 'error')),
     hosting_status VARCHAR(20) DEFAULT 'none' CHECK (hosting_status IN ('none', 'connected', 'error')),
     last_status_check TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    cleaned_domain VARCHAR(255), -- Added in Migration 042
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -71,6 +72,11 @@ CREATE TABLE websites (
   - `cms_status` - CMS connection status (none/connected/error)
   - `hosting_status` - Hosting provider connection status (none/connected/error)
   - `last_status_check` - Last time connection statuses were verified
+- **Domain Handling (Migration 042)**:
+  - `domain` - Original domain (may include sc-domain: prefix for GSC compatibility)
+  - `cleaned_domain` - Clean domain without prefixes (sc-domain:, https://, www.) for URL construction
+  - **Auto-populated**: `cleaned_domain` is automatically maintained via database trigger
+  - **Indexed**: Optimized for queries on both user_token and cleaned_domain
 
 ---
 

@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
     const analyzer = new SemanticAnalyzer(process.env.OPENAI_API_KEY!);
     
     // Process pages in batches to avoid overwhelming the system
-    const results = [];
-    const errors = [];
+    const results: any[] = [];
+    const errors: any[] = [];
     const batchSize = Math.min(maxConcurrent, 3);
     
     for (let i = 0; i < pageUrls.length; i += batchSize) {

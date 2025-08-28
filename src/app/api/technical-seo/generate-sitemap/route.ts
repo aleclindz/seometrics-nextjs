@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
+import { DomainUtils } from '@/lib/utils/DomainUtils';
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
 
@@ -21,9 +22,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameters: userToken, siteUrl' }, { status: 400 });
     }
 
-    // Clean the site URL using normalization service
-    const cleanSiteUrl = UrlNormalizationService.domainPropertyToHttps(siteUrl);
-    const domain = cleanSiteUrl.replace(/^https?:\/\//, '').replace(/^www\./, '');
+    // Clean the site URL using DomainUtils to handle sc-domain: prefixes
+    const domain = DomainUtils.cleanDomain(siteUrl);
+    const cleanSiteUrl = DomainUtils.buildUrl(domain);
     
     console.log(`[SITEMAP GENERATION] Processing: siteUrl=${siteUrl}, cleanSiteUrl=${cleanSiteUrl}, domain=${domain}`);
 

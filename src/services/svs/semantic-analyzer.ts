@@ -99,7 +99,7 @@ export class SemanticAnalyzer {
         ...structureSchema.recommendations
       ].sort((a, b) => {
         // Sort by priority (critical > high > medium > low) then by potential points
-        const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+        const priorityOrder: { [key: string]: number } = { critical: 4, high: 3, medium: 2, low: 1 };
         return (priorityOrder[b.priority] - priorityOrder[a.priority]) || 
                (b.potential_points - a.potential_points);
       });
