@@ -71,131 +71,101 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get audit data if available (with error handling)
-    let audits = null;
+    // Get recent agent activity data (replaces legacy audit data)
+    let recentActivity = null;
     try {
       const result = await supabase
-        .from('seo_audits')
+        .from('agent_events')
         .select('*')
         .eq('user_token', userToken)
-        .eq('website_url', siteUrl)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      audits = result.data;
-      if (result.error && result.error.code !== '42P01') {
-        console.error('[TECHNICAL SEO SUMMARY] Error fetching audits:', result.error);
-      } else if (result.error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] seo_audits table not found, skipping audit data');
-      }
-    } catch (error: any) {
-      if (error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] seo_audits table not found, using fallback data');
-      } else {
-        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching audits:', error);
-      }
-    }
-
-    // Get recent audit issues (with error handling)
-    let issues = null;
-    try {
-      const result = await supabase
-        .from('audit_issues')
-        .select('*')
-        .eq('user_token', userToken)
-        .eq('status', 'active')
+        .or(`metadata->>'site_url'.eq.${siteUrl},metadata->>'site_url'.eq.${siteUrl.replace('https://', '').replace('http://', '')}`)
         .order('created_at', { ascending: false })
         .limit(50);
       
-      issues = result.data;
+      recentActivity = result.data;
       if (result.error && result.error.code !== '42P01') {
-        console.error('[TECHNICAL SEO SUMMARY] Error fetching issues:', result.error);
-      } else if (result.error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] audit_issues table not found, skipping issues data');
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching agent activity:', result.error);
       }
     } catch (error: any) {
-      if (error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] audit_issues table not found, using fallback data');
-      } else {
-        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching issues:', error);
-      }
+      console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching agent activity:', error);
     }
 
-    // Get schema generation data from smart.js activity (with error handling)
-    let schemaGenerations = null;
+    // Get GSC performance data for insights
+    let performanceData = null;
     try {
       const result = await supabase
-        .from('schema_generations')
+        .from('gsc_performance_data')
         .select('*')
-        .eq('website_token', siteUrl.replace('https://', '').replace('http://', ''))
-        .order('generated_at', { ascending: false })
+        .eq('user_token', userToken)
+        .order('date', { ascending: false })
+        .limit(30);
+      
+      performanceData = result.data;
+      if (result.error && result.error.code !== '42P01') {
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching GSC performance:', result.error);
+      }
+    } catch (error: any) {
+      console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching GSC performance:', error);
+    }
+
+    // Get schema-related activity from agent events
+    let schemaActivity = null;
+    try {
+      const result = await supabase
+        .from('agent_events')
+        .select('*')
+        .eq('user_token', userToken)
+        .in('event_type', ['schema_generated', 'meta_tags_updated', 'technical_fix_applied'])
+        .or(`metadata->>'site_url'.eq.${siteUrl},metadata->>'site_url'.eq.${siteUrl.replace('https://', '').replace('http://', '')}`)
+        .order('created_at', { ascending: false })
         .limit(100);
       
-      schemaGenerations = result.data;
+      schemaActivity = result.data;
       if (result.error && result.error.code !== '42P01') {
-        console.error('[TECHNICAL SEO SUMMARY] Error fetching schema generations:', result.error);
-      } else if (result.error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] schema_generations table not found, skipping schema data');
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching schema activity:', result.error);
       }
     } catch (error: any) {
-      if (error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] schema_generations table not found, using fallback data');
-      } else {
-        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching schema generations:', error);
-      }
+      console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching schema activity:', error);
     }
 
-    // Get sitemap data (with error handling)
-    let sitemaps = null;
+    // Get sitemap-related activity from agent events
+    let sitemapActivity = null;
     try {
       const result = await supabase
-        .from('sitemap_submissions')
+        .from('agent_events')
         .select('*')
         .eq('user_token', userToken)
-        .eq('site_url', siteUrl)
+        .in('event_type', ['sitemap_generated', 'sitemap_submitted', 'sitemap_updated'])
+        .or(`metadata->>'site_url'.eq.${siteUrl},metadata->>'site_url'.eq.${siteUrl.replace('https://', '').replace('http://', '')}`)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(10);
       
-      sitemaps = result.data;
+      sitemapActivity = result.data;
       if (result.error && result.error.code !== '42P01') {
-        console.error('[TECHNICAL SEO SUMMARY] Error fetching sitemap data:', result.error);
-      } else if (result.error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] sitemap_submissions table not found, skipping sitemap data');
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching sitemap activity:', result.error);
       }
     } catch (error: any) {
-      if (error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] sitemap_submissions table not found, using fallback data');
-      } else {
-        console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching sitemap data:', error);
-      }
+      console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching sitemap activity:', error);
     }
 
-    // Get robots.txt analysis data (handle case where table doesn't exist)
-    let robotsAnalyses = null;
-    let robotsError = null;
-    
+    // Get robots.txt related activity from agent events
+    let robotsActivity = null;
     try {
       const result = await supabase
-        .from('robots_analyses')
+        .from('agent_events')
         .select('*')
         .eq('user_token', userToken)
-        .eq('site_url', siteUrl)
-        .order('analyzed_at', { ascending: false })
-        .limit(1);
+        .in('event_type', ['robots_analyzed', 'robots_updated', 'robots_optimized'])
+        .or(`metadata->>'site_url'.eq.${siteUrl},metadata->>'site_url'.eq.${siteUrl.replace('https://', '').replace('http://', '')}`)
+        .order('created_at', { ascending: false })
+        .limit(5);
       
-      robotsAnalyses = result.data;
-      robotsError = result.error;
-    } catch (error: any) {
-      // If table doesn't exist, just log and continue
-      if (error?.code === '42P01') {
-        console.log('[TECHNICAL SEO SUMMARY] robots_analyses table not found, skipping robots analysis');
-      } else {
-        robotsError = error;
+      robotsActivity = result.data;
+      if (result.error && result.error.code !== '42P01') {
+        console.error('[TECHNICAL SEO SUMMARY] Error fetching robots activity:', result.error);
       }
-    }
-
-    if (robotsError && robotsError.code !== '42P01') {
-      console.error('[TECHNICAL SEO SUMMARY] Error fetching robots analysis:', robotsError);
+    } catch (error: any) {
+      console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching robots activity:', error);
     }
 
     // Process inspections data (GSC) if available, otherwise use smart.js data
@@ -204,14 +174,21 @@ export async function POST(request: NextRequest) {
     let mobileFriendly = inspections?.filter(i => i.mobile_usable).length || 0;
     let withSchema = inspections?.filter(i => i.rich_results_items > 0).length || 0;
 
-    // If no GSC data, use seoagent.js activity as fallback
-    if (totalPages === 0 && schemaGenerations?.length) {
-      // Count unique pages that had schema markup generated
-      const uniquePages = new Set(schemaGenerations.map(sg => sg.page_url));
+    // If no GSC data, use agent activity as fallback
+    if (totalPages === 0 && schemaActivity?.length) {
+      // Count unique pages from schema activity
+      const uniquePages = new Set(
+        schemaActivity
+          .filter(activity => activity.metadata?.page_url || activity.metadata?.url)
+          .map(activity => activity.metadata?.page_url || activity.metadata?.url)
+      );
       totalPages = uniquePages.size;
-      withSchema = schemaGenerations.filter(sg => sg.schemas_generated > 0).length;
+      withSchema = schemaActivity.filter(activity => 
+        activity.event_type === 'schema_generated' || 
+        (activity.metadata?.schemas_added && activity.metadata.schemas_added > 0)
+      ).length;
       
-      // Assume all pages processed by seoagent.js are indexable and mobile-friendly
+      // Assume all pages processed by agent are indexable and mobile-friendly
       indexablePages = totalPages;
       mobileFriendly = totalPages;
     }
@@ -221,35 +198,56 @@ export async function POST(request: NextRequest) {
     let pendingFixes = 0;
     let fixErrors = 0;
 
-    // Build real-time activity from smart.js schema generations
+    // Build real-time activity from agent events
     const realtimeActivity = [];
     
-    if (schemaGenerations?.length) {
-      schemaGenerations.slice(0, 10).forEach(sg => {
-        const schemaTypes = Array.isArray(sg.schema_types) ? sg.schema_types : [];
-        const action = `Added ${schemaTypes.join(', ')} schema markup`;
+    if (recentActivity?.length) {
+      recentActivity.slice(0, 10).forEach(event => {
+        let action = 'Agent activity';
+        
+        switch (event.event_type) {
+          case 'schema_generated':
+            const schemaTypes = event.metadata?.schema_types || ['Schema markup'];
+            action = `Added ${Array.isArray(schemaTypes) ? schemaTypes.join(', ') : schemaTypes}`;
+            break;
+          case 'meta_tags_updated':
+            action = 'Updated meta tags';
+            break;
+          case 'technical_fix_applied':
+            action = event.metadata?.fix_description || 'Applied technical SEO fix';
+            break;
+          case 'sitemap_generated':
+            action = 'Generated sitemap';
+            break;
+          case 'robots_optimized':
+            action = 'Optimized robots.txt';
+            break;
+          default:
+            action = event.event_type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        }
+        
         realtimeActivity.push({
-          timestamp: sg.generated_at,
+          timestamp: event.created_at,
           action: action,
-          page: sg.page_url,
-          status: 'success' as const
+          page: event.metadata?.page_url || event.metadata?.url || siteUrl,
+          status: (event.new_state === 'failed' || event.event_type.includes('error')) ? 'failed' : 'success'
         });
       });
     }
     
-    // Add some fallback activity if no schema data
+    // Add fallback activity if no recent events
     if (realtimeActivity.length === 0) {
       realtimeActivity.push(
         {
           timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-          action: 'Smart.js monitoring active',
+          action: 'SEOAgent monitoring active',
           page: siteUrl,
           status: 'success' as const
         }
       );
     }
 
-    // Analyze issues from audit data
+    // Analyze issues from inspection data and agent events
     const processedIssues: Array<{
       type: string;
       severity: 'critical' | 'warning' | 'info';
@@ -258,30 +256,38 @@ export async function POST(request: NextRequest) {
       canAutoFix: boolean;
     }> = [];
 
-    if (issues && issues.length > 0) {
-      // Group issues by type
-      const issueGroups: Record<string, any[]> = {};
-      issues.forEach(issue => {
-        if (!issueGroups[issue.issue_type]) {
-          issueGroups[issue.issue_type] = [];
-        }
-        issueGroups[issue.issue_type].push(issue);
-      });
-
-      // Process each group
-      Object.entries(issueGroups).forEach(([type, groupIssues]) => {
-        const firstIssue = groupIssues[0];
-        processedIssues.push({
-          type: type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          severity: firstIssue.severity as 'critical' | 'warning' | 'info',
-          count: groupIssues.length,
-          description: firstIssue.description || 'Issue detected during audit',
-          canAutoFix: ['meta_title_missing', 'meta_description_missing', 'alt_text_missing', 'canonical_missing'].includes(type)
+    // Check for issues from recent agent events (errors, failures)
+    if (recentActivity?.length) {
+      const failedEvents = recentActivity.filter(event => 
+        event.new_state === 'failed' || 
+        event.event_type.includes('error') ||
+        event.event_type.includes('issue')
+      );
+      
+      if (failedEvents.length > 0) {
+        const errorGroups: Record<string, any[]> = {};
+        failedEvents.forEach(event => {
+          const errorType = event.event_type.replace(/_/g, ' ');
+          if (!errorGroups[errorType]) {
+            errorGroups[errorType] = [];
+          }
+          errorGroups[errorType].push(event);
         });
-      });
-    } else {
-      // Add common issues based on inspection data if no audit data
-      if (inspections) {
+        
+        Object.entries(errorGroups).forEach(([type, events]) => {
+          processedIssues.push({
+            type: type.replace(/\b\w/g, l => l.toUpperCase()),
+            severity: 'warning',
+            count: events.length,
+            description: events[0].metadata?.error_description || `${type} detected`,
+            canAutoFix: ['meta tags', 'schema generation', 'sitemap'].some(fixable => type.includes(fixable))
+          });
+        });
+      }
+    }
+    
+    // Process inspection data for technical issues
+    if (!processedIssues.length && inspections) {
         const canonicalIssues = inspections.filter(i => 
           i.user_canonical && i.google_canonical && i.user_canonical !== i.google_canonical
         ).length;
@@ -329,26 +335,47 @@ export async function POST(request: NextRequest) {
           });
         }
       }
-    }
 
-    // Add robots.txt issues to processed issues
-    if (robotsAnalyses?.[0]?.issues?.length && robotsAnalyses[0].issues.length > 0) {
-      robotsAnalyses[0].issues.forEach((robotsIssue: any) => {
-        processedIssues.push({
-          type: `Robots.txt: ${robotsIssue.type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`,
-          severity: robotsIssue.severity,
-          count: 1,
-          description: robotsIssue.description,
-          canAutoFix: ['syntax_error', 'invalid_crawl_delay', 'add_sitemap', 'create_robots'].includes(robotsIssue.type)
+    // Add robots.txt issues from agent activity
+    if (robotsActivity?.length) {
+      const robotsIssues = robotsActivity.filter(event => 
+        event.event_type.includes('error') || 
+        event.metadata?.issues_found
+      );
+      
+      robotsIssues.forEach((robotsEvent: any) => {
+        const issues = robotsEvent.metadata?.issues_found || [{
+          type: 'robots_issue',
+          description: 'Robots.txt issue detected',
+          severity: 'warning'
+        }];
+        
+        issues.forEach((issue: any) => {
+          processedIssues.push({
+            type: `Robots.txt: ${issue.type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`,
+            severity: issue.severity || 'warning',
+            count: 1,
+            description: issue.description || 'Robots.txt issue detected',
+            canAutoFix: ['syntax_error', 'invalid_crawl_delay', 'add_sitemap', 'create_robots'].includes(issue.type)
+          });
         });
       });
     }
 
-    // Calculate fix counts from actual activity
-    if (schemaGenerations?.length) {
-      automatedFixes = schemaGenerations.reduce((sum, sg) => sum + (sg.schemas_generated || 0), 0);
-      pendingFixes = 0; // Smart.js applies fixes immediately
-      fixErrors = 0; // No errors in successful schema generations
+    // Calculate fix counts from agent activity
+    if (recentActivity?.length) {
+      automatedFixes = recentActivity.filter(event => 
+        ['schema_generated', 'meta_tags_updated', 'technical_fix_applied', 'sitemap_generated'].includes(event.event_type) &&
+        event.new_state !== 'failed'
+      ).length;
+      
+      pendingFixes = recentActivity.filter(event => 
+        event.new_state === 'pending' || event.new_state === 'in_progress'
+      ).length;
+      
+      fixErrors = recentActivity.filter(event => 
+        event.new_state === 'failed' || event.event_type.includes('error')
+      ).length;
     } else {
       // Fallback to calculated fixes from issues
       automatedFixes = processedIssues
@@ -364,7 +391,7 @@ export async function POST(request: NextRequest) {
         .reduce((sum, issue) => sum + issue.count, 0);
     }
 
-    const lastAuditAt = audits?.[0]?.created_at || inspections?.[0]?.inspected_at || new Date().toISOString();
+    const lastAuditAt = recentActivity?.[0]?.created_at || inspections?.[0]?.inspected_at || new Date().toISOString();
 
     const technicalSEOData = {
       overview: {
@@ -379,23 +406,23 @@ export async function POST(request: NextRequest) {
         pending: pendingFixes,
         errors: fixErrors
       },
-      sitemap: sitemaps?.[0] ? {
-        status: sitemaps[0].status,
-        createdAt: sitemaps[0].created_at,
-        submittedAt: sitemaps[0].submitted_at,
-        sitemapUrl: sitemaps[0].sitemap_url,
-        warnings: sitemaps[0].warnings,
-        errors: sitemaps[0].errors
+      sitemap: sitemapActivity?.[0] ? {
+        status: sitemapActivity[0].new_state || 'completed',
+        createdAt: sitemapActivity[0].created_at,
+        submittedAt: sitemapActivity[0].created_at,
+        sitemapUrl: sitemapActivity[0].metadata?.sitemap_url || null,
+        warnings: sitemapActivity[0].metadata?.warnings || [],
+        errors: sitemapActivity[0].metadata?.errors || []
       } : null,
-      robots: robotsAnalyses?.[0] ? {
-        exists: robotsAnalyses[0].exists,
-        accessible: robotsAnalyses[0].accessible,
-        size: robotsAnalyses[0].size,
-        issuesCount: robotsAnalyses[0].issues?.length || 0,
-        suggestionsCount: robotsAnalyses[0].suggestions?.length || 0,
-        analyzedAt: robotsAnalyses[0].analyzed_at,
-        crawlDelay: robotsAnalyses[0].crawl_delay,
-        sitemapUrls: robotsAnalyses[0].sitemap_urls?.length || 0
+      robots: robotsActivity?.[0] ? {
+        exists: robotsActivity[0].metadata?.exists !== false,
+        accessible: robotsActivity[0].metadata?.accessible !== false,
+        size: robotsActivity[0].metadata?.size || 0,
+        issuesCount: robotsActivity[0].metadata?.issues_found?.length || 0,
+        suggestionsCount: robotsActivity[0].metadata?.suggestions?.length || 0,
+        analyzedAt: robotsActivity[0].created_at,
+        crawlDelay: robotsActivity[0].metadata?.crawl_delay || null,
+        sitemapUrls: robotsActivity[0].metadata?.sitemap_urls?.length || 0
       } : null,
       realtimeActivity,
       issues: processedIssues

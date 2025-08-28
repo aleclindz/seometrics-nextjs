@@ -317,36 +317,123 @@ export class FunctionCaller {
         })
       });
 
-      if (response.success) {
+      if (response.success && response.data) {
+        const auditData = response.data;
+        const overview = auditData.overview || {};
+        const issues = auditData.issues || [];
+        const fixes = auditData.fixes || {};
+        
+        // Create detailed audit message based on actual data
+        let auditMessage = `## Technical SEO Audit Results for ${args.site_url}\n\n`;
+        
+        // Add audit metrics
+        auditMessage += `**Audit Overview:**\n`;
+        auditMessage += `- Total Pages Analyzed: ${overview.totalPages || 0}\n`;
+        auditMessage += `- Indexable Pages: ${overview.indexablePages || 0}\n`;
+        auditMessage += `- Mobile-Friendly Pages: ${overview.mobileFriendly || 0}\n`;
+        auditMessage += `- Pages with Schema: ${overview.withSchema || 0}\n`;
+        auditMessage += `- Technical Issues Found: ${issues.length || 0}\n\n`;
+        
+        // Add fixes information
+        if (fixes.automated || fixes.pending) {
+          auditMessage += `**SEO Fixes Applied:**\n`;
+          auditMessage += `- Automated Fixes: ${fixes.automated || 0}\n`;
+          auditMessage += `- Pending Fixes: ${fixes.pending || 0}\n`;
+          auditMessage += `- Failed Fixes: ${fixes.errors || 0}\n\n`;
+        }
+        
+        // Add issues details
+        if (issues.length > 0) {
+          auditMessage += `**Issues Detected:**\n`;
+          issues.forEach((issue: any) => {
+            const severity = issue.severity === 'critical' ? '🔴' : issue.severity === 'warning' ? '🟡' : '🔵';
+            const autofix = issue.canAutoFix ? ' (Auto-fixable)' : '';
+            auditMessage += `- ${severity} ${issue.type}: ${issue.count} pages${autofix}\n`;
+          });
+          auditMessage += `\n`;
+        }
+        
+        // Add data source information
+        if ((overview.totalPages || 0) === 0) {
+          auditMessage += `**⚠️ Limited Data Available:**\n`;
+          auditMessage += `- No GSC URL inspection data found for this domain\n`;
+          auditMessage += `- This is likely because:\n`;
+          auditMessage += `  - The domain needs GSC verification\n`;
+          auditMessage += `  - URL inspections haven't been run yet\n`;
+          auditMessage += `  - The domain format doesn't match database records\n\n`;
+          
+          auditMessage += `**Next Steps:**\n`;
+          auditMessage += `- Ensure Google Search Console is properly connected\n`;
+          auditMessage += `- Run URL inspections from GSC dashboard\n`;
+          auditMessage += `- Consider running a fresh crawl of the website\n`;
+        } else {
+          auditMessage += `**✅ Data Sources:**\n`;
+          auditMessage += `- Google Search Console inspections: ${overview.totalPages} pages\n`;
+          auditMessage += `- Technical analysis: Complete\n`;
+          auditMessage += `- Last updated: ${overview.lastAuditAt ? new Date(overview.lastAuditAt).toLocaleString() : 'Unknown'}\n\n`;
+        }
+        
+        // Add activity summary
+        if (auditData.realtimeActivity && auditData.realtimeActivity.length > 0) {
+          auditMessage += `**Recent SEO Activity:**\n`;
+          auditData.realtimeActivity.slice(0, 3).forEach((activity: any) => {
+            const status = activity.status === 'success' ? '✅' : '❌';
+            auditMessage += `- ${status} ${activity.action}\n`;
+          });
+          auditMessage += `\n`;
+        }
+        
         return {
           success: true,
           data: {
-            message: 'Technical SEO audit completed successfully',
-            summary: response.summary,
-            issues: response.issues,
-            recommendations: response.recommendations,
+            message: auditMessage,
+            overview,
+            issues,
+            fixes,
+            metrics: {
+              totalPages: overview.totalPages || 0,
+              indexablePages: overview.indexablePages || 0,
+              mobileFriendly: overview.mobileFriendly || 0,
+              withSchema: overview.withSchema || 0,
+              issuesCount: issues.length || 0
+            },
+            hasData: (overview.totalPages || 0) > 0,
             audit_type: args.audit_type || 'full'
           }
         };
       } else {
-        return { success: false, error: response.error || 'Site audit failed' };
+        return { 
+          success: true, // Still return success but with clear explanation
+          data: {
+            message: `## Technical SEO Audit Results for ${args.site_url}\n\n**⚠️ Audit Incomplete:**\n\nI attempted to run a technical SEO audit, but encountered limitations:\n- ${response.error || 'Unable to access audit data'}\n- This may be due to missing database tables or insufficient data\n\n**What I can tell you:**\n- Your Google Search Console connection: ${response.gscConnected ? '✅ Connected' : '❌ Needs setup'}\n- SEOAgent.js installation: ${response.seoagentjsActive ? '✅ Active' : '❌ Not detected'}\n\n**Recommendations:**\n- Ensure GSC property verification is complete\n- Run URL inspections from Google Search Console\n- Check that SEOAgent.js is properly installed`,
+            metrics: {
+              totalPages: 0,
+              indexablePages: 0,
+              mobileFriendly: 0,
+              withSchema: 0,
+              issuesCount: 0
+            },
+            hasData: false,
+            error: response.error,
+            audit_type: args.audit_type || 'full'
+          }
+        };
       }
     } catch (error) {
       console.error('[FUNCTION CALLER] Audit site error:', error);
       return { 
-        success: true, // Return success with mock data for better UX
+        success: true,
         data: {
-          message: 'Technical SEO audit completed',
-          summary: `I've completed a technical SEO analysis for ${args.site_url}. Here are the key findings:`,
-          issues: [
-            'GSC connection needs property verification',
-            'Some technical optimizations detected'
-          ],
-          recommendations: [
-            'Complete Google Search Console property verification',
-            'Review meta descriptions and title tags',
-            'Check internal linking structure'
-          ],
+          message: `## Technical SEO Audit Results for ${args.site_url}\n\n**❌ Audit Failed:**\n\nI encountered an error while trying to run the technical SEO audit:\n- Error: ${error instanceof Error ? error.message : 'Unknown error'}\n\n**This suggests:**\n- Database connectivity issues\n- Missing audit infrastructure\n- API endpoint problems\n\n**What you can do:**\n1. Check your Google Search Console connection\n2. Verify SEOAgent.js is installed\n3. Try running the audit again in a few minutes\n4. Contact support if the issue persists`,
+          metrics: {
+            totalPages: 0,
+            indexablePages: 0,
+            mobileFriendly: 0,
+            withSchema: 0,
+            issuesCount: 0
+          },
+          hasData: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
           audit_type: args.audit_type || 'full'
         }
       };
