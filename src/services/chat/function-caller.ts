@@ -206,37 +206,76 @@ export class FunctionCaller {
 
   private async getSiteStatus(args: { site_url: string }): Promise<FunctionCallResult> {
     try {
+      // Clean domain to match database format
+      const domain = args.site_url.replace(/^https?:\/\//, '').replace(/^www\./, '');
+      
       const params = new URLSearchParams({
-        siteUrl: args.site_url,
-        userToken: this.userToken || ''
+        userToken: this.userToken || '',
+        domain: domain,
+        forceRefresh: 'true' // Force fresh status check
       });
 
-      const response = await this.fetchAPI(`/api/agent/capabilities?${params}`, {
+      const response = await this.fetchAPI(`/api/website/setup-status?${params}`, {
         method: 'GET'
       });
 
-      if (response.success) {
+      if (response.success && response.data) {
+        const { gscStatus, seoagentjsStatus, cmsStatus, hostingStatus, setupProgress, isFullySetup } = response.data;
+        
+        // Create readable status messages
+        const statusMessages = [];
+        const recommendations = [];
+        
+        if (gscStatus === 'connected') {
+          statusMessages.push('✅ Google Search Console: Connected');
+        } else {
+          statusMessages.push('❌ Google Search Console: Not connected');
+          recommendations.push('Connect to Google Search Console for performance insights');
+        }
+        
+        if (seoagentjsStatus === 'active') {
+          statusMessages.push('✅ SEOAgent.js: Active and monitoring');
+        } else {
+          statusMessages.push('❌ SEOAgent.js: Not installed');
+          recommendations.push('Install SEOAgent.js for automated optimizations');
+        }
+        
+        if (cmsStatus === 'connected') {
+          statusMessages.push('✅ CMS: Connected');
+        } else {
+          statusMessages.push('⚪ CMS: Not connected (optional)');
+        }
+        
+        if (hostingStatus === 'connected') {
+          statusMessages.push('✅ Hosting: Connected');
+        } else {
+          statusMessages.push('⚪ Hosting: Not connected (optional)');
+        }
+
         return { 
           success: true, 
           data: {
-            message: `Site status for ${args.site_url}`,
-            status: response.status || response,
-            capabilities: response.capabilities || [],
-            setup: response.setup || {}
+            message: `Current setup status for ${args.site_url}:\n\n${statusMessages.join('\n')}\n\nSetup Progress: ${setupProgress}%`,
+            isFullySetup,
+            setupProgress,
+            gscConnected: gscStatus === 'connected',
+            seoagentjsInstalled: seoagentjsStatus === 'active',
+            cmsConnected: cmsStatus === 'connected',
+            hostingConnected: hostingStatus === 'connected',
+            recommendations: recommendations.length > 0 ? recommendations : ['Your site setup looks good! Consider running a technical SEO audit for optimization opportunities.']
           }
         };
       } else {
-        // Return helpful status info even if API fails
+        // Return helpful fallback if API fails
         return { 
           success: true, 
           data: {
             message: `I've checked the status of ${args.site_url}. Here's what I found:`,
             status: 'partial_setup',
-            setup: {
-              gscConnected: false,
-              seoagentjsInstalled: false,
-              hasAuditScore: false
-            },
+            gscConnected: false,
+            seoagentjsInstalled: false,
+            cmsConnected: false,
+            hostingConnected: false,
             recommendations: [
               'Complete Google Search Console setup',
               'Install SEOAgent.js tracking script',

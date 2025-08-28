@@ -92,11 +92,12 @@ export async function GET(request: NextRequest) {
     console.log('[SETUP STATUS] Checking setup status for:', domain);
     
     // Query websites table for current status using DomainQueryService
+    // Note: Check both host_status and hosting_status for compatibility
     const websiteResult = await DomainQueryService.queryTableByDomain(
       'websites',
       userToken, 
       domain,
-      'gsc_status, seoagentjs_status, cms_status, hosting_status, last_status_check, domain'
+      'gsc_status, seoagentjs_status, cms_status, host_status, hosting_status, last_status_check, domain'
     );
 
     if (!websiteResult.success || !websiteResult.data || websiteResult.data.length === 0) {
@@ -125,7 +126,8 @@ export async function GET(request: NextRequest) {
     let gscStatus = website.gsc_status;
     let seoagentjsStatus = website.seoagentjs_status;
     let cmsStatus = website.cms_status;
-    let hostingStatus = website.hosting_status;
+    // Use hosting_status if available, otherwise fall back to host_status
+    let hostingStatus = website.hosting_status || website.host_status;
 
     if (needsRefresh) {
       console.log('[SETUP STATUS] Refreshing connection statuses...');
@@ -155,15 +157,25 @@ export async function GET(request: NextRequest) {
 
       // Update the website record with refreshed statuses
       try {
+        // Update both hosting columns if they exist to maintain compatibility
+        const updateData: any = {
+          gsc_status: gscStatus,
+          seoagentjs_status: seoagentjsStatus,
+          cms_status: cmsStatus,
+          last_status_check: new Date().toISOString()
+        };
+        
+        // Update the appropriate hosting column
+        if (website.hosting_status !== undefined) {
+          updateData.hosting_status = hostingStatus;
+        }
+        if (website.host_status !== undefined) {
+          updateData.host_status = hostingStatus;
+        }
+        
         await supabase
           .from('websites')
-          .update({
-            gsc_status: gscStatus,
-            seoagentjs_status: seoagentjsStatus,
-            cms_status: cmsStatus,
-            hosting_status: hostingStatus,
-            last_status_check: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('user_token', userToken)
           .eq('domain', website.domain);
           
