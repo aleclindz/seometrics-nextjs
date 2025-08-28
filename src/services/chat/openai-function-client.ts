@@ -636,6 +636,155 @@ export class OpenAIFunctionClient {
           },
           required: ['site_url']
         }
+      },
+      // ===== SVS (Semantic Visibility Score) FUNCTIONS =====
+      {
+        name: 'analyze_semantic_visibility',
+        description: 'Analyze content for Semantic Visibility Score (SVS) - how well it communicates meaning to AI search engines',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: {
+              type: 'string',
+              description: 'Website base URL'
+            },
+            page_url: {
+              type: 'string',
+              description: 'Specific page URL to analyze (optional, defaults to site_url)'
+            },
+            target_topic: {
+              type: 'string',
+              description: 'Main topic/keyword focus for the analysis'
+            },
+            industry: {
+              type: 'string',
+              description: 'Industry for benchmark comparison'
+            }
+          },
+          required: ['site_url']
+        }
+      },
+      {
+        name: 'get_svs_results',
+        description: 'Get SVS analysis history and results for a website',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: {
+              type: 'string',
+              description: 'Website to get SVS results for'
+            },
+            limit: {
+              type: 'integer',
+              description: 'Number of recent analyses to return (default: 10)',
+              minimum: 1,
+              maximum: 50
+            },
+            analysis_id: {
+              type: 'string',
+              description: 'Get specific analysis by ID (optional)'
+            }
+          },
+          required: ['site_url']
+        }
+      },
+      {
+        name: 'generate_svs_optimized_content',
+        description: 'Generate content optimized for high Semantic Visibility Score',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: {
+              type: 'string',
+              description: 'Article title'
+            },
+            keywords: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Target keywords for optimization'
+            },
+            site_url: {
+              type: 'string',
+              description: 'Website the content is for'
+            },
+            target_topic: {
+              type: 'string',
+              description: 'Main topic/theme for the content'
+            },
+            industry: {
+              type: 'string',
+              description: 'Industry context'
+            },
+            content_length: {
+              type: 'string',
+              enum: ['short', 'medium', 'long'],
+              description: 'Desired content length',
+              default: 'medium'
+            },
+            target_svs_score: {
+              type: 'integer',
+              description: 'Target SVS score to aim for (0-100)',
+              minimum: 60,
+              maximum: 100,
+              default: 80
+            }
+          },
+          required: ['title', 'keywords', 'site_url']
+        }
+      },
+      {
+        name: 'bulk_analyze_svs',
+        description: 'Analyze multiple pages for SVS in bulk',
+        parameters: {
+          type: 'object',
+          properties: {
+            site_url: {
+              type: 'string',
+              description: 'Website base URL'
+            },
+            page_urls: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array of page URLs to analyze (max 10)'
+            },
+            target_topic: {
+              type: 'string',
+              description: 'Main topic focus for all pages'
+            },
+            industry: {
+              type: 'string',
+              description: 'Industry for benchmark comparison'
+            }
+          },
+          required: ['site_url', 'page_urls']
+        }
+      },
+      {
+        name: 'analyze_svs_opportunities',
+        description: 'Analyze existing content and suggest SVS improvements',
+        parameters: {
+          type: 'object',
+          properties: {
+            content: {
+              type: 'string',
+              description: 'Content text to analyze for improvements'
+            },
+            title: {
+              type: 'string',
+              description: 'Content title'
+            },
+            keywords: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Target keywords'
+            },
+            current_url: {
+              type: 'string',
+              description: 'URL of the existing content (optional)'
+            }
+          },
+          required: ['content', 'title', 'keywords']
+        }
       }
     ];
   }
@@ -978,6 +1127,17 @@ class FunctionCaller {
           return await this.planCrawl(args);
         case 'list_integrations':
           return await this.listIntegrations(args);
+        // SVS (Semantic Visibility Score) Functions
+        case 'analyze_semantic_visibility':
+          return await this.analyzeSemanticVisibility(args);
+        case 'get_svs_results':
+          return await this.getSVSResults(args);
+        case 'generate_svs_optimized_content':
+          return await this.generateSVSOptimizedContent(args);
+        case 'bulk_analyze_svs':
+          return await this.bulkAnalyzeSVS(args);
+        case 'analyze_svs_opportunities':
+          return await this.analyzeSVSOpportunities(args);
         default:
           return {
             success: false,
@@ -2327,5 +2487,362 @@ class FunctionCaller {
     } catch (error) {
       console.error('[AGENT] Failed to create sample activity:', error);
     }
+  }
+
+  // ===== SVS (SEMANTIC VISIBILITY SCORE) FUNCTION IMPLEMENTATIONS =====
+
+  private async analyzeSemanticVisibility(args: { 
+    site_url: string; 
+    page_url?: string; 
+    target_topic?: string; 
+    industry?: string; 
+  }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      console.log(`[SVS] Analyzing semantic visibility for: ${args.page_url || args.site_url}`);
+
+      const response = await fetch('/api/svs/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          siteUrl: args.site_url,
+          pageUrl: args.page_url,
+          targetTopic: args.target_topic,
+          industry: args.industry,
+          analysisType: 'full'
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        data: {
+          analysis_id: result.data.analysis_id,
+          svs_score: result.data.svs_score,
+          grade: result.data.grade,
+          component_scores: result.data.component_scores,
+          url_analyzed: result.data.url_analyzed,
+          benchmark_comparison: result.data.benchmark_comparison,
+          top_recommendations: result.data.analysis_data.recommendations.slice(0, 5),
+          content_stats: result.data.content_stats,
+          summary: {
+            overall_performance: result.data.svs_score >= 80 ? 'excellent' : 
+                               result.data.svs_score >= 70 ? 'good' : 
+                               result.data.svs_score >= 60 ? 'fair' : 'needs_improvement',
+            strongest_areas: this.getStrongestSVSAreas(result.data.component_scores),
+            improvement_areas: this.getWeakestSVSAreas(result.data.component_scores),
+            estimated_improvement_potential: result.data.analysis_data.recommendations
+              .reduce((sum: number, rec: any) => sum + rec.potential_points, 0)
+          }
+        }
+      };
+
+    } catch (error) {
+      console.error('[SVS] Analysis failed:', error);
+      return { success: false, error: 'Failed to analyze semantic visibility' };
+    }
+  }
+
+  private async getSVSResults(args: { 
+    site_url: string; 
+    limit?: number; 
+    analysis_id?: string; 
+  }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const params = new URLSearchParams({ 
+        userToken, 
+        siteUrl: args.site_url 
+      });
+      
+      if (args.limit) params.append('limit', args.limit.toString());
+      if (args.analysis_id) params.append('analysisId', args.analysis_id);
+
+      const response = await fetch(`/api/svs/results?${params.toString()}`);
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      if (args.analysis_id) {
+        // Single analysis with full details
+        return {
+          success: true,
+          data: {
+            analysis: result.data.analysis,
+            message: 'Full SVS analysis details retrieved'
+          }
+        };
+      } else {
+        // Multiple analyses with summary
+        return {
+          success: true,
+          data: {
+            analyses: result.data.analyses,
+            summary: result.data.summary,
+            total_count: result.data.total_count,
+            insights: {
+              trend: this.analyzeSVSTrend(result.data.analyses),
+              performance_summary: result.data.summary
+            },
+            message: `Found ${result.data.total_count} SVS analyses for ${args.site_url}`
+          }
+        };
+      }
+
+    } catch (error) {
+      console.error('[SVS] Results fetch failed:', error);
+      return { success: false, error: 'Failed to get SVS results' };
+    }
+  }
+
+  private async generateSVSOptimizedContent(args: {
+    title: string;
+    keywords: string[];
+    site_url: string;
+    target_topic?: string;
+    industry?: string;
+    content_length?: string;
+    target_svs_score?: number;
+  }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      console.log(`[SVS] Generating SVS-optimized content: "${args.title}"`);
+
+      const response = await fetch('/api/articles/generate-svs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          title: args.title,
+          keywords: args.keywords,
+          websiteDomain: args.site_url.replace(/https?:\/\//, ''),
+          targetTopic: args.target_topic,
+          industry: args.industry,
+          contentLength: args.content_length || 'medium',
+          targetSVSScore: args.target_svs_score || 80,
+          performSVSAnalysis: true,
+          saveToDatabase: true
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        data: {
+          article: {
+            title: result.data.title,
+            word_count: result.data.wordCount,
+            estimated_svs_score: result.data.estimatedSVSScore,
+            actual_svs_score: result.data.actualSVSAnalysis?.overall_score,
+            grade: result.data.actualSVSAnalysis?.grade,
+            saved_id: result.data.savedArticleId
+          },
+          svs_optimizations: result.data.svsOptimizations,
+          performance: {
+            target_achieved: result.data.actualSVSAnalysis ? 
+              result.data.actualSVSAnalysis.accuracy === 'on_target' : 
+              result.data.estimatedSVSScore >= (args.target_svs_score || 80),
+            generation_time: result.data.performance.generationTime,
+            analysis_time: result.data.performance.svsAnalysisTime
+          },
+          recommendations: result.data.actualSVSAnalysis?.recommendations || result.data.svsRecommendations,
+          message: `Generated ${result.data.wordCount}-word article with SVS score of ${
+            result.data.actualSVSAnalysis?.overall_score || result.data.estimatedSVSScore
+          }/100`
+        }
+      };
+
+    } catch (error) {
+      console.error('[SVS] Content generation failed:', error);
+      return { success: false, error: 'Failed to generate SVS-optimized content' };
+    }
+  }
+
+  private async bulkAnalyzeSVS(args: {
+    site_url: string;
+    page_urls: string[];
+    target_topic?: string;
+    industry?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      const userToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      
+      if (!userToken) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      if (args.page_urls.length > 10) {
+        return { success: false, error: 'Maximum 10 pages allowed per bulk analysis' };
+      }
+
+      console.log(`[SVS] Bulk analyzing ${args.page_urls.length} pages`);
+
+      const response = await fetch('/api/svs/bulk-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          siteUrl: args.site_url,
+          pageUrls: args.page_urls,
+          targetTopic: args.target_topic,
+          industry: args.industry,
+          analysisType: 'page',
+          maxConcurrent: 3
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        data: {
+          summary: {
+            total_pages: result.data.total_requested,
+            successful_analyses: result.data.successful_analyses,
+            failed_analyses: result.data.failed_analyses,
+            average_svs_score: result.data.summary.average_svs_score,
+            score_range: `${result.data.summary.lowest_score} - ${result.data.summary.highest_score}`
+          },
+          top_performers: result.data.summary.top_performers,
+          needs_attention: result.data.summary.needs_attention,
+          component_averages: result.data.summary.component_averages,
+          errors: result.data.errors,
+          message: `Analyzed ${result.data.successful_analyses}/${result.data.total_requested} pages. Average SVS: ${result.data.summary.average_svs_score}/100`
+        }
+      };
+
+    } catch (error) {
+      console.error('[SVS] Bulk analysis failed:', error);
+      return { success: false, error: 'Failed to perform bulk SVS analysis' };
+    }
+  }
+
+  private async analyzeSVSOpportunities(args: {
+    content: string;
+    title: string;
+    keywords: string[];
+    current_url?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      // This would typically call the content generator's opportunity analysis
+      // For now, we'll simulate the analysis
+      const analyzer = new (await import('@/services/svs/svs-optimized-content')).SVSOptimizedContentGenerator(
+        process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
+      );
+
+      const opportunities = await analyzer.analyzeSVSOpportunities(
+        args.content,
+        args.title,
+        args.keywords
+      );
+
+      return {
+        success: true,
+        data: {
+          current_estimated_svs: opportunities.currentEstimatedSVS,
+          improvement_opportunities: opportunities.improvements,
+          total_potential_gain: opportunities.improvements.reduce((sum, imp) => sum + imp.potentialGain, 0),
+          priority_improvements: opportunities.improvements
+            .filter(imp => imp.priority === 'high')
+            .slice(0, 3),
+          quick_wins: opportunities.improvements
+            .filter(imp => imp.potentialGain >= 3 && imp.priority !== 'low')
+            .slice(0, 5),
+          message: `Found ${opportunities.improvements.length} optimization opportunities with potential ${
+            opportunities.improvements.reduce((sum, imp) => sum + imp.potentialGain, 0)
+          } point SVS improvement`
+        }
+      };
+
+    } catch (error) {
+      console.error('[SVS] Opportunity analysis failed:', error);
+      return { success: false, error: 'Failed to analyze SVS opportunities' };
+    }
+  }
+
+  // Helper methods for SVS analysis
+
+  private getStrongestSVSAreas(scores: any): string[] {
+    const areas = [
+      { name: 'Entity Coverage', score: scores.entity_coverage, max: 20 },
+      { name: 'Semantic Variety', score: scores.semantic_variety, max: 15 },
+      { name: 'Q&A Utility', score: scores.qa_utility, max: 15 },
+      { name: 'Citation Evidence', score: scores.citation_evidence, max: 15 },
+      { name: 'Clarity & Simplicity', score: scores.clarity_simplicity, max: 10 },
+      { name: 'Topic Depth', score: scores.topic_depth, max: 15 },
+      { name: 'Structure & Schema', score: scores.structure_schema, max: 10 }
+    ];
+
+    return areas
+      .map(area => ({ ...area, percentage: (area.score / area.max) * 100 }))
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 3)
+      .map(area => area.name);
+  }
+
+  private getWeakestSVSAreas(scores: any): string[] {
+    const areas = [
+      { name: 'Entity Coverage', score: scores.entity_coverage, max: 20 },
+      { name: 'Semantic Variety', score: scores.semantic_variety, max: 15 },
+      { name: 'Q&A Utility', score: scores.qa_utility, max: 15 },
+      { name: 'Citation Evidence', score: scores.citation_evidence, max: 15 },
+      { name: 'Clarity & Simplicity', score: scores.clarity_simplicity, max: 10 },
+      { name: 'Topic Depth', score: scores.topic_depth, max: 15 },
+      { name: 'Structure & Schema', score: scores.structure_schema, max: 10 }
+    ];
+
+    return areas
+      .map(area => ({ ...area, percentage: (area.score / area.max) * 100 }))
+      .sort((a, b) => a.percentage - b.percentage)
+      .slice(0, 3)
+      .map(area => area.name);
+  }
+
+  private analyzeSVSTrend(analyses: any[]): string {
+    if (analyses.length < 2) return 'insufficient_data';
+    
+    const recent = analyses.slice(0, Math.min(3, analyses.length));
+    const older = analyses.slice(3, Math.min(6, analyses.length));
+    
+    if (older.length === 0) return 'insufficient_data';
+    
+    const recentAvg = recent.reduce((sum, a) => sum + a.svs_score, 0) / recent.length;
+    const olderAvg = older.reduce((sum, a) => sum + a.svs_score, 0) / older.length;
+    
+    if (recentAvg > olderAvg + 5) return 'improving';
+    if (recentAvg < olderAvg - 5) return 'declining';
+    return 'stable';
   }
 }

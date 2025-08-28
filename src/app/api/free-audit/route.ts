@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { runSVSAnalysis } from './svs-integration';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +31,29 @@ interface FreeAuditResults {
   fixableByAgent: number;
   issues: AuditIssue[];
   completedAt: string;
+  // SVS (Semantic Visibility Score) integration
+  svsScore?: number;
+  svsGrade?: {
+    grade: string;
+    label: string;
+    color: string;
+  };
+  svsComponentScores?: {
+    entity_coverage: number;
+    semantic_variety: number;
+    qa_utility: number;
+    citation_evidence: number;
+    clarity_simplicity: number;
+    topic_depth: number;
+    structure_schema: number;
+  };
+  svsRecommendations?: Array<{
+    category: string;
+    priority: string;
+    title: string;
+    description: string;
+    potential_points: number;
+  }>;
 }
 
 export async function POST(request: NextRequest) {
@@ -73,21 +97,29 @@ export async function POST(request: NextRequest) {
       }, { status: 429 });
     }
 
-    console.log(`[FREE AUDIT] Starting audit for: ${cleanUrl}`);
+    console.log(`[FREE AUDIT] Starting comprehensive audit for: ${cleanUrl}`);
 
-    // Run all audits in parallel for speed
+    // Run all audits in parallel for speed, including SVS analysis
     const auditResults = await Promise.allSettled([
       auditBasicHTML(cleanUrl),
       auditRobotsTxt(cleanUrl),
-      auditSitemap(cleanUrl)
+      auditSitemap(cleanUrl),
+      runSVSAnalysis(cleanUrl) // Add Semantic Visibility Score analysis
     ]);
 
-    // Collect all issues from successful audits
+    // Collect all issues from successful audits and SVS results
     const allIssues: AuditIssue[] = [];
+    let svsResult: any = null;
     
     auditResults.forEach((result, index) => {
       if (result.status === 'fulfilled') {
-        allIssues.push(...result.value);
+        if (index === 3) {
+          // This is the SVS analysis result
+          svsResult = result.value;
+        } else {
+          // This is a traditional audit result
+          allIssues.push(...result.value);
+        }
       } else {
         console.error(`Audit ${index} failed:`, result.reason);
       }
@@ -112,7 +144,12 @@ export async function POST(request: NextRequest) {
       warningIssues,
       fixableByAgent,
       issues: allIssues,
-      completedAt: new Date().toISOString()
+      completedAt: new Date().toISOString(),
+      // Include SVS results if available
+      svsScore: svsResult?.overall_svs_score,
+      svsGrade: svsResult?.grade,
+      svsComponentScores: svsResult?.component_scores,
+      svsRecommendations: svsResult?.analysis_data?.recommendations?.slice(0, 5) // Top 5 recommendations
     };
 
     // Store audit results in database (with fallback for table not existing yet)
