@@ -618,7 +618,7 @@ async function processOpenAIResponse(
     };
     
     // Generate action card based on the actual function
-    if (functionCall.result?.success) {
+    if (functionCall.result && typeof functionCall.result === 'object' && 'success' in functionCall.result && functionCall.result.success) {
       actionCard = {
         type: 'technical-fix',
         data: {
