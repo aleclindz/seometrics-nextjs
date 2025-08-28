@@ -27,12 +27,12 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_token', userToken)
       .order('created_at', { ascending: false })
-      .limit(Math.floor(limit / 3));
+      .limit(Math.floor(limit / 5));
 
     const { data: events, error: eventsError } = await eventsQuery;
 
     if (events && !eventsError) {
-      activities.push(...events);
+      activities.push(...events.map(event => ({ ...event, source_table: 'agent_events' })));
     }
 
     // Fetch recent agent actions
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_token', userToken)
       .order('updated_at', { ascending: false })
-      .limit(Math.floor(limit / 3));
+      .limit(Math.floor(limit / 5));
 
     if (siteUrl) {
       actionsQuery = actionsQuery.eq('site_url', siteUrl);
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     const { data: actions, error: actionsError } = await actionsQuery;
 
     if (actions && !actionsError) {
-      activities.push(...actions);
+      activities.push(...actions.map(action => ({ ...action, source_table: 'agent_actions' })));
     }
 
     // Fetch recent agent ideas
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_token', userToken)
       .order('updated_at', { ascending: false })
-      .limit(Math.floor(limit / 3));
+      .limit(Math.floor(limit / 5));
 
     if (siteUrl) {
       ideasQuery = ideasQuery.eq('site_url', siteUrl);
@@ -68,13 +68,58 @@ export async function GET(request: NextRequest) {
     const { data: ideas, error: ideasError } = await ideasQuery;
 
     if (ideas && !ideasError) {
-      activities.push(...ideas);
+      activities.push(...ideas.map(idea => ({ ...idea, source_table: 'agent_ideas' })));
     }
 
-    // Sort all activities by timestamp
+    // Fetch recent SEO monitoring events (watchdog alerts, automated fixes)
+    let seoEventsQuery = supabase
+      .from('seo_monitoring_events')
+      .select('*')
+      .eq('user_token', userToken)
+      .order('detected_at', { ascending: false })
+      .limit(Math.floor(limit / 5));
+
+    if (siteUrl) {
+      seoEventsQuery = seoEventsQuery.eq('site_url', siteUrl);
+    }
+
+    const { data: seoEvents, error: seoEventsError } = await seoEventsQuery;
+
+    if (seoEvents && !seoEventsError) {
+      activities.push(...seoEvents.map(event => ({ ...event, source_table: 'seo_monitoring_events' })));
+    }
+
+    // Fetch recent system logs (cron jobs, automated tasks)
+    let systemLogsQuery = supabase
+      .from('system_logs')
+      .select('*')
+      .in('log_type', ['cron_sitemap_regeneration', 'cron_gsc_sync'])
+      .order('created_at', { ascending: false })
+      .limit(Math.floor(limit / 5));
+
+    const { data: systemLogs, error: systemLogsError } = await systemLogsQuery;
+
+    if (systemLogs && !systemLogsError) {
+      activities.push(...systemLogs.map(log => ({ ...log, source_table: 'system_logs' })));
+    }
+
+    // Sort all activities by timestamp (handle different timestamp fields from different tables)
     activities.sort((a, b) => {
-      const aTime = new Date(a.updated_at || a.created_at).getTime();
-      const bTime = new Date(b.updated_at || b.created_at).getTime();
+      let aTime, bTime;
+      
+      // Get timestamp based on source table
+      if (a.source_table === 'seo_monitoring_events') {
+        aTime = new Date(a.detected_at || a.created_at).getTime();
+      } else {
+        aTime = new Date(a.updated_at || a.created_at).getTime();
+      }
+      
+      if (b.source_table === 'seo_monitoring_events') {
+        bTime = new Date(b.detected_at || b.created_at).getTime();
+      } else {
+        bTime = new Date(b.updated_at || b.created_at).getTime();
+      }
+      
       return bTime - aTime;
     });
 

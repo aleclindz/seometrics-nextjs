@@ -141,6 +141,41 @@ export async function POST(request: NextRequest) {
             urlCount: result.data?.urlCount || 0,
             sitemapUrl: result.data?.sitemapUrl
           });
+
+          // Create individual activity feed entry for this website
+          try {
+            await supabase
+              .from('agent_events')
+              .insert({
+                user_token: website.user_token,
+                event_type: 'seo_automation',
+                entity_type: 'sitemap_generation',
+                entity_id: website.website_token,
+                event_data: JSON.stringify({
+                  title: '🗺️ Sitemap regenerated',
+                  description: `Automated sitemap generation completed with ${result.data?.urlCount || 0} URLs`,
+                  activity_type: 'sitemap_regenerated',
+                  results: {
+                    urlCount: result.data?.urlCount || 0,
+                    sitemapUrl: result.data?.sitemapUrl,
+                    automated: true
+                  }
+                }),
+                previous_state: null,
+                new_state: 'completed',
+                triggered_by: 'cron_job',
+                metadata: JSON.stringify({
+                  site_url: websiteUrl,
+                  sitemap_url: result.data?.sitemapUrl,
+                  url_count: result.data?.urlCount || 0,
+                  cron_run: 'weekly_sitemap_regeneration',
+                  source: 'vercel_cron',
+                  timestamp: Date.now()
+                })
+              });
+          } catch (activityLogError) {
+            console.error(`[CRON SITEMAP] Failed to log activity for ${displayUrl}:`, activityLogError);
+          }
         } else {
           console.error(`[CRON SITEMAP] ❌ Failed to regenerate sitemap for ${displayUrl}: ${response.status}`);
           

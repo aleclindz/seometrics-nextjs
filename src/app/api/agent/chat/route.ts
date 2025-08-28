@@ -548,6 +548,49 @@ async function recordActivity(userToken: string, siteUrl: string, functionCall: 
 
 function getFunctionDisplayName(functionName: string): string {
   switch (functionName) {
+    // Core GSC functions
+    case 'connect_gsc':
+      return 'GSC Connected';
+    case 'sync_gsc_data':
+      return 'GSC Data Synced';
+    case 'GSC_sync_data':
+      return 'GSC Data Sync';
+      
+    // Content functions
+    case 'generate_article':
+      return 'Article Generated';
+    case 'CONTENT_generate_article':
+      return 'Article Created';
+    case 'CONTENT_optimize_existing':
+      return 'Content Optimized';
+      
+    // SEO analysis and fixes
+    case 'audit_site':
+      return 'Website SEO Audit';
+    case 'SEO_analyze_technical':
+      return 'Technical SEO Analysis';
+    case 'SEO_apply_fixes':
+      return 'SEO Issues Fixed';
+    case 'SEO_crawl_website':
+      return 'Website Crawled';
+      
+    // Sitemap functions
+    case 'SITEMAP_generate_submit':
+      return 'Sitemap Generated';
+      
+    // CMS publishing
+    case 'CMS_strapi_publish':
+      return 'Published to Strapi';
+    case 'CMS_wordpress_publish':
+      return 'Published to WordPress';
+      
+    // Verification and monitoring
+    case 'VERIFY_check_changes':
+      return 'Changes Verified';
+    case 'get_site_status':
+      return 'Site Status Check';
+      
+    // Legacy/existing functions
     case 'technical_seo_scan':
       return 'Technical SEO Scan';
     case 'generate_content_ideas':
@@ -571,6 +614,49 @@ function getFunctionDisplayName(functionName: string): string {
 
 function getDescriptionForFunction(functionName: string): string {
   switch (functionName) {
+    // Core GSC functions
+    case 'connect_gsc':
+      return 'Successfully connected Google Search Console for SEO data access';
+    case 'sync_gsc_data':
+      return 'Synchronized latest performance data from Google Search Console';
+    case 'GSC_sync_data':
+      return 'Updated website performance metrics from Google Search Console';
+      
+    // Content functions
+    case 'generate_article':
+      return 'Created SEO-optimized article with target keywords and structure';
+    case 'CONTENT_generate_article':
+      return 'Generated high-quality article content optimized for search engines';
+    case 'CONTENT_optimize_existing':
+      return 'Enhanced existing content with SEO improvements and keyword optimization';
+      
+    // SEO analysis and fixes
+    case 'audit_site':
+      return 'Performed comprehensive website SEO audit identifying optimization opportunities';
+    case 'SEO_analyze_technical':
+      return 'Analyzed technical SEO factors including meta tags, schema markup, and site structure';
+    case 'SEO_apply_fixes':
+      return 'Automatically applied SEO fixes to improve website search visibility';
+    case 'SEO_crawl_website':
+      return 'Crawled website pages to identify technical SEO issues and opportunities';
+      
+    // Sitemap functions
+    case 'SITEMAP_generate_submit':
+      return 'Generated XML sitemap and submitted to Google Search Console for indexing';
+      
+    // CMS publishing
+    case 'CMS_strapi_publish':
+      return 'Published SEO-optimized content directly to Strapi CMS';
+    case 'CMS_wordpress_publish':
+      return 'Published article content to WordPress with SEO optimization';
+      
+    // Verification and monitoring
+    case 'VERIFY_check_changes':
+      return 'Verified implementation of SEO changes and their impact';
+    case 'get_site_status':
+      return 'Retrieved current website status and SEO health metrics';
+      
+    // Legacy/existing functions
     case 'technical_seo_scan':
       return 'Initiated comprehensive technical SEO analysis of website';
     case 'generate_content_ideas':

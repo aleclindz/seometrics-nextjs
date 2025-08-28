@@ -66,6 +66,43 @@ export async function GET(request: NextRequest) {
             successCount: syncData.successCount,
             errorCount: syncData.errorCount
           });
+
+          // Create individual activity feed entry for this user
+          try {
+            await supabase
+              .from('agent_events')
+              .insert({
+                user_token: connection.user_token,
+                event_type: 'seo_automation',
+                entity_type: 'gsc_data_sync',
+                entity_id: connection.id,
+                event_data: JSON.stringify({
+                  title: '📊 GSC data synced',
+                  description: `Google Search Console data updated for ${syncData.propertiesCount || 0} website${(syncData.propertiesCount || 0) > 1 ? 's' : ''}`,
+                  activity_type: 'gsc_data_synced',
+                  results: {
+                    propertiesCount: syncData.propertiesCount || 0,
+                    successCount: syncData.successCount || 0,
+                    errorCount: syncData.errorCount || 0,
+                    automated: true
+                  }
+                }),
+                previous_state: null,
+                new_state: 'completed',
+                triggered_by: 'cron_job',
+                metadata: JSON.stringify({
+                  user_email: connection.email,
+                  properties_synced: syncData.propertiesCount || 0,
+                  success_count: syncData.successCount || 0,
+                  error_count: syncData.errorCount || 0,
+                  cron_run: 'daily_gsc_sync',
+                  source: 'vercel_cron',
+                  timestamp: Date.now()
+                })
+              });
+          } catch (activityLogError) {
+            console.error(`[GSC CRON] Failed to log activity for ${connection.email}:`, activityLogError);
+          }
         } else {
           console.error(`[GSC CRON] Failed to sync ${connection.email}:`, syncData);
           results.push({

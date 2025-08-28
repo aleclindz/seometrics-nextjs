@@ -53,7 +53,7 @@ export default function WebsitePage() {
           {/* Main Content Area */}
           <main className="flex-1 overflow-hidden flex flex-col">
             {/* Metrics Dashboard - Floating Header */}
-            <div className="p-4 pb-2 pt-6">
+            <div className="p-4 pb-2 pt-20">
               <MetricsDashboard 
                 domain={domain}
                 userToken={user.token || ''}

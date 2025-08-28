@@ -121,6 +121,26 @@ async function processMetaTags() {
         if (metaData.title || metaData.description) {
             console.log('[SEO-METRICS] Updating meta tags in DOM');
             updateMetaTags(metaData.title, metaData.description);
+            
+            // Log this activity to the activity feed
+            const updatedTags = [];
+            if (metaData.title) updatedTags.push('title');
+            if (metaData.description) updatedTags.push('description');
+            
+            await logSEOActivity(
+                'meta_tags_optimized',
+                `📝 Meta tags optimized`,
+                `Updated ${updatedTags.join(' and ')} for better search visibility`,
+                {
+                    tagsUpdated: updatedTags.length,
+                    titleLength: metaData.title ? metaData.title.length : 0,
+                    descriptionLength: metaData.description ? metaData.description.length : 0
+                },
+                {
+                    pageUrl: currentUrl,
+                    updatedTags: updatedTags
+                }
+            );
         } else {
             console.log('[SEO-METRICS] No meta tags to update - empty response');
         }
@@ -222,6 +242,25 @@ async function processImages() {
             });
 
         console.log(`[SEO-METRICS] Updated ${updatedCount} out of ${imageUrls.length} images with alt tags`);
+        
+        // Log this activity to the activity feed (only if we actually updated some images)
+        if (updatedCount > 0) {
+            await logSEOActivity(
+                'alt_text_generated',
+                `🖼️ Alt text generated`,
+                `Generated alt text for ${updatedCount} image${updatedCount > 1 ? 's' : ''} to improve accessibility`,
+                {
+                    imagesProcessed: updatedCount,
+                    totalImages: imageUrls.length,
+                    successRate: Math.round((updatedCount / imageUrls.length) * 100)
+                },
+                {
+                    pageUrl: window.location.href,
+                    imageCount: updatedCount
+                }
+            );
+        }
+        
         console.log('[SEO-METRICS] Image processing completed', {
             totalImages: images.length,
             processedImages: imageUrls.length,
@@ -350,6 +389,22 @@ async function processSchemaMarkup() {
             });
             
             console.log(`[SEO-METRICS] Successfully injected ${schemaData.schemas.length} schema markup blocks`);
+            
+            // Log this activity to the activity feed
+            const schemaTypes = schemaData.schemas.map(schema => schema['@type']).join(', ');
+            await logSEOActivity(
+                'schema_markup_added',
+                `🏗️ Schema markup added`,
+                `Added ${schemaData.schemas.length} structured data block${schemaData.schemas.length > 1 ? 's' : ''}: ${schemaTypes}`,
+                {
+                    schemasAdded: schemaData.schemas.length,
+                    schemaTypes: schemaData.schemas.map(schema => schema['@type'])
+                },
+                {
+                    pageUrl: window.location.href,
+                    existingSchemas: existingSchema.length
+                }
+            );
         } else {
             console.log('[SEO-METRICS] No schema markup to inject');
         }
@@ -423,6 +478,21 @@ async function processAdvancedCanonical(currentUrl, existingCanonical) {
         document.head.appendChild(canonicalLink);
         
         console.log(`[SEO-METRICS] Added canonical tag: ${cleanUrl}`);
+        
+        // Log this activity to the activity feed
+        await logSEOActivity(
+            'canonical_tag_added',
+            `🔗 Canonical tag optimized`,
+            `Added canonical URL to prevent duplicate content issues`,
+            {
+                canonicalUrl: cleanUrl,
+                hadParameters: currentUrl !== cleanUrl
+            },
+            {
+                pageUrl: currentUrl,
+                cleanUrl: cleanUrl
+            }
+        );
     } else if (existingCanonical) {
         console.log('[SEO-METRICS] Canonical tag already exists');
         
@@ -1050,6 +1120,49 @@ async function handleSEOChange(eventType, severity, category, details) {
     if (severity === 'critical') {
         console.warn(`🚨 CRITICAL SEO ISSUE DETECTED: ${details.title}`);
         console.warn('Details:', details);
+    }
+}
+
+/**
+ * Log SEO activities to the activity feed
+ * @param {string} activityType - Type of activity (meta_tags_generated, alt_text_generated, etc.)
+ * @param {string} title - Human-readable title
+ * @param {string} description - Description of what was done
+ * @param {object} results - Results/stats from the operation
+ * @param {object} details - Additional details for the activity feed
+ */
+async function logSEOActivity(activityType, title, description, results = {}, details = {}) {
+    try {
+        const activity = {
+            user_token: idv,
+            site_url: window.location.origin,
+            page_url: window.location.href,
+            activity_type: activityType,
+            title: title,
+            description: description,
+            results: results,
+            details: details,
+            status: 'completed',
+            metadata: {
+                userAgent: navigator.userAgent,
+                timestamp: Date.now(),
+                source: 'seoagent_js_autonomous'
+            }
+        };
+
+        if (API_BASE_URL) {
+            await fetch(`https://www.seoagent.com/api/tools/seo-activity`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(activity)
+            });
+            
+            console.log(`[SEO-ACTIVITY] Logged: ${title}`);
+        }
+    } catch (error) {
+        console.warn('[SEO-ACTIVITY] Could not log activity:', error);
     }
 }
 

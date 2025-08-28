@@ -13,12 +13,13 @@ import {
   ExternalLink,
   Code,
   FileText,
-  Link
+  Link,
+  AlertTriangle
 } from 'lucide-react';
 
 interface ActivityItem {
   id: string;
-  type: 'completed' | 'progress' | 'idea';
+  type: 'completed' | 'progress' | 'idea' | 'error';
   title: string;
   description: string;
   timestamp: Date;
@@ -65,74 +66,163 @@ export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
         if (data.success && data.activities && data.activities.length > 0) {
           const mappedActivities = data.activities.map(mapAgentDataToActivity);
           
-          // Check if all activities are generic "executed_function" type - if so, use mock data instead
-          const hasGenericActivities = mappedActivities.every((activity: any) => 
-            activity.title === 'Executed Function' || 
-            activity.description.includes('Executed executed function operation')
+          // Filter out generic "executed_function" activities
+          const filteredActivities = mappedActivities.filter((activity: any) => 
+            activity.title !== 'Executed Function' && 
+            !activity.description.includes('Executed executed function operation')
           );
           
-          if (hasGenericActivities) {
-            console.log('[ACTIVITY FEED] All activities are generic, using mock data instead');
-            setActivities(getMockActivities());
-          } else {
-            setActivities(mappedActivities);
-          }
+          setActivities(filteredActivities);
         } else {
-          // No activities found, use mock data
-          setActivities(getMockActivities());
+          // No activities found
+          setActivities([]);
         }
       } else {
-        // Fallback to mock data if API call fails
-        setActivities(getMockActivities());
+        console.warn('Failed to fetch activities:', await response.text());
+        setActivities([]);
       }
     } catch (error) {
       console.error('Error fetching activities:', error);
-      // Fallback to mock data
-      setActivities(getMockActivities());
+      setActivities([]);
     } finally {
       setLoading(false);
     }
   };
 
   const mapAgentDataToActivity = (item: any): ActivityItem => {
-    // Map agent_events, agent_actions, and agent_ideas to ActivityItem format
-    if (item.event_type) {
-      // This is an agent_event
-      return {
-        id: item.id,
-        type: mapEventToType(item.event_type, item.new_state),
-        title: item.event_data?.title || formatEventTitle(item.event_type),
-        description: item.event_data?.description || formatEventDescription(item.event_type, item.event_data),
-        timestamp: new Date(item.created_at),
-        details: item.event_data?.details || undefined
-      };
-    } else if (item.action_type) {
-      // This is an agent_action
-      return {
-        id: item.id,
-        type: mapActionStatusToType(item.status),
-        title: item.title,
-        description: item.description,
-        timestamp: new Date(item.updated_at || item.created_at),
-        details: item.payload ? { metadata: item.payload } : undefined
-      };
-    } else {
-      // This is an agent_idea
-      return {
-        id: item.id,
-        type: 'idea',
-        title: item.title,
-        description: item.hypothesis,
-        timestamp: new Date(item.updated_at || item.created_at),
-        details: {
-          metadata: {
-            iceScore: item.ice_score,
-            priority: item.priority,
-            estimatedEffort: item.estimated_effort,
-            tags: item.tags
-          }
+    // Handle different data sources based on source_table
+    switch (item.source_table) {
+      case 'seo_monitoring_events':
+        return mapSEOEventToActivity(item);
+      case 'system_logs':
+        return mapSystemLogToActivity(item);
+      case 'agent_events':
+        return mapAgentEventToActivity(item);
+      case 'agent_actions':
+        return mapAgentActionToActivity(item);
+      case 'agent_ideas':
+        return mapAgentIdeaToActivity(item);
+      default:
+        // Fallback for legacy data without source_table
+        return mapLegacyDataToActivity(item);
+    }
+  };
+
+  const mapSEOEventToActivity = (item: any): ActivityItem => {
+    const severityIcons: { [key: string]: string } = {
+      critical: '🚨',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+    
+    const categoryEmojis: { [key: string]: string } = {
+      indexability: '🔍',
+      content: '📝',
+      technical: '🔧',
+      structure: '🏗️'
+    };
+
+    return {
+      id: item.id,
+      type: item.severity === 'critical' ? 'error' : item.auto_fixed ? 'completed' : 'progress',
+      title: `${severityIcons[item.severity] || '•'} ${item.title}`,
+      description: item.description || `SEO ${item.category} issue detected`,
+      timestamp: new Date(item.detected_at || item.created_at),
+      details: {
+        metadata: {
+          severity: item.severity,
+          category: item.category,
+          source: item.source,
+          autoFixed: item.auto_fixed,
+          fixApplied: item.fix_applied,
+          pageUrl: item.page_url,
+          ...item.metadata
         }
-      };
+      }
+    };
+  };
+
+  const mapSystemLogToActivity = (item: any): ActivityItem => {
+    const logTypeDisplays: { [key: string]: { title: string; description: string } } = {
+      cron_sitemap_regeneration: {
+        title: '🗺️ Sitemap Regenerated',
+        description: 'Automated sitemap generation completed'
+      },
+      cron_gsc_sync: {
+        title: '📊 GSC Data Synced',
+        description: 'Google Search Console data updated'
+      }
+    };
+
+    const display = logTypeDisplays[item.log_type] || {
+      title: '⚙️ System Task',
+      description: item.message || 'Automated system task completed'
+    };
+
+    return {
+      id: item.id,
+      type: 'completed',
+      title: display.title,
+      description: display.description,
+      timestamp: new Date(item.created_at),
+      details: {
+        metadata: {
+          logType: item.log_type,
+          message: item.message,
+          ...item.metadata
+        }
+      }
+    };
+  };
+
+  const mapAgentEventToActivity = (item: any): ActivityItem => {
+    return {
+      id: item.id,
+      type: mapEventToType(item.event_type, item.new_state),
+      title: item.event_data?.title || formatEventTitle(item.event_type),
+      description: item.event_data?.description || formatEventDescription(item.event_type, item.event_data),
+      timestamp: new Date(item.created_at),
+      details: item.event_data?.details || undefined
+    };
+  };
+
+  const mapAgentActionToActivity = (item: any): ActivityItem => {
+    return {
+      id: item.id,
+      type: mapActionStatusToType(item.status),
+      title: item.title,
+      description: item.description,
+      timestamp: new Date(item.updated_at || item.created_at),
+      details: item.payload ? { metadata: item.payload } : undefined
+    };
+  };
+
+  const mapAgentIdeaToActivity = (item: any): ActivityItem => {
+    return {
+      id: item.id,
+      type: 'idea',
+      title: item.title,
+      description: item.hypothesis,
+      timestamp: new Date(item.updated_at || item.created_at),
+      details: {
+        metadata: {
+          iceScore: item.ice_score,
+          priority: item.priority,
+          estimatedEffort: item.estimated_effort,
+          tags: item.tags
+        }
+      }
+    };
+  };
+
+  const mapLegacyDataToActivity = (item: any): ActivityItem => {
+    // Handle legacy data without source_table
+    if (item.event_type) {
+      return mapAgentEventToActivity(item);
+    } else if (item.action_type) {
+      return mapAgentActionToActivity(item);
+    } else {
+      return mapAgentIdeaToActivity(item);
     }
   };
 
@@ -212,6 +302,10 @@ export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
         return <Clock className="h-4 w-4 text-blue-500" />;
       case 'idea':
         return <Lightbulb className="h-4 w-4 text-yellow-500" />;
+      case 'error':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -223,6 +317,10 @@ export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
         return <Badge className="bg-blue-100 text-blue-800 border-blue-200">🔄 In Progress</Badge>;
       case 'idea':
         return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">💡 Idea</Badge>;
+      case 'error':
+        return <Badge className="bg-red-100 text-red-800 border-red-200">🚨 Issue</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">• Activity</Badge>;
     }
   };
 
