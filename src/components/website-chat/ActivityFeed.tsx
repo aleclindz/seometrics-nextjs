@@ -66,7 +66,7 @@ export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
           const mappedActivities = data.activities.map(mapAgentDataToActivity);
           
           // Check if all activities are generic "executed_function" type - if so, use mock data instead
-          const hasGenericActivities = mappedActivities.every(activity => 
+          const hasGenericActivities = mappedActivities.every((activity: any) => 
             activity.title === 'Executed Function' || 
             activity.description.includes('Executed executed function operation')
           );
