@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, CheckCircle, ExternalLink, FileText, Settings } from 'lucide-react';
+import { Copy, CheckCircle, ExternalLink, FileText, Settings, RefreshCw, AlertCircle, Check, X } from 'lucide-react';
 
 interface LovableSetupInstructionsProps {
   domain: string;
@@ -10,6 +10,17 @@ interface LovableSetupInstructionsProps {
 
 export default function LovableSetupInstructions({ domain, onComplete }: LovableSetupInstructionsProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [testStatus, setTestStatus] = useState<{
+    testing: boolean;
+    sitemapResult: 'pending' | 'success' | 'error';
+    robotsResult: 'pending' | 'success' | 'error';
+    sitemapError?: string;
+    robotsError?: string;
+  }>({
+    testing: false,
+    sitemapResult: 'pending',
+    robotsResult: 'pending'
+  });
 
   const normalizedDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
@@ -20,6 +31,167 @@ export default function LovableSetupInstructions({ domain, onComplete }: Lovable
       setTimeout(() => setCopiedSection(null), 2000);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const testConnection = async () => {
+    console.log('🧪 [LOVABLE TEST] Starting connection test for:', normalizedDomain);
+    
+    setTestStatus({
+      testing: true,
+      sitemapResult: 'pending',
+      robotsResult: 'pending'
+    });
+
+    try {
+      // Step 1: Test SEOAgent source endpoints first
+      const seoagentSitemapUrl = `https://seoagent.com/sitemaps/${normalizedDomain}.xml`;
+      const seoagentRobotsUrl = `https://seoagent.com/robots/${normalizedDomain}.txt`;
+      
+      console.log('🧪 [LOVABLE TEST] Step 1: Testing SEOAgent source endpoints');
+      console.log('🧪 [LOVABLE TEST] Testing SEOAgent sitemap:', seoagentSitemapUrl);
+      
+      // Test SEOAgent sitemap endpoint
+      let seoagentSitemapWorking = false;
+      try {
+        const seoagentSitemapResponse = await fetch(seoagentSitemapUrl, {
+          method: 'GET',
+          headers: { 'Accept': 'application/xml, text/xml' }
+        });
+        
+        if (seoagentSitemapResponse.ok) {
+          const content = await seoagentSitemapResponse.text();
+          if (content.includes('<urlset') || content.includes('<?xml')) {
+            seoagentSitemapWorking = true;
+            console.log('✅ [LOVABLE TEST] SEOAgent sitemap endpoint working');
+          }
+        }
+      } catch (err) {
+        console.log('❌ [LOVABLE TEST] SEOAgent sitemap endpoint failed:', err);
+      }
+
+      console.log('🧪 [LOVABLE TEST] Testing SEOAgent robots.txt:', seoagentRobotsUrl);
+      
+      // Test SEOAgent robots endpoint  
+      let seoagentRobotsWorking = false;
+      try {
+        const seoagentRobotsResponse = await fetch(seoagentRobotsUrl, {
+          method: 'GET',
+          headers: { 'Accept': 'text/plain' }
+        });
+        
+        if (seoagentRobotsResponse.ok) {
+          const content = await seoagentRobotsResponse.text();
+          if (content.includes('User-agent') || content.includes('Sitemap:')) {
+            seoagentRobotsWorking = true;
+            console.log('✅ [LOVABLE TEST] SEOAgent robots.txt endpoint working');
+          }
+        }
+      } catch (err) {
+        console.log('❌ [LOVABLE TEST] SEOAgent robots.txt endpoint failed:', err);
+      }
+
+      // Step 2: Test Lovable proxy endpoints
+      console.log('🧪 [LOVABLE TEST] Step 2: Testing Lovable proxy endpoints');
+      const lovableSitemapUrl = `https://${normalizedDomain}/sitemap.xml`;
+      const lovableRobotsUrl = `https://${normalizedDomain}/robots.txt`;
+      
+      console.log('🧪 [LOVABLE TEST] Testing Lovable sitemap proxy:', lovableSitemapUrl);
+      
+      // Test sitemap.xml proxy
+      let sitemapResult: 'success' | 'error' = 'error';
+      let sitemapError = '';
+      
+      if (!seoagentSitemapWorking) {
+        sitemapError = 'SEOAgent source endpoint not working - check https://seoagent.com/sitemaps/' + normalizedDomain + '.xml first';
+        console.log('❌ [LOVABLE TEST] Skipping Lovable sitemap test - source not working');
+      } else {
+        try {
+          const sitemapResponse = await fetch(lovableSitemapUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/xml, text/xml' }
+          });
+          
+          if (sitemapResponse.ok) {
+            const sitemapContent = await sitemapResponse.text();
+            // Check if the content looks like it's from SEOAgent
+            if (sitemapContent.includes('seoagent.com') || sitemapContent.includes('<urlset') || sitemapContent.includes('SEOAgent')) {
+              sitemapResult = 'success';
+              console.log('✅ [LOVABLE TEST] Lovable sitemap proxy working');
+            } else {
+              sitemapError = 'Sitemap found but doesn&apos;t appear to be from SEOAgent proxy';
+              console.log('❌ [LOVABLE TEST] Lovable sitemap content not from SEOAgent:', sitemapContent.substring(0, 200));
+            }
+          } else {
+            sitemapError = `HTTP ${sitemapResponse.status}: ${sitemapResponse.statusText}`;
+            console.log('❌ [LOVABLE TEST] Lovable sitemap HTTP error:', sitemapResponse.status);
+          }
+        } catch (sitemapErr: any) {
+          sitemapError = sitemapErr.message || 'Network error';
+          console.log('❌ [LOVABLE TEST] Lovable sitemap fetch error:', sitemapErr);
+        }
+      }
+
+      console.log('🧪 [LOVABLE TEST] Testing Lovable robots.txt proxy:', lovableRobotsUrl);
+      
+      // Test robots.txt proxy
+      let robotsResult: 'success' | 'error' = 'error';
+      let robotsError = '';
+      
+      if (!seoagentRobotsWorking) {
+        robotsError = 'SEOAgent source endpoint not working - check https://seoagent.com/robots/' + normalizedDomain + '.txt first';
+        console.log('❌ [LOVABLE TEST] Skipping Lovable robots.txt test - source not working');
+      } else {
+        try {
+          const robotsResponse = await fetch(lovableRobotsUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'text/plain' }
+          });
+          
+          if (robotsResponse.ok) {
+            const robotsContent = await robotsResponse.text();
+            // Check if the content looks like it's from SEOAgent
+            if (robotsContent.includes('User-agent') || robotsContent.includes('seoagent.com') || robotsContent.includes('SEOAgent')) {
+              robotsResult = 'success';
+              console.log('✅ [LOVABLE TEST] Lovable robots.txt proxy working');
+            } else {
+              robotsError = 'Robots.txt found but doesn&apos;t appear to be from SEOAgent proxy';
+              console.log('❌ [LOVABLE TEST] Lovable robots.txt content not from SEOAgent:', robotsContent.substring(0, 200));
+            }
+          } else {
+            robotsError = `HTTP ${robotsResponse.status}: ${robotsResponse.statusText}`;
+            console.log('❌ [LOVABLE TEST] Lovable robots.txt HTTP error:', robotsResponse.status);
+          }
+        } catch (robotsErr: any) {
+          robotsError = robotsErr.message || 'Network error';
+          console.log('❌ [LOVABLE TEST] Lovable robots.txt fetch error:', robotsErr);
+        }
+      }
+
+      setTestStatus({
+        testing: false,
+        sitemapResult,
+        robotsResult,
+        sitemapError: sitemapResult === 'error' ? sitemapError : undefined,
+        robotsError: robotsResult === 'error' ? robotsError : undefined
+      });
+
+      console.log('🧪 [LOVABLE TEST] Test complete:', { 
+        seoagentSitemapWorking, 
+        seoagentRobotsWorking, 
+        sitemapResult, 
+        robotsResult 
+      });
+
+    } catch (error) {
+      console.error('🧪 [LOVABLE TEST] General test error:', error);
+      setTestStatus({
+        testing: false,
+        sitemapResult: 'error',
+        robotsResult: 'error',
+        sitemapError: 'Test failed to complete',
+        robotsError: 'Test failed to complete'
+      });
     }
   };
 
@@ -303,6 +475,115 @@ export async function GET() {
               https://{normalizedDomain}/robots.txt
             </span>
           </a>
+        </div>
+      </div>
+
+      {/* Step 4: Test Connection */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="flex items-center justify-center w-8 h-8 bg-amber-100 dark:bg-amber-900/20 rounded-full">
+            <span className="text-amber-600 dark:text-amber-400 font-semibold text-sm">4</span>
+          </div>
+          <h4 className="font-medium text-gray-900 dark:text-gray-100">Test SEOAgent Connection</h4>
+        </div>
+        
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Test if your deployment successfully serves SEOAgent sitemaps and robots.txt files:
+        </p>
+
+        <div className="space-y-3">
+          <button
+            onClick={testConnection}
+            disabled={testStatus.testing}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              testStatus.testing
+                ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+            }`}
+          >
+            {testStatus.testing ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Testing Connection...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                <span>Test Connection</span>
+              </>
+            )}
+          </button>
+
+          {/* Test Results */}
+          {(testStatus.sitemapResult !== 'pending' || testStatus.robotsResult !== 'pending') && (
+            <div className="space-y-2">
+              {/* Sitemap Result */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Sitemap Test:</span>
+                  <span className="font-mono text-xs text-gray-500">
+                    https://{normalizedDomain}/sitemap.xml
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {testStatus.sitemapResult === 'success' ? (
+                    <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
+                      <Check className="w-4 h-4" />
+                      <span className="text-sm font-medium">Success</span>
+                    </div>
+                  ) : testStatus.sitemapResult === 'error' ? (
+                    <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
+                      <X className="w-4 h-4" />
+                      <span className="text-sm font-medium">Failed</span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {testStatus.sitemapError && (
+                <div className="px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">
+                  {testStatus.sitemapError}
+                </div>
+              )}
+
+              {/* Robots.txt Result */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Robots.txt Test:</span>
+                  <span className="font-mono text-xs text-gray-500">
+                    https://{normalizedDomain}/robots.txt
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {testStatus.robotsResult === 'success' ? (
+                    <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
+                      <Check className="w-4 h-4" />
+                      <span className="text-sm font-medium">Success</span>
+                    </div>
+                  ) : testStatus.robotsResult === 'error' ? (
+                    <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
+                      <X className="w-4 h-4" />
+                      <span className="text-sm font-medium">Failed</span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {testStatus.robotsError && (
+                <div className="px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">
+                  {testStatus.robotsError}
+                </div>
+              )}
+
+              {/* Success Message */}
+              {testStatus.sitemapResult === 'success' && testStatus.robotsResult === 'success' && (
+                <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-sm text-green-700 dark:text-green-300">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>🎉 Perfect! Both sitemap and robots.txt are serving SEOAgent content correctly.</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
