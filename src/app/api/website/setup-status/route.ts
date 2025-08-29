@@ -93,17 +93,21 @@ async function checkHostingStatus(userToken: string): Promise<string> {
   try {
     const { data, error } = await supabase
       .from('host_connections')
-      .select('id')
+      .select('deployment_status')
       .eq('user_token', userToken)
-      .eq('is_active', true)
-      .limit(1);
+      .limit(10); // Get up to 10 connections to check their statuses
     
     if (error) {
       console.log('[SETUP STATUS] Host connections table not accessible:', error);
       return 'none';
     }
     
-    return data && data.length > 0 ? 'connected' : 'none';
+    // Check if any connection has an active deployment
+    const hasActiveDeployment = data && data.some((conn: any) => 
+      conn.deployment_status === 'active'
+    );
+    
+    return hasActiveDeployment ? 'connected' : 'none';
   } catch (error) {
     console.log('[SETUP STATUS] Error checking hosting status:', error);
     return 'none';
