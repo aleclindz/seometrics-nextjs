@@ -18,13 +18,15 @@ interface CompactWebsiteHeaderProps {
     progress: number;
   };
   isActive: boolean;
+  onSetupStatusUpdate?: (updates: any) => void;
 }
 
 export const CompactWebsiteHeader: React.FC<CompactWebsiteHeaderProps> = ({
   domain,
   metrics,
   setupStatus,
-  isActive
+  isActive,
+  onSetupStatusUpdate
 }) => {
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
   const connectedCount = [
@@ -208,8 +210,8 @@ export const CompactWebsiteHeader: React.FC<CompactWebsiteHeaderProps> = ({
           hostStatus: setupStatus.hostingConnected ? 'connected' : 'none'
         }}
         onStatusUpdate={(updates) => {
-          // Optional: Add callback to refresh setup status
           console.log('Setup status updated:', updates);
+          onSetupStatusUpdate?.(updates);
         }}
       />
     </div>

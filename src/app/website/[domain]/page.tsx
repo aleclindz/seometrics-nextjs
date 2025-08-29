@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
@@ -28,6 +28,79 @@ export default function WebsitePage() {
   // Sidebar state management
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+  // Dynamic setup status state
+  const [setupStatus, setSetupStatus] = useState({
+    gscConnected: false,
+    seoagentjsActive: false,
+    cmsConnected: false,
+    hostingConnected: false,
+    progress: 0
+  });
+
+  // Fetch actual setup status
+  const fetchSetupStatus = async () => {
+    if (!user?.token) return;
+    
+    try {
+      console.log('🔄 [WEBSITE PAGE] Fetching setup status for domain:', domain);
+      const response = await fetch(`/api/website/setup-status?userToken=${user.token}&domain=${domain}`);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        const statusData = data.data;
+        
+        setSetupStatus({
+          gscConnected: statusData.gscStatus === 'connected',
+          seoagentjsActive: statusData.seoagentjsStatus === 'active',
+          cmsConnected: statusData.cmsStatus === 'connected',
+          hostingConnected: statusData.hostingStatus === 'connected',
+          progress: statusData.setupProgress || 0
+        });
+        console.log('✅ [WEBSITE PAGE] Setup status updated:', statusData);
+      }
+    } catch (error) {
+      console.error('❌ [WEBSITE PAGE] Error fetching setup status:', error);
+    }
+  };
+
+  // Handle setup status updates from modal
+  const handleSetupStatusUpdate = (updates: any) => {
+    console.log('🔄 [WEBSITE PAGE] Setup status update received:', updates);
+    setSetupStatus(prev => {
+      const updated = { ...prev };
+      
+      // Map the modal's status format to the setup status format
+      if ('gscStatus' in updates) {
+        updated.gscConnected = updates.gscStatus === 'connected';
+      }
+      if ('cmsStatus' in updates) {
+        updated.cmsConnected = updates.cmsStatus === 'connected';
+      }
+      if ('smartjsStatus' in updates) {
+        updated.seoagentjsActive = updates.smartjsStatus === 'active';
+      }
+      if ('hostStatus' in updates) {
+        updated.hostingConnected = updates.hostStatus === 'connected';
+      }
+      
+      // Recalculate progress
+      const connectedCount = [
+        updated.gscConnected,
+        updated.seoagentjsActive,
+        updated.cmsConnected,
+        updated.hostingConnected
+      ].filter(Boolean).length;
+      updated.progress = Math.round((connectedCount / 4) * 100);
+      
+      console.log('✅ [WEBSITE PAGE] Setup status after update:', updated);
+      return updated;
+    });
+  };
+
+  useEffect(() => {
+    fetchSetupStatus();
+  }, [user?.token, domain]);
 
   if (!user) {
     return null; // ProtectedRoute will handle the redirect
@@ -65,14 +138,9 @@ export default function WebsitePage() {
                   techScore: 59,
                   techScorePercent: 59
                 }}
-                setupStatus={{
-                  gscConnected: true,
-                  seoagentjsActive: true,
-                  cmsConnected: false,
-                  hostingConnected: false,
-                  progress: 50
-                }}
+                setupStatus={setupStatus}
                 isActive={true}
+                onSetupStatusUpdate={handleSetupStatusUpdate}
               />
             </div>
             

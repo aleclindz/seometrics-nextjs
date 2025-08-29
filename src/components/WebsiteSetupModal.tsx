@@ -118,6 +118,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     if (!user?.token) return;
 
     try {
+      console.log('🔍 [SETUP MODAL] Starting SEOAgent.js Status Check for website:', website.url);
       const response = await fetch('/api/smartjs/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,6 +126,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       });
 
       const result = await response.json();
+      console.log('✅ [SETUP MODAL] SEOAgent.js Status Check Result:', JSON.stringify(result, null, 2));
       
       if (result.success && result.data.active) {
         setSmartjsDetected(true);
@@ -140,7 +142,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         }
       }
     } catch (error) {
-      console.error('Error checking SEOAgent.js status:', error);
+      console.error('❌ [SETUP MODAL] Error checking SEOAgent.js status:', error);
       setSmartjsDetected(false);
     }
   };
@@ -150,12 +152,14 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     if (!user?.token) return;
 
     try {
+      console.log('🔍 [SETUP MODAL] Starting GSC Status Check for website:', website.url);
       setGscLoading(true);
       const response = await fetch(`/api/gsc/connection?userToken=${user.token}`);
       const data = await response.json();
+      console.log('✅ [SETUP MODAL] GSC Status Check Result:', JSON.stringify(data, null, 2));
       setGscStatus(data);
     } catch (error) {
-      console.error('Error checking GSC connection:', error);
+      console.error('❌ [SETUP MODAL] Error checking GSC connection:', error);
       setGscError('Failed to check connection status');
     } finally {
       setGscLoading(false);
@@ -213,16 +217,27 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     if (!user?.token) return;
 
     try {
+      console.log('🔍 [SETUP MODAL] Starting CMS Connections Check for website:', website.url);
       setCmsLoading(true);
       const response = await fetch(`/api/cms/connections?userToken=${user.token}&domain=${website.url}`);
       const data = await response.json();
+      console.log('✅ [SETUP MODAL] CMS Connections Check Result:', JSON.stringify(data, null, 2));
       
       if (data.success) {
         // Connections are already filtered by domain in the API call
         setCmsConnections(data.connections);
+        
+        // Update parent status if we have active CMS connections
+        const hasActiveConnection = data.connections && data.connections.length > 0 && 
+          data.connections.some((conn: any) => conn.status === 'active');
+        
+        if (hasActiveConnection && website.cmsStatus !== 'connected') {
+          console.log('🔄 [SETUP MODAL] Updating parent CMS status to connected');
+          onStatusUpdate?.({ cmsStatus: 'connected' });
+        }
       }
     } catch (error) {
-      console.error('Error fetching CMS connections:', error);
+      console.error('❌ [SETUP MODAL] Error fetching CMS connections:', error);
       setCmsError('Failed to fetch CMS connections');
     } finally {
       setCmsLoading(false);
@@ -243,6 +258,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     if (!user?.token) return;
 
     try {
+      console.log('🔍 [SETUP MODAL] Starting Host Connections Check for website:', website.url);
       setHostLoading(true);
       setHostError(null);
       
@@ -250,6 +266,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ [SETUP MODAL] Host Connections Check Result:', JSON.stringify(data, null, 2));
         
         if (data.success) {
           setHostConnections(data.connections);
