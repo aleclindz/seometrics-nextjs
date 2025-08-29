@@ -114,14 +114,40 @@ export async function POST(request: NextRequest) {
       console.error('[TECHNICAL SEO SUMMARY] Unexpected error fetching agent activity:', error);
     }
 
-    // Get GSC performance data for insights
-    console.log('[TECHNICAL SEO SUMMARY] Fetching GSC performance data for user:', userToken);
+    // Get GSC performance data for insights - FILTERED BY SPECIFIC WEBSITE
+    console.log('[TECHNICAL SEO SUMMARY] Fetching GSC performance data for user:', userToken, 'and site:', siteUrl);
     let performanceData = null;
     try {
+      // Extract clean domain from URL for GSC property matching
+      const cleanDomain = siteUrl
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .replace(/^sc-domain:/, '')
+        .split('/')[0];
+      
+      const siteUrlVariants = [
+        siteUrl,
+        cleanDomain,
+        `sc-domain:${cleanDomain}`,
+        `https://${cleanDomain}`,
+        `http://${cleanDomain}`
+      ];
+      
+      console.log('[TECHNICAL SEO SUMMARY] Checking GSC performance for URL variants:', siteUrlVariants);
+      
       const result = await supabase
         .from('gsc_performance_data')
-        .select('*')
+        .select(`
+          *,
+          gsc_properties!inner (
+            site_url,
+            is_active,
+            is_verified
+          )
+        `)
         .eq('user_token', userToken)
+        .eq('gsc_properties.is_active', true)
+        .in('gsc_properties.site_url', siteUrlVariants)
         .order('date_start', { ascending: false })
         .limit(30);
       
