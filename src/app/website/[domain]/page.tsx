@@ -398,7 +398,9 @@ export default function WebsitePage() {
           isOpen={setupModalOpen}
           onClose={() => setSetupModalOpen(false)}
           website={{
+            id: domain,
             url: domain,
+            name: domain,
             gscStatus: setupStatus.gscConnected ? 'connected' : 'none',
             cmsStatus: setupStatus.cmsConnected ? 'connected' : 'none',
             smartjsStatus: setupStatus.seoagentjsActive ? 'active' : 'inactive',
