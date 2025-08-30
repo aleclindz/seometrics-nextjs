@@ -65,8 +65,10 @@ export default function WebsitePage() {
   };
 
   // Handle setup status updates from modal
-  const handleSetupStatusUpdate = (updates: any) => {
+  const handleSetupStatusUpdate = async (updates: any) => {
     console.log('🔄 [WEBSITE PAGE] Setup status update received:', updates);
+    
+    // Update local state immediately for UI responsiveness
     setSetupStatus(prev => {
       const updated = { ...prev };
       
@@ -94,6 +96,40 @@ export default function WebsitePage() {
       updated.progress = Math.round((connectedCount / 4) * 100);
       
       console.log('✅ [WEBSITE PAGE] Setup status after update:', updated);
+      
+      // Persist changes to database
+      const persistUpdates = async () => {
+        try {
+          console.log('💾 [WEBSITE PAGE] Persisting setup status updates to database');
+          const response = await fetch('/api/website/setup-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userToken: user?.token,
+              domain: domain,
+              gscStatus: updated.gscConnected ? 'connected' : 'none',
+              seoagentjsStatus: updated.seoagentjsActive ? 'active' : 'inactive',
+              cmsStatus: updated.cmsConnected ? 'connected' : 'none',
+              hostingStatus: updated.hostingConnected ? 'connected' : 'none'
+            })
+          });
+
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ [WEBSITE PAGE] Setup status successfully persisted to database');
+          } else {
+            console.error('❌ [WEBSITE PAGE] Failed to persist setup status:', result.error);
+          }
+        } catch (error) {
+          console.error('❌ [WEBSITE PAGE] Error persisting setup status:', error);
+        }
+      };
+      
+      // Call persist function asynchronously
+      persistUpdates();
+      
       return updated;
     });
   };
