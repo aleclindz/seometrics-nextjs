@@ -140,14 +140,42 @@ export default function WebsitePage() {
     if (!user?.token) return;
     
     try {
-      const response = await fetch(`/api/chat/sites?token=${user.token}`);
+      console.log('🌐 [WEBSITE PICKER] Fetching websites for token:', user.token);
+      
+      // Use /api/websites as primary source (shows all user websites like old sidebar)
+      const response = await fetch(`/api/websites?userToken=${user.token}`);
       const data = await response.json();
       
-      if (data.success && data.sites) {
-        setUserWebsites(data.sites);
+      console.log('🌐 [WEBSITE PICKER] API Response:', data);
+      
+      if (data.success && data.websites && data.websites.length > 0) {
+        console.log('🌐 [WEBSITE PICKER] Found websites:', data.websites.length);
+        const mappedSites = data.websites.map((site: any) => ({
+          id: site.domain,
+          url: site.domain,
+          name: site.domain,
+          website_token: site.website_token
+        }));
+        setUserWebsites(mappedSites);
+      } else {
+        console.log('🌐 [WEBSITE PICKER] No websites found:', data);
+        
+        // Create default entry for current domain if no websites found
+        setUserWebsites([{
+          id: domain,
+          url: domain,
+          name: domain
+        }]);
       }
     } catch (error) {
-      console.error('Error fetching user websites:', error);
+      console.error('❌ [WEBSITE PICKER] Error fetching user websites:', error);
+      
+      // Fallback to current domain on error
+      setUserWebsites([{
+        id: domain,
+        url: domain,
+        name: domain
+      }]);
     }
   };
 
@@ -240,11 +268,11 @@ export default function WebsitePage() {
         </header>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-[320px_1fr_auto] gap-4 p-4 h-[calc(100vh-56px)]">
+        <div className="grid grid-cols-[480px_1fr_auto] gap-4 p-4 h-[calc(100vh-56px)]">
           {/* Left: Chat */}
           <aside className="bg-white border rounded-2xl flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b font-semibold">Chat with SEOAgent</div>
-            <div className="flex-1 min-h-0">
+            <div className="px-4 py-3 border-b font-semibold text-sm">Chat with SEOAgent</div>
+            <div className="flex-1 min-h-0 text-sm">
               <ChatInterface 
                 userToken={user?.token || ''}
                 selectedSite={domain}
@@ -357,11 +385,11 @@ export default function WebsitePage() {
           <aside className={`bg-white border rounded-2xl flex flex-col overflow-hidden transition-all duration-200 ${
             logCollapsed ? 'w-11' : 'w-80'
           }`}>
-            <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className={`${logCollapsed ? 'px-1' : 'px-4'} py-3 border-b flex items-center ${logCollapsed ? 'justify-center' : 'justify-between'}`}>
               {!logCollapsed && <div className="font-semibold">Activity Log</div>}
               <button 
                 onClick={() => setLogCollapsed(!logCollapsed)}
-                className="p-1 hover:bg-gray-100 rounded text-gray-500"
+                className="p-1 hover:bg-gray-100 rounded text-gray-500 flex-shrink-0"
               >
                 {logCollapsed ? '»' : '«'}
               </button>

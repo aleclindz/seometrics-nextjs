@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/auth';
 import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
+import { getSmartJSStatus } from '@/lib/seoagent-js-status';
 import CMSConnectionForm from './CMSConnectionForm';
 import LovableSetupInstructions from './LovableSetupInstructions';
 
@@ -119,16 +120,12 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
 
     try {
       console.log('🔍 [SETUP MODAL] Starting SEOAgent.js Status Check for website:', website.url);
-      const response = await fetch('/api/smartjs/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteUrl: UrlNormalizationService.domainPropertyToHttps(website.url) })
-      });
-
-      const result = await response.json();
-      console.log('✅ [SETUP MODAL] SEOAgent.js Status Check Result:', JSON.stringify(result, null, 2));
       
-      if (result.success && result.data.active) {
+      // Use the simple status function instead of the API call
+      const status = getSmartJSStatus(website.url);
+      console.log('✅ [SETUP MODAL] SEOAgent.js Status Check Result:', status);
+      
+      if (status === 'active') {
         setSmartjsDetected(true);
         // Only update parent if status actually changed
         if (website.smartjsStatus !== 'active') {
@@ -393,15 +390,12 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
 
     try {
       setSmartjsLoading(true);
-      const response = await fetch('/api/smartjs/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteUrl: UrlNormalizationService.domainPropertyToHttps(website.url) })
-      });
-
-      const result = await response.json();
       
-      if (result.success && result.data.active) {
+      // Use the simple status function instead of the API call
+      const status = getSmartJSStatus(website.url);
+      console.log('🔍 [SETUP MODAL] Testing SEOAgent.js installation, result:', status);
+      
+      if (status === 'active') {
         setSmartjsDetected(true);
         // Only update parent if status actually changed
         if (website.smartjsStatus !== 'active') {

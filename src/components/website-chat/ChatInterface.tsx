@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import TechnicalFixCard from './ActionCards/TechnicalFixCard';
 import ContentSuggestionCard from './ActionCards/ContentSuggestionCard';
 import ProgressCard from './ActionCards/ProgressCard';
+import { getSmartJSStatus } from '@/lib/seoagent-js-status';
 import { 
   Send, 
   Bot, 
@@ -112,19 +113,9 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
         gscConnected = gscData.connected;
       }
 
-      // Check SEOAgent.js status
-      const smartjsResponse = await fetch('/api/smartjs/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          websiteUrl: selectedSite.startsWith('http') ? selectedSite : `https://${selectedSite}`
-        })
-      });
-      let seoagentjsInstalled = false;
-      if (smartjsResponse.ok) {
-        const smartjsData = await smartjsResponse.json();
-        seoagentjsInstalled = smartjsData.success && smartjsData.data.active;
-      }
+      // Check SEOAgent.js status using the simple status function
+      const seoagentjsStatus = getSmartJSStatus(selectedSite);
+      const seoagentjsInstalled = seoagentjsStatus === 'active';
 
       // Create setup-aware welcome message
       if (!gscConnected || !seoagentjsInstalled) {
