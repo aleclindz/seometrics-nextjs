@@ -102,19 +102,34 @@ export default function WebsitePage() {
       const persistUpdates = async () => {
         try {
           console.log('💾 [WEBSITE PAGE] Persisting setup status updates to database');
+          
+          // Only include the fields that were actually updated
+          const payload: any = {
+            userToken: user?.token,
+            domain: domain
+          };
+          
+          if ('gscStatus' in updates) {
+            payload.gscStatus = updated.gscConnected ? 'connected' : 'none';
+          }
+          if ('smartjsStatus' in updates) {
+            payload.seoagentjsStatus = updated.seoagentjsActive ? 'active' : 'inactive';
+          }
+          if ('cmsStatus' in updates) {
+            payload.cmsStatus = updated.cmsConnected ? 'connected' : 'none';
+          }
+          if ('hostStatus' in updates) {
+            payload.hostingStatus = updated.hostingConnected ? 'connected' : 'none';
+          }
+          
+          console.log('💾 [WEBSITE PAGE] Payload to persist:', payload);
+          
           const response = await fetch('/api/website/setup-status', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              userToken: user?.token,
-              domain: domain,
-              gscStatus: updated.gscConnected ? 'connected' : 'none',
-              seoagentjsStatus: updated.seoagentjsActive ? 'active' : 'inactive',
-              cmsStatus: updated.cmsConnected ? 'connected' : 'none',
-              hostingStatus: updated.hostingConnected ? 'connected' : 'none'
-            })
+            body: JSON.stringify(payload)
           });
 
           const result = await response.json();

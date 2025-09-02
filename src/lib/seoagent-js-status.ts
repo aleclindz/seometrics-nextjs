@@ -16,6 +16,8 @@ export function getSmartJSStatus(websiteUrl: string): 'active' | 'inactive' | 'e
     const seoAgentDomains = [
       'seoagent.com',
       'www.seoagent.com',
+      'translateyoutubevideos.com',
+      'www.translateyoutubevideos.com',
       'localhost:3001',
       'localhost:3000'
     ];
