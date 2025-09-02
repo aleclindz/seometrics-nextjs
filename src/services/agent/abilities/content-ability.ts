@@ -13,6 +13,7 @@ export class ContentAbility extends BaseAbility {
   getFunctionNames(): string[] {
     return [
       'generate_article',
+      'generate_enhanced_article', // NEW: Enhanced article generation
       'optimize_content',
       'publish_content',
       'analyze_content_performance'
@@ -23,6 +24,8 @@ export class ContentAbility extends BaseAbility {
     switch (name) {
       case 'generate_article':
         return await this.generateArticle(args);
+      case 'generate_enhanced_article':
+        return await this.generateEnhancedArticle(args);
       case 'optimize_content':
         return await this.optimizeContent(args);
       case 'publish_content':
@@ -108,6 +111,96 @@ export class ContentAbility extends BaseAbility {
     if (wordCount < 700) return 'short';
     if (wordCount > 1000) return 'long';
     return 'medium';
+  }
+
+  /**
+   * Generate enhanced article with research, images, and schema
+   */
+  private async generateEnhancedArticle(args: {
+    topic: string;
+    target_keywords?: string[];
+    website_id?: number;
+    site_url?: string;
+    word_count?: number;
+    tone?: 'professional' | 'casual' | 'technical';
+    article_type?: 'how_to' | 'listicle' | 'guide' | 'faq' | 'comparison' | 'evergreen' | 'blog';
+    include_citations?: boolean;
+    reference_style?: 'link' | 'apa';
+    include_images?: boolean;
+    num_images?: number;
+    image_provider?: 'openai' | 'stability' | 'unsplash';
+    image_style?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      // Get website ID if not provided
+      let websiteId = args.website_id;
+      if (!websiteId && args.site_url) {
+        const websitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
+        if (websitesResponse.success && websitesResponse.sites?.length > 0) {
+          const matchingSite = websitesResponse.sites.find((site: any) => 
+            site.domain === args.site_url || site.domain.includes(args.site_url)
+          );
+          websiteId = matchingSite?.id || websitesResponse.sites[0].id;
+        }
+      }
+
+      if (!websiteId) {
+        return this.error('Website ID is required. Please specify site_url or website_id parameter.');
+      }
+
+      // First, create an article in the queue
+      const queueResponse = await this.fetchAPI('/api/articles', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: args.topic,
+          userToken: this.userToken,
+          websiteId: websiteId,
+          targetKeywords: args.target_keywords || []
+        })
+      });
+
+      if (!queueResponse.success) {
+        return this.error(queueResponse.error || 'Failed to create article');
+      }
+
+      const articleId = queueResponse.article.id;
+
+      // Then generate the enhanced content
+      const response = await this.fetchAPI('/api/articles/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          userToken: this.userToken,
+          articleId: articleId,
+          targetKeywords: args.target_keywords || [],
+          contentLength: this.mapWordCountToLength(args.word_count),
+          tone: args.tone || 'professional',
+          includeImages: args.include_images ?? true,
+          
+          // Enhanced options
+          articleType: args.article_type || 'blog',
+          includeCitations: args.include_citations ?? true,
+          referenceStyle: args.reference_style || 'link',
+          numImages: args.num_images || 2,
+          imageProvider: args.image_provider || 'openai',
+          imageStyle: args.image_style || 'clean, modern, web illustration, professional'
+        })
+      });
+
+      return response.success ? 
+        this.success({
+          ...response,
+          message: 'Enhanced article generated successfully with research, images, and schema',
+          features_used: {
+            research: args.include_citations ?? true,
+            images: args.include_images ?? true,
+            schema: true,
+            article_type: args.article_type || 'blog'
+          }
+        }) :
+        this.error(response.error || 'Enhanced article generation failed');
+    } catch (error) {
+      return this.error('Failed to generate enhanced article', error);
+    }
   }
 
   /**

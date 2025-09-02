@@ -175,7 +175,7 @@ export class SVSAbility extends BaseAbility {
         target_svs_score: args.target_svs_score || 85,
         optimization_opportunities: opportunities,
         recommendations: currentAnalysis.analysis_data.recommendations,
-        potential_improvements: opportunities.recommendations
+        potential_improvements: opportunities.improvements
       });
     } catch (error) {
       return this.error('Failed to optimize content for SVS', error);

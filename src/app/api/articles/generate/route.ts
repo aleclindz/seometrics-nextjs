@@ -1,5 +1,8 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { EnhancedArticleGenerator, EnhancedArticleRequest } from '@/services/content/enhanced-article-generator';
+import { ArticleType } from '@/services/content/article-templates-service';
+import { ImageProvider } from '@/services/content/image-generation-service';
 
 // Use Node.js runtime for longer timeout support (needed for OpenAI API calls)
 export const runtime = 'nodejs';
@@ -18,7 +21,15 @@ export async function POST(request: NextRequest) {
       targetKeywords = [],
       contentLength = 'medium', // short, medium, long
       tone = 'professional', // professional, casual, technical
-      includeImages = true
+      includeImages = true,
+
+      // NEW: Enhanced generation options
+      articleType = 'blog' as ArticleType, // how_to | listicle | guide | faq | comparison | evergreen | blog
+      includeCitations = true,
+      referenceStyle = 'link', // link | apa
+      numImages = 2,
+      imageProvider = 'openai' as ImageProvider, // openai | stability | unsplash
+      imageStyle = 'clean, modern, web illustration, professional'
     } = body;
 
     if (!userToken || !articleId) {
@@ -28,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[GENERATE EDGE] Starting generation for article:', articleId);
+    console.log('[GENERATE EDGE] Starting enhanced generation for article:', articleId, `(${articleType})`);
 
     // Get the article from queue
     const { data: article, error: fetchError } = await supabase
@@ -36,7 +47,9 @@ export async function POST(request: NextRequest) {
       .select(`
         *,
         websites:website_id (
-          domain
+          id,
+          domain,
+          name
         )
       `)
       .eq('id', articleId)
@@ -50,7 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check quota before starting generation (skip if tables don't exist in development)
+    // Check quota (best-effort)
     try {
       const quotaCheck = await checkQuota(supabase, userToken, article.websites?.id);
       if (!quotaCheck.allowed && quotaCheck.limit > 0) {
@@ -76,7 +89,7 @@ export async function POST(request: NextRequest) {
     // Update status to generating
     await supabase
       .from('article_queue')
-      .update({ 
+      .update({
         status: 'generating',
         updated_at: new Date().toISOString()
       })
@@ -93,32 +106,55 @@ export async function POST(request: NextRequest) {
           targetKeywords,
           contentLength,
           tone,
-          includeImages
+          includeImages,
+          articleType,
+          includeCitations,
+          referenceStyle,
+          numImages,
+          imageProvider,
+          imageStyle
         }
       });
 
     const generationStartTime = Date.now();
 
     try {
-      // Generate comprehensive article content with all SEO metadata
-      const generationResult = await generateComprehensiveArticle({
+      // === NEW: Enhanced article generation ===
+      const generator = new EnhancedArticleGenerator();
+      
+      const enhancedRequest: EnhancedArticleRequest = {
         title: article.title,
         keywords: targetKeywords,
         websiteDomain: article.websites?.domain,
-        websiteDescription: undefined,
-        contentLength,
-        tone
-      });
+        websiteDescription: article.websites?.name,
+        contentLength: contentLength as 'short' | 'medium' | 'long',
+        tone: tone as 'professional' | 'casual' | 'technical',
+        articleType,
+        includeCitations,
+        referenceStyle: referenceStyle as 'link' | 'apa',
+        includeImages,
+        numImages,
+        imageProvider,
+        imageStyle
+      };
 
-      // Calculate metrics
-      const wordCount = generationResult.content.split(/\s+/).length;
-      const qualityScore = calculateQualityScore(generationResult.content, targetKeywords);
-      const readabilityScore = calculateReadabilityScore(generationResult.content);
+      const generationResult = await generator.generateComprehensiveArticle(enhancedRequest);
+
+      // === Calculate metrics ===
+      const wordCount = stripHtml(generationResult.content).split(/\s+/).filter(Boolean).length;
+      const qualityScore = calculateQualityScore(generationResult.content, targetKeywords, {
+        citationsCount: generationResult.citations?.length || 0,
+        hasSchema: !!generationResult.schemaJson,
+        hasFaq: (generationResult.schemaJson?.['@type'] === 'FAQPage') || 
+                (generationResult.schemaJson?.mainEntity?.['@type'] === 'FAQPage'),
+        imagesCount: generationResult.images?.length || 0
+      });
+      const readabilityScore = calculateReadabilityScore(stripHtml(generationResult.content));
       const seoScore = calculateSeoScore(generationResult.content, targetKeywords, article.title);
 
       const generationTime = Math.round((Date.now() - generationStartTime) / 1000);
 
-      // Update article with generated content and SEO metadata
+      // === Persist core fields (existing columns) ===
       const { error: updateError } = await supabase
         .from('article_queue')
         .update({
@@ -140,6 +176,22 @@ export async function POST(request: NextRequest) {
         throw new Error(`Failed to update article: ${updateError.message}`);
       }
 
+      // === Best-effort: persist new fields if the table has them ===
+      try {
+        await supabase
+          .from('article_queue')
+          .update({
+            article_type: articleType,
+            slug: generationResult.slug,
+            citations: generationResult.citations || null,
+            images: generationResult.images || null,
+            schema_json: generationResult.schemaJson || null
+          })
+          .eq('id', articleId);
+      } catch (extendedFieldsError) {
+        console.log('[GENERATE EDGE] Skipping extended fields (missing columns):', extendedFieldsError);
+      }
+
       // Log successful generation
       await supabase
         .from('article_generation_logs')
@@ -157,20 +209,30 @@ export async function POST(request: NextRequest) {
             hasMetaDescription: !!generationResult.metaDescription,
             hasContentOutline: !!generationResult.contentOutline,
             metaTitleLength: generationResult.metaTitle?.length || 0,
-            metaDescriptionLength: generationResult.metaDescription?.length || 0
+            metaDescriptionLength: generationResult.metaDescription?.length || 0,
+            citationsCount: generationResult.citations?.length || 0,
+            imagesCount: generationResult.images?.length || 0,
+            schemaType: generationResult.schemaJson?.['@type'] || 'Article',
+            articleType
           }
         });
 
-      // Track usage after successful generation (optional if tables don't exist)
+      // Track usage (optional)
       try {
         await trackUsage(supabase, userToken, 'article', article.websites?.id);
       } catch (trackingError) {
         console.log('[GENERATE EDGE] Usage tracking failed (likely missing tables):', trackingError);
       }
 
-      console.log('[GENERATE EDGE] Article generated successfully:', articleId);
+      console.log('[GENERATE EDGE] Enhanced article generated successfully:', articleId, {
+        wordCount,
+        citations: generationResult.citations?.length || 0,
+        images: generationResult.images?.length || 0,
+        qualityScore,
+        seoScore
+      });
 
-      // Get quota info for response (optional)
+      // Quota info for response (optional)
       let quotaInfo = null;
       try {
         quotaInfo = await checkQuota(supabase, userToken, article.websites?.id);
@@ -183,6 +245,14 @@ export async function POST(request: NextRequest) {
         article: {
           id: articleId,
           content: generationResult.content,
+          meta_title: generationResult.metaTitle,
+          meta_description: generationResult.metaDescription,
+          content_outline: generationResult.contentOutline,
+          citations: generationResult.citations || [],
+          images: generationResult.images || [],
+          schema_json: generationResult.schemaJson || null,
+          article_type: generationResult.articleType,
+          slug: generationResult.slug,
           word_count: wordCount,
           quality_score: qualityScore,
           readability_score: readabilityScore,
@@ -192,8 +262,8 @@ export async function POST(request: NextRequest) {
         ...(quotaInfo && { quota: quotaInfo })
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
-    } catch (generationError) {
-      console.error('[GENERATE EDGE] Generation failed:', generationError);
+    } catch (generationError: any) {
+      console.error('[GENERATE EDGE] Enhanced generation failed:', generationError?.stack || generationError);
 
       // Update status to generation_failed
       await supabase
@@ -231,204 +301,63 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Real OpenAI GPT-4 content generation
-async function generateComprehensiveArticle({
-  title,
-  keywords,
-  websiteDomain,
-  websiteDescription,
-  contentLength,
-  tone
-}: {
-  title: string;
-  keywords: string[];
-  websiteDomain?: string;
-  websiteDescription?: string;
-  contentLength: string;
-  tone: string;
-}) {
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-  
-  if (!openaiApiKey) {
-    throw new Error('OpenAI API key not configured');
+// === ENHANCED SCORING FUNCTIONS ===
+
+function calculateQualityScore(
+  content: string, 
+  keywords: string[], 
+  extras?: { 
+    citationsCount?: number; 
+    hasSchema?: boolean; 
+    hasFaq?: boolean; 
+    imagesCount?: number; 
   }
+): number {
+  let score = 7.0;
 
-  console.log('[GENERATE EDGE] Generating comprehensive article with SEO metadata for:', title);
-
-  // Single comprehensive prompt to generate all required content and metadata
-  let stylePrompt = '';
-  switch (tone) {
-    case 'casual':
-      stylePrompt = 'Use a conversational, friendly tone with personal examples and relatable language.';
-      break;
-    case 'technical':
-      stylePrompt = 'Use precise, technical language with detailed explanations and industry-specific terminology.';
-      break;
-    case 'professional':
-    default:
-      stylePrompt = 'Use a professional, authoritative tone that builds trust and demonstrates expertise.';
-  }
-
-  const wordTarget = contentLength === 'short' ? 600 : contentLength === 'long' ? 1200 : 800; // Reduced targets
+  const plainText = stripHtml(content);
+  const wordCount = plainText.split(/\s+/).filter(Boolean).length;
   
-  const comprehensivePrompt = `Write a complete SEO article for: "${title}"
+  // Word count scoring
+  if (wordCount < 700) score -= 1.0;
+  else if (wordCount > 1200) score += 0.5;
+  if (wordCount > 2000) score += 0.5;
 
-TARGET KEYWORDS: ${keywords.join(', ')}
-TONE: ${stylePrompt}
-WORD COUNT: ${wordTarget} words
-
-RESPOND WITH VALID JSON:
-{
-  "metaTitle": "SEO title (50-60 chars with main keyword)",
-  "metaDescription": "Meta description (150-160 chars with call-to-action)",
-  "contentOutline": {
-    "mainSections": ["Section 1", "Section 2", "Section 3", "Section 4"],
-    "conclusion": "Brief summary"
-  },
-  "content": "FULL HTML ARTICLE CONTENT"
-}
-
-ARTICLE STRUCTURE (Follow this exact format):
-1. TL;DR Summary (2-3 bullet points in a callout box)
-2. Introduction with hook + problem statement + article preview
-3. Definition section (What is [main topic]?)
-4. Why it matters/Benefits section
-5. Step-by-step guide or methodology
-6. Real-world examples with specific details
-7. Best practices and tips
-8. Common mistakes to avoid
-9. FAQ section (3-4 questions with H3 tags)
-10. Conclusion with clear call-to-action
-
-CONTENT QUALITY REQUIREMENTS:
-- Start with <div class="tldr-box"><h3>TL;DR</h3><ul> for summary
-- Use specific examples, numbers, and data points
-- Include actionable advice in every section
-- Break complex concepts into digestible chunks
-- Use transition phrases between sections
-- Include semantic keywords naturally
-- Add internal linking opportunities with placeholder text like [internal link: related topic]
-
-FORMAT REQUIREMENTS:
-- Use HTML: <h2>, <h3>, <p>, <strong>, <ul>, <li>, <em>
-- Bold important terms and key concepts
-- Use numbered lists for steps, bullet lists for benefits
-- Include 2-3 paragraphs per section with clear topic sentences
-- Write in an engaging, ${tone === 'professional' ? 'authoritative yet accessible' : tone === 'casual' ? 'conversational and relatable' : 'precise and technical'} style
-
-ENGAGEMENT ELEMENTS:
-- Use rhetorical questions to hook readers
-- Include specific statistics or data when relevant
-- Add practical examples that readers can relate to
-- Create scannable content with clear headings
-- End each major section with a key takeaway
-
-META REQUIREMENTS:
-- Title: 50-60 characters, include "${keywords[0] || title.split(' ')[0]}"
-- Description: 150-160 characters, compelling, include primary keyword and call-to-action
-
-Return ONLY valid JSON, no additional text.`;
-
-  let response;
-  try {
-    response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini', // Faster and cheaper than gpt-4
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are an expert SEO content writer who creates high-quality, comprehensive articles similar to top-performing content from SurferSEO and industry leaders. Focus on actionable advice, real examples, clear structure, and engaging writing that provides genuine value to readers. Always respond with valid JSON only.' 
-          },
-          { role: 'user', content: comprehensivePrompt }
-        ],
-        temperature: 0.2,
-        max_tokens: 3000 // Reduced for faster generation
-      }),
-      signal: AbortSignal.timeout(25000) // 25-second timeout to stay under Vercel limit
-    });
-  } catch (fetchError: any) {
-    if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
-      throw new Error('Article generation timed out. Please try again with shorter content or simpler requirements.');
-    }
-    throw new Error(`OpenAI API connection error: ${fetchError.message}`);
-  }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-  const aiResponse = data.choices[0].message.content || '';
-  
-  try {
-    // Parse the JSON response
-    const parsedResult = JSON.parse(aiResponse);
-    
-    return {
-      content: parsedResult.content,
-      metaTitle: parsedResult.metaTitle,
-      metaDescription: parsedResult.metaDescription,
-      contentOutline: parsedResult.contentOutline
-    };
-  } catch (parseError) {
-    console.error('[GENERATE EDGE] Failed to parse AI response as JSON:', parseError);
-    console.error('[GENERATE EDGE] AI Response:', aiResponse);
-    
-    // Fallback: Extract content and generate basic metadata
-    const content = aiResponse;
-    const metaTitle = title.length <= 60 ? title : title.substring(0, 57) + '...';
-    const metaDescription = `Learn about ${keywords[0]} in this comprehensive guide. Discover actionable insights and best practices.`;
-    const contentOutline = {
-      introduction: "Introduction to the topic",
-      mainSections: ["Main Content Section 1", "Main Content Section 2", "Main Content Section 3"],
-      conclusion: "Conclusion and next steps",
-      faq: ["Common question 1", "Common question 2", "Common question 3"]
-    };
-    
-    return {
-      content,
-      metaTitle,
-      metaDescription,
-      contentOutline
-    };
-  }
-}
-
-// Simple quality scoring algorithm
-function calculateQualityScore(content: string, keywords: string[]): number {
-  let score = 7.0; // Base score
-  
-  const wordCount = content.split(/\s+/).length;
-  if (wordCount < 300) score -= 2.0;
-  else if (wordCount > 2000) score += 1.0;
-  
-  // Check keyword usage
-  const contentLower = content.toLowerCase();
+  // Keyword presence and density
+  const contentLower = plainText.toLowerCase();
   keywords.forEach(keyword => {
-    const keywordCount = (contentLower.match(new RegExp(keyword.toLowerCase(), 'g')) || []).length;
-    if (keywordCount > 0 && keywordCount < 10) score += 0.5;
+    const keywordCount = (contentLower.match(new RegExp(keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+    if (keywordCount > 0 && keywordCount < 12) score += 0.3;
   });
-  
-  // Check for headings
-  const headingCount = (content.match(/^#{1,6}\s/gm) || []).length;
-  if (headingCount >= 3) score += 0.5;
-  
-  return Math.min(10, Math.max(1, score));
+
+  // Structure scoring
+  const h2Count = (content.match(/<h2/gi) || []).length;
+  const h3Count = (content.match(/<h3/gi) || []).length;
+  if (h2Count >= 3) score += 0.4;
+  if (h3Count >= 3) score += 0.2;
+
+  // Internal linking
+  const internalLinks = (content.match(/\[internal link:/gi) || []).length;
+  if (internalLinks >= 2) score += 0.2;
+
+  // Image quality
+  const imageCount = (content.match(/<img /gi) || []).length;
+  const altCount = (content.match(/alt="/gi) || []).length;
+  if (imageCount > 0 && altCount >= imageCount) score += 0.3;
+
+  // Enhanced scoring factors
+  if (extras?.citationsCount && extras.citationsCount >= 2) score += 0.6;
+  if (extras?.hasSchema) score += 0.3;
+  if (extras?.hasFaq) score += 0.2;
+  if (extras?.imagesCount && extras.imagesCount >= 2) score += 0.2;
+
+  return Math.min(10, Math.max(1, Number(score.toFixed(2))));
 }
 
 function calculateReadabilityScore(content: string): number {
-  // Simple readability score (Flesch Reading Ease approximation)
-  const sentences = content.split(/[.!?]+/).length;
-  const words = content.split(/\s+/).length;
-  const syllables = content.split(/[aeiouAEIOU]/).length;
-  
-  if (sentences === 0 || words === 0) return 50;
+  const sentences = content.split(/[.!?]+/).filter(Boolean).length || 1;
+  const words = content.split(/\s+/).filter(Boolean).length || 1;
+  const syllables = content.split(/[aeiouAEIOU]/).length; // rough approximation
   
   const avgWordsPerSentence = words / sentences;
   const avgSyllablesPerWord = syllables / words;
@@ -438,36 +367,34 @@ function calculateReadabilityScore(content: string): number {
 }
 
 function calculateSeoScore(content: string, keywords: string[], title: string): number {
-  let score = 6.0; // Base score
-  
-  const contentLower = content.toLowerCase();
+  let score = 6.0;
+  const contentLower = stripHtml(content).toLowerCase();
   const titleLower = title.toLowerCase();
-  
-  // Check if primary keyword is in title
+
+  // Primary keyword in title
   if (keywords.length > 0 && titleLower.includes(keywords[0].toLowerCase())) {
     score += 1.0;
   }
-  
-  // Check keyword density
+
+  // Keyword density
+  const wordCount = stripHtml(content).split(/\s+/).filter(Boolean).length || 1;
   keywords.forEach(keyword => {
-    const keywordCount = (contentLower.match(new RegExp(keyword.toLowerCase(), 'g')) || []).length;
-    const wordCount = content.split(/\s+/).length;
+    const keywordCount = (contentLower.match(new RegExp(keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
     const density = (keywordCount / wordCount) * 100;
-    
-    if (density >= 0.5 && density <= 3.0) score += 0.5;
+    if (density >= 0.3 && density <= 2.5) score += 0.4;
   });
-  
-  // Check for meta elements (headings, lists)
-  if (content.includes('##')) score += 0.5;
-  if (content.includes('- **') || content.includes('1. **')) score += 0.5;
-  
-  return Math.min(10, Math.max(1, score));
+
+  // Structure elements
+  if ((content.match(/<h2/gi) || []).length >= 3) score += 0.3;
+  if ((content.match(/<ul|<ol/gi) || []).length >= 2) score += 0.3;
+
+  return Math.min(10, Math.max(1, Number(score.toFixed(2))));
 }
 
-// Helper function to check quota
+// === EXISTING HELPER FUNCTIONS ===
+
 async function checkQuota(supabase: any, userToken: string, siteId?: number) {
   try {
-    // Get user plan
     const { data: userPlan, error: planError } = await supabase
       .from('user_plans')
       .select('*')
@@ -478,12 +405,10 @@ async function checkQuota(supabase: any, userToken: string, siteId?: number) {
       return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: 'starter' };
     }
 
-    // Check if subscription is active
     if (userPlan.status !== 'active') {
       return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: userPlan.tier };
     }
 
-    // Get current usage for this month
     const currentMonth = new Date().toISOString().slice(0, 7);
     const { data: usage } = await supabase
       .from('usage_tracking')
@@ -497,25 +422,16 @@ async function checkQuota(supabase: any, userToken: string, siteId?: number) {
     const allowed = limit === -1 || currentUsage < limit;
     const remaining = limit === -1 ? Infinity : Math.max(0, limit - currentUsage);
 
-    return {
-      allowed,
-      currentUsage,
-      limit,
-      remaining,
-      tier: userPlan.tier
-    };
+    return { allowed, currentUsage, limit, remaining, tier: userPlan.tier };
   } catch (error) {
     console.error('Error checking quota:', error);
     return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: 'starter' };
   }
 }
 
-// Helper function to track usage
 async function trackUsage(supabase: any, userToken: string, resourceType: string, siteId?: number) {
   try {
     const currentMonth = new Date().toISOString().slice(0, 7);
-    
-    // Check if record exists
     const { data: existing } = await supabase
       .from('usage_tracking')
       .select('id, count')
@@ -525,24 +441,21 @@ async function trackUsage(supabase: any, userToken: string, resourceType: string
       .maybeSingle();
 
     if (existing) {
-      // Update existing record
-      await supabase
-        .from('usage_tracking')
-        .update({ count: existing.count + 1 })
-        .eq('id', existing.id);
+      await supabase.from('usage_tracking').update({ count: existing.count + 1 }).eq('id', existing.id);
     } else {
-      // Create new record
-      await supabase
-        .from('usage_tracking')
-        .insert({
-          user_token: userToken,
-          site_id: siteId || null,
-          resource_type: resourceType,
-          month_year: currentMonth,
-          count: 1
-        });
+      await supabase.from('usage_tracking').insert({
+        user_token: userToken,
+        site_id: siteId || null,
+        resource_type: resourceType,
+        month_year: currentMonth,
+        count: 1
+      });
     }
   } catch (error) {
     console.error('Error tracking usage:', error);
   }
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
