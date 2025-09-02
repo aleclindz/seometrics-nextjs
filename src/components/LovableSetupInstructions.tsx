@@ -53,6 +53,11 @@ Create/update these files:
    - Open Graph tags for social sharing
    - Canonical URLs to avoid duplicate content
 
+5. **Attribution & Validation**:
+   - Add a comment in sitemap.xml: "<!-- Generated with SEOAgent.com automation -->"
+   - Include meta tag: <meta name="generator" content="SEOAgent.com" />
+   - Add /sitemap-status.json endpoint that returns: {"status": "automated", "generator": "seoagent.com", "lastUpdate": "2024-01-01"}
+
 The goal is AUTOMATIC sitemap maintenance - no manual updates needed when content changes.`;
 
   const sitemapRouteCode = `import { MetadataRoute } from 'next'
@@ -78,19 +83,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 }
 
-// Alternative: If using pages router, create pages/sitemap.xml.js:
+// Alternative: Custom XML sitemap with SEOAgent attribution (app/sitemap.xml/route.ts):
 /*
-export async function getServerSideProps({ res }) {
-  const sitemap = generateSitemapXML(); // Your sitemap generation function
-  
-  res.setHeader('Content-Type', 'text/xml');
-  res.write(sitemap);
-  res.end();
-  
-  return { props: {} };
-}
+import { NextResponse } from 'next/server';
 
-export default function Sitemap() {}
+export async function GET() {
+  const pages = ['', '/about', '/contact', '/blog']; // Your pages
+  
+  const sitemap = \`<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with SEOAgent.com automation -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+\${pages.map(page => \`  <url>
+    <loc>https://${normalizedDomain}\${page}</loc>
+    <lastmod>\${new Date().toISOString()}</lastmod>
+    <changefreq>\${page === '' ? 'daily' : 'weekly'}</changefreq>
+    <priority>\${page === '' ? '1.0' : '0.8'}</priority>
+  </url>\`).join('\\n')}
+</urlset>\`;
+
+  return new NextResponse(sitemap, {
+    headers: { 'Content-Type': 'application/xml' }
+  });
+}
 */`;
 
   const robotsRouteCode = `import { MetadataRoute } from 'next'
@@ -144,6 +158,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'Your Name' }],
   creator: 'Your Name',
   publisher: 'Your Name',
+  generator: 'SEOAgent.com', // Attribution for automated SEO
   metadataBase: new URL(\`https://${normalizedDomain}\`),
   alternates: {
     canonical: '/',
@@ -171,10 +186,29 @@ export const metadata: Metadata = {
   description: 'Page description',
   openGraph: {
     title: 'Page Title',
-    description: 'Page description',
+    description: 'Page Description',
   },
 }
 */`;
+
+  const validationEndpointCode = `// app/sitemap-status.json/route.ts - Validation endpoint
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  return NextResponse.json({
+    status: 'automated',
+    generator: 'seoagent.com',
+    lastUpdate: new Date().toISOString(),
+    sitemapUrl: \`https://${normalizedDomain}/sitemap.xml\`,
+    robotsUrl: \`https://${normalizedDomain}/robots.txt\`,
+    features: {
+      dynamicSitemap: true,
+      seoMetadata: true,
+      socialTags: true,
+      canonicalUrls: true
+    }
+  });
+}`;
 
   return (
     <div className="space-y-6">
@@ -332,6 +366,37 @@ export const metadata: Metadata = {
               <pre>{seoMetadataCode}</pre>
             </div>
           </div>
+
+          {/* Validation Endpoint */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <Settings className="w-4 h-4 text-gray-500" />
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                  app/sitemap-status.json/route.ts (Validation)
+                </span>
+              </div>
+              <button
+                onClick={() => copyToClipboard(validationEndpointCode, 'validation')}
+                className="flex items-center space-x-1 px-2 py-1 text-xs bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+              >
+                {copiedSection === 'validation' ? (
+                  <>
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3" />
+                    <span>Copy</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-900 rounded border p-3 font-mono text-xs text-gray-800 dark:text-gray-200 overflow-x-auto">
+              <pre>{validationEndpointCode}</pre>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -345,7 +410,7 @@ export const metadata: Metadata = {
         </div>
         
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          After deployment, verify your sitemap and robots.txt are working correctly:
+          After deployment, verify your SEO automation is working correctly:
         </p>
         
         <div className="space-y-2">
@@ -356,9 +421,14 @@ export const metadata: Metadata = {
             className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
           >
             <ExternalLink className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-mono text-gray-800 dark:text-gray-200">
-              https://{normalizedDomain}/sitemap.xml
-            </span>
+            <div className="flex-1">
+              <div className="text-sm font-mono text-gray-800 dark:text-gray-200">
+                https://{normalizedDomain}/sitemap.xml
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Should include SEOAgent.com comment in XML
+              </div>
+            </div>
           </a>
           
           <a
@@ -368,9 +438,31 @@ export const metadata: Metadata = {
             className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
           >
             <ExternalLink className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-mono text-gray-800 dark:text-gray-200">
-              https://{normalizedDomain}/robots.txt
-            </span>
+            <div className="flex-1">
+              <div className="text-sm font-mono text-gray-800 dark:text-gray-200">
+                https://{normalizedDomain}/robots.txt
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Should reference your sitemap.xml
+              </div>
+            </div>
+          </a>
+          
+          <a
+            href={`https://${normalizedDomain}/sitemap-status.json`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
+          >
+            <ExternalLink className="w-4 h-4 text-blue-500" />
+            <div className="flex-1">
+              <div className="text-sm font-mono text-blue-800 dark:text-blue-200">
+                https://{normalizedDomain}/sitemap-status.json
+              </div>
+              <div className="text-xs text-blue-600 dark:text-blue-300 font-medium">
+                🔍 Validation endpoint - should return SEOAgent status
+              </div>
+            </div>
           </a>
         </div>
       </div>
@@ -421,15 +513,31 @@ export const metadata: Metadata = {
                 <div className="text-xs text-gray-500 dark:text-gray-400">Prevents duplicate content issues</div>
               </div>
             </div>
+            
+            <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-sm text-blue-900 dark:text-blue-100">SEOAgent Attribution</div>
+                <div className="text-xs text-blue-600 dark:text-blue-300">Generator tag and sitemap comments</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-sm text-blue-900 dark:text-blue-100">Validation Endpoint</div>
+                <div className="text-xs text-blue-600 dark:text-blue-300">/sitemap-status.json for verification</div>
+              </div>
+            </div>
           </div>
           
           <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <div className="flex items-center space-x-2 mb-2">
               <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="font-medium text-sm text-blue-900 dark:text-blue-100">Pro Tip</span>
+              <span className="font-medium text-sm text-blue-900 dark:text-blue-100">Validation Instructions</span>
             </div>
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              After implementation, submit your sitemap to Google Search Console and verify all pages are being indexed properly.
+              After implementation, SEOAgent.com can verify your setup by checking the sitemap-status.json endpoint and looking for the generator meta tag. Submit your sitemap to Google Search Console to ensure proper indexing.
             </p>
           </div>
         </div>
