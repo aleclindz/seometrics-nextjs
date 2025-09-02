@@ -10,17 +10,6 @@ interface LovableSetupInstructionsProps {
 
 export default function LovableSetupInstructions({ domain, onComplete }: LovableSetupInstructionsProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
-  const [testStatus, setTestStatus] = useState<{
-    testing: boolean;
-    sitemapResult: 'pending' | 'success' | 'error';
-    robotsResult: 'pending' | 'success' | 'error';
-    sitemapError?: string;
-    robotsError?: string;
-  }>({
-    testing: false,
-    sitemapResult: 'pending',
-    robotsResult: 'pending'
-  });
 
   const normalizedDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
@@ -34,250 +23,158 @@ export default function LovableSetupInstructions({ domain, onComplete }: Lovable
     }
   };
 
-  const testConnection = async () => {
-    console.log('🧪 [LOVABLE TEST] Starting connection test for:', normalizedDomain);
-    
-    setTestStatus({
-      testing: true,
-      sitemapResult: 'pending',
-      robotsResult: 'pending'
-    });
 
-    try {
-      // Step 1: Test SEOAgent source endpoints first
-      const seoagentSitemapUrl = `https://seoagent.com/sitemaps/${normalizedDomain}.xml`;
-      const seoagentRobotsUrl = `https://seoagent.com/robots/${normalizedDomain}.txt`;
-      
-      console.log('🧪 [LOVABLE TEST] Step 1: Testing SEOAgent source endpoints');
-      console.log('🧪 [LOVABLE TEST] Testing SEOAgent sitemap:', seoagentSitemapUrl);
-      
-      // Test SEOAgent sitemap endpoint
-      let seoagentSitemapWorking = false;
-      try {
-        const seoagentSitemapResponse = await fetch(seoagentSitemapUrl, {
-          method: 'GET',
-          headers: { 'Accept': 'application/xml, text/xml' }
-        });
-        
-        if (seoagentSitemapResponse.ok) {
-          const content = await seoagentSitemapResponse.text();
-          if (content.includes('<urlset') || content.includes('<?xml')) {
-            seoagentSitemapWorking = true;
-            console.log('✅ [LOVABLE TEST] SEOAgent sitemap endpoint working');
-          }
-        }
-      } catch (err) {
-        console.log('❌ [LOVABLE TEST] SEOAgent sitemap endpoint failed:', err);
-      }
+  const lovablePrompt = `Please set up automatic sitemap management for SEO optimization:
 
-      console.log('🧪 [LOVABLE TEST] Testing SEOAgent robots.txt:', seoagentRobotsUrl);
-      
-      // Test SEOAgent robots endpoint  
-      let seoagentRobotsWorking = false;
-      try {
-        const seoagentRobotsResponse = await fetch(seoagentRobotsUrl, {
-          method: 'GET',
-          headers: { 'Accept': 'text/plain' }
-        });
-        
-        if (seoagentRobotsResponse.ok) {
-          const content = await seoagentRobotsResponse.text();
-          if (content.includes('User-agent') || content.includes('Sitemap:')) {
-            seoagentRobotsWorking = true;
-            console.log('✅ [LOVABLE TEST] SEOAgent robots.txt endpoint working');
-          }
-        }
-      } catch (err) {
-        console.log('❌ [LOVABLE TEST] SEOAgent robots.txt endpoint failed:', err);
-      }
+IMPORTANT: Implement automatic sitemap generation and updates that trigger whenever:
+- New pages are published
+- Existing pages are updated  
+- The site is deployed
 
-      // Step 2: Test Lovable proxy endpoints
-      console.log('🧪 [LOVABLE TEST] Step 2: Testing Lovable proxy endpoints');
-      const lovableSitemapUrl = `https://${normalizedDomain}/sitemap.xml`;
-      const lovableRobotsUrl = `https://${normalizedDomain}/robots.txt`;
-      
-      console.log('🧪 [LOVABLE TEST] Testing Lovable sitemap proxy:', lovableSitemapUrl);
-      
-      // Test sitemap.xml proxy
-      let sitemapResult: 'success' | 'error' = 'error';
-      let sitemapError = '';
-      
-      if (!seoagentSitemapWorking) {
-        sitemapError = 'SEOAgent source endpoint not working - check https://seoagent.com/sitemaps/' + normalizedDomain + '.xml first';
-        console.log('❌ [LOVABLE TEST] Skipping Lovable sitemap test - source not working');
-      } else {
-        try {
-          const sitemapResponse = await fetch(lovableSitemapUrl, {
-            method: 'GET',
-            headers: { 'Accept': 'application/xml, text/xml' }
-          });
-          
-          if (sitemapResponse.ok) {
-            const sitemapContent = await sitemapResponse.text();
-            // Check if the content looks like it's from SEOAgent
-            if (sitemapContent.includes('seoagent.com') || sitemapContent.includes('<urlset') || sitemapContent.includes('SEOAgent')) {
-              sitemapResult = 'success';
-              console.log('✅ [LOVABLE TEST] Lovable sitemap proxy working');
-            } else {
-              sitemapError = 'Sitemap found but doesn&apos;t appear to be from SEOAgent proxy';
-              console.log('❌ [LOVABLE TEST] Lovable sitemap content not from SEOAgent:', sitemapContent.substring(0, 200));
-            }
-          } else {
-            sitemapError = `HTTP ${sitemapResponse.status}: ${sitemapResponse.statusText}`;
-            console.log('❌ [LOVABLE TEST] Lovable sitemap HTTP error:', sitemapResponse.status);
-          }
-        } catch (sitemapErr: any) {
-          sitemapError = sitemapErr.message || 'Network error';
-          console.log('❌ [LOVABLE TEST] Lovable sitemap fetch error:', sitemapErr);
-        }
-      }
+Create/update these files:
 
-      console.log('🧪 [LOVABLE TEST] Testing Lovable robots.txt proxy:', lovableRobotsUrl);
-      
-      // Test robots.txt proxy
-      let robotsResult: 'success' | 'error' = 'error';
-      let robotsError = '';
-      
-      if (!seoagentRobotsWorking) {
-        robotsError = 'SEOAgent source endpoint not working - check https://seoagent.com/robots/' + normalizedDomain + '.txt first';
-        console.log('❌ [LOVABLE TEST] Skipping Lovable robots.txt test - source not working');
-      } else {
-        try {
-          const robotsResponse = await fetch(lovableRobotsUrl, {
-            method: 'GET',
-            headers: { 'Accept': 'text/plain' }
-          });
-          
-          if (robotsResponse.ok) {
-            const robotsContent = await robotsResponse.text();
-            // Check if the content looks like it's from SEOAgent
-            if (robotsContent.includes('User-agent') || robotsContent.includes('seoagent.com') || robotsContent.includes('SEOAgent')) {
-              robotsResult = 'success';
-              console.log('✅ [LOVABLE TEST] Lovable robots.txt proxy working');
-            } else {
-              robotsError = 'Robots.txt found but doesn&apos;t appear to be from SEOAgent proxy';
-              console.log('❌ [LOVABLE TEST] Lovable robots.txt content not from SEOAgent:', robotsContent.substring(0, 200));
-            }
-          } else {
-            robotsError = `HTTP ${robotsResponse.status}: ${robotsResponse.statusText}`;
-            console.log('❌ [LOVABLE TEST] Lovable robots.txt HTTP error:', robotsResponse.status);
-          }
-        } catch (robotsErr: any) {
-          robotsError = robotsErr.message || 'Network error';
-          console.log('❌ [LOVABLE TEST] Lovable robots.txt fetch error:', robotsErr);
-        }
-      }
+1. **Dynamic Sitemap Generation** (app/sitemap.ts or pages/sitemap.xml.js):
+   - Generate sitemap.xml automatically from all pages
+   - Include all public routes with proper URLs
+   - Set lastModified dates based on page updates
+   - Use priority: 1.0 for home page, 0.8 for main pages, 0.6 for others
 
-      setTestStatus({
-        testing: false,
-        sitemapResult,
-        robotsResult,
-        sitemapError: sitemapResult === 'error' ? sitemapError : undefined,
-        robotsError: robotsResult === 'error' ? robotsError : undefined
-      });
+2. **Auto-Update on Content Changes**:
+   - Hook into your build process to regenerate sitemap
+   - Include dynamic routes if any exist
+   - Ensure sitemap updates immediately when content is published
 
-      console.log('🧪 [LOVABLE TEST] Test complete:', { 
-        seoagentSitemapWorking, 
-        seoagentRobotsWorking, 
-        sitemapResult, 
-        robotsResult 
-      });
+3. **Robots.txt** (public/robots.txt or dynamic route):
+   - Allow all crawlers: "User-agent: * / Disallow:"
+   - Reference the sitemap: "Sitemap: https://${normalizedDomain}/sitemap.xml"
 
-    } catch (error) {
-      console.error('🧪 [LOVABLE TEST] General test error:', error);
-      setTestStatus({
-        testing: false,
-        sitemapResult: 'error',
-        robotsResult: 'error',
-        sitemapError: 'Test failed to complete',
-        robotsError: 'Test failed to complete'
-      });
-    }
-  };
+4. **SEO Metadata** for all pages:
+   - Proper title tags and meta descriptions
+   - Open Graph tags for social sharing
+   - Canonical URLs to avoid duplicate content
 
-  const lovablePrompt = `Please wire my site to use SEOAgent for sitemap and robots.
+The goal is AUTOMATIC sitemap maintenance - no manual updates needed when content changes.`;
 
-If this project uses the Next.js App Router, add two files exactly as below and redeploy:
+  const sitemapRouteCode = `import { MetadataRoute } from 'next'
 
-app/sitemap.xml/route.ts and app/robots.txt/route.ts (use the full contents I provide).
-
-If App Router isn&apos;t available, then create vercel.json at the repo root with these rewrites and redeploy:
-
-{
-  "rewrites": [
-    { "source": "/sitemap.xml", "destination": "https://seoagent.com/sitemaps/${normalizedDomain}.xml" },
-    { "source": "/robots.txt",  "destination": "https://seoagent.com/robots/${normalizedDomain}.txt" }
-  ]
+export default function sitemap(): MetadataRoute.Sitemap {
+  // Get all your pages/routes automatically
+  const staticPages = [
+    '',
+    '/about',
+    '/contact',
+    '/blog',
+    // Add all your static routes
+  ];
+  
+  // Add dynamic routes if you have them
+  // const dynamicPages = await getDynamicPages(); // Your function to get dynamic routes
+  
+  return staticPages.map((route) => ({
+    url: \`https://${normalizedDomain}\${route}\`,
+    lastModified: new Date().toISOString().split('T')[0], // Update with actual last modified date
+    changeFrequency: route === '' ? 'daily' : 'weekly',
+    priority: route === '' ? 1.0 : route.includes('/blog/') ? 0.6 : 0.8,
+  }));
 }
 
+// Alternative: If using pages router, create pages/sitemap.xml.js:
+/*
+export async function getServerSideProps({ res }) {
+  const sitemap = generateSitemapXML(); // Your sitemap generation function
+  
+  res.setHeader('Content-Type', 'text/xml');
+  res.write(sitemap);
+  res.end();
+  
+  return { props: {} };
+}
 
-Replace ${normalizedDomain} with the live domain. After deploy, confirm:
+export default function Sitemap() {}
+*/`;
 
-https://${normalizedDomain}/sitemap.xml returns the SEOAgent sitemap
+  const robotsRouteCode = `import { MetadataRoute } from 'next'
 
-https://${normalizedDomain}/robots.txt returns the SEOAgent robots
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: '*',
+      allow: '/',
+    },
+    sitemap: \`https://${normalizedDomain}/sitemap.xml\`,
+  }
+}
 
-If verification fails, switch to the code approach in step 1.`;
+// Alternative: Static robots.txt file (create in public/robots.txt):
+/*
+User-agent: *
+Allow: /
 
-  const sitemapRouteCode = `import { NextResponse } from 'next/server';
+Sitemap: https://${normalizedDomain}/sitemap.xml
+*/
+
+// Or dynamic route (app/robots.txt/route.ts):
+/*
+import { NextResponse } from 'next/server';
 
 export async function GET() {
-  try {
-    const sitemapUrl = 'https://seoagent.com/sitemaps/${normalizedDomain}.xml';
-    const response = await fetch(sitemapUrl);
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch sitemap');
-    }
-    
-    const sitemapData = await response.text();
-    
-    return new NextResponse(sitemapData, {
-      headers: {
-        'Content-Type': 'application/xml',
-        'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
-      }
-    });
-  } catch (error) {
-    console.error('Error serving sitemap:', error);
-    return new NextResponse('Sitemap not available', { status: 500 });
-  }
-}`;
+  const robotsTxt = \`User-agent: *
+Allow: /
 
-  const robotsRouteCode = `import { NextResponse } from 'next/server';
+Sitemap: https://${normalizedDomain}/sitemap.xml\`;
 
-export async function GET() {
-  try {
-    const robotsUrl = 'https://seoagent.com/robots/${normalizedDomain}.txt';
-    const response = await fetch(robotsUrl);
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch robots.txt');
-    }
-    
-    const robotsData = await response.text();
-    
-    return new NextResponse(robotsData, {
-      headers: {
-        'Content-Type': 'text/plain',
-        'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
-      }
-    });
-  } catch (error) {
-    console.error('Error serving robots.txt:', error);
-    return new NextResponse('User-agent: *\\nDisallow:', { 
-      headers: { 'Content-Type': 'text/plain' },
-      status: 500 
-    });
-  }
-}`;
+  return new NextResponse(robotsTxt, {
+    headers: {
+      'Content-Type': 'text/plain',
+    },
+  });
+}
+*/`;
 
-  const vercelJsonCode = `{
-  "rewrites": [
-    { "source": "/sitemap.xml", "destination": "https://seoagent.com/sitemaps/${normalizedDomain}.xml" },
-    { "source": "/robots.txt",  "destination": "https://seoagent.com/robots/${normalizedDomain}.txt" }
-  ]
-}`;
+  const seoMetadataCode = `// app/layout.tsx - Add default SEO metadata
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | ${normalizedDomain}',
+    default: 'Your Site Title', // Replace with actual site title
+  },
+  description: 'Your site description for SEO', // Replace with actual description
+  keywords: ['keyword1', 'keyword2', 'keyword3'], // Your target keywords
+  authors: [{ name: 'Your Name' }],
+  creator: 'Your Name',
+  publisher: 'Your Name',
+  metadataBase: new URL(\`https://${normalizedDomain}\`),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: \`https://${normalizedDomain}\`,
+    title: 'Your Site Title',
+    description: 'Your site description for social sharing',
+    siteName: 'Your Site Name',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Your Site Title',
+    description: 'Your site description for Twitter',
+    creator: '@yourtwitterhandle',
+  },
+}
+
+// For individual pages, add specific metadata:
+/*
+export const metadata: Metadata = {
+  title: 'Page Title',
+  description: 'Page description',
+  openGraph: {
+    title: 'Page Title',
+    description: 'Page description',
+  },
+}
+*/`;
 
   return (
     <div className="space-y-6">
@@ -287,13 +184,13 @@ export async function GET() {
             <span className="text-2xl">💖</span>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Lovable Setup Instructions</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Configure SEOAgent sitemap and robots.txt serving</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Lovable SEO Automation Setup</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Configure automatic sitemap generation and SEO optimization</p>
           </div>
         </div>
         
         <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-          Give these instructions to your Lovable agent to set up automatic SEO file serving for <strong>{normalizedDomain}</strong>:
+          Give these instructions to your Lovable agent to set up automatic sitemap generation and SEO optimization for <strong>{normalizedDomain}</strong>:
         </p>
       </div>
 
@@ -335,11 +232,11 @@ export async function GET() {
           <div className="flex items-center justify-center w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-full">
             <span className="text-green-600 dark:text-green-400 font-semibold text-sm">2</span>
           </div>
-          <h4 className="font-medium text-gray-900 dark:text-gray-100">Alternative: Manual File Creation</h4>
+          <h4 className="font-medium text-gray-900 dark:text-gray-100">Code Examples: Sitemap & SEO Implementation</h4>
         </div>
         
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          If Lovable needs the exact file contents, provide these files:
+          If Lovable needs specific code examples, provide these implementations:
         </p>
 
         <div className="space-y-4">
@@ -349,7 +246,7 @@ export async function GET() {
               <div className="flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-gray-500" />
                 <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                  app/sitemap.xml/route.ts
+                  app/sitemap.ts
                 </span>
               </div>
               <button
@@ -380,7 +277,7 @@ export async function GET() {
               <div className="flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-gray-500" />
                 <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                  app/robots.txt/route.ts
+                  app/robots.ts
                 </span>
               </div>
               <button
@@ -405,20 +302,20 @@ export async function GET() {
             </div>
           </div>
 
-          {/* Vercel.json Alternative */}
+          {/* SEO Metadata */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
                 <Settings className="w-4 h-4 text-gray-500" />
                 <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                  vercel.json (if App Router not available)
+                  app/layout.tsx (SEO Metadata)
                 </span>
               </div>
               <button
-                onClick={() => copyToClipboard(vercelJsonCode, 'vercel')}
+                onClick={() => copyToClipboard(seoMetadataCode, 'seo')}
                 className="flex items-center space-x-1 px-2 py-1 text-xs bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
               >
-                {copiedSection === 'vercel' ? (
+                {copiedSection === 'seo' ? (
                   <>
                     <CheckCircle className="w-3 h-3" />
                     <span>Copied</span>
@@ -432,7 +329,7 @@ export async function GET() {
               </button>
             </div>
             <div className="bg-gray-50 dark:bg-gray-900 rounded border p-3 font-mono text-xs text-gray-800 dark:text-gray-200 overflow-x-auto">
-              <pre>{vercelJsonCode}</pre>
+              <pre>{seoMetadataCode}</pre>
             </div>
           </div>
         </div>
@@ -448,7 +345,7 @@ export async function GET() {
         </div>
         
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          After deployment, verify these URLs work correctly:
+          After deployment, verify your sitemap and robots.txt are working correctly:
         </p>
         
         <div className="space-y-2">
@@ -478,112 +375,63 @@ export async function GET() {
         </div>
       </div>
 
-      {/* Step 4: Test Connection */}
+      {/* Step 4: SEO Best Practices */}
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
         <div className="flex items-center space-x-3 mb-4">
           <div className="flex items-center justify-center w-8 h-8 bg-amber-100 dark:bg-amber-900/20 rounded-full">
             <span className="text-amber-600 dark:text-amber-400 font-semibold text-sm">4</span>
           </div>
-          <h4 className="font-medium text-gray-900 dark:text-gray-100">Test SEOAgent Connection</h4>
+          <h4 className="font-medium text-gray-900 dark:text-gray-100">SEO Best Practices Checklist</h4>
         </div>
         
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Test if your deployment successfully serves SEOAgent sitemaps and robots.txt files:
+          Ensure these SEO fundamentals are implemented:
         </p>
 
         <div className="space-y-3">
-          <button
-            onClick={testConnection}
-            disabled={testStatus.testing}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              testStatus.testing
-                ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'
-            }`}
-          >
-            {testStatus.testing ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Testing Connection...</span>
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4" />
-                <span>Test Connection</span>
-              </>
-            )}
-          </button>
-
-          {/* Test Results */}
-          {(testStatus.sitemapResult !== 'pending' || testStatus.robotsResult !== 'pending') && (
-            <div className="space-y-2">
-              {/* Sitemap Result */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Sitemap Test:</span>
-                  <span className="font-mono text-xs text-gray-500">
-                    https://{normalizedDomain}/sitemap.xml
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {testStatus.sitemapResult === 'success' ? (
-                    <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
-                      <Check className="w-4 h-4" />
-                      <span className="text-sm font-medium">Success</span>
-                    </div>
-                  ) : testStatus.sitemapResult === 'error' ? (
-                    <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
-                      <X className="w-4 h-4" />
-                      <span className="text-sm font-medium">Failed</span>
-                    </div>
-                  ) : null}
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">Dynamic Sitemap</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Automatically updates with new pages</div>
               </div>
-
-              {testStatus.sitemapError && (
-                <div className="px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">
-                  {testStatus.sitemapError}
-                </div>
-              )}
-
-              {/* Robots.txt Result */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Robots.txt Test:</span>
-                  <span className="font-mono text-xs text-gray-500">
-                    https://{normalizedDomain}/robots.txt
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {testStatus.robotsResult === 'success' ? (
-                    <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
-                      <Check className="w-4 h-4" />
-                      <span className="text-sm font-medium">Success</span>
-                    </div>
-                  ) : testStatus.robotsResult === 'error' ? (
-                    <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
-                      <X className="w-4 h-4" />
-                      <span className="text-sm font-medium">Failed</span>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              {testStatus.robotsError && (
-                <div className="px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-300">
-                  {testStatus.robotsError}
-                </div>
-              )}
-
-              {/* Success Message */}
-              {testStatus.sitemapResult === 'success' && testStatus.robotsResult === 'success' && (
-                <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-sm text-green-700 dark:text-green-300">
-                  <CheckCircle className="w-4 h-4" />
-                  <span>🎉 Perfect! Both sitemap and robots.txt are serving SEOAgent content correctly.</span>
-                </div>
-              )}
             </div>
-          )}
+            
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">SEO Metadata</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Title, description, Open Graph tags</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">Robots.txt</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">References sitemap, allows crawling</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">Canonical URLs</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Prevents duplicate content issues</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="font-medium text-sm text-blue-900 dark:text-blue-100">Pro Tip</span>
+            </div>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              After implementation, submit your sitemap to Google Search Console and verify all pages are being indexed properly.
+            </p>
+          </div>
         </div>
       </div>
 
