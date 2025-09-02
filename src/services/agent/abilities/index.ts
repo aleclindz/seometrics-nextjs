@@ -11,6 +11,7 @@ import { ContentAbility } from './content-ability';
 import { PerformanceAbility } from './performance-ability';
 import { TechnicalSEOAbility } from './technical-seo-ability';
 import { IdeasAbility } from './ideas-ability';
+import { SVSAbility } from './svs-ability';
 
 export class AbilityRegistry {
   private abilities: BaseAbility[] = [];
