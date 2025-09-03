@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
 
     const strategiesByWebsite = [];
     for (const website of websites || []) {
-      const strategy = await getWebsiteKeywordStrategy(userToken, website.website_token, false);
-      if (strategy) {
+      const strategy = await getWebsiteKeywordStrategy(userToken, website.website_token, false) as any;
+      if (strategy && typeof strategy === 'object' && !strategy.error) {
         strategiesByWebsite.push({
           website_token: website.website_token,
           domain: website.cleaned_domain || website.domain,
@@ -281,7 +281,7 @@ export async function DELETE(request: NextRequest) {
 }
 
 // Helper function to get keyword strategy for a specific website
-async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string, returnResponse = true) {
+async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string, returnResponse = true): Promise<NextResponse | any> {
   try {
     // Get all keywords for this website
     const { data: keywords, error: keywordsError } = await supabase
