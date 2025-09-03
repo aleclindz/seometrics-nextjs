@@ -40,12 +40,13 @@ export default function WebsitePage() {
   });
 
   // Fetch actual setup status
-  const fetchSetupStatus = async () => {
+  const fetchSetupStatus = async (forceRefresh = true) => {
     if (!user?.token) return;
     
     try {
       console.log('🔄 [WEBSITE PAGE] Fetching setup status for domain:', domain);
-      const response = await fetch(`/api/website/setup-status?userToken=${user.token}&domain=${domain}`);
+      const refreshParam = forceRefresh ? '&forceRefresh=true' : '';
+      const response = await fetch(`/api/website/setup-status?userToken=${user.token}&domain=${domain}${refreshParam}`);
       const data = await response.json();
       
       if (data.success && data.data) {

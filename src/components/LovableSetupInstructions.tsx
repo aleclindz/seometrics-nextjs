@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, CheckCircle, ExternalLink, FileText, Settings, RefreshCw, AlertCircle, Check, X } from 'lucide-react';
+import { Copy, CheckCircle, ExternalLink, FileText, Settings, RefreshCw, Check, X } from 'lucide-react';
 
 interface LovableSetupInstructionsProps {
   domain: string;
@@ -10,6 +10,10 @@ interface LovableSetupInstructionsProps {
 
 export default function LovableSetupInstructions({ domain, onComplete }: LovableSetupInstructionsProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [sitemapTestResults, setSitemapTestResults] = useState<{
+    testing: boolean;
+    results: { url: string; status: 'success' | 'error'; message: string; }[] | null;
+  }>({ testing: false, results: null });
 
   const normalizedDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
@@ -21,6 +25,76 @@ export default function LovableSetupInstructions({ domain, onComplete }: Lovable
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
     }
+  };
+
+  const testSitemapSetup = async () => {
+    setSitemapTestResults({ testing: true, results: null });
+    
+    const testUrls = [
+      { url: `https://${normalizedDomain}/sitemap.xml`, type: 'sitemap' },
+      { url: `https://${normalizedDomain}/robots.txt`, type: 'robots' },
+      { url: `https://${normalizedDomain}/sitemap-status.json`, type: 'validation' },
+    ];
+    
+    const results = [];
+    
+    for (const test of testUrls) {
+      try {
+        const response = await fetch(`/api/test-url?url=${encodeURIComponent(test.url)}`, {
+          method: 'GET',
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          let message = `✅ ${test.type.charAt(0).toUpperCase() + test.type.slice(1)} accessible`;
+          
+          // Check for specific content based on type
+          if (test.type === 'sitemap' && data.content) {
+            if (data.content.includes('SEOAgent.com')) {
+              message += ' with SEOAgent attribution';
+            } else {
+              message += ' (no SEOAgent attribution found)';
+            }
+          } else if (test.type === 'robots' && data.content) {
+            if (data.content.includes('sitemap.xml')) {
+              message += ' and references sitemap';
+            } else {
+              message += ' (no sitemap reference found)';
+            }
+          } else if (test.type === 'validation' && data.content) {
+            try {
+              const jsonData = JSON.parse(data.content);
+              if (jsonData.generator === 'seoagent.com') {
+                message += ' with correct SEOAgent status';
+              }
+            } catch (e) {
+              message += ' (invalid JSON format)';
+            }
+          }
+          
+          results.push({
+            url: test.url,
+            status: 'success' as const,
+            message
+          });
+        } else {
+          results.push({
+            url: test.url,
+            status: 'error' as const,
+            message: `❌ ${test.type.charAt(0).toUpperCase() + test.type.slice(1)} not accessible - ${data.error || 'Unknown error'}`
+          });
+        }
+      } catch (error) {
+        results.push({
+          url: test.url,
+          status: 'error' as const,
+          message: `❌ ${test.type.charAt(0).toUpperCase() + test.type.slice(1)} test failed - ${error instanceof Error ? error.message : 'Network error'}`
+        });
+      }
+    }
+    
+    setSitemapTestResults({ testing: false, results });
   };
 
 
@@ -402,11 +476,30 @@ export async function GET() {
 
       {/* Step 3: Verification */}
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="flex items-center justify-center w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-full">
-            <span className="text-purple-600 dark:text-purple-400 font-semibold text-sm">3</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-purple-100 dark:bg-purple-900/20 rounded-full">
+              <span className="text-purple-600 dark:text-purple-400 font-semibold text-sm">3</span>
+            </div>
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">Verify Setup</h4>
           </div>
-          <h4 className="font-medium text-gray-900 dark:text-gray-100">Verify Setup</h4>
+          <button
+            onClick={testSitemapSetup}
+            disabled={sitemapTestResults.testing}
+            className="flex items-center space-x-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-purple-200 dark:border-purple-800"
+          >
+            {sitemapTestResults.testing ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Testing...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                <span>Test Setup</span>
+              </>
+            )}
+          </button>
         </div>
         
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -465,83 +558,45 @@ export async function GET() {
             </div>
           </a>
         </div>
-      </div>
-
-      {/* Step 4: SEO Best Practices */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="flex items-center justify-center w-8 h-8 bg-amber-100 dark:bg-amber-900/20 rounded-full">
-            <span className="text-amber-600 dark:text-amber-400 font-semibold text-sm">4</span>
-          </div>
-          <h4 className="font-medium text-gray-900 dark:text-gray-100">SEO Best Practices Checklist</h4>
-        </div>
         
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Ensure these SEO fundamentals are implemented:
-        </p>
-
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">Dynamic Sitemap</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Automatically updates with new pages</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">SEO Metadata</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Title, description, Open Graph tags</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">Robots.txt</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">References sitemap, allows crawling</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-sm text-gray-900 dark:text-gray-100">Canonical URLs</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Prevents duplicate content issues</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-sm text-blue-900 dark:text-blue-100">SEOAgent Attribution</div>
-                <div className="text-xs text-blue-600 dark:text-blue-300">Generator tag and sitemap comments</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-sm text-blue-900 dark:text-blue-100">Validation Endpoint</div>
-                <div className="text-xs text-blue-600 dark:text-blue-300">/sitemap-status.json for verification</div>
-              </div>
+        {/* Test Results */}
+        {sitemapTestResults.results && (
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border">
+            <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Test Results:</h5>
+            <div className="space-y-2">
+              {sitemapTestResults.results.map((result, index) => (
+                <div
+                  key={index}
+                  className={`flex items-start space-x-3 p-3 rounded-lg border ${
+                    result.status === 'success'
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                  }`}
+                >
+                  {result.status === 'success' ? (
+                    <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <X className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-mono text-gray-600 dark:text-gray-300 truncate">
+                      {result.url}
+                    </div>
+                    <div className={`text-sm mt-1 ${
+                      result.status === 'success'
+                        ? 'text-green-700 dark:text-green-300'
+                        : 'text-red-700 dark:text-red-300'
+                    }`}>
+                      {result.message}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          
-          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="flex items-center space-x-2 mb-2">
-              <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="font-medium text-sm text-blue-900 dark:text-blue-100">Validation Instructions</span>
-            </div>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              After implementation, SEOAgent.com can verify your setup by checking the sitemap-status.json endpoint and looking for the generator meta tag. Submit your sitemap to Google Search Console to ensure proper indexing.
-            </p>
-          </div>
-        </div>
+        )}
       </div>
+
 
       {/* Completion Button */}
       {onComplete && (
