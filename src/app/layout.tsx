@@ -76,11 +76,6 @@ export default function RootLayout({
           `}
         </Script>
         
-        {/* SEOAgent.js */}
-        <Script src="https://seoagent.com/smart.js" strategy="afterInteractive" />
-        <Script id="seoagent-config" strategy="afterInteractive">
-          {`const idv = '6c75fd38-4b80-4a48-be65-66077efb92d9';`}
-        </Script>
       </body>
     </html>
   );

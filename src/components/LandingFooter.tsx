@@ -39,9 +39,7 @@ export default function LandingFooter() {
           <div>
             <h3 className="text-lg font-semibold mb-4">Product</h3>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/autopilot" className="hover:text-white transition-colors">Technical SEO</Link></li>
               <li><Link href="/content-writer" className="hover:text-white transition-colors">Content Writer</Link></li>
-              <li><Link href="/strategy" className="hover:text-white transition-colors">SEO Strategy</Link></li>
               <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
             </ul>
           </div>
