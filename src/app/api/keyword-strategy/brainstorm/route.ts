@@ -259,7 +259,7 @@ export async function GET(request: NextRequest) {
       .order('topic_cluster');
 
     const uniqueClusters = clusters 
-      ? [...new Set(clusters.map(c => c.topic_cluster))]
+      ? Array.from(new Set(clusters.map((c: any) => c.topic_cluster)))
       : [];
 
     return NextResponse.json({
