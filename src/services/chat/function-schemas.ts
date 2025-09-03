@@ -290,22 +290,68 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   'CONTENT_generate_article': {
     schema: {
       name: 'CONTENT_generate_article',
-      description: 'Generate SEO-optimized article content',
+      description: 'Generate SEO-optimized article content using intelligent suggestions from website data',
       parameters: {
         type: 'object',
         properties: {
-          topic: { type: 'string', description: 'Article topic or title' },
-          keywords: { type: 'array', items: { type: 'string' }, description: 'Target keywords for SEO' },
-          word_count: { type: 'integer', description: 'Target word count', default: 1500 }
+          site_url: { type: 'string', description: 'Website URL (optional, will use primary website if not provided)' },
+          specific_topic: { type: 'string', description: 'Specific article topic (optional, will suggest based on keyword opportunities if not provided)' },
+          use_suggestion: { type: 'integer', description: 'Use a specific suggested topic by index (optional)' },
+          article_type: { type: 'string', enum: ['how_to', 'listicle', 'guide', 'faq', 'comparison', 'evergreen', 'blog'], description: 'Type of article to generate' },
+          tone: { type: 'string', enum: ['professional', 'casual', 'technical'], description: 'Writing tone', default: 'professional' }
         },
-        required: ['topic', 'keywords'],
+        required: [],
         additionalProperties: false
       }
     },
     validator: z.object({
-      topic: z.string(),
-      keywords: z.array(z.string()),
-      word_count: z.number().int().min(300).max(5000).optional().default(1500)
+      site_url: z.string().optional(),
+      specific_topic: z.string().optional(),
+      use_suggestion: z.number().int().optional(),
+      article_type: z.enum(['how_to', 'listicle', 'guide', 'faq', 'comparison', 'evergreen', 'blog']).optional().default('blog'),
+      tone: z.enum(['professional', 'casual', 'technical']).optional().default('professional')
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
+  'CONTENT_suggest_ideas': {
+    schema: {
+      name: 'CONTENT_suggest_ideas',
+      description: 'Get intelligent content suggestions based on website keyword performance and opportunities',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional, will use primary website if not provided)' },
+          max_suggestions: { type: 'integer', description: 'Maximum number of suggestions to return', default: 5 }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().optional(),
+      max_suggestions: z.number().int().min(1).max(10).optional().default(5)
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
+  'CONTENT_get_context': {
+    schema: {
+      name: 'CONTENT_get_context',
+      description: 'Get comprehensive content context including CMS info, keywords, and opportunities for a website',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional, will use primary website if not provided)' }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().optional()
     }),
     category: 'content',
     requiresSetup: false
@@ -359,43 +405,41 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   generate_article: {
     schema: {
       name: 'generate_article',
-      description: 'Generate SEO-optimized article content for a website',
+      description: 'Generate SEO-optimized article content using intelligent keyword analysis from website data',
       parameters: {
         type: 'object',
         properties: {
-          topic: { 
-            type: 'string', 
-            description: 'Main topic or title for the article'
-          },
-          target_keywords: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Target keywords to optimize for'
-          },
-          content_type: {
-            type: 'string',
-            enum: ['blog_post', 'landing_page', 'guide'],
-            description: 'Type of content to generate',
-            default: 'blog_post'
-          },
-          word_count: {
-            type: 'integer',
-            minimum: 300,
-            maximum: 5000,
-            description: 'Target word count for the article',
-            default: 1500
-          },
           site_url: {
             type: 'string',
-            format: 'uri',
-            description: 'Website URL for context and publishing'
+            description: 'Website URL (optional, will use primary website if not provided)'
+          },
+          specific_topic: { 
+            type: 'string', 
+            description: 'Specific article topic (optional, will suggest based on keyword opportunities if not provided)'
+          },
+          article_type: {
+            type: 'string',
+            enum: ['how_to', 'listicle', 'guide', 'faq', 'comparison', 'evergreen', 'blog'],
+            description: 'Type of article to generate',
+            default: 'blog'
+          },
+          tone: {
+            type: 'string',
+            enum: ['professional', 'casual', 'technical'],
+            description: 'Writing tone',
+            default: 'professional'
           }
         },
-        required: ['topic'],
+        required: [],
         additionalProperties: false
       }
     },
-    validator: GenerateArticleSchema,
+    validator: z.object({
+      site_url: z.string().optional(),
+      specific_topic: z.string().optional(),
+      article_type: z.enum(['how_to', 'listicle', 'guide', 'faq', 'comparison', 'evergreen', 'blog']).optional().default('blog'),
+      tone: z.enum(['professional', 'casual', 'technical']).optional().default('professional')
+    }),
     category: 'content',
     requiresSetup: false
   },

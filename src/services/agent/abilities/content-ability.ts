@@ -8,24 +8,38 @@
  */
 
 import { BaseAbility, FunctionCallResult } from './base-ability';
+import { ContentIntelligenceService } from '../../content/content-intelligence-service';
 
 export class ContentAbility extends BaseAbility {
   getFunctionNames(): string[] {
     return [
       'generate_article',
       'generate_enhanced_article', // NEW: Enhanced article generation
+      'suggest_content_ideas', // NEW: Intelligent content suggestions
+      'get_content_context', // NEW: Get website content context
       'optimize_content',
       'publish_content',
-      'analyze_content_performance'
+      'analyze_content_performance',
+      // Modern function names (CONTENT_ prefixed)
+      'CONTENT_generate_article',
+      'CONTENT_suggest_ideas',
+      'CONTENT_get_context'
     ];
   }
 
   async executeFunction(name: string, args: any): Promise<FunctionCallResult> {
     switch (name) {
       case 'generate_article':
+      case 'CONTENT_generate_article':
         return await this.generateArticle(args);
       case 'generate_enhanced_article':
         return await this.generateEnhancedArticle(args);
+      case 'suggest_content_ideas':
+      case 'CONTENT_suggest_ideas':
+        return await this.suggestContentIdeas(args);
+      case 'get_content_context':
+      case 'CONTENT_get_context':
+        return await this.getContentContext(args);
       case 'optimize_content':
         return await this.optimizeContent(args);
       case 'publish_content':
@@ -38,66 +52,36 @@ export class ContentAbility extends BaseAbility {
   }
 
   /**
-   * Generate an article based on topic and keywords
+   * Generate an article using smart suggestions (updated for new flow)
    */
   private async generateArticle(args: { 
-    topic: string; 
+    site_url?: string;
+    specific_topic?: string;
+    article_type?: string;
+    tone?: string;
+    // Legacy support
+    topic?: string; 
     target_keywords?: string[]; 
     content_type?: string; 
     word_count?: number; 
-    site_url?: string;
     website_id?: number;
   }): Promise<FunctionCallResult> {
     try {
-      // Get website ID if not provided
-      let websiteId = args.website_id;
-      if (!websiteId && args.site_url) {
-        const websitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
-        if (websitesResponse.success && websitesResponse.sites?.length > 0) {
-          const matchingSite = websitesResponse.sites.find((site: any) => 
-            site.domain === args.site_url || site.domain.includes(args.site_url)
-          );
-          websiteId = matchingSite?.id || websitesResponse.sites[0].id;
-        }
-      }
+      // Handle legacy parameters (backward compatibility)
+      const specificTopic = args.specific_topic || args.topic;
+      const articleType = args.article_type || (args.content_type === 'guide' ? 'guide' : 'blog');
+      const tone = args.tone || 'professional';
 
-      if (!websiteId) {
-        return this.error('Website ID is required. Please specify site_url or website_id parameter.');
-      }
+      // Use the new smart article generation
+      const smartArgs = {
+        site_url: args.site_url,
+        specific_topic: specificTopic,
+        article_type: articleType,
+        tone: tone
+      };
 
-      // First, create an article in the queue
-      const queueResponse = await this.fetchAPI('/api/articles', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: args.topic,
-          userToken: this.userToken,
-          websiteId: websiteId,
-          targetKeywords: args.target_keywords || []
-        })
-      });
+      return await this.generateSmartArticle(smartArgs);
 
-      if (!queueResponse.success) {
-        return this.error(queueResponse.error || 'Failed to create article');
-      }
-
-      const articleId = queueResponse.article.id;
-
-      // Then generate the content
-      const response = await this.fetchAPI('/api/articles/generate', {
-        method: 'POST',
-        body: JSON.stringify({
-          userToken: this.userToken,
-          articleId: articleId,
-          targetKeywords: args.target_keywords || [],
-          contentLength: this.mapWordCountToLength(args.word_count),
-          tone: 'professional',
-          includeImages: true
-        })
-      });
-
-      return response.success ? 
-        this.success(response) :
-        this.error(response.error || 'Article generation failed');
     } catch (error) {
       return this.error('Failed to generate article', error);
     }
@@ -315,6 +299,172 @@ export class ContentAbility extends BaseAbility {
       });
     } catch (error) {
       return this.error('Failed to analyze content performance', error);
+    }
+  }
+
+  /**
+   * Get intelligent content suggestions based on website performance data
+   */
+  private async suggestContentIdeas(args: {
+    site_url?: string;
+    website_id?: number;
+    max_suggestions?: number;
+  }): Promise<FunctionCallResult> {
+    try {
+      // Get site URL from args or user's websites
+      let siteUrl = args.site_url;
+      if (!siteUrl) {
+        const websitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
+        if (websitesResponse.success && websitesResponse.sites?.length > 0) {
+          siteUrl = websitesResponse.sites[0].domain;
+        } else {
+          return this.error('No website found. Please provide site_url parameter.');
+        }
+      }
+
+      if (!siteUrl) {
+        return this.error('Site URL is required but could not be determined.');
+      }
+
+      const intelligenceService = new ContentIntelligenceService();
+      const context = await intelligenceService.getWebsiteContentContext(this.userToken!, siteUrl);
+
+      // Format response for the agent
+      const suggestions = context.topic_suggestions.slice(0, args.max_suggestions || 5);
+      const topKeywords = context.keywords.slice(0, 10);
+
+      return this.success({
+        message: `Found ${suggestions.length} content suggestions based on your website's search performance`,
+        website: context.domain,
+        cms_info: context.cms_info,
+        topic_suggestions: suggestions,
+        keyword_opportunities: topKeywords,
+        content_gaps: context.content_gaps,
+        summary: {
+          total_keywords: context.keywords.length,
+          high_potential_keywords: context.keywords.filter(k => k.potential === 'high').length,
+          cms_connected: !!context.cms_info?.is_connected,
+          suggested_articles: suggestions.length
+        }
+      });
+
+    } catch (error) {
+      return this.error('Failed to get content suggestions', error);
+    }
+  }
+
+  /**
+   * Get comprehensive content context for a website
+   */
+  private async getContentContext(args: {
+    site_url?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      // Get site URL from args or user's websites
+      let siteUrl = args.site_url;
+      if (!siteUrl) {
+        const websitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
+        if (websitesResponse.success && websitesResponse.sites?.length > 0) {
+          siteUrl = websitesResponse.sites[0].domain;
+        } else {
+          return this.error('No website found. Please provide site_url parameter.');
+        }
+      }
+
+      if (!siteUrl) {
+        return this.error('Site URL is required but could not be determined.');
+      }
+
+      const intelligenceService = new ContentIntelligenceService();
+      const context = await intelligenceService.getWebsiteContentContext(this.userToken!, siteUrl);
+
+      return this.success({
+        message: 'Website content context retrieved successfully',
+        context: context,
+        ready_for_content: {
+          has_keywords: context.keywords.length > 0,
+          cms_connected: !!context.cms_info?.is_connected,
+          cms_type: context.cms_info?.type || 'none',
+          opportunities_count: context.keywords.filter(k => k.potential === 'high').length,
+          suggested_topics: context.topic_suggestions.length
+        }
+      });
+
+    } catch (error) {
+      return this.error('Failed to get content context', error);
+    }
+  }
+
+  /**
+   * Enhanced article generation that uses intelligent suggestions
+   */
+  async generateSmartArticle(args: {
+    site_url?: string;
+    specific_topic?: string;
+    use_suggestion?: number; // Index of suggested topic to use
+    article_type?: string;
+    tone?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      // First get content context
+      const contextResult = await this.getContentContext({ site_url: args.site_url });
+      if (!contextResult.success) {
+        return contextResult;
+      }
+
+      const context = contextResult.data.context;
+      let topic = args.specific_topic;
+      let keywords: string[] = [];
+      let articleType = args.article_type || 'blog';
+
+      // If no specific topic provided, use suggestions
+      if (!topic) {
+        if (args.use_suggestion !== undefined && context.topic_suggestions[args.use_suggestion]) {
+          const suggestion = context.topic_suggestions[args.use_suggestion];
+          topic = suggestion.title;
+          keywords = suggestion.keywords;
+          articleType = suggestion.article_type;
+        } else if (context.topic_suggestions.length > 0) {
+          // Use the top suggestion
+          const suggestion = context.topic_suggestions[0];
+          topic = suggestion.title;
+          keywords = suggestion.keywords;
+          articleType = suggestion.article_type;
+        } else {
+          return this.error('No topic provided and no suggestions available. Please provide a specific_topic or ensure your website has keyword data.');
+        }
+      } else {
+        // Find relevant keywords for the provided topic
+        keywords = context.keywords
+          .filter((k: any) => topic!.toLowerCase().includes(k.keyword.toLowerCase()) || k.keyword.toLowerCase().includes(topic!.toLowerCase()))
+          .slice(0, 5)
+          .map((k: any) => k.keyword);
+        
+        if (keywords.length === 0) {
+          keywords = context.keywords.slice(0, 3).map((k: any) => k.keyword);
+        }
+      }
+
+      // Ensure topic is defined at this point
+      if (!topic) {
+        return this.error('Unable to determine article topic. Please provide a specific_topic or ensure your website has keyword data.');
+      }
+
+      // Generate the enhanced article
+      const enhancedArgs = {
+        topic: topic,
+        target_keywords: keywords,
+        site_url: args.site_url,
+        article_type: articleType as any,
+        tone: (args.tone || 'professional') as 'professional' | 'casual' | 'technical',
+        include_citations: true,
+        include_images: true
+      };
+
+      return await this.generateEnhancedArticle(enhancedArgs);
+
+    } catch (error) {
+      return this.error('Failed to generate smart article', error);
     }
   }
 }
