@@ -13,6 +13,7 @@ import { ResearchService, ResearchSource } from './research-service';
 import { ImageGenerationService, GeneratedImage, ImageProvider } from './image-generation-service';
 import { ArticleTemplatesService, ArticleType } from './article-templates-service';
 import { SchemaService } from './schema-service';
+import { getPromptManager } from '../../prompts';
 
 export interface EnhancedArticleRequest {
   title: string;
@@ -231,7 +232,9 @@ RESPONSE FORMAT: Return ONLY valid JSON (no markdown backticks):
           messages: [
             {
               role: 'system',
-              content: `You are an expert SEO content writer specializing in ${params.articleType} articles. You create comprehensive, well-researched content that provides genuine value to readers. Always ground claims in provided sources when citations are required. Output only valid JSON.`
+              content: getPromptManager().getPrompt('content', 'ENHANCED_SEO_CONTENT_WRITER', {
+                articleType: params.articleType
+              })
             },
             { role: 'user', content: prompt }
           ],

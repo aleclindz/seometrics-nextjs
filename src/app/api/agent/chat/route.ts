@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { FunctionCaller } from '@/services/chat/function-caller';
 import { getFunctionSchemas, validateFunctionArgs } from '@/services/chat/function-schemas';
+import { getPromptManager } from '@/prompts';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -753,25 +754,7 @@ async function processOpenAIResponse(
 
 // Build system prompt with setup awareness
 function buildSystemPrompt(userToken: string, selectedSite: string): string {
-  let prompt = `You are SEOAgent, an expert SEO assistant for SEOAgent.com. You help users with:
-
-1. **Google Search Console Integration**: Connect websites, sync performance data, analyze search metrics
-2. **Content Optimization**: Generate SEO articles, analyze content gaps, optimize existing pages
-3. **Technical SEO**: Monitor SEOAgent.js performance, check website health, provide recommendations
-4. **CMS Management**: Connect WordPress, Webflow, and other platforms for content publishing
-5. **Performance Analytics**: Track rankings, traffic, and conversion metrics
-
-**Available Functions**: You have access to powerful functions to help users. When a user asks to do something, use the appropriate function rather than just explaining how to do it.
-
-**Communication Style**: 
-- Be helpful, concise, and action-oriented
-- Offer to perform tasks using functions when appropriate
-- Provide specific, actionable recommendations
-- Use a friendly but professional tone`;
-
-  if (selectedSite) {
-    prompt += `\n\n**Currently Selected Site**: ${selectedSite}`;
-  }
-
-  return prompt;
+  return getPromptManager().getPrompt('agent', 'SIMPLE_SEO_AGENT', {
+    selectedSite: selectedSite ? `\n\n**Currently Selected Site**: ${selectedSite}` : ''
+  });
 }

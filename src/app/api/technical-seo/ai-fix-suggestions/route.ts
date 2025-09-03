@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
+import { getPromptManager } from '@/prompts';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,7 @@ Keep it concise, technical but understandable, and focused on actionable steps.`
       messages: [
         {
           role: 'system',
-          content: 'You are a technical SEO expert who provides clear, actionable fix suggestions for website technical issues. Your responses should be practical and easy to implement.'
+          content: getPromptManager().getPrompt('technical-seo', 'TECHNICAL_SEO_FIX_EXPERT')
         },
         {
           role: 'user',

@@ -1,0 +1,180 @@
+{
+  "version": "1.0.0",
+  "description": "Available template variables for SEOAgent prompts",
+  "last_updated": "2024-01-15T12:00:00Z",
+  
+  "user_context_variables": {
+    "userToken": {
+      "description": "User authentication token",
+      "type": "string",
+      "required": false,
+      "example": "user_abc123"
+    },
+    "selectedSite": {
+      "description": "Currently selected website domain",
+      "type": "string", 
+      "required": false,
+      "example": "example.com",
+      "default": ""
+    },
+    "websiteDomain": {
+      "description": "Target website domain",
+      "type": "string",
+      "required": false,
+      "example": "example.com",
+      "default": "your website"
+    },
+    "websiteDescription": {
+      "description": "Website description or business context",
+      "type": "string",
+      "required": false,
+      "example": "An e-commerce store selling outdoor gear"
+    }
+  },
+  
+  "content_variables": {
+    "title": {
+      "description": "Article or content title",
+      "type": "string",
+      "required": false,
+      "example": "10 Best SEO Strategies for 2024"
+    },
+    "keywords": {
+      "description": "Target keywords array (automatically joined with commas in templates)",
+      "type": "array",
+      "required": false,
+      "example": ["seo strategy", "search optimization", "ranking"]
+    },
+    "articleType": {
+      "description": "Type of article being generated",
+      "type": "string",
+      "enum": ["blog", "guide", "listicle", "how_to", "faq", "comparison", "evergreen"],
+      "required": false,
+      "default": "blog"
+    },
+    "tone": {
+      "description": "Content writing tone",
+      "type": "string",
+      "enum": ["professional", "casual", "technical"],
+      "required": false,
+      "default": "professional"
+    },
+    "contentLength": {
+      "description": "Target content length",
+      "type": "string", 
+      "enum": ["short", "medium", "long"],
+      "required": false,
+      "default": "medium"
+    }
+  },
+  
+  "technical_seo_variables": {
+    "technicalData": {
+      "description": "Technical SEO analysis data (JSON object)",
+      "type": "object",
+      "required": false,
+      "example": "GSC inspection results, sitemap data, etc."
+    },
+    "urlInspections": {
+      "description": "Google Search Console URL inspection results",
+      "type": "string",
+      "required": false,
+      "format": "JSON string or formatted text"
+    },
+    "sitemapStatus": {
+      "description": "Website sitemap status and analysis",
+      "type": "string", 
+      "required": false,
+      "format": "JSON string or formatted text"
+    },
+    "robotsStatus": {
+      "description": "Robots.txt analysis results",
+      "type": "string",
+      "required": false,
+      "format": "JSON string or formatted text"
+    },
+    "schemaStatus": {
+      "description": "Schema markup status and recommendations",
+      "type": "string",
+      "required": false,
+      "format": "JSON string or formatted text"
+    },
+    "analysisType": {
+      "description": "Type of technical analysis being performed",
+      "type": "string",
+      "enum": ["full", "technical", "content", "performance"],
+      "required": false,
+      "default": "full"
+    }
+  },
+  
+  "activity_variables": {
+    "timePeriod": {
+      "description": "Time period for activity summary",
+      "type": "string",
+      "required": false,
+      "example": "today", 
+      "default": "recently"
+    },
+    "totalActivities": {
+      "description": "Total number of SEO activities performed",
+      "type": "number",
+      "required": false,
+      "example": 15
+    },
+    "activityDetails": {
+      "description": "Detailed breakdown of activities performed",
+      "type": "string",
+      "required": false,
+      "format": "Formatted list or summary text"
+    },
+    "websiteStatus": {
+      "description": "Current website setup and status information",
+      "type": "string",
+      "required": false,
+      "format": "Status summary text"
+    },
+    "nextSteps": {
+      "description": "Recommended next steps for the user",
+      "type": "string",
+      "required": false,
+      "format": "Bulleted list of actionable items"
+    }
+  },
+  
+  "setup_variables": {
+    "setupStatus": {
+      "description": "Website setup status for contextual guidance",
+      "type": "string",
+      "required": false,
+      "format": "Formatted setup status with priorities"
+    },
+    "websitesList": {
+      "description": "List of user's connected websites",
+      "type": "string", 
+      "required": false,
+      "format": "Formatted list of websites"
+    },
+    "websiteContext": {
+      "description": "Website-specific context, preferences, and memory",
+      "type": "string",
+      "required": false,
+      "format": "Formatted context information"
+    }
+  },
+  
+  "formatting_helpers": {
+    "contentSpecs": {
+      "description": "Automatically formatted content specifications (combines articleType, tone, contentLength, keywords)",
+      "type": "string",
+      "computed": true,
+      "example": "Article Type: guide\nTone: professional\nLength: medium\nKeywords: seo, optimization"
+    },
+    "websiteContextFormatted": {
+      "description": "Automatically formatted website context information",
+      "type": "string", 
+      "computed": true,
+      "example": "Website: example.com\nDescription: E-commerce outdoor gear store"
+    }
+  }
+}
