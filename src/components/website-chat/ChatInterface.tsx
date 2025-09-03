@@ -48,6 +48,7 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [websiteToken, setWebsiteToken] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,22 +62,45 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
     setIsLoadingHistory(true);
 
     try {
+      // First, resolve domain to websiteToken
+      console.log('[CHAT INIT] Resolving websiteToken for domain:', selectedSite);
+      let lookupToken = selectedSite; // Default fallback
+      
+      try {
+        const tokenResponse = await fetch(`/api/websites/token-lookup?userToken=${userToken}&domain=${encodeURIComponent(selectedSite)}`);
+        
+        if (tokenResponse.ok) {
+          const tokenData = await tokenResponse.json();
+          if (tokenData.success && tokenData.websiteToken) {
+            console.log('[CHAT INIT] Resolved websiteToken:', tokenData.websiteToken);
+            lookupToken = tokenData.websiteToken;
+            setWebsiteToken(tokenData.websiteToken);
+          }
+        }
+      } catch (tokenError) {
+        console.log('[CHAT INIT] Token lookup failed, using domain as fallback:', tokenError);
+      }
+      
       // Try to load existing conversation history for this website
-      const historyResponse = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${encodeURIComponent(selectedSite)}&limit=1`);
+      console.log('[CHAT INIT] Loading conversation history for websiteToken:', lookupToken);
+      const historyResponse = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${encodeURIComponent(lookupToken)}&limit=10`);
       
       if (historyResponse.ok) {
         const historyData = await historyResponse.json();
+        console.log('[CHAT INIT] History response:', historyData);
         
         if (historyData.success && historyData.conversations && historyData.conversations.length > 0) {
           // Found existing conversation - load the most recent one
           const recentConversation = historyData.conversations[0];
           setConversationId(recentConversation.conversation_id);
           
+          console.log('[CHAT INIT] Loading full conversation:', recentConversation.conversation_id);
           // Get full conversation messages
-          const conversationResponse = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${encodeURIComponent(selectedSite)}&conversationId=${recentConversation.conversation_id}`);
+          const conversationResponse = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${encodeURIComponent(lookupToken)}&conversationId=${recentConversation.conversation_id}`);
           
           if (conversationResponse.ok) {
             const conversationData = await conversationResponse.json();
+            console.log('[CHAT INIT] Full conversation data:', conversationData);
             
             if (conversationData.success && conversationData.conversation && conversationData.conversation.messages.length > 0) {
               // Convert database messages to ChatMessage format
@@ -89,6 +113,7 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
                 actionCard: msg.action_card
               }));
               
+              console.log('[CHAT INIT] Loaded messages:', loadedMessages.length);
               setMessages(loadedMessages);
               setIsLoadingHistory(false);
               return; // Exit early - we loaded existing conversation
@@ -97,7 +122,7 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
         }
       }
     } catch (error) {
-      console.error('Error loading conversation history:', error);
+      console.error('[CHAT INIT] Error loading conversation history:', error);
       // Continue with welcome message if history loading fails
     }
 
@@ -200,6 +225,7 @@ What would you like to work on first?`,
           message: input.trim(),
           userToken: userToken,
           selectedSite: selectedSite,
+          websiteToken: websiteToken || selectedSite, // Use resolved websiteToken
           conversationHistory: messages.slice(-10), // Last 10 messages for context
           conversationId: conversationId // Include conversation ID for persistence
         }),
