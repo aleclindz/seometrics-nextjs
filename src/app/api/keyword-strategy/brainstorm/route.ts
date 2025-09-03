@@ -147,14 +147,14 @@ Return only the JSON array, no other text.`;
 
     // Filter out any duplicates that might have slipped through
     if (avoidDuplicates && existingKeywords.length > 0) {
-      generatedKeywords = generatedKeywords.filter(kw => 
+      generatedKeywords = generatedKeywords.filter((kw: any) => 
         !existingKeywords.includes(kw.keyword.toLowerCase())
       );
     }
 
     // Organize by suggested topic clusters
-    const keywordsByCluster = {};
-    generatedKeywords.forEach(kw => {
+    const keywordsByCluster: { [key: string]: any[] } = {};
+    generatedKeywords.forEach((kw: any) => {
       const cluster = kw.suggested_topic_cluster || 'uncategorized';
       if (!keywordsByCluster[cluster]) {
         keywordsByCluster[cluster] = [];
@@ -190,8 +190,8 @@ Return only the JSON array, no other text.`;
           "Create content calendar based on keyword priorities",
           "Start with high-intent commercial keywords for quick wins"
         ],
-        content_opportunities: generatedKeywords.filter(kw => kw.search_intent === 'commercial').length > 0
-          ? `Found ${generatedKeywords.filter(kw => kw.search_intent === 'commercial').length} commercial keywords for revenue-focused content`
+        content_opportunities: generatedKeywords.filter((kw: any) => kw.search_intent === 'commercial').length > 0
+          ? `Found ${generatedKeywords.filter((kw: any) => kw.search_intent === 'commercial').length} commercial keywords for revenue-focused content`
           : "Consider adding more commercial intent keywords for monetization"
       }
     });
