@@ -15,6 +15,7 @@ export class ContentAbility extends BaseAbility {
     return [
       'generate_article',
       'generate_enhanced_article', // NEW: Enhanced article generation
+      'generate_article_with_internal_links', // NEW: Article generation with automatic internal links
       'suggest_content_ideas', // NEW: Intelligent content suggestions
       'get_content_context', // NEW: Get website content context
       'optimize_content',
@@ -22,6 +23,7 @@ export class ContentAbility extends BaseAbility {
       'analyze_content_performance',
       // Modern function names (CONTENT_ prefixed)
       'CONTENT_generate_article',
+      'CONTENT_generate_with_links',
       'CONTENT_suggest_ideas',
       'CONTENT_get_context'
     ];
@@ -34,6 +36,9 @@ export class ContentAbility extends BaseAbility {
         return await this.generateArticle(args);
       case 'generate_enhanced_article':
         return await this.generateEnhancedArticle(args);
+      case 'generate_article_with_internal_links':
+      case 'CONTENT_generate_with_links':
+        return await this.generateArticleWithInternalLinks(args);
       case 'suggest_content_ideas':
       case 'CONTENT_suggest_ideas':
         return await this.suggestContentIdeas(args);
@@ -52,7 +57,7 @@ export class ContentAbility extends BaseAbility {
   }
 
   /**
-   * Generate an article using smart suggestions (updated for new flow)
+   * Generate an article using smart suggestions with automatic internal links (updated for new flow)
    */
   private async generateArticle(args: { 
     site_url?: string;
@@ -72,7 +77,22 @@ export class ContentAbility extends BaseAbility {
       const articleType = args.article_type || (args.content_type === 'guide' ? 'guide' : 'blog');
       const tone = args.tone || 'professional';
 
-      // Use the new smart article generation
+      // Use the new article generation with automatic internal links
+      const internalLinksArgs = {
+        topic: specificTopic || 'Article Topic',
+        site_url: args.site_url,
+        target_keywords: args.target_keywords,
+        article_type: articleType as any,
+        word_count: args.word_count,
+        tone: tone as any
+      };
+
+      // If we have a specific topic, use the internal linking version
+      if (specificTopic) {
+        return await this.generateArticleWithInternalLinks(internalLinksArgs);
+      }
+
+      // Fallback to smart article generation for backward compatibility
       const smartArgs = {
         site_url: args.site_url,
         specific_topic: specificTopic,
@@ -466,5 +486,276 @@ export class ContentAbility extends BaseAbility {
     } catch (error) {
       return this.error('Failed to generate smart article', error);
     }
+  }
+
+  /**
+   * Generate article with automatic internal links based on topic clusters
+   */
+  private async generateArticleWithInternalLinks(args: {
+    topic: string;
+    site_url?: string;
+    website_token?: string;
+    target_keywords?: string[];
+    article_type?: 'blog' | 'guide' | 'faq' | 'comparison' | 'listicle';
+    word_count?: number;
+    tone?: 'professional' | 'casual' | 'technical';
+    topic_cluster?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      if (!args.topic) {
+        return this.error('Topic is required for article generation');
+      }
+
+      if (!args.site_url && !args.website_token) {
+        return this.error('Either site_url or website_token is required');
+      }
+
+      // Step 1: Get keyword strategy to determine topic cluster and find related content
+      const keywordStrategyParams = new URLSearchParams({
+        userToken: this.userToken || '',
+        ...(args.website_token ? { websiteToken: args.website_token } : {}),
+        ...(args.site_url ? { domain: this.cleanDomain(args.site_url) } : {})
+      });
+
+      const keywordStrategyResponse = await this.fetchAPI(`/api/keyword-strategy?${keywordStrategyParams}`);
+      
+      let topicCluster = args.topic_cluster;
+      let relatedKeywords = args.target_keywords || [];
+      let linkableContent: any[] = [];
+
+      if (keywordStrategyResponse.success && keywordStrategyResponse.hasStrategy) {
+        // Find the best matching topic cluster for this article
+        if (!topicCluster) {
+          const clusters = keywordStrategyResponse.topicClusters || [];
+          const matchingCluster = clusters.find((cluster: any) => 
+            cluster.keywords.some((k: any) => 
+              args.topic.toLowerCase().includes(k.keyword.toLowerCase()) ||
+              k.keyword.toLowerCase().includes(args.topic.toLowerCase())
+            )
+          );
+
+          if (matchingCluster) {
+            topicCluster = matchingCluster.name;
+            relatedKeywords = matchingCluster.keywords.slice(0, 5).map((k: any) => k.keyword);
+          }
+        }
+
+        // Get content from this and related clusters for internal linking
+        const clusters = keywordStrategyResponse.topicClusters || [];
+        for (const cluster of clusters) {
+          if (cluster.content && cluster.content.length > 0) {
+            linkableContent = linkableContent.concat(cluster.content.map((content: any) => ({
+              ...content,
+              cluster_name: cluster.name,
+              is_same_cluster: cluster.name === topicCluster,
+              keywords: cluster.keywords.map((k: any) => k.keyword)
+            })));
+          }
+        }
+      }
+
+      // Step 2: Generate the base article content
+      const articleArgs = {
+        topic: args.topic,
+        target_keywords: relatedKeywords.length > 0 ? relatedKeywords : [args.topic],
+        site_url: args.site_url,
+        article_type: args.article_type || 'blog',
+        word_count: args.word_count || 800,
+        tone: args.tone || 'professional'
+      };
+
+      const baseArticleResult = await this.generateEnhancedArticle(articleArgs);
+      
+      if (!baseArticleResult.success) {
+        return baseArticleResult;
+      }
+
+      let articleContent = baseArticleResult.data.article?.content || baseArticleResult.data.content;
+      const articleTitle = baseArticleResult.data.article?.title || args.topic;
+
+      // Step 3: Automatically insert internal links
+      const internalLinksAdded = [];
+
+      if (linkableContent.length > 0 && articleContent) {
+        // Prioritize content from the same topic cluster
+        const sameClusterContent = linkableContent.filter(content => content.is_same_cluster);
+        const relatedClusterContent = linkableContent.filter(content => !content.is_same_cluster);
+        
+        // Combine with same cluster first
+        const prioritizedContent = [...sameClusterContent, ...relatedClusterContent].slice(0, 5);
+
+        for (const linkableItem of prioritizedContent) {
+          if (!linkableItem.article_title || !linkableItem.article_url) continue;
+
+          // Find the best keyword to use as anchor text
+          const anchorKeyword = this.findBestAnchorText(
+            linkableItem.keywords || [],
+            linkableItem.article_title,
+            articleContent
+          );
+
+          if (anchorKeyword) {
+            // Insert the internal link naturally into the content
+            const linkInserted = this.insertInternalLink(
+              articleContent,
+              linkableItem.article_url,
+              anchorKeyword,
+              linkableItem.article_title
+            );
+
+            if (linkInserted.success) {
+              articleContent = linkInserted.content;
+              internalLinksAdded.push({
+                target_url: linkableItem.article_url,
+                anchor_text: anchorKeyword,
+                target_title: linkableItem.article_title,
+                topic_cluster: linkableItem.cluster_name,
+                context: linkInserted.context
+              });
+            }
+          }
+        }
+      }
+
+      // Step 4: Store the article with topic cluster information
+      const enhancedResult = {
+        ...baseArticleResult.data,
+        article: {
+          ...baseArticleResult.data.article,
+          content: articleContent,
+          topic_cluster: topicCluster,
+          target_keywords: relatedKeywords,
+          internal_links_added: internalLinksAdded
+        },
+        content: articleContent,
+        internal_linking: {
+          links_added: internalLinksAdded.length,
+          topic_cluster: topicCluster,
+          linkable_content_found: linkableContent.length,
+          links_by_cluster: internalLinksAdded.reduce((acc: any, link) => {
+            const cluster = link.topic_cluster || 'uncategorized';
+            acc[cluster] = (acc[cluster] || 0) + 1;
+            return acc;
+          }, {}),
+          recommendations: this.generateLinkingRecommendations(internalLinksAdded, linkableContent.length)
+        }
+      };
+
+      // Step 5: If we have an article ID, record the internal links in the database
+      if (enhancedResult.article?.id && internalLinksAdded.length > 0) {
+        for (const link of internalLinksAdded) {
+          try {
+            await this.fetchAPI('/api/keyword-strategy/internal-links', {
+              method: 'POST',
+              body: JSON.stringify({
+                userToken: this.userToken,
+                websiteToken: args.website_token,
+                domain: args.site_url ? this.cleanDomain(args.site_url) : undefined,
+                sourceArticleId: enhancedResult.article.id,
+                targetUrl: link.target_url,
+                anchorText: link.anchor_text,
+                topicCluster: link.topic_cluster,
+                linkContext: link.context
+              })
+            });
+          } catch (error) {
+            console.error('Failed to record internal link:', error);
+            // Don't fail the whole operation if link recording fails
+          }
+        }
+      }
+
+      return this.success({
+        message: `Article generated successfully with ${internalLinksAdded.length} internal links automatically added`,
+        ...enhancedResult
+      });
+
+    } catch (error) {
+      return this.error('Failed to generate article with internal links', error);
+    }
+  }
+
+  // Helper methods for internal linking
+  private cleanDomain(url: string): string {
+    return url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+  }
+
+  private findBestAnchorText(keywords: string[], articleTitle: string, content: string): string | null {
+    // Check if any keywords appear in the content
+    for (const keyword of keywords) {
+      const keywordRegex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      if (keywordRegex.test(content)) {
+        return keyword;
+      }
+    }
+
+    // Fallback to article title if no keywords match
+    const titleWords = articleTitle.toLowerCase().split(' ');
+    for (const word of titleWords) {
+      if (word.length > 3 && content.toLowerCase().includes(word)) {
+        return word;
+      }
+    }
+
+    return null;
+  }
+
+  private insertInternalLink(content: string, targetUrl: string, anchorText: string, targetTitle: string): {
+    success: boolean;
+    content: string;
+    context?: string;
+  } {
+    try {
+      // Find the first occurrence of the anchor text
+      const anchorRegex = new RegExp(`\\b${anchorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      const match = content.match(anchorRegex);
+      
+      if (!match) {
+        return { success: false, content };
+      }
+
+      // Get the context around the match for recording
+      const matchIndex = content.indexOf(match[0]);
+      const contextStart = Math.max(0, matchIndex - 50);
+      const contextEnd = Math.min(content.length, matchIndex + match[0].length + 50);
+      const context = content.substring(contextStart, contextEnd);
+
+      // Create the internal link
+      const internalLink = `[${match[0]}](${targetUrl})`;
+      
+      // Replace the first occurrence
+      const newContent = content.replace(anchorRegex, internalLink);
+
+      return {
+        success: true,
+        content: newContent,
+        context
+      };
+
+    } catch (error) {
+      console.error('Error inserting internal link:', error);
+      return { success: false, content };
+    }
+  }
+
+  private generateLinkingRecommendations(linksAdded: any[], totalLinkableContent: number): string[] {
+    const recommendations = [];
+
+    if (linksAdded.length === 0) {
+      recommendations.push('No internal links were added - consider creating more content in related topic clusters');
+    } else {
+      recommendations.push(`Successfully added ${linksAdded.length} internal links to improve SEO and user experience`);
+      
+      if (totalLinkableContent > linksAdded.length) {
+        recommendations.push(`${totalLinkableContent - linksAdded.length} additional linking opportunities available in other topic clusters`);
+      }
+    }
+
+    if (linksAdded.length > 0) {
+      const clusters = [...new Set(linksAdded.map(l => l.topic_cluster))];
+      recommendations.push(`Links connect to content in ${clusters.length} topic cluster${clusters.length > 1 ? 's' : ''}: ${clusters.join(', ')}`);
+    }
+
+    return recommendations;
   }
 }

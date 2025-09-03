@@ -12,6 +12,7 @@ import { PerformanceAbility } from './performance-ability';
 import { TechnicalSEOAbility } from './technical-seo-ability';
 import { IdeasAbility } from './ideas-ability';
 import { SVSAbility } from './svs-ability';
+import { KeywordStrategyAbility } from './keyword-strategy-ability';
 
 export class AbilityRegistry {
   private abilities: BaseAbility[] = [];
@@ -25,6 +26,7 @@ export class AbilityRegistry {
       new PerformanceAbility(userToken),
       new TechnicalSEOAbility(userToken),
       new IdeasAbility(userToken),
+      new KeywordStrategyAbility(userToken),
     ];
 
     // Build function-to-ability mapping
@@ -103,3 +105,4 @@ export * from './content-ability';
 export * from './performance-ability';
 export * from './technical-seo-ability';
 export * from './ideas-ability';
+export * from './keyword-strategy-ability';
