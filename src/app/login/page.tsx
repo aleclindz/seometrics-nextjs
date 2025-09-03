@@ -8,6 +8,7 @@ import Image from 'next/image'
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -37,7 +38,22 @@ function LoginForm() {
     setLoading(true)
     setError('')
 
+    // Password validation for signup
     if (isSignUp) {
+      // Check password length
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters long')
+        setLoading(false)
+        return
+      }
+      
+      // Check password confirmation
+      if (password !== confirmPassword) {
+        setError('Passwords do not match')
+        setLoading(false)
+        return
+      }
+      
       const { error, needsVerification: needsEmailVerification } = await signUp(email, password)
       
       if (error) {
@@ -51,6 +67,7 @@ function LoginForm() {
         setError('')
         setIsSignUp(false)
         setPassword('')
+        setConfirmPassword('')
       }
     } else {
       const { error } = await signIn(email, password)
@@ -92,6 +109,7 @@ function LoginForm() {
     setVerificationEmail('')
     setEmail('')
     setPassword('')
+    setConfirmPassword('')
     setError('')
   }
 
@@ -219,7 +237,32 @@ function LoginForm() {
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
                 />
               </div>
+              {isSignUp && (
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Password must be at least 8 characters long
+                </p>
+              )}
             </div>
+
+            {isSignUp && (
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Confirm Password
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+                  />
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
@@ -257,6 +300,7 @@ function LoginForm() {
                   setIsSignUp(!isSignUp)
                   setError('')
                   setPassword('')
+                  setConfirmPassword('')
                 }}
                 className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >

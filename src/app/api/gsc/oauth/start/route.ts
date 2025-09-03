@@ -96,8 +96,11 @@ export async function GET(request: NextRequest) {
     console.log('[GSC OAUTH START] Full auth URL:', authUrl);
     console.log('[GSC OAUTH START] Redirect URI being used:', redirectUri);
     
-    // Redirect directly to Google OAuth instead of returning JSON
-    return NextResponse.redirect(authUrl);
+    // Return JSON with auth URL for frontend to handle redirect
+    return NextResponse.json({ 
+      success: true,
+      authUrl: authUrl 
+    });
 
   } catch (error) {
     console.error('[GSC OAUTH START] Unexpected error:', error);
