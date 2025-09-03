@@ -326,10 +326,10 @@ async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string
     }
 
     // Organize data by topic clusters
-    const topicClusters = {};
+    const topicClusters: { [key: string]: any } = {};
     
     // Group keywords by topic cluster
-    (keywords || []).forEach(keyword => {
+    (keywords || []).forEach((keyword: any) => {
       const cluster = keyword.topic_cluster || 'uncategorized';
       if (!topicClusters[cluster]) {
         topicClusters[cluster] = {
@@ -343,7 +343,7 @@ async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string
     });
 
     // Add content to clusters
-    (clusterContent || []).forEach(content => {
+    (clusterContent || []).forEach((content: any) => {
       const cluster = content.topic_cluster;
       if (!topicClusters[cluster]) {
         topicClusters[cluster] = {
@@ -357,7 +357,7 @@ async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string
     });
 
     // Add internal links to clusters  
-    (internalLinks || []).forEach(link => {
+    (internalLinks || []).forEach((link: any) => {
       if (link.topic_cluster) {
         const cluster = link.topic_cluster;
         if (topicClusters[cluster]) {

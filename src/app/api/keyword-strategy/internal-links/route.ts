@@ -56,9 +56,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === 'opportunities') {
-      return await getInternalLinkOpportunities(targetWebsiteToken, topicCluster);
+      return await getInternalLinkOpportunities(targetWebsiteToken, topicCluster || undefined);
     } else {
-      return await getExistingInternalLinks(targetWebsiteToken, topicCluster);
+      return await getExistingInternalLinks(targetWebsiteToken, topicCluster || undefined);
     }
 
   } catch (error) {
@@ -244,8 +244,8 @@ async function getInternalLinkOpportunities(websiteToken: string, topicCluster?:
     }
 
     // Group opportunities by topic cluster for better organization
-    const opportunitiesByCluster = {};
-    (opportunities || []).forEach(opp => {
+    const opportunitiesByCluster: { [key: string]: any[] } = {};
+    (opportunities || []).forEach((opp: any) => {
       const cluster = opp.topic_cluster || 'uncategorized';
       if (!opportunitiesByCluster[cluster]) {
         opportunitiesByCluster[cluster] = [];
@@ -301,8 +301,8 @@ async function getExistingInternalLinks(websiteToken: string, topicCluster?: str
     }
 
     // Get statistics
-    const linksByCluster = {};
-    (links || []).forEach(link => {
+    const linksByCluster: { [key: string]: any[] } = {};
+    (links || []).forEach((link: any) => {
       const cluster = link.topic_cluster || 'uncategorized';
       if (!linksByCluster[cluster]) {
         linksByCluster[cluster] = [];

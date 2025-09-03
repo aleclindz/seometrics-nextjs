@@ -558,8 +558,9 @@ export class KeywordStrategyAbility extends BaseAbility {
       // Filter by topic cluster if specified
       let targetClusters = strategy.topic_clusters;
       if (args.topic_cluster) {
+        const clusterName = args.topic_cluster.toLowerCase();
         targetClusters = targetClusters.filter((c: any) => 
-          c.name.toLowerCase() === args.topic_cluster.toLowerCase()
+          c.name.toLowerCase() === clusterName
         );
       }
 

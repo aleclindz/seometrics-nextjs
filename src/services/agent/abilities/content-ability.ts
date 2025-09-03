@@ -752,7 +752,7 @@ export class ContentAbility extends BaseAbility {
     }
 
     if (linksAdded.length > 0) {
-      const clusters = [...new Set(linksAdded.map(l => l.topic_cluster))];
+      const clusters = Array.from(new Set(linksAdded.map(l => l.topic_cluster)));
       recommendations.push(`Links connect to content in ${clusters.length} topic cluster${clusters.length > 1 ? 's' : ''}: ${clusters.join(', ')}`);
     }
 
