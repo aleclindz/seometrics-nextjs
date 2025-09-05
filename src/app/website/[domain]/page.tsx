@@ -42,52 +42,53 @@ export default function WebsitePage() {
   // Performance data state
   const [performanceData, setPerformanceData] = useState({
     total: { impressions: 0, clicks: 0, ctr: 0, position: 0 },
-    topQueries: [],
-    topPages: [],
-    referrers: [],
+    topQueries: [] as any[],
+    topPages: [] as any[],
+    referrers: [] as any[],
     hasData: false,
     isLoading: true,
-    error: null,
-    lastUpdated: null
+    error: null as string | null,
+    lastUpdated: null as Date | null,
+    message: '' as string
   });
 
   // Technical SEO data state
   const [technicalData, setTechnicalData] = useState({
     overallScore: 0,
-    schemaMarkup: { count: 0, status: 'unknown' },
-    altTags: { count: 0, status: 'unknown' },
-    metaTags: { count: 0, status: 'unknown' },
-    sitemapStatus: 'unknown',
-    robotsStatus: 'unknown',
-    llmsTxtStatus: 'unknown',
+    schemaMarkup: { count: 0, status: 'unknown' as string },
+    altTags: { count: 0, status: 'unknown' as string },
+    metaTags: { count: 0, status: 'unknown' as string },
+    sitemapStatus: 'unknown' as string,
+    robotsStatus: 'unknown' as string,
+    llmsTxtStatus: 'unknown' as string,
     setupStatuses: {
-      gsc: 'none',
-      seoagentjs: 'inactive',
-      cms: 'none',
-      hosting: 'none'
+      gsc: 'none' as string,
+      seoagentjs: 'inactive' as string,
+      cms: 'none' as string,
+      hosting: 'none' as string
     },
     hasData: false,
     isLoading: true,
-    error: null,
-    lastUpdated: null
+    error: null as string | null,
+    lastUpdated: null as Date | null
   });
 
   // Content and Strategy data state
   const [contentData, setContentData] = useState({
-    internalLinks: { suggested: 0, applied: 0, pending: 0, status: 'no_data' },
-    semanticVisibility: { score: 0, trend: '', status: 'no_data' },
+    internalLinks: { suggested: 0, applied: 0, pending: 0, status: 'no_data' as string },
+    semanticVisibility: { score: 0, trend: '', status: 'no_data' as string },
     hasData: false,
     isLoading: true,
-    error: null,
+    error: null as string | null,
     message: ''
   });
 
   const [strategyData, setStrategyData] = useState({
-    keywords: { tracked: 0, clusters: 0, opportunities: 0, topKeywords: [], status: 'no_data' },
-    opportunities: { quickWins: 0, contentGaps: 0, technicalIssues: 0, items: [], status: 'no_data' },
+    keywords: { tracked: 0, clusters: 0, opportunities: 0, topKeywords: [] as any[], status: 'no_data' as string },
+    opportunities: { quickWins: 0, contentGaps: 0, technicalIssues: 0, items: [] as any[], status: 'no_data' as string },
     hasData: false,
     isLoading: true,
-    error: null,
+    error: null as string | null,
     message: ''
   });
 
@@ -362,7 +363,7 @@ export default function WebsitePage() {
     fetchTechnicalData();
     fetchContentData();
     fetchStrategyData();
-  }, [user?.token, domain]);
+  }, [user?.token, domain]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close dropdown when clicking outside
   useEffect(() => {

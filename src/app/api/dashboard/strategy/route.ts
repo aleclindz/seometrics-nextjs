@@ -24,15 +24,15 @@ export async function GET(request: NextRequest) {
         tracked: 0,
         clusters: 0,
         opportunities: 0,
-        topKeywords: [],
-        status: 'no_data'
+        topKeywords: [] as any[],
+        status: 'no_data' as string
       },
       opportunities: {
         quickWins: 0,
         contentGaps: 0,
         technicalIssues: 0,
-        items: [],
-        status: 'no_data'
+        items: [] as any[],
+        status: 'no_data' as string
       },
       hasData: false,
       lastUpdated: new Date(),
