@@ -263,8 +263,13 @@ export default function WebsitePage() {
           const result = await response.json();
           if (result.success) {
             console.log('✅ [WEBSITE PAGE] Setup status successfully persisted to database');
+            // Optionally refresh setup status from server after a brief delay to ensure consistency
+            setTimeout(() => {
+              fetchSetupStatus(true);
+            }, 2000);
           } else {
             console.error('❌ [WEBSITE PAGE] Failed to persist setup status:', result.error);
+            // You could show a toast notification here to inform the user of the error
           }
         } catch (error) {
           console.error('❌ [WEBSITE PAGE] Error persisting setup status:', error);

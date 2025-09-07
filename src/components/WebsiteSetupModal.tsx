@@ -878,9 +878,19 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   {hostConnections.some(conn => conn.host_type === 'lovable') ? (
                     <LovableSetupInstructions 
                       domain={website.url}
-                      onComplete={() => {
-                        // Refresh connections to update status
-                        fetchHostConnections();
+                      onComplete={async () => {
+                        try {
+                          console.log('🎉 [SETUP MODAL] Lovable setup completed');
+                          // Update parent status immediately
+                          onStatusUpdate?.({ hostStatus: 'connected' });
+                          // Also refresh connections to sync local state
+                          await fetchHostConnections();
+                          console.log('✅ [SETUP MODAL] Lovable setup completion handlers executed successfully');
+                        } catch (error) {
+                          console.error('❌ [SETUP MODAL] Error in Lovable setup completion:', error);
+                          // Still try to update status even if refresh fails
+                          onStatusUpdate?.({ hostStatus: 'connected' });
+                        }
                       }}
                     />
                   ) : (

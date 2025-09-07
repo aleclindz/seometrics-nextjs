@@ -66,53 +66,6 @@ async function detectSEOAgentStatus(domain: string, cleanedDomain?: string): Pro
   }
 }
 
-// Helper function to check CMS connections
-async function checkCMSStatus(userToken: string): Promise<string> {
-  try {
-    const { data, error } = await supabase
-      .from('cms_connections')
-      .select('id')
-      .eq('user_token', userToken)
-      .eq('is_active', true)
-      .limit(1);
-    
-    if (error) {
-      console.log('[SETUP STATUS] CMS connections table not accessible:', error);
-      return 'none';
-    }
-    
-    return data && data.length > 0 ? 'connected' : 'none';
-  } catch (error) {
-    console.log('[SETUP STATUS] Error checking CMS status:', error);
-    return 'none';
-  }
-}
-
-// Helper function to check hosting connections
-async function checkHostingStatus(userToken: string): Promise<string> {
-  try {
-    const { data, error } = await supabase
-      .from('host_connections')
-      .select('deployment_status')
-      .eq('user_token', userToken)
-      .limit(10); // Get up to 10 connections to check their statuses
-    
-    if (error) {
-      console.log('[SETUP STATUS] Host connections table not accessible:', error);
-      return 'none';
-    }
-    
-    // Check if any connection has an active deployment
-    const hasActiveDeployment = data && data.some((conn: any) => 
-      conn.deployment_status === 'active'
-    );
-    
-    return hasActiveDeployment ? 'connected' : 'none';
-  } catch (error) {
-    console.log('[SETUP STATUS] Error checking hosting status:', error);
-    return 'none';
-  }
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -190,11 +143,49 @@ export async function GET(request: NextRequest) {
       // Use cleaned_domain to avoid sc-domain: prefix issues
       seoagentjsStatus = await detectSEOAgentStatus(website.domain, website.cleaned_domain);
       
-      // Refresh CMS status
-      cmsStatus = await checkCMSStatus(userToken);
+      // Refresh CMS status by checking cms_connections table
+      try {
+        const { data: cmsConnections, error: cmsError } = await supabase
+          .from('cms_connections')
+          .select('id, status, is_active')
+          .eq('user_token', userToken)
+          .eq('is_active', true);
+
+        if (!cmsError && cmsConnections && cmsConnections.length > 0) {
+          // Check if any connection has active status
+          const hasActiveConnection = cmsConnections.some(conn => conn.status === 'active');
+          cmsStatus = hasActiveConnection ? 'connected' : 'none';
+          console.log('[SETUP STATUS] CMS status refreshed:', cmsStatus, 'from', cmsConnections.length, 'connections');
+        } else {
+          cmsStatus = 'none';
+          console.log('[SETUP STATUS] No active CMS connections found');
+        }
+      } catch (cmsRefreshError) {
+        console.log('[SETUP STATUS] Error refreshing CMS status:', cmsRefreshError);
+        cmsStatus = website.cms_status || 'none'; // Fallback to cached value
+      }
       
-      // Refresh hosting status  
-      hostingStatus = await checkHostingStatus(userToken);
+      // Refresh hosting status by checking host_connections table
+      try {
+        const { data: hostConnections, error: hostError } = await supabase
+          .from('host_connections')
+          .select('id, deployment_status, is_active')
+          .eq('user_token', userToken)
+          .eq('is_active', true);
+
+        if (!hostError && hostConnections && hostConnections.length > 0) {
+          // Check if any connection has active deployment
+          const hasActiveDeployment = hostConnections.some(conn => conn.deployment_status === 'active');
+          hostingStatus = hasActiveDeployment ? 'connected' : 'none';
+          console.log('[SETUP STATUS] Hosting status refreshed:', hostingStatus, 'from', hostConnections.length, 'connections');
+        } else {
+          hostingStatus = 'none';
+          console.log('[SETUP STATUS] No active host connections found');
+        }
+      } catch (hostRefreshError) {
+        console.log('[SETUP STATUS] Error refreshing hosting status:', hostRefreshError);
+        hostingStatus = website.hosting_status || website.host_status || 'none'; // Fallback to cached value
+      }
 
       // Update the website record with refreshed statuses
       try {
