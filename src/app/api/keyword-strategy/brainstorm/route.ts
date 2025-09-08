@@ -12,6 +12,8 @@ const supabase = createClient(
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
+  // Guardrail to avoid long hangs within serverless limits
+  timeout: 25000
 });
 
 export async function POST(request: NextRequest) {

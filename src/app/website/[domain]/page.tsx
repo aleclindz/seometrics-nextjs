@@ -988,7 +988,7 @@ export default function WebsitePage() {
                         </div>
                         <div className="text-xs text-gray-500">
                           How we calculate opportunities:
-                          <br />• Quick Wins: GSC keywords ranking #4–10 with impressions > 50 (if GSC data exists)
+                          <br />• Quick Wins: GSC keywords ranking #4–10 with impressions &gt; 50 (if GSC data exists)
                           <br />• Content Gaps: Clusters with tracked keywords but no associated content
                           <br />• Technical: Issues surfaced by technical SEO checks (if available)
                         </div>

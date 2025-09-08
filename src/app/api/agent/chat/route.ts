@@ -234,6 +234,7 @@ export async function POST(request: NextRequest) {
       } as any);
 
       // Then execute all tool calls and add responses
+      const executedToolCalls: Array<{ name: string; arguments: any; id: string } > = [];
       await Promise.all(messageContent.tool_calls.map(async (toolCall) => {
         if (toolCall.type !== 'function') return;
         
@@ -268,6 +269,7 @@ export async function POST(request: NextRequest) {
         }
         
         functionArgs = validation.data;
+        executedToolCalls.push({ name: functionName, arguments: functionArgs, id: toolCall.id });
 
         // Execute the function
         try {
@@ -292,6 +294,30 @@ export async function POST(request: NextRequest) {
           content: JSON.stringify(toolResults[toolCall.id])
         } as any);
       });
+
+      // Short-circuit to avoid a second LLM round-trip and Vercel timeouts
+      const summary = buildToolSummary(executedToolCalls, toolResults);
+      const immediateResponse = {
+        content: summary,
+        // Provide a single function_call so activity logging works
+        function_call: {
+          name: executedToolCalls[0]?.name || 'executed_function',
+          arguments: JSON.stringify(executedToolCalls[0]?.arguments || {})
+        },
+        toolResults,
+        steps: guard
+      };
+      const processedResponse = await processOpenAIResponse(
+        immediateResponse,
+        userToken,
+        selectedSite,
+        {
+          conversationId,
+          websiteToken,
+          messageOrder: assistantMessageOrder
+        }
+      );
+      return NextResponse.json(processedResponse);
     }
 
     // Final response after max steps
@@ -786,4 +812,33 @@ function buildSystemPrompt(userToken: string, selectedSite: string): string {
   return getPromptManager().getPrompt('agent', 'SIMPLE_SEO_AGENT', {
     selectedSite: selectedSite ? `\n\n**Currently Selected Site**: ${selectedSite}` : ''
   });
+}
+
+// Build a concise, human-readable summary of executed tool calls
+function buildToolSummary(executed: Array<{ name: string; arguments: any; id: string }>, results: Record<string, any>): string {
+  if (!executed || executed.length === 0) {
+    return "I've completed the requested action.";
+  }
+
+  const first = executed[0];
+  const res = Object.values(results)[0];
+
+  if (first.name === 'KEYWORDS_brainstorm' || first.name === 'brainstorm_keywords') {
+    const count = res?.data?.generated_keywords?.length || res?.generated_keywords?.length || 0;
+    return `✨ Generated ${count} keyword ideas. I can add selected ones to your strategy — just say "add keywords".`;
+  }
+  if (first.name === 'KEYWORDS_add_keywords' || first.name === 'update_keyword_strategy') {
+    const added = res?.data?.added || res?.summary?.keywords_added || 0;
+    return `✅ Added ${added} keywords to your strategy. Check the Strategy tab for updates.`;
+  }
+
+  // Generic fallback
+  if (res && typeof res === 'object') {
+    if (res.success === false || res.error) {
+      return `⚠️ The tool reported an error: ${res.error || 'Unknown error'}`;
+    }
+    return `✅ Completed: ${first.name.replace(/_/g, ' ')}`;
+  }
+
+  return `✅ Completed: ${first.name.replace(/_/g, ' ')}`;
 }
