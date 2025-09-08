@@ -441,18 +441,20 @@ What would you like to work on first?`,
                     {message.functionCall.result.success ? 'Success' : 'Error'}
                   </Badge>
                 </div>
-                {message.functionCall.result.success && message.functionCall.name.includes('brainstorm') ? (
+                {message.functionCall?.result?.success && message.functionCall?.name?.includes('brainstorm') ? (
                   <div className="text-sm text-gray-600">
                     Generated keyword ideas. <button className="underline" onClick={() => openBrainstormModal(
-                      message.functionCall.result.data?.generated_keywords || message.functionCall.result.generated_keywords || []
+                      (message.functionCall?.result?.data?.generated_keywords as any[]) ||
+                      (message.functionCall?.result?.generated_keywords as any[]) ||
+                      []
                     )}>View details</button>
                   </div>
                 ) : (
-                  message.functionCall.result.success && message.functionCall.result.data && (
+                  message.functionCall?.result?.success && message.functionCall?.result?.data && (
                     <div className="text-sm text-gray-600">
-                      {typeof message.functionCall.result.data === 'string' 
-                        ? message.functionCall.result.data
-                        : JSON.stringify(message.functionCall.result.data, null, 2)
+                      {typeof message.functionCall?.result?.data === 'string' 
+                        ? message.functionCall?.result?.data
+                        : JSON.stringify(message.functionCall?.result?.data, null, 2)
                       }
                     </div>
                   )
