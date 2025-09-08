@@ -169,14 +169,14 @@ export default function WebsitePage() {
     }
   };
 
-  // Fetch actual setup status
-  const fetchSetupStatus = async (forceRefresh = true) => {
+  // Load initial setup status from database only (no API checking)
+  const loadInitialSetupStatus = async () => {
     if (!user?.token) return;
     
     try {
-      console.log('🔄 [WEBSITE PAGE] Fetching setup status for domain:', domain);
-      const refreshParam = forceRefresh ? '&forceRefresh=true' : '';
-      const response = await fetch(`/api/website/setup-status?userToken=${user.token}&domain=${domain}${refreshParam}`);
+      console.log('🔄 [WEBSITE PAGE] Loading initial setup status from database for domain:', domain);
+      // Only fetch from database, don't force refresh which triggers API checks
+      const response = await fetch(`/api/website/setup-status?userToken=${user.token}&domain=${domain}`);
       const data = await response.json();
       
       if (data.success && data.data) {
@@ -189,10 +189,10 @@ export default function WebsitePage() {
           hostingConnected: statusData.hostingStatus === 'connected',
           progress: statusData.setupProgress || 0
         });
-        console.log('✅ [WEBSITE PAGE] Setup status updated:', statusData);
+        console.log('✅ [WEBSITE PAGE] Initial setup status loaded:', statusData);
       }
     } catch (error) {
-      console.error('❌ [WEBSITE PAGE] Error fetching setup status:', error);
+      console.error('❌ [WEBSITE PAGE] Error loading initial setup status:', error);
     }
   };
 
@@ -362,7 +362,7 @@ export default function WebsitePage() {
   };
 
   useEffect(() => {
-    fetchSetupStatus();
+    loadInitialSetupStatus(); // Load from database only, no API checking
     fetchUserWebsites();
     fetchPerformanceData();
     fetchTechnicalData();

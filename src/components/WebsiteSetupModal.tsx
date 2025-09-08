@@ -94,12 +94,9 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
 
   useEffect(() => {
     if (isOpen) {
-      // Load data for all tabs when modal opens
-      checkGSCStatus();
-      fetchCMSConnections();
-      fetchHostConnections();
+      // Only generate install code and set initial tab when modal opens
+      // Don't automatically check statuses - user can manually refresh
       generateSmartJSCode();
-      checkSmartJSStatus(); // Check SEOAgent.js installation immediately
       
       // Set initial tab based on what needs setup
       if (website.gscStatus !== 'connected') {
@@ -508,14 +505,31 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                 {website.name}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  // Manually refresh all connection statuses
+                  checkGSCStatus();
+                  fetchCMSConnections();
+                  fetchHostConnections();
+                  checkSmartJSStatus();
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh All
+              </button>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
           
         </div>

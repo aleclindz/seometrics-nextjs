@@ -163,11 +163,18 @@ export async function POST(request: NextRequest) {
     // Build system prompt
     const systemPrompt = await buildSystemPrompt(userToken, selectedSite);
     
-    // Build messages array
+    // Build messages array - filter out any messages with empty content
+    const conversationMessages = (conversationHistory?.slice(-10) || [])
+      .filter((msg: any) => msg.content && msg.content.trim())
+      .map((msg: any) => ({
+        role: msg.role,
+        content: msg.content.trim()
+      }));
+    
     const messages = [
       { role: 'system', content: systemPrompt },
-      ...(conversationHistory?.slice(-10) || []),
-      { role: 'user', content: message }
+      ...conversationMessages,
+      { role: 'user', content: message.trim() }
     ];
 
     // Get function schemas

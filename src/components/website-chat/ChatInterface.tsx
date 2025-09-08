@@ -325,72 +325,71 @@ What would you like to work on first?`,
     const isUser = message.role === 'user';
     
     return (
-      <div
-        key={message.id}
-        className={`flex gap-4 ${isUser ? 'justify-end' : 'justify-start'} mb-6`}
-      >
-        {!isUser && (
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
-            <Bot className="h-5 w-5 text-white" />
-          </div>
-        )}
-        
-        <div className={`max-w-[85%] ${isUser ? 'order-first' : ''}`}>
-          <div
-            className={`px-4 py-3 rounded-2xl shadow-sm ${
-              isUser
-                ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white ml-auto'
-                : 'bg-white border border-gray-100'
-            }`}
-          >
-            {isUser ? (
-              <div className="whitespace-pre-wrap">{message.content}</div>
-            ) : (
-              <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-strong:text-gray-900 prose-p:text-gray-900 prose-li:text-gray-900">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
-              </div>
-            )}
-          </div>
-          
-          {/* Action Card */}
-          {message.actionCard && renderActionCard(message.actionCard)}
-          
-          {/* Function Call Result */}
-          {message.functionCall && message.functionCall.result && (
-            <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="h-4 w-4 text-blue-500" />
-                <span className="font-medium text-sm text-gray-700">
-                  {message.functionCall.name.replace(/_/g, ' ')}
-                </span>
-                <Badge variant={message.functionCall.result.success ? 'default' : 'destructive'}>
-                  {message.functionCall.result.success ? 'Success' : 'Error'}
-                </Badge>
-              </div>
-              
-              {message.functionCall.result.success && message.functionCall.result.data && (
-                <div className="text-sm text-gray-600">
-                  {typeof message.functionCall.result.data === 'string' 
-                    ? message.functionCall.result.data
-                    : JSON.stringify(message.functionCall.result.data, null, 2)
-                  }
-                </div>
-              )}
+      <div key={message.id} className={`mb-4 ${isUser ? 'ml-12' : 'mr-12'}`}>
+        <div className="flex gap-3 items-start">
+          {/* Avatar */}
+          {!isUser && (
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <Bot className="h-4 w-4 text-white" />
+            </div>
+          )}
+          {isUser && (
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+              <User className="h-4 w-4 text-gray-600" />
             </div>
           )}
           
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs text-gray-400">
+          {/* Message Content */}
+          <div className="flex-1 min-w-0">
+            {isUser ? (
+              /* User message with container background */
+              <div className="bg-gray-100 rounded-lg px-3 py-2 inline-block max-w-full">
+                <div className="whitespace-pre-wrap text-gray-900">{message.content}</div>
+              </div>
+            ) : (
+              /* Assistant message without container background */
+              <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-strong:text-gray-900 prose-p:text-gray-900 prose-li:text-gray-900 prose-p:leading-relaxed">
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
+            )}
+            
+            {/* Action Card */}
+            {message.actionCard && (
+              <div className="mt-3">
+                {renderActionCard(message.actionCard)}
+              </div>
+            )}
+            
+            {/* Function Call Result */}
+            {message.functionCall && message.functionCall.result && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="h-4 w-4 text-blue-500" />
+                  <span className="font-medium text-sm text-gray-700">
+                    {message.functionCall.name.replace(/_/g, ' ')}
+                  </span>
+                  <Badge variant={message.functionCall.result.success ? 'default' : 'destructive'}>
+                    {message.functionCall.result.success ? 'Success' : 'Error'}
+                  </Badge>
+                </div>
+                
+                {message.functionCall.result.success && message.functionCall.result.data && (
+                  <div className="text-sm text-gray-600">
+                    {typeof message.functionCall.result.data === 'string' 
+                      ? message.functionCall.result.data
+                      : JSON.stringify(message.functionCall.result.data, null, 2)
+                    }
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Timestamp */}
+            <div className="text-xs text-gray-400 mt-1">
               {message.timestamp.toLocaleTimeString()}
-            </span>
+            </div>
           </div>
         </div>
-        
-        {isUser && (
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shadow-sm">
-            <User className="h-5 w-5 text-gray-600" />
-          </div>
-        )}
       </div>
     );
   };
@@ -401,14 +400,16 @@ What would you like to work on first?`,
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 min-h-0">
           {isLoadingHistory && (
-            <div className="flex gap-4 justify-start mb-6">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
-                <Bot className="h-5 w-5 text-white" />
-              </div>
-              <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl shadow-sm">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-gray-500">Loading conversation history...</span>
+            <div className="mb-4 mr-12">
+              <div className="flex gap-3 items-start">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="text-gray-500">Loading conversation history...</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -417,14 +418,16 @@ What would you like to work on first?`,
           {!isLoadingHistory && messages.map(renderMessage)}
           
           {isLoading && (
-            <div className="flex gap-4 justify-start mb-6">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
-                <Bot className="h-5 w-5 text-white" />
-              </div>
-              <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl shadow-sm">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-gray-500">Thinking...</span>
+            <div className="mb-4 mr-12">
+              <div className="flex gap-3 items-start">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="text-gray-500">Thinking...</span>
+                  </div>
                 </div>
               </div>
             </div>
