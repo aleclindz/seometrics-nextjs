@@ -49,6 +49,9 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [websiteToken, setWebsiteToken] = useState<string | null>(null);
+  const [brainstormModalOpen, setBrainstormModalOpen] = useState(false);
+  const [brainstormIdeas, setBrainstormIdeas] = useState<any[]>([]);
+  const [selectedIdeas, setSelectedIdeas] = useState<Record<number, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -329,6 +332,64 @@ What would you like to work on first?`,
     }
   };
 
+  // Brainstorm Details Modal helpers
+  const openBrainstormModal = (ideas: any[]) => {
+    setBrainstormIdeas(ideas || []);
+    const initial: Record<number, boolean> = {};
+    ideas?.forEach((_: any, idx: number) => { initial[idx] = true; });
+    setSelectedIdeas(initial);
+    setBrainstormModalOpen(true);
+  };
+
+  const closeBrainstormModal = () => {
+    setBrainstormModalOpen(false);
+  };
+
+  const copyBrainstormToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(brainstormIdeas, null, 2));
+    } catch (e) {
+      console.error('Copy failed:', e);
+    }
+  };
+
+  const saveSelectedKeywords = async () => {
+    const selected = brainstormIdeas
+      .map((k, idx) => ({ k, idx }))
+      .filter(({ idx }) => selectedIdeas[idx])
+      .map(({ k }) => ({
+        keyword: k.keyword,
+        keyword_type: 'long_tail',
+        topic_cluster: k.suggested_topic_cluster || undefined
+      }));
+
+    if (selected.length === 0) {
+      setBrainstormModalOpen(false);
+      return;
+    }
+
+    try {
+      const resp = await fetch('/api/keyword-strategy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          domain: selectedSite,
+          keywords: selected
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        throw new Error(data.error || 'Failed to save keywords');
+      }
+      // Notify listeners (Strategy tab) and close
+      window.dispatchEvent(new CustomEvent('seoagent:strategy-updated', { detail: { site: selectedSite } }));
+      setBrainstormModalOpen(false);
+    } catch (e) {
+      console.error('Failed to save keywords:', e);
+    }
+  };
+
   const renderMessage = (message: ChatMessage) => {
     const isUser = message.role === 'user';
     
@@ -380,14 +441,21 @@ What would you like to work on first?`,
                     {message.functionCall.result.success ? 'Success' : 'Error'}
                   </Badge>
                 </div>
-                
-                {message.functionCall.result.success && message.functionCall.result.data && (
+                {message.functionCall.result.success && message.functionCall.name.includes('brainstorm') ? (
                   <div className="text-sm text-gray-600">
-                    {typeof message.functionCall.result.data === 'string' 
-                      ? message.functionCall.result.data
-                      : JSON.stringify(message.functionCall.result.data, null, 2)
-                    }
+                    Generated keyword ideas. <button className="underline" onClick={() => openBrainstormModal(
+                      message.functionCall.result.data?.generated_keywords || message.functionCall.result.generated_keywords || []
+                    )}>View details</button>
                   </div>
+                ) : (
+                  message.functionCall.result.success && message.functionCall.result.data && (
+                    <div className="text-sm text-gray-600">
+                      {typeof message.functionCall.result.data === 'string' 
+                        ? message.functionCall.result.data
+                        : JSON.stringify(message.functionCall.result.data, null, 2)
+                      }
+                    </div>
+                  )
                 )}
               </div>
             )}
@@ -467,6 +535,52 @@ What would you like to work on first?`,
           </div>
           
         </div>
+
+        {/* Brainstorm Details Modal */}
+        {brainstormModalOpen && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b">
+                <div className="font-semibold">Keyword Ideas</div>
+                <div className="flex items-center gap-2">
+                  <button onClick={copyBrainstormToClipboard} className="text-sm px-2 py-1 border rounded hover:bg-gray-50">Copy</button>
+                  <button onClick={closeBrainstormModal} className="text-sm px-2 py-1 border rounded hover:bg-gray-50">✕</button>
+                </div>
+              </div>
+              <div className="p-4 overflow-y-auto max-h-[60vh]">
+                {brainstormIdeas.length === 0 ? (
+                  <div className="text-sm text-gray-500">No ideas to display.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {brainstormIdeas.map((idea: any, idx: number) => (
+                      <label key={idx} className="flex items-start gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={!!selectedIdeas[idx]}
+                          onChange={(e) => setSelectedIdeas(prev => ({ ...prev, [idx]: e.target.checked }))}
+                        />
+                        <div>
+                          <div className="font-medium text-gray-900">{idea.keyword}</div>
+                          <div className="text-xs text-gray-600">
+                            {(idea.search_intent || 'unknown')} {idea.suggested_topic_cluster ? `• cluster: ${idea.suggested_topic_cluster}` : ''}
+                          </div>
+                          {idea.rationale && (
+                            <div className="text-xs text-gray-500 mt-1">{idea.rationale}</div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+                <button onClick={closeBrainstormModal} className="text-sm px-3 py-2 border rounded hover:bg-gray-50">Cancel</button>
+                <button onClick={saveSelectedKeywords} className="text-sm px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

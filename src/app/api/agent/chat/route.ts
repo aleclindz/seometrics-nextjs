@@ -760,7 +760,10 @@ async function processOpenAIResponse(
     };
     
     // Generate action card based on the actual function
-    if (functionCall.result && typeof functionCall.result === 'object' && 'success' in functionCall.result && functionCall.result.success) {
+    if (functionCall.name === 'KEYWORDS_brainstorm' || functionCall.name === 'brainstorm_keywords') {
+      // Don’t create a generic action card with a broken "View Details" link for brainstorming
+      actionCard = null;
+    } else if (functionCall.result && typeof functionCall.result === 'object' && 'success' in functionCall.result && functionCall.result.success) {
       actionCard = {
         type: 'technical-fix',
         data: {
@@ -824,8 +827,16 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
   const res = Object.values(results)[0];
 
   if (first.name === 'KEYWORDS_brainstorm' || first.name === 'brainstorm_keywords') {
-    const count = res?.data?.generated_keywords?.length || res?.generated_keywords?.length || 0;
-    return `✨ Generated ${count} keyword ideas. I can add selected ones to your strategy — just say "add keywords".`;
+    const ideas = res?.data?.generated_keywords || res?.generated_keywords || [];
+    const count = ideas.length || 0;
+    const top = ideas.slice(0, Math.min(10, ideas.length));
+    const bullets = top.map((k: any) => {
+      const kw = k.keyword || '';
+      const intent = k.search_intent ? ` — ${k.search_intent}` : '';
+      const cluster = k.suggested_topic_cluster ? ` (cluster: ${k.suggested_topic_cluster})` : '';
+      return `- ${kw}${intent}${cluster}`;
+    }).join('\n');
+    return `✨ Generated ${count} keyword ideas:\n\n${bullets}\n\nUse "View details" to select and save keywords.`;
   }
   if (first.name === 'KEYWORDS_add_keywords' || first.name === 'update_keyword_strategy') {
     const added = res?.data?.added || res?.summary?.keywords_added || 0;

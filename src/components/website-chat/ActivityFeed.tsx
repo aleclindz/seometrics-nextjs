@@ -41,9 +41,10 @@ interface ActivityItem {
 interface ActivityFeedProps {
   domain: string;
   userToken: string;
+  hideHeader?: boolean;
 }
 
-export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
+export default function ActivityFeed({ domain, userToken, hideHeader }: ActivityFeedProps) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -412,10 +413,11 @@ export default function ActivityFeed({ domain, userToken }: ActivityFeedProps) {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Activity Feed</CardTitle>
-      </CardHeader>
-      
+      {!hideHeader && (
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Activity Feed</CardTitle>
+        </CardHeader>
+      )}
       <CardContent className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="space-y-4">

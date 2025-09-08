@@ -1019,7 +1019,7 @@ export default function WebsitePage() {
               </div>
             ) : (
               <div className="p-0 overflow-auto">
-                <ActivityFeed domain={domain} userToken={user?.token || ''} />
+                <ActivityFeed domain={domain} userToken={user?.token || ''} hideHeader />
               </div>
             )}
           </aside>
