@@ -39,12 +39,15 @@ export default function WebsitePage() {
     progress: 0
   });
 
-  // Performance data state
+  // Performance data state (compatible with both V1 and V2 APIs)
   const [performanceData, setPerformanceData] = useState({
     total: { impressions: 0, clicks: 0, ctr: 0, position: 0 },
+    totals: null as any,
     topQueries: [] as any[],
     topPages: [] as any[],
     referrers: [] as any[],
+    deviceBreakdown: [] as any[],
+    dailyMetrics: [] as any[],
     hasData: false,
     isLoading: true,
     error: null as string | null,
@@ -100,7 +103,7 @@ export default function WebsitePage() {
       console.log('🔄 [PERFORMANCE] Fetching performance data for domain:', domain);
       setPerformanceData(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const response = await fetch(`/api/dashboard/performance?userToken=${user.token}&domain=${domain}&days=30`);
+      const response = await fetch(`/api/dashboard/performance-v2?userToken=${user.token}&domain=${domain}&days=28&compareWith=previous`);
       const data = await response.json();
       
       if (data.success) {
@@ -536,11 +539,11 @@ export default function WebsitePage() {
                         <div className="text-sm font-semibold mb-2">Impressions</div>
                         <div className="h-20 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 mb-2 flex items-end justify-center p-2">
                           <div className="text-2xl font-bold text-blue-700">
-                            {performanceData.total.impressions.toLocaleString()}
+                            {performanceData.totals?.impressions ? performanceData.totals.impressions.toLocaleString() : performanceData.total?.impressions.toLocaleString()}
                           </div>
                         </div>
                         <div className="text-xs text-gray-500">
-                          30d total • Avg position: {performanceData.total.position.toFixed(1)}
+                          28d total • Avg position: {performanceData.totals?.position || performanceData.total?.position}
                         </div>
                       </div>
 
@@ -549,11 +552,11 @@ export default function WebsitePage() {
                         <div className="text-sm font-semibold mb-2">Clicks</div>
                         <div className="h-20 rounded-lg bg-gradient-to-br from-green-50 to-green-100 mb-2 flex items-end justify-center p-2">
                           <div className="text-2xl font-bold text-green-700">
-                            {performanceData.total.clicks.toLocaleString()}
+                            {performanceData.totals?.clicks ? performanceData.totals.clicks.toLocaleString() : performanceData.total?.clicks.toLocaleString()}
                           </div>
                         </div>
                         <div className="text-xs text-gray-500">
-                          30d total • CTR: {performanceData.total.ctr.toFixed(2)}%
+                          28d total • CTR: {performanceData.totals?.ctr || performanceData.total?.ctr}%
                         </div>
                       </div>
 
