@@ -23,6 +23,7 @@ export class ContentAbility extends BaseAbility {
       'analyze_content_performance',
       // Modern function names (CONTENT_ prefixed)
       'CONTENT_generate_article',
+      'CONTENT_generate_and_publish',
       'CONTENT_generate_with_links',
       'CONTENT_suggest_ideas',
       'CONTENT_get_context'
@@ -34,6 +35,8 @@ export class ContentAbility extends BaseAbility {
       case 'generate_article':
       case 'CONTENT_generate_article':
         return await this.generateArticle(args);
+      case 'CONTENT_generate_and_publish':
+        return await this.generateAndPublish(args);
       case 'generate_enhanced_article':
         return await this.generateEnhancedArticle(args);
       case 'generate_article_with_internal_links':
@@ -264,6 +267,120 @@ export class ContentAbility extends BaseAbility {
         this.error(response.error || 'Content publishing failed');
     } catch (error) {
       return this.error('Failed to publish content', error);
+    }
+  }
+
+  /**
+   * Orchestrate: create -> generate -> publish with a progress-style response
+   */
+  private async generateAndPublish(args: {
+    site_url: string;
+    title: string;
+    target_keywords?: string[];
+    article_type?: 'how_to' | 'listicle' | 'guide' | 'faq' | 'comparison' | 'evergreen' | 'blog';
+    tone?: 'professional' | 'casual' | 'technical';
+    publish?: boolean;
+    include_citations?: boolean;
+    image_provider?: 'openai' | 'stability' | 'unsplash';
+    num_images?: number;
+  }): Promise<FunctionCallResult> {
+    try {
+      // Resolve website and CMS connection
+      const sitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
+      if (!sitesResponse?.success || !sitesResponse.sites?.length) {
+        return this.error('No websites found for this user.');
+      }
+      const site = sitesResponse.sites.find((s: any) => s.domain === args.site_url || s.domain.includes(args.site_url)) || sitesResponse.sites[0];
+      const websiteId = site.id;
+
+      // Attempt to fetch CMS connections for the domain
+      const cmsResp = await this.fetchAPI(`/api/cms/connections?userToken=${this.userToken}&domain=${encodeURIComponent(site.domain)}`);
+      const cms = cmsResp?.connections?.[0];
+
+      // Step 1: create article
+      const createResp = await this.fetchAPI('/api/articles', {
+        method: 'POST',
+        body: JSON.stringify({
+          userToken: this.userToken,
+          websiteId,
+          cmsConnectionId: cms?.id,
+          title: args.title,
+          targetKeywords: args.target_keywords || []
+        })
+      });
+      if (!createResp?.success) return this.error(createResp?.error || 'Failed to create article');
+      const articleId = createResp.article.id;
+
+      // Step 2: generate enhanced content (SVS-oriented)
+      const genResp = await this.fetchAPI('/api/articles/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          userToken: this.userToken,
+          articleId,
+          targetKeywords: args.target_keywords || [],
+          contentLength: 'medium',
+          tone: args.tone || 'professional',
+          includeImages: true,
+          articleType: args.article_type || 'blog',
+          includeCitations: args.include_citations ?? true,
+          referenceStyle: 'link',
+          numImages: args.num_images || 2,
+          imageProvider: args.image_provider || 'openai',
+          imageStyle: 'clean, modern, web illustration, professional'
+        })
+      });
+      if (!genResp?.success) return this.error(genResp?.error || 'Article generation failed');
+
+      // Step 3: publish
+      let publishDetails: any = {};
+      if (args.publish !== false && cms?.id) {
+        const pubResp = await this.fetchAPI('/api/articles/publish', {
+          method: 'POST',
+          body: JSON.stringify({
+            userToken: this.userToken,
+            articleId,
+            publishDraft: false
+          })
+        });
+        if (!pubResp?.success) return this.error(pubResp?.error || 'Publishing failed');
+        publishDetails = pubResp;
+      }
+
+      // Build progress-style action card data
+      const links = [] as Array<{ label: string; url: string }>;
+      if (genResp?.article?.schema_json) {
+        links.push({ label: 'View Schema JSON', url: '#' });
+      }
+      if (genResp?.article?.images?.length) {
+        links.push({ label: 'View Images', url: '#' });
+      }
+
+      const actionCard = {
+        type: 'progress',
+        data: {
+          title: args.publish === false ? 'Article Generated (Draft Ready)' : 'Article Generated & Published',
+          description: args.publish === false ? 'Draft is ready in your CMS. You can review and publish.' : 'Content published to your connected CMS.',
+          progress: 100,
+          status: 'completed',
+          estimatedTime: 'Completed',
+          currentStep: args.publish === false ? 'Generation complete' : 'Published',
+          totalSteps: 3,
+          currentStepIndex: 3,
+          links
+        }
+      };
+
+      return this.success({
+        articleId,
+        websiteId,
+        cmsConnectionId: cms?.id,
+        published: args.publish !== false && !!cms?.id,
+        cmsArticleId: publishDetails?.cmsArticleId,
+        actionCard
+      });
+
+    } catch (error) {
+      return this.error('Failed to generate and publish article', error);
     }
   }
 

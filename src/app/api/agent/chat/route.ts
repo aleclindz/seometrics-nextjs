@@ -605,6 +605,8 @@ function getFunctionDisplayName(functionName: string): string {
       return 'Article Created';
     case 'CONTENT_optimize_existing':
       return 'Content Optimized';
+    case 'CONTENT_generate_and_publish':
+      return 'Article Generated & Published';
       
     // SEO analysis and fixes
     case 'audit_site':
@@ -678,6 +680,8 @@ function getDescriptionForFunction(functionName: string): string {
       return 'Generated high-quality article content optimized for search engines';
     case 'CONTENT_optimize_existing':
       return 'Enhanced existing content with SEO improvements and keyword optimization';
+    case 'CONTENT_generate_and_publish':
+      return 'Generated researched article and published to connected CMS';
       
     // SEO analysis and fixes
     case 'audit_site':
@@ -764,18 +768,24 @@ async function processOpenAIResponse(
       // Don’t create a generic action card with a broken "View Details" link for brainstorming
       actionCard = null;
     } else if (functionCall.result && typeof functionCall.result === 'object' && 'success' in functionCall.result && functionCall.result.success) {
-      actionCard = {
-        type: 'technical-fix',
-        data: {
-          title: getFunctionDisplayName(functionCall.name),
-          description: getDescriptionForFunction(functionCall.name),
-          status: 'completed',
-          affectedPages: 1,
-          links: [
-            { label: 'View Details', url: '#' }
-          ]
-        }
-      };
+      // Let tools provide their own action cards when available
+      const toolData = functionCall.result as any;
+      if (toolData?.data?.actionCard) {
+        actionCard = toolData.data.actionCard;
+      } else {
+        actionCard = {
+          type: 'technical-fix',
+          data: {
+            title: getFunctionDisplayName(functionCall.name),
+            description: getDescriptionForFunction(functionCall.name),
+            status: 'completed',
+            affectedPages: 1,
+            links: [
+              { label: 'View Details', url: '#' }
+            ]
+          }
+        };
+      }
     }
     
     // Only record activity for real function calls

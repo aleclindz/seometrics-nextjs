@@ -2,7 +2,7 @@
  * Image Generation Service
  * 
  * Handles image generation for articles using:
- * - OpenAI Images (DALL-E)
+ * - OpenAI Images (gpt-image-1)
  * - Stability AI (Stable Diffusion)  
  * - Unsplash (stock photo fallback)
  */
@@ -46,7 +46,7 @@ export class ImageGenerationService {
   }
 
   /**
-   * Generate images using OpenAI DALL-E
+   * Generate images using OpenAI gpt-image-1
    */
   private async generateOpenAIImages(prompts: Array<{ prompt: string; alt: string }>): Promise<GeneratedImage[]> {
     const images: GeneratedImage[] = [];
@@ -62,7 +62,7 @@ export class ImageGenerationService {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'dall-e-3',
+            model: 'gpt-image-1',
             prompt: p.prompt,
             size: '1024x1024',
             quality: 'standard',

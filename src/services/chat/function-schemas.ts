@@ -402,6 +402,42 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
+  'CONTENT_generate_and_publish': {
+    schema: {
+      name: 'CONTENT_generate_and_publish',
+      description: 'Generate a researched, SVS-optimized article and publish it to the connected CMS (Strapi supported)',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (domain) to target' },
+          title: { type: 'string', description: 'Article title' },
+          target_keywords: { type: 'array', items: { type: 'string' }, description: 'Target keywords' },
+          article_type: { type: 'string', enum: ['how_to', 'listicle', 'guide', 'faq', 'comparison', 'evergreen', 'blog'], default: 'blog' },
+          tone: { type: 'string', enum: ['professional', 'casual', 'technical'], default: 'professional' },
+          publish: { type: 'boolean', description: 'Publish immediately (true) or save draft (false)', default: true },
+          include_citations: { type: 'boolean', default: true },
+          image_provider: { type: 'string', enum: ['openai', 'stability', 'unsplash'], default: 'openai' },
+          num_images: { type: 'integer', default: 2 }
+        },
+        required: ['site_url', 'title'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string(),
+      title: z.string().min(5),
+      target_keywords: z.array(z.string()).optional().default([]),
+      article_type: z.enum(['how_to', 'listicle', 'guide', 'faq', 'comparison', 'evergreen', 'blog']).optional().default('blog'),
+      tone: z.enum(['professional', 'casual', 'technical']).optional().default('professional'),
+      publish: z.boolean().optional().default(true),
+      include_citations: z.boolean().optional().default(true),
+      image_provider: z.enum(['openai', 'stability', 'unsplash']).optional().default('openai'),
+      num_images: z.number().int().optional().default(2)
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
   'CONTENT_suggest_ideas': {
     schema: {
       name: 'CONTENT_suggest_ideas',

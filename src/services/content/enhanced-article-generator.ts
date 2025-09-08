@@ -199,6 +199,12 @@ QUALITY REQUIREMENTS:
 - Include semantic keywords naturally throughout
 - Each major section should have 2-3 well-developed paragraphs
 - Use transition phrases between sections for flow
+ - Include a dedicated FAQ section with 3-5 common questions and concise answers
+ - Optimize for Semantic Visibility (SVS):
+   • Explicit Q&A patterns (What is..., How to..., Why...)
+   • Clear entity mentions and relationships (brands, tools, standards)
+   • 3-5 credible citations (studies, docs) in a References section
+   • Clean, AI-parseable structure; avoid overly long sentences
 
 META REQUIREMENTS:
 - metaTitle: 50-60 characters, include primary keyword "${params.keywords[0] || ''}"
