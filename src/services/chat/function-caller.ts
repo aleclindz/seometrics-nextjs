@@ -79,8 +79,10 @@ export class FunctionCaller {
    */
   private async fetchAPI(url: string, options?: RequestInit): Promise<any> {
     try {
-      const baseUrl = this.isBrowser() ? '' : 'http://localhost:3000';
-      const response = await fetch(`${baseUrl}${url}`, {
+      const isAbsolute = /^(https?:)\/\//i.test(url);
+      const baseUrl = this.isBrowser() ? '' : getServerBaseUrl();
+      const finalUrl = isAbsolute ? url : `${baseUrl}${url}`;
+      const response = await fetch(finalUrl, {
         headers: {
           'Content-Type': 'application/json',
           ...(options?.headers || {}),
@@ -117,4 +119,16 @@ export class FunctionCaller {
       return { success: false, error: 'Failed to list integrations' };
     }
   }
+}
+
+function getServerBaseUrl(): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || process.env.SITE_URL;
+  if (appUrl && typeof appUrl === 'string') {
+    return appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
+  }
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl && typeof vercelUrl === 'string') {
+    return `https://${vercelUrl}`;
+  }
+  return 'http://localhost:3000';
 }

@@ -163,7 +163,7 @@ async function upsertAnalyticsBatch(records: GSCAnalyticsRow[]): Promise<void> {
       const { error } = await supabase
         .from('gsc_search_analytics')
         .upsert(batch, {
-          onConflict: 'user_token,site_url,search_type,data_state,date,query,page,country,device,appearance'
+          onConflict: 'gsc_analytics_dimensional_unique'
         });
 
       if (error) {
@@ -220,7 +220,7 @@ export async function syncGSCSearchAnalytics(options: GSCSyncOptions): Promise<{
       refresh_token: connection.refresh_token,
     });
 
-    const searchConsole = google.searchconsole({ version: 'v1', auth: oauth2Client });
+    const searchConsole = google.webmasters({ version: 'v3', auth: oauth2Client });
 
     // Define dimension sets to sync (matching GSC UI views)
     const dimensionSets: GSCDimension[][] = [

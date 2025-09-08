@@ -58,8 +58,12 @@ export class IdeasAbility extends BaseAbility {
       const response = await this.fetchAPI('/api/agent/ideas', {
         method: 'POST',
         body: JSON.stringify({
-          ...args,
-          userToken: this.userToken
+          userToken: this.userToken,
+          siteUrl: args.site_url,
+          title: args.title,
+          hypothesis: args.hypothesis,
+          evidence: args.evidence ?? {},
+          iceScore: args.ice_score
         })
       });
 
@@ -80,17 +84,46 @@ export class IdeasAbility extends BaseAbility {
     actions: any[] 
   }): Promise<FunctionCallResult> {
     try {
-      const response = await this.fetchAPI('/api/agent/adopt-idea', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...args,
-          userToken: this.userToken
-        })
-      });
+      if (!this.userToken) {
+        return this.error('Authentication required');
+      }
 
-      return response.success ? 
-        this.success(response) :
-        this.error(response.error || 'Idea adoption failed');
+      // Fetch the idea to get site URL
+      const ideaLookup = await this.fetchAPI(`/api/agent/ideas?userToken=${this.userToken}&ideaId=${args.idea_id}`, { method: 'GET' });
+      if (!ideaLookup?.success || !ideaLookup?.ideas?.length) {
+        return this.error('Idea not found');
+      }
+
+      const idea = ideaLookup.ideas[0];
+      const siteUrl = idea.site_url;
+
+      const createdActions: any[] = [];
+      for (const actionSpec of args.actions || []) {
+        const actionResp = await this.fetchAPI('/api/agent/actions', {
+          method: 'POST',
+          body: JSON.stringify({
+            userToken: this.userToken,
+            siteUrl,
+            ideaId: args.idea_id,
+            actionType: actionSpec.action_type,
+            title: actionSpec.title,
+            description: actionSpec.description,
+            payload: actionSpec.payload || {},
+            policy: actionSpec.policy || { environment: 'DRY_RUN' },
+            priorityScore: actionSpec.priority_score || 50
+          })
+        });
+
+        if (actionResp?.success && actionResp.action) {
+          createdActions.push(actionResp.action);
+        }
+      }
+
+      return this.success({
+        idea_id: args.idea_id,
+        actions_created: createdActions.length,
+        actions: createdActions
+      });
     } catch (error) {
       return this.error('Failed to adopt idea', error);
     }
@@ -131,7 +164,7 @@ export class IdeasAbility extends BaseAbility {
     try {
       const params = new URLSearchParams();
       
-      if (args.site_url) params.append('site_url', args.site_url);
+      if (args.site_url) params.append('siteUrl', args.site_url);
       if (args.status) params.append('status', args.status);
       if (args.limit) params.append('limit', args.limit.toString());
       if (this.userToken) params.append('userToken', this.userToken);
@@ -156,12 +189,17 @@ export class IdeasAbility extends BaseAbility {
     updates: any 
   }): Promise<FunctionCallResult> {
     try {
-      const response = await this.fetchAPI(`/api/agent/ideas/${args.idea_id}`, {
+      const { status, ...restUpdates } = args.updates || {};
+      const body: any = {
+        ideaId: args.idea_id,
+        userToken: this.userToken,
+      };
+      if (typeof status !== 'undefined') body.status = status;
+      if (Object.keys(restUpdates).length) body.updates = restUpdates;
+
+      const response = await this.fetchAPI('/api/agent/ideas', {
         method: 'PUT',
-        body: JSON.stringify({
-          ...args.updates,
-          userToken: this.userToken
-        })
+        body: JSON.stringify(body)
       });
 
       return response.success ? 
@@ -177,8 +215,14 @@ export class IdeasAbility extends BaseAbility {
    */
   private async deleteIdea(args: { idea_id: string }): Promise<FunctionCallResult> {
     try {
-      const response = await this.fetchAPI(`/api/agent/ideas/${args.idea_id}?userToken=${this.userToken}`, {
-        method: 'DELETE'
+      // Soft-delete by marking as rejected (no DELETE endpoint implemented)
+      const response = await this.fetchAPI('/api/agent/ideas', {
+        method: 'PUT',
+        body: JSON.stringify({
+          ideaId: args.idea_id,
+          userToken: this.userToken,
+          status: 'rejected'
+        })
       });
 
       return response.success ? 
@@ -197,20 +241,32 @@ export class IdeasAbility extends BaseAbility {
     include_actions?: boolean 
   }): Promise<FunctionCallResult> {
     try {
-      const params = new URLSearchParams({
-        idea_id: args.idea_id
+      if (!this.userToken) {
+        return this.error('User token is required to track idea progress');
+      }
+
+      // Use actions endpoint to summarize progress for this idea
+      const params = new URLSearchParams();
+      params.append('userToken', this.userToken);
+      params.append('ideaId', args.idea_id);
+
+      const response = await this.fetchAPI(`/api/agent/actions?${params.toString()}`, { method: 'GET' });
+
+      if (!response?.success) {
+        return this.error(response?.error || 'Failed to track idea progress');
+      }
+
+      // Build a simple progress summary
+      const actions = Array.isArray(response.actions) ? response.actions : [];
+      const statusCounts = actions.reduce((acc: Record<string, number>, a: any) => {
+        acc[a.status] = (acc[a.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return this.success({
+        actions,
+        stats: response.stats || statusCounts
       });
-
-      if (args.include_actions) params.append('include_actions', 'true');
-      if (this.userToken) params.append('userToken', this.userToken);
-
-      const response = await this.fetchAPI(`/api/agent/ideas/progress?${params}`, {
-        method: 'GET'
-      });
-
-      return response.success ? 
-        this.success(response) :
-        this.error(response.error || 'Failed to track idea progress');
     } catch (error) {
       return this.error('Failed to track idea progress', error);
     }

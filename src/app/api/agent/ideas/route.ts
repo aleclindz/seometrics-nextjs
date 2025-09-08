@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userToken = searchParams.get('userToken');
     const siteUrl = searchParams.get('siteUrl');
+    const ideaId = searchParams.get('ideaId');
     const status = searchParams.get('status');
     const limit = parseInt(searchParams.get('limit') || '50');
 
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (siteUrl) query = query.eq('site_url', siteUrl);
+    if (ideaId) query = query.eq('id', ideaId);
     if (status) query = query.eq('status', status);
 
     const { data: ideas, error } = await query;
