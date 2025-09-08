@@ -59,7 +59,7 @@ function getOrCreateConversationId(conversationHistory?: any[]): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, userToken, selectedSite, conversationHistory } = await request.json();
+    const { message, userToken, selectedSite, websiteToken: clientWebsiteToken, conversationHistory, conversationId: clientConversationId } = await request.json();
 
     if (!userToken || !message) {
       return NextResponse.json(
@@ -72,8 +72,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create conversation ID for this chat session
-    const conversationId = getOrCreateConversationId(conversationHistory);
-    const websiteToken = selectedSite || userToken;
+    const conversationId = clientConversationId || getOrCreateConversationId(conversationHistory);
+    // Prefer explicit websiteToken from client; fallback to selectedSite (domain) or userToken
+    const websiteToken = (clientWebsiteToken && typeof clientWebsiteToken === 'string') 
+      ? clientWebsiteToken 
+      : (selectedSite || userToken);
     
     // Calculate next message order
     const userMessageOrder = (conversationHistory?.length || 0) + 1;
@@ -298,16 +301,16 @@ export async function POST(request: NextRequest) {
       steps: guard - 1
     };
 
-    const processedResponse = await processOpenAIResponse(
-      finalResponse, 
-      userToken, 
-      selectedSite,
-      {
-        conversationId,
-        websiteToken,
-        messageOrder: assistantMessageOrder
-      }
-    );
+      const processedResponse = await processOpenAIResponse(
+        finalResponse, 
+        userToken, 
+        selectedSite,
+        {
+          conversationId,
+          websiteToken,
+          messageOrder: assistantMessageOrder
+        }
+      );
     return NextResponse.json(processedResponse);
 
   } catch (error) {
