@@ -139,15 +139,15 @@ export class ContentAbility extends BaseAbility {
     image_style?: string;
   }): Promise<FunctionCallResult> {
     try {
-      // Get website ID if not provided
+      // Get website ID if not provided (use /api/websites which returns numeric id)
       let websiteId = args.website_id;
       if (!websiteId && args.site_url) {
-        const websitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
-        if (websitesResponse.success && websitesResponse.sites?.length > 0) {
-          const matchingSite = websitesResponse.sites.find((site: any) => 
-            site.domain === args.site_url || site.domain.includes(args.site_url)
-          );
-          websiteId = matchingSite?.id || websitesResponse.sites[0].id;
+        const sites = await this.fetchAPI(`/api/websites?userToken=${this.userToken}`);
+        if (sites?.success && sites.websites?.length) {
+          const clean = (s: string) => s?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+          const target = clean(args.site_url);
+          const match = sites.websites.find((w: any) => clean(w.domain) === target);
+          websiteId = match?.id || sites.websites[0]?.id;
         }
       }
 
@@ -286,11 +286,13 @@ export class ContentAbility extends BaseAbility {
   }): Promise<FunctionCallResult> {
     try {
       // Resolve website and CMS connection
-      const sitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
-      if (!sitesResponse?.success || !sitesResponse.sites?.length) {
+      const sitesResponse = await this.fetchAPI(`/api/websites?userToken=${this.userToken}`);
+      if (!sitesResponse?.success || !sitesResponse.websites?.length) {
         return this.error('No websites found for this user.');
       }
-      const site = sitesResponse.sites.find((s: any) => s.domain === args.site_url || s.domain.includes(args.site_url)) || sitesResponse.sites[0];
+      const clean = (s: string) => s?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const target = clean(args.site_url);
+      const site = sitesResponse.websites.find((s: any) => clean(s.domain) === target) || sitesResponse.websites[0];
       const websiteId = site.id;
 
       // Attempt to fetch CMS connections for the domain
@@ -455,7 +457,7 @@ export class ContentAbility extends BaseAbility {
       if (!siteUrl) {
         const websitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
         if (websitesResponse.success && websitesResponse.sites?.length > 0) {
-          siteUrl = websitesResponse.sites[0].domain;
+          siteUrl = websitesResponse.sites[0].url || websitesResponse.sites[0].domain;
         } else {
           return this.error('No website found. Please provide site_url parameter.');
         }
@@ -504,7 +506,7 @@ export class ContentAbility extends BaseAbility {
       if (!siteUrl) {
         const websitesResponse = await this.fetchAPI(`/api/chat/sites?userToken=${this.userToken}`);
         if (websitesResponse.success && websitesResponse.sites?.length > 0) {
-          siteUrl = websitesResponse.sites[0].domain;
+          siteUrl = websitesResponse.sites[0].url || websitesResponse.sites[0].domain;
         } else {
           return this.error('No website found. Please provide site_url parameter.');
         }

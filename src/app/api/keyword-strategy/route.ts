@@ -130,13 +130,65 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Website not found or access denied' }, { status: 404 });
     }
 
+    // Resolve existing clusters for consolidation
+    let existingClusterNames: string[] = [];
+    try {
+      const { data: existingKw } = await supabase
+        .from('website_keywords')
+        .select('topic_cluster')
+        .eq('website_token', targetWebsiteToken)
+        .not('topic_cluster', 'is', null);
+      const { data: existingContent } = await supabase
+        .from('topic_cluster_content')
+        .select('topic_cluster')
+        .eq('website_token', targetWebsiteToken);
+      existingClusterNames = [
+        ...new Set([
+          ...((existingKw || []).map((k: any) => k.topic_cluster).filter(Boolean)),
+          ...((existingContent || []).map((c: any) => c.topic_cluster).filter(Boolean))
+        ])
+      ];
+    } catch {}
+
+    const norm = (s?: string) => (s || '').trim().toLowerCase();
+    const canonicalMap = new Map<string, string>();
+    for (const name of existingClusterNames) {
+      canonicalMap.set(norm(name), name);
+    }
+
+    // Count incoming clusters in this batch
+    const incomingCounts: Record<string, number> = {};
+    (keywords || []).forEach((k: any) => {
+      const n = norm(k.topic_cluster);
+      if (!n) return;
+      incomingCounts[n] = (incomingCounts[n] || 0) + 1;
+    });
+
     // Process keywords if provided
     if (keywords && Array.isArray(keywords)) {
       for (const keywordData of keywords) {
-        const { keyword, keyword_type, topic_cluster } = keywordData;
+        const { keyword, keyword_type } = keywordData;
+        let topic_cluster = keywordData.topic_cluster;
         
         if (!keyword || !keyword_type) {
           continue; // Skip invalid entries
+        }
+
+        // Consolidate cluster names to avoid fragmentation
+        if (topic_cluster) {
+          const n = norm(topic_cluster);
+          if (canonicalMap.has(n)) {
+            // Use canonical existing cluster name
+            topic_cluster = canonicalMap.get(n) as string;
+          } else {
+            // If this is a singleton suggestion, don't create a new noisy cluster
+            if ((incomingCounts[n] || 0) <= 1) {
+              topic_cluster = null as any; // stored as NULL -> 'uncategorized'
+            } else {
+              // Allow creating a new cluster for multiple keywords; remember canonical
+              canonicalMap.set(n, topic_cluster);
+            }
+          }
         }
 
         // Upsert keyword

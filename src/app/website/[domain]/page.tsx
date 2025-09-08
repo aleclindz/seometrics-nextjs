@@ -94,12 +94,15 @@ export default function WebsitePage() {
 
   const [strategyData, setStrategyData] = useState({
     keywords: { tracked: 0, clusters: 0, opportunities: 0, topKeywords: [] as any[], status: 'no_data' as string },
+    // Deprecated: opportunities UI removed for now; keep shape for compatibility
     opportunities: { quickWins: 0, contentGaps: 0, technicalIssues: 0, items: [] as any[], status: 'no_data' as string },
+    topicClusters: [] as any[],
     hasData: false,
     isLoading: true,
     error: null as string | null,
     message: ''
   });
+  const [clusterExpanded, setClusterExpanded] = useState<Record<string, boolean>>({});
 
   // Fetch performance data
   const fetchPerformanceData = async () => {
@@ -377,11 +380,24 @@ export default function WebsitePage() {
   const fetchStrategyData = async () => {
     if (!user?.token) return;
     try {
-      const response = await fetch(`/api/dashboard/strategy?userToken=${user.token}&domain=${domain}`);
-      const data = await response.json();
-      if (data.success) {
-        setStrategyData({ ...data.data, isLoading: false, error: null });
+      const [summaryRes, clustersRes] = await Promise.all([
+        fetch(`/api/dashboard/strategy?userToken=${user.token}&domain=${domain}`),
+        fetch(`/api/keyword-strategy?userToken=${user.token}&domain=${domain}`)
+      ]);
+
+      let next = { ...strategyData } as any;
+      if (summaryRes.ok) {
+        const s = await summaryRes.json();
+        if (s.success) next = { ...next, ...s.data };
       }
+      if (clustersRes.ok) {
+        const c = await clustersRes.json();
+        if (c.success) {
+          next.topicClusters = c.topicClusters || [];
+          next.hasData = true;
+        }
+      }
+      setStrategyData({ ...next, isLoading: false, error: null });
     } catch (error) {
       setStrategyData(prev => ({ ...prev, isLoading: false, error: 'Network error' }));
     }
@@ -1047,65 +1063,46 @@ export default function WebsitePage() {
                       <div className="text-sm text-gray-500">{strategyData.message}</div>
                     </div>
                   ) : (
-                    <div className="bg-white border rounded-lg p-4">
-                      <div className="text-sm font-semibold mb-3">Strategy Overview</div>
-                      <div className="grid grid-cols-3 gap-4 mb-4">
-                        <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 text-center">
-                          <div className="text-lg font-bold text-purple-700">{strategyData.keywords.tracked}</div>
-                          <div className="text-xs text-purple-600">Tracked Keywords</div>
-                        </div>
-                        <div className="p-3 rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 text-center">
-                          <div className="text-lg font-bold text-indigo-700">{strategyData.keywords.clusters}</div>
-                          <div className="text-xs text-indigo-600">Topic Clusters</div>
-                        </div>
-                        <div className="p-3 rounded-lg bg-gradient-to-br from-orange-50 to-orange-100 text-center">
-                          <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.contentGaps}</div>
-                          <div className="text-xs text-orange-600">Content Gaps</div>
-                        </div>
-                      </div>
-
-                      {strategyData.keywords.topKeywords.length > 0 && (
-                        <div className="mb-4">
-                          <div className="text-xs font-medium text-gray-600 mb-1">Top Keywords</div>
-                          <div className="grid grid-cols-2 gap-2">
-                            {strategyData.keywords.topKeywords.slice(0, 6).map((kw: any, i: number) => (
-                              <div key={i} className="text-xs text-purple-700 truncate">
-                                {kw.keyword}{kw.impressions ? ` (${kw.impressions})` : ''}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div>
-                        <div className="text-sm font-semibold mb-2">Opportunities</div>
-                        <div className="grid grid-cols-3 gap-2 text-center mb-2">
-                          <div>
-                            <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.quickWins}</div>
-                            <div className="text-xs text-orange-600">Quick Wins</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.contentGaps}</div>
-                            <div className="text-xs text-orange-600">Content Gaps</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.technicalIssues}</div>
-                            <div className="text-xs text-orange-600">Technical</div>
-                          </div>
-                        </div>
-                        <div className="space-y-1 mb-3">
-                          {strategyData.opportunities.items.slice(0, 5).map((item: any, i: number) => (
-                            <div key={i} className="text-xs text-orange-700 truncate">
-                              {item.type === 'quick_win' ? '⚡' : '📝'} {item.title}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          How we calculate opportunities:
-                          <br />• Quick Wins: GSC keywords ranking #4–10 with impressions &gt; 50 (if GSC data exists)
-                          <br />• Content Gaps: Clusters with tracked keywords but no associated content
-                          <br />• Technical: Issues surfaced by technical SEO checks (if available)
-                        </div>
+                    <div className="bg-white border rounded-lg p-0">
+                      <div className="px-4 py-3 border-b text-sm font-semibold">Keyword Strategy</div>
+                      <div className="max-h-[420px] overflow-y-auto">
+                        {strategyData.topicClusters.length === 0 ? (
+                          <div className="p-4 text-sm text-gray-500">No clusters yet. Add keywords to build your strategy.</div>
+                        ) : (
+                          strategyData.topicClusters
+                            .sort((a: any, b: any) => (b.keywords?.length || 0) - (a.keywords?.length || 0))
+                            .map((cluster: any) => {
+                              const cid = cluster.name || 'uncategorized';
+                              const expanded = !!clusterExpanded[cid];
+                              const toggle = () => setClusterExpanded(prev => ({ ...prev, [cid]: !expanded }));
+                              return (
+                                <div key={cid} className="border-b last:border-b-0">
+                                  <button onClick={toggle} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <span className="font-medium text-gray-900">{cluster.name || 'uncategorized'}</span>
+                                      <span className="text-xs text-gray-500">{cluster.keywords?.length || 0} keywords</span>
+                                    </div>
+                                    <span className="text-xs text-gray-400">{expanded ? 'Hide' : 'Show'}</span>
+                                  </button>
+                                  {expanded && (
+                                    <div className="px-4 pb-3">
+                                      {(cluster.keywords || []).length === 0 ? (
+                                        <div className="text-xs text-gray-500">No keywords in this cluster</div>
+                                      ) : (
+                                        <div className="grid grid-cols-2 gap-2">
+                                          {cluster.keywords.map((k: any, idx: number) => (
+                                            <div key={idx} className="text-xs text-gray-700 truncate">
+                                              • {k.keyword}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                        )}
                       </div>
                     </div>
                   )}

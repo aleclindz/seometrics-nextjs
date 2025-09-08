@@ -437,9 +437,15 @@ What would you like to work on first?`,
                   <span className="font-medium text-sm text-gray-700">
                     {message.functionCall.name.replace(/_/g, ' ')}
                   </span>
-                  <Badge variant={message.functionCall.result.success ? 'default' : 'destructive'}>
-                    {message.functionCall.result.success ? 'Success' : 'Error'}
-                  </Badge>
+                  {message.functionCall.result.success ? (
+                    <Badge className="bg-green-100 text-green-800 border border-green-200">
+                      Success
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-red-100 text-red-800 border border-red-200">
+                      Error
+                    </Badge>
+                  )}
                 </div>
                 {message.functionCall?.result?.success && message.functionCall?.name?.includes('brainstorm') ? (
                   <div className="text-sm text-gray-600">
