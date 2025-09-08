@@ -81,6 +81,11 @@ export default function WebsitePage() {
   const [contentData, setContentData] = useState({
     internalLinks: { suggested: 0, applied: 0, pending: 0, status: 'no_data' as string },
     semanticVisibility: { score: 0, trend: '', status: 'no_data' as string },
+    articles: {
+      published: [] as any[],
+      scheduled: [] as any[],
+      drafts: [] as any[]
+    },
     hasData: false,
     isLoading: true,
     error: null as string | null,
@@ -339,11 +344,31 @@ export default function WebsitePage() {
   const fetchContentData = async () => {
     if (!user?.token) return;
     try {
-      const response = await fetch(`/api/dashboard/content?userToken=${user.token}&domain=${domain}`);
-      const data = await response.json();
-      if (data.success) {
-        setContentData({ ...data.data, isLoading: false, error: null });
+      const [analysisRes, articlesRes] = await Promise.all([
+        fetch(`/api/dashboard/content?userToken=${user.token}&domain=${domain}`),
+        fetch(`/api/articles?userToken=${user.token}`)
+      ]);
+
+      let next = { ...contentData } as any;
+      if (analysisRes.ok) {
+        const data = await analysisRes.json();
+        if (data.success) next = { ...next, ...data.data };
       }
+
+      if (articlesRes.ok) {
+        const aData = await articlesRes.json();
+        const domainClean = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const siteArticles = (aData.articles || []).filter((a: any) => (a.websites?.domain || '').replace(/^https?:\/\//, '').replace(/\/$/, '') === domainClean);
+
+        const published = siteArticles.filter((a: any) => a.status === 'published' || a.published_at);
+        const scheduled = siteArticles.filter((a: any) => a.scheduled_for && !a.published_at);
+        const drafts = siteArticles.filter((a: any) => !a.published_at && !a.scheduled_for && (a.status === 'generated' || a.status === 'pending' || a.status === 'generation_failed' || a.status === 'publishing_failed'));
+
+        next.articles = { published, scheduled, drafts };
+        next.hasData = true;
+      }
+
+      setContentData({ ...next, isLoading: false, error: null });
     } catch (error) {
       setContentData(prev => ({ ...prev, isLoading: false, error: 'Network error' }));
     }
@@ -370,6 +395,25 @@ export default function WebsitePage() {
     fetchContentData();
     fetchStrategyData();
   }, [user?.token, domain]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Publish a draft article now
+  const publishDraftNow = async (articleId: number) => {
+    if (!user?.token) return;
+    try {
+      const resp = await fetch('/api/articles/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userToken: user.token, articleId, publishDraft: false })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        console.error('Publish failed', data);
+      }
+      await fetchContentData();
+    } catch (e) {
+      console.error('Publish failed', e);
+    }
+  };
 
   // Listen for strategy updates triggered by chat actions
   useEffect(() => {
@@ -893,6 +937,76 @@ export default function WebsitePage() {
                           </div>
                         </div>
                         <div className="text-xs text-gray-500">Sitewide topical strength</div>
+                      </div>
+
+                      {/* Articles by status */}
+                      <div className="bg-white border rounded-lg p-4 col-span-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-semibold">Articles</div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          {/* Published */}
+                          <div>
+                            <div className="text-xs font-medium text-green-700 mb-2">Published</div>
+                            <div className="space-y-2">
+                              {contentData.articles.published.slice(0,5).map((a: any) => (
+                                <div key={a.id} className="flex items-center justify-between gap-2">
+                                  <div className="truncate">
+                                    <div className="font-medium text-gray-900 truncate">{a.title}</div>
+                                    <div className="text-xs text-gray-500">{new Date(a.published_at || a.updated_at).toLocaleDateString()}</div>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    {a.public_url && (
+                                      <a className="text-blue-600 hover:underline text-xs" href={a.public_url} target="_blank" rel="noopener noreferrer">View</a>
+                                    )}
+                                    {a.cms_admin_url && (
+                                      <a className="text-purple-600 hover:underline text-xs" href={a.cms_admin_url} target="_blank" rel="noopener noreferrer">CMS</a>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              {contentData.articles.published.length === 0 && (
+                                <div className="text-xs text-gray-500">No published articles</div>
+                              )}
+                            </div>
+                          </div>
+                          {/* Scheduled */}
+                          <div>
+                            <div className="text-xs font-medium text-orange-700 mb-2">Scheduled</div>
+                            <div className="space-y-2">
+                              {contentData.articles.scheduled.slice(0,5).map((a: any) => (
+                                <div key={a.id} className="flex items-center justify-between gap-2">
+                                  <div className="truncate">
+                                    <div className="font-medium text-gray-900 truncate">{a.title}</div>
+                                    <div className="text-xs text-gray-500">Publishes {new Date(a.scheduled_for).toLocaleString()}</div>
+                                  </div>
+                                  <button className="text-xs text-blue-600 hover:underline" onClick={() => publishDraftNow(a.id)}>Publish Now</button>
+                                </div>
+                              ))}
+                              {contentData.articles.scheduled.length === 0 && (
+                                <div className="text-xs text-gray-500">No scheduled articles</div>
+                              )}
+                            </div>
+                          </div>
+                          {/* Drafts */}
+                          <div>
+                            <div className="text-xs font-medium text-gray-700 mb-2">Drafts</div>
+                            <div className="space-y-2">
+                              {contentData.articles.drafts.slice(0,5).map((a: any) => (
+                                <div key={a.id} className="flex items-center justify-between gap-2">
+                                  <div className="truncate">
+                                    <div className="font-medium text-gray-900 truncate">{a.title}</div>
+                                    <div className="text-xs text-gray-500">Updated {new Date(a.updated_at).toLocaleDateString()}</div>
+                                  </div>
+                                  <button className="text-xs text-green-600 hover:underline" onClick={() => publishDraftNow(a.id)}>Publish</button>
+                                </div>
+                              ))}
+                              {contentData.articles.drafts.length === 0 && (
+                                <div className="text-xs text-gray-500">No drafts</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

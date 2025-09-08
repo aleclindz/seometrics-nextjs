@@ -348,12 +348,14 @@ export class ContentAbility extends BaseAbility {
 
       // Build progress-style action card data
       const links = [] as Array<{ label: string; url: string }>;
-      if (genResp?.article?.schema_json) {
-        links.push({ label: 'View Schema JSON', url: '#' });
-      }
-      if (genResp?.article?.images?.length) {
-        links.push({ label: 'View Images', url: '#' });
-      }
+
+      // Try to load CMS/public links from the updated article record
+      try {
+        const list = await this.fetchAPI(`/api/articles?userToken=${this.userToken}`);
+        const found = (list?.articles || []).find((a: any) => a.id === articleId);
+        if (found?.public_url) links.push({ label: 'View Live', url: found.public_url });
+        if (found?.cms_admin_url) links.push({ label: 'Open in CMS', url: found.cms_admin_url });
+      } catch {}
 
       const actionCard = {
         type: 'progress',
