@@ -29,6 +29,15 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(Math.floor(limit / 5));
 
+    // Filter by site if available (metadata.site_url)
+    if (siteUrl) {
+      try {
+        eventsQuery = eventsQuery.contains('metadata', { site_url: siteUrl });
+      } catch (e) {
+        // If contains is not supported for the column, skip filtering
+      }
+    }
+
     const { data: events, error: eventsError } = await eventsQuery;
 
     if (events && !eventsError) {

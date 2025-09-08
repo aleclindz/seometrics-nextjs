@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/website-chat/ChatInterface';
+import ActivityFeed from '@/components/website-chat/ActivityFeed';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import { ChevronDown, Send, Loader2, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
@@ -932,57 +933,65 @@ export default function WebsitePage() {
                       <div className="text-sm text-gray-500">{strategyData.message}</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white border rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-2">Keywords</div>
-                        <div className="h-28 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 p-3">
-                          <div className="grid grid-cols-3 gap-2 text-center mb-2">
-                            <div>
-                              <div className="text-lg font-bold text-purple-700">{strategyData.keywords.tracked}</div>
-                              <div className="text-xs text-purple-600">Tracked</div>
-                            </div>
-                            <div>
-                              <div className="text-lg font-bold text-purple-700">{strategyData.keywords.clusters}</div>
-                              <div className="text-xs text-purple-600">Clusters</div>
-                            </div>
-                            <div>
-                              <div className="text-lg font-bold text-purple-700">{strategyData.keywords.opportunities}</div>
-                              <div className="text-xs text-purple-600">Opps</div>
-                            </div>
-                          </div>
-                          {strategyData.keywords.topKeywords.slice(0, 2).map((kw: any, i: number) => (
-                            <div key={i} className="text-xs text-purple-700 truncate">
-                              {kw.keyword} ({kw.impressions})
-                            </div>
-                          ))}
+                    <div className="bg-white border rounded-lg p-4">
+                      <div className="text-sm font-semibold mb-3">Strategy Overview</div>
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 text-center">
+                          <div className="text-lg font-bold text-purple-700">{strategyData.keywords.tracked}</div>
+                          <div className="text-xs text-purple-600">Tracked Keywords</div>
                         </div>
-                        <div className="text-xs text-gray-500">Cluster coverage & priorities</div>
+                        <div className="p-3 rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 text-center">
+                          <div className="text-lg font-bold text-indigo-700">{strategyData.keywords.clusters}</div>
+                          <div className="text-xs text-indigo-600">Topic Clusters</div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-gradient-to-br from-orange-50 to-orange-100 text-center">
+                          <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.contentGaps}</div>
+                          <div className="text-xs text-orange-600">Content Gaps</div>
+                        </div>
                       </div>
-                      
-                      <div className="bg-white border rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-2">Opportunities</div>
-                        <div className="h-28 rounded-lg bg-gradient-to-br from-orange-50 to-orange-100 p-3">
-                          <div className="grid grid-cols-3 gap-2 text-center mb-2">
-                            <div>
-                              <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.quickWins}</div>
-                              <div className="text-xs text-orange-600">Quick</div>
-                            </div>
-                            <div>
-                              <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.contentGaps}</div>
-                              <div className="text-xs text-orange-600">Content</div>
-                            </div>
-                            <div>
-                              <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.technicalIssues}</div>
-                              <div className="text-xs text-orange-600">Technical</div>
-                            </div>
+
+                      {strategyData.keywords.topKeywords.length > 0 && (
+                        <div className="mb-4">
+                          <div className="text-xs font-medium text-gray-600 mb-1">Top Keywords</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {strategyData.keywords.topKeywords.slice(0, 6).map((kw: any, i: number) => (
+                              <div key={i} className="text-xs text-purple-700 truncate">
+                                {kw.keyword}{kw.impressions ? ` (${kw.impressions})` : ''}
+                              </div>
+                            ))}
                           </div>
-                          {strategyData.opportunities.items.slice(0, 2).map((item: any, i: number) => (
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="text-sm font-semibold mb-2">Opportunities</div>
+                        <div className="grid grid-cols-3 gap-2 text-center mb-2">
+                          <div>
+                            <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.quickWins}</div>
+                            <div className="text-xs text-orange-600">Quick Wins</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.contentGaps}</div>
+                            <div className="text-xs text-orange-600">Content Gaps</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-orange-700">{strategyData.opportunities.technicalIssues}</div>
+                            <div className="text-xs text-orange-600">Technical</div>
+                          </div>
+                        </div>
+                        <div className="space-y-1 mb-3">
+                          {strategyData.opportunities.items.slice(0, 5).map((item: any, i: number) => (
                             <div key={i} className="text-xs text-orange-700 truncate">
                               {item.type === 'quick_win' ? '⚡' : '📝'} {item.title}
                             </div>
                           ))}
                         </div>
-                        <div className="text-xs text-gray-500">Quick wins & content gaps</div>
+                        <div className="text-xs text-gray-500">
+                          How we calculate opportunities:
+                          <br />• Quick Wins: GSC keywords ranking #4–10 with impressions > 50 (if GSC data exists)
+                          <br />• Content Gaps: Clusters with tracked keywords but no associated content
+                          <br />• Technical: Issues surfaced by technical SEO checks (if available)
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1009,23 +1018,8 @@ export default function WebsitePage() {
                 <div className="origin-center -rotate-90 text-xs text-gray-500">Activity</div>
               </div>
             ) : (
-              <div className="p-4 space-y-3 overflow-auto">
-                {[
-                  { title: 'Added alt text to 42 images', tag: 'Technical Fix', time: 'Today, 2:24 PM' },
-                  { title: 'Published: 5 Tips for Shopify SEO', tag: 'Content', time: 'Today, 12:10 PM' },
-                  { title: 'Updated schema on 12 pages', tag: 'Technical Fix', time: 'Yesterday, 6:01 PM' }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-3">
-                    <div className="mt-1 h-2 w-2 rounded-full bg-gray-300" />
-                    <div className="flex-1">
-                      <div className="text-sm">{item.title}</div>
-                      <div className="text-xs text-gray-500">{item.tag} • {item.time}</div>
-                    </div>
-                    <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded">
-                      Details
-                    </button>
-                  </div>
-                ))}
+              <div className="p-0 overflow-auto">
+                <ActivityFeed domain={domain} userToken={user.token} />
               </div>
             )}
           </aside>
