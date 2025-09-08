@@ -142,12 +142,16 @@ export async function POST(request: NextRequest) {
         .from('topic_cluster_content')
         .select('topic_cluster')
         .eq('website_token', targetWebsiteToken);
-      existingClusterNames = [
-        ...new Set([
-          ...((existingKw || []).map((k: any) => k.topic_cluster).filter(Boolean)),
-          ...((existingContent || []).map((c: any) => c.topic_cluster).filter(Boolean))
-        ])
-      ];
+      const combined: string[] = [];
+      (existingKw || []).forEach((k: any) => { if (k?.topic_cluster) combined.push(k.topic_cluster); });
+      (existingContent || []).forEach((c: any) => { if (c?.topic_cluster) combined.push(c.topic_cluster); });
+      const seen: Record<string, boolean> = {};
+      const unique: string[] = [];
+      for (let i = 0; i < combined.length; i++) {
+        const name = combined[i];
+        if (!seen[name]) { seen[name] = true; unique.push(name); }
+      }
+      existingClusterNames = unique;
     } catch {}
 
     const norm = (s?: string) => (s || '').trim().toLowerCase();
