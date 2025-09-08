@@ -152,6 +152,16 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       const data = await response.json();
       console.log('✅ [SETUP MODAL] GSC Status Check Result:', JSON.stringify(data, null, 2));
       setGscStatus(data);
+      
+      // Update parent component with GSC status
+      const gscConnected = data.connected === true;
+      if (gscConnected && website.gscStatus !== 'connected') {
+        console.log('🔄 [SETUP MODAL] Updating parent GSC status to connected');
+        onStatusUpdate?.({ gscStatus: 'connected' });
+      } else if (!gscConnected && website.gscStatus !== 'none') {
+        console.log('🔄 [SETUP MODAL] Updating parent GSC status to none');
+        onStatusUpdate?.({ gscStatus: 'none' });
+      }
     } catch (error) {
       console.error('❌ [SETUP MODAL] Error checking GSC connection:', error);
       setGscError('Failed to check connection status');
@@ -228,6 +238,9 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         if (hasActiveConnection && website.cmsStatus !== 'connected') {
           console.log('🔄 [SETUP MODAL] Updating parent CMS status to connected');
           onStatusUpdate?.({ cmsStatus: 'connected' });
+        } else if (!hasActiveConnection && website.cmsStatus !== 'none') {
+          console.log('🔄 [SETUP MODAL] Updating parent CMS status to none');
+          onStatusUpdate?.({ cmsStatus: 'none' });
         }
       }
     } catch (error) {
@@ -264,12 +277,14 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         
         if (data.success) {
           setHostConnections(data.connections);
-          // Update parent status if we have active connections
-          const hasActiveConnection = data.connections.some((conn: HostConnection) => 
-            conn.deployment_status === 'active'
-          );
-          if (hasActiveConnection && website.hostStatus !== 'connected') {
+          // Update parent status if we have any host connections (regardless of deployment status)
+          const hasConnection = data.connections && data.connections.length > 0;
+          if (hasConnection && website.hostStatus !== 'connected') {
+            console.log('🔄 [SETUP MODAL] Updating parent host status to connected');
             onStatusUpdate?.({ hostStatus: 'connected' });
+          } else if (!hasConnection && website.hostStatus !== 'none') {
+            console.log('🔄 [SETUP MODAL] Updating parent host status to none');
+            onStatusUpdate?.({ hostStatus: 'none' });
           }
         } else {
           console.log('[HOST CONNECTIONS] API returned unsuccessful response:', data.error);
