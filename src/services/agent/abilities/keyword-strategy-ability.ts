@@ -23,6 +23,7 @@ export class KeywordStrategyAbility extends BaseAbility {
       'suggest_content_from_keywords',
       // Modern function names (KEYWORDS_ prefixed)
       'KEYWORDS_get_strategy',
+      'KEYWORDS_add_keywords',
       'KEYWORDS_brainstorm',
       'KEYWORDS_organize_clusters',
       'KEYWORDS_suggest_content',
@@ -35,6 +36,8 @@ export class KeywordStrategyAbility extends BaseAbility {
       case 'get_keyword_strategy':
       case 'KEYWORDS_get_strategy':
         return await this.getKeywordStrategy(args);
+      case 'KEYWORDS_add_keywords':
+        return await this.addKeywords(args);
       case 'update_keyword_strategy':
         return await this.updateKeywordStrategy(args);
       case 'brainstorm_keywords':
@@ -350,6 +353,43 @@ export class KeywordStrategyAbility extends BaseAbility {
 
     } catch (error) {
       return this.error('Failed to organize topic clusters', error);
+    }
+  }
+
+  /**
+   * Add keywords to strategy (wrapper around updateKeywordStrategy)
+   */
+  private async addKeywords(args: {
+    site_url?: string;
+    website_token?: string;
+    keywords: Array<{ keyword: string; keyword_type?: 'primary' | 'secondary' | 'long_tail'; topic_cluster?: string }>
+  }): Promise<FunctionCallResult> {
+    try {
+      if (!args.keywords || args.keywords.length === 0) {
+        return this.error('No keywords provided');
+      }
+
+      const normalized = args.keywords.map(k => ({
+        keyword: k.keyword,
+        keyword_type: k.keyword_type || 'long_tail',
+        topic_cluster: k.topic_cluster
+      }));
+
+      const res = await this.updateKeywordStrategy({
+        site_url: args.site_url,
+        website_token: args.website_token,
+        keywords: normalized
+      } as any);
+
+      if (!res.success) return res;
+
+      return this.success({
+        message: 'Keywords added to strategy',
+        added: normalized.length,
+        updated_strategy: res.data?.updated_strategy
+      });
+    } catch (error) {
+      return this.error('Failed to add keywords', error);
     }
   }
 

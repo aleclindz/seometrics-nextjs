@@ -154,6 +154,77 @@ export async function GET(request: NextRequest) {
       console.log('[STRATEGY DASHBOARD] Error processing GSC data:', error);
     }
 
+    // Also incorporate tracked keywords from our own strategy tables so users can add via chat
+    try {
+      const cleanDomain = domain.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+      // Resolve website_token from domain
+      const { data: website } = await supabase
+        .from('websites')
+        .select('website_token, domain, cleaned_domain')
+        .eq('user_token', userToken)
+        .or(`domain.eq.${domain},domain.eq.${cleanDomain},cleaned_domain.eq.${cleanDomain}`)
+        .single();
+
+      if (website?.website_token) {
+        const websiteToken = website.website_token;
+
+        // Fetch tracked keywords and topic cluster content
+        const { data: keywords } = await supabase
+          .from('website_keywords')
+          .select('keyword, keyword_type, topic_cluster')
+          .eq('website_token', websiteToken);
+
+        const { data: clusterContent } = await supabase
+          .from('topic_cluster_content')
+          .select('topic_cluster')
+          .eq('website_token', websiteToken);
+
+        if (keywords && keywords.length > 0) {
+          const clusterSet = new Set<string>();
+          const keywordsByCluster: Record<string, number> = {};
+          (keywords || []).forEach(k => {
+            const cluster = k.topic_cluster || 'uncategorized';
+            clusterSet.add(cluster);
+            keywordsByCluster[cluster] = (keywordsByCluster[cluster] || 0) + 1;
+          });
+
+          const clustersWithContent = new Set((clusterContent || []).map(c => c.topic_cluster));
+          const contentGaps = Array.from(clusterSet).filter(c => !clustersWithContent.has(c)).length;
+
+          // Update keywords card to reflect tracked keywords
+          strategyData.keywords = {
+            tracked: keywords.length,
+            clusters: clusterSet.size,
+            opportunities: contentGaps,
+            topKeywords: keywords.slice(0, 10).map(k => ({ keyword: k.keyword, impressions: 0 })),
+            status: 'good'
+          };
+
+          // Update opportunities card with simple counts from tracked keywords
+          strategyData.opportunities = {
+            quickWins: (keywords || []).filter(k => (k.keyword_type || 'long_tail') === 'secondary').length,
+            contentGaps: contentGaps,
+            technicalIssues: strategyData.opportunities.technicalIssues || 0,
+            items: (keywords || []).slice(0, 5).map(k => ({
+              type: 'quick_win',
+              title: `Track "${k.keyword}" in ${k.topic_cluster || 'uncategorized'}`,
+              description: `Keyword type: ${k.keyword_type || 'long_tail'}`,
+              priority: 'medium'
+            })),
+            status: 'good'
+          };
+
+          strategyData.hasData = true;
+          if (!strategyData.message || strategyData.message.includes('Google Search Console')) {
+            strategyData.message = 'Strategy reflects your tracked keywords and clusters';
+          }
+        }
+      }
+    } catch (error) {
+      console.log('[STRATEGY DASHBOARD] Error incorporating tracked keywords:', error);
+    }
+
     return NextResponse.json({
       success: true,
       data: strategyData

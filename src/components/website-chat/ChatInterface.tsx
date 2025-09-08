@@ -249,6 +249,14 @@ What would you like to work on first?`,
         };
         
         setMessages(prev => [...prev, assistantMessage]);
+
+        // If the assistant executed a keyword strategy update, notify listeners to refresh strategy
+        if (data.functionCall && data.functionCall.result && data.functionCall.result.success) {
+          const fname = data.functionCall.name || '';
+          if (fname === 'KEYWORDS_add_keywords' || fname === 'update_keyword_strategy') {
+            window.dispatchEvent(new CustomEvent('seoagent:strategy-updated', { detail: { site: selectedSite } }));
+          }
+        }
       } else {
         throw new Error(data.error || 'Failed to get response');
       }

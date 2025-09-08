@@ -248,6 +248,11 @@ export async function POST(request: NextRequest) {
           return;
         }
 
+        // Auto-inject selected site into args if missing and relevant
+        if (selectedSite && (functionArgs == null || typeof functionArgs !== 'object' || !('site_url' in functionArgs))) {
+          functionArgs = { ...(functionArgs || {}), site_url: selectedSite };
+        }
+
         // Validate arguments
         const validation = validateFunctionArgs(functionName, functionArgs);
         if (!validation.success) {
@@ -615,6 +620,13 @@ function getFunctionDisplayName(functionName: string): string {
       return 'Page Performance Analysis';
     case 'optimize_meta_tags':
       return 'Meta Tags Optimization';
+    // Keyword strategy
+    case 'KEYWORDS_add_keywords':
+      return 'Keywords Added to Strategy';
+    case 'update_keyword_strategy':
+      return 'Keyword Strategy Updated';
+    case 'KEYWORDS_get_strategy':
+      return 'Keyword Strategy Retrieved';
     default:
       return functionName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
   }
@@ -681,6 +693,13 @@ function getDescriptionForFunction(functionName: string): string {
       return 'Analyzed Core Web Vitals and page speed metrics';
     case 'optimize_meta_tags':
       return 'Optimized meta titles and descriptions for better SEO';
+    // Keyword strategy
+    case 'KEYWORDS_add_keywords':
+      return 'Added keywords to strategy and tracking list';
+    case 'update_keyword_strategy':
+      return 'Updated tracked keywords and clusters';
+    case 'KEYWORDS_get_strategy':
+      return 'Retrieved current keyword strategy overview';
     default:
       return `Executed ${functionName.replace(/_/g, ' ')} operation`;
   }

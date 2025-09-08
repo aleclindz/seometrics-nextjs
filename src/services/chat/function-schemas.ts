@@ -109,6 +109,93 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: true
   },
 
+  // ===== Keyword Strategy functions =====
+  'KEYWORDS_get_strategy': {
+    schema: {
+      name: 'KEYWORDS_get_strategy',
+      description: 'Get the current keyword strategy (tracked keywords and clusters) for a website',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional; primary site used if omitted)' }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().optional()
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
+  'KEYWORDS_add_keywords': {
+    schema: {
+      name: 'KEYWORDS_add_keywords',
+      description: 'Add keywords to the strategy (tracked keywords) with optional types and clusters',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional; primary site used if omitted)' },
+          keywords: {
+            type: 'array',
+            description: 'Keywords to add to strategy',
+            items: {
+              type: 'object',
+              properties: {
+                keyword: { type: 'string', description: 'Keyword phrase' },
+                keyword_type: { type: 'string', enum: ['primary', 'secondary', 'long_tail'], default: 'long_tail' },
+                topic_cluster: { type: 'string', description: 'Optional topic cluster name' }
+              },
+              required: ['keyword']
+            }
+          }
+        },
+        required: ['keywords'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().optional(),
+      keywords: z.array(z.object({
+        keyword: z.string().min(1),
+        keyword_type: z.enum(['primary', 'secondary', 'long_tail']).optional().default('long_tail'),
+        topic_cluster: z.string().optional()
+      }))
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
+  'KEYWORDS_brainstorm': {
+    schema: {
+      name: 'KEYWORDS_brainstorm',
+      description: 'Brainstorm long-tail keyword ideas for a website',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional; primary site used if omitted)' },
+          base_keywords: { type: 'array', items: { type: 'string' }, description: 'Seed keywords to guide brainstorming' },
+          topic_focus: { type: 'string', description: 'Optional topic/theme to focus keyword ideas' },
+          generate_count: { type: 'integer', description: 'How many keywords to generate', default: 10 },
+          avoid_duplicates: { type: 'boolean', description: 'Avoid duplicates from tracked keywords', default: true }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().optional(),
+      base_keywords: z.array(z.string()).optional().default([]),
+      topic_focus: z.string().optional(),
+      generate_count: z.number().int().optional().default(10),
+      avoid_duplicates: z.boolean().optional().default(true)
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
   'CONTENT_optimize_existing': {
     schema: {
       name: 'CONTENT_optimize_existing',

@@ -370,6 +370,18 @@ export default function WebsitePage() {
     fetchStrategyData();
   }, [user?.token, domain]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Listen for strategy updates triggered by chat actions
+  useEffect(() => {
+    const handler = (e: any) => {
+      if (!user?.token) return;
+      if (e?.detail?.site && typeof e.detail.site === 'string') {
+        fetchStrategyData();
+      }
+    };
+    window.addEventListener('seoagent:strategy-updated', handler as any);
+    return () => window.removeEventListener('seoagent:strategy-updated', handler as any);
+  }, [user?.token, domain]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
