@@ -112,9 +112,15 @@ export async function GET(request: NextRequest) {
     const website = websiteResult.data[0];
     
     // Check if we need to refresh status (older than 1 hour or forced refresh)
+    // BUT: Only refresh if status is actually empty/none, not if it's been explicitly set
     const lastCheck = website.last_status_check ? new Date(website.last_status_check) : null;
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const needsRefresh = forceRefresh || !lastCheck || lastCheck < oneHourAgo;
+    const hasValidStatuses = (
+      website.cms_status !== 'none' || 
+      website.hosting_status !== 'none' || 
+      website.gsc_status === 'connected'
+    );
+    const needsRefresh = !hasValidStatuses && (forceRefresh || !lastCheck || lastCheck < oneHourAgo);
 
     let gscStatus = website.gsc_status;
     let seoagentjsStatus = website.seoagentjs_status;
@@ -123,68 +129,81 @@ export async function GET(request: NextRequest) {
     let hostingStatus = website.hosting_status || website.host_status;
 
     if (needsRefresh) {
-      console.log('[SETUP STATUS] Refreshing connection statuses...');
+      console.log('[SETUP STATUS] Refreshing connection statuses for empty/none statuses only...');
       
-      // Refresh GSC status by checking gsc_connections table
-      const { data: gscConnection, error: gscError } = await supabase
-        .from('gsc_connections')
-        .select('id, is_active')
-        .eq('user_token', userToken)
-        .eq('is_active', true)
-        .limit(1);
+      // Refresh GSC status by checking gsc_connections table ONLY if not already connected
+      if (gscStatus === 'none') {
+        const { data: gscConnection, error: gscError } = await supabase
+          .from('gsc_connections')
+          .select('id, is_active')
+          .eq('user_token', userToken)
+          .eq('is_active', true)
+          .limit(1);
 
-      if (!gscError && gscConnection && gscConnection.length > 0) {
-        gscStatus = 'connected';
+        if (!gscError && gscConnection && gscConnection.length > 0) {
+          gscStatus = 'connected';
+        }
+        console.log('[SETUP STATUS] GSC status refreshed:', gscStatus);
       } else {
-        gscStatus = 'none';
+        console.log('[SETUP STATUS] GSC status already connected, skipping refresh');
       }
 
-      // Refresh SEOAgent.js status by checking if script is accessible
-      // Use cleaned_domain to avoid sc-domain: prefix issues
-      seoagentjsStatus = await detectSEOAgentStatus(website.domain, website.cleaned_domain);
-      
-      // Refresh CMS status by checking cms_connections table
-      try {
-        const { data: cmsConnections, error: cmsError } = await supabase
-          .from('cms_connections')
-          .select('id, status, is_active')
-          .eq('user_token', userToken)
-          .eq('is_active', true);
-
-        if (!cmsError && cmsConnections && cmsConnections.length > 0) {
-          // Check if any connection has active status
-          const hasActiveConnection = cmsConnections.some(conn => conn.status === 'active');
-          cmsStatus = hasActiveConnection ? 'connected' : 'none';
-          console.log('[SETUP STATUS] CMS status refreshed:', cmsStatus, 'from', cmsConnections.length, 'connections');
-        } else {
-          cmsStatus = 'none';
-          console.log('[SETUP STATUS] No active CMS connections found');
-        }
-      } catch (cmsRefreshError) {
-        console.log('[SETUP STATUS] Error refreshing CMS status:', cmsRefreshError);
-        cmsStatus = website.cms_status || 'none'; // Fallback to cached value
+      // Refresh SEOAgent.js status by checking if script is accessible ONLY if not already active
+      if (seoagentjsStatus === 'inactive') {
+        seoagentjsStatus = await detectSEOAgentStatus(website.domain, website.cleaned_domain);
+        console.log('[SETUP STATUS] SEOAgent.js status refreshed:', seoagentjsStatus);
+      } else {
+        console.log('[SETUP STATUS] SEOAgent.js already active, skipping refresh');
       }
       
-      // Refresh hosting status by checking host_connections table
-      try {
-        const { data: hostConnections, error: hostError } = await supabase
-          .from('host_connections')
-          .select('id, deployment_status, is_active')
-          .eq('user_token', userToken)
-          .eq('is_active', true);
+      // Refresh CMS status by checking cms_connections table ONLY if not already connected
+      if (cmsStatus === 'none') {
+        try {
+          const { data: cmsConnections, error: cmsError } = await supabase
+            .from('cms_connections')
+            .select('id, status, is_active')
+            .eq('user_token', userToken)
+            .eq('is_active', true);
 
-        if (!hostError && hostConnections && hostConnections.length > 0) {
-          // Check if any connection has active deployment
-          const hasActiveDeployment = hostConnections.some(conn => conn.deployment_status === 'active');
-          hostingStatus = hasActiveDeployment ? 'connected' : 'none';
-          console.log('[SETUP STATUS] Hosting status refreshed:', hostingStatus, 'from', hostConnections.length, 'connections');
-        } else {
-          hostingStatus = 'none';
-          console.log('[SETUP STATUS] No active host connections found');
+          if (!cmsError && cmsConnections && cmsConnections.length > 0) {
+            // Check if any connection has active status
+            const hasActiveConnection = cmsConnections.some(conn => conn.status === 'active');
+            cmsStatus = hasActiveConnection ? 'connected' : 'none';
+            console.log('[SETUP STATUS] CMS status refreshed:', cmsStatus, 'from', cmsConnections.length, 'connections');
+          } else {
+            console.log('[SETUP STATUS] No active CMS connections found');
+          }
+        } catch (cmsRefreshError) {
+          console.log('[SETUP STATUS] Error refreshing CMS status:', cmsRefreshError);
+          // Keep existing status on error
         }
-      } catch (hostRefreshError) {
-        console.log('[SETUP STATUS] Error refreshing hosting status:', hostRefreshError);
-        hostingStatus = website.hosting_status || website.host_status || 'none'; // Fallback to cached value
+      } else {
+        console.log('[SETUP STATUS] CMS status already connected, skipping refresh');
+      }
+      
+      // Refresh hosting status by checking host_connections table ONLY if not already connected
+      if (hostingStatus === 'none') {
+        try {
+          const { data: hostConnections, error: hostError } = await supabase
+            .from('host_connections')
+            .select('id, deployment_status, is_active')
+            .eq('user_token', userToken)
+            .eq('is_active', true);
+
+          if (!hostError && hostConnections && hostConnections.length > 0) {
+            // Simplified: if any host connection exists, consider it connected
+            // regardless of deployment_status to avoid deployment status complexity
+            hostingStatus = 'connected';
+            console.log('[SETUP STATUS] Hosting status refreshed: connected from', hostConnections.length, 'connections');
+          } else {
+            console.log('[SETUP STATUS] No active host connections found');
+          }
+        } catch (hostRefreshError) {
+          console.log('[SETUP STATUS] Error refreshing hosting status:', hostRefreshError);
+          // Keep existing status on error
+        }
+      } else {
+        console.log('[SETUP STATUS] Hosting status already connected, skipping refresh');
       }
 
       // Update the website record with refreshed statuses
