@@ -58,6 +58,7 @@ interface Props {
 
 export default function TechnicalSEODashboard({ userToken, websites }: Props) {
   const [data, setData] = useState<TechnicalSEOData | null>(null);
+  const [runtimeSchemaCount, setRuntimeSchemaCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedSite, setSelectedSite] = useState<string>('');
@@ -214,6 +215,16 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
         const technicalData = await inspectionsResponse.json();
         console.log('[DASHBOARD] Technical SEO API Response:', technicalData);
         setData(technicalData.data);
+        // Also fetch runtime schema injections recorded by SEOAgent.js
+        try {
+          const act = await fetch(`/api/tools/seo-activity?userToken=${userToken}&siteUrl=${encodeURIComponent(siteUrlToSend)}&activityType=schema_markup_added&limit=500`);
+          if (act.ok) {
+            const actData = await act.json();
+            setRuntimeSchemaCount(actData.count || 0);
+          }
+        } catch (e) {
+          console.warn('[DASHBOARD] Runtime schema count fetch failed', e);
+        }
       } else {
         const errorText = await inspectionsResponse.text();
         console.error('[DASHBOARD] Technical SEO API Error:', errorText);
@@ -567,6 +578,11 @@ export default function TechnicalSEODashboard({ userToken, websites }: Props) {
                 style={{ width: `${(data.overview.withSchema / data.overview.totalPages) * 100}%` }}
               ></div>
             </div>
+            {runtimeSchemaCount > 0 && (
+              <div className="mt-2 text-xs text-gray-500">
+                Runtime injections recorded: {runtimeSchemaCount}
+              </div>
+            )}
           </div>
         </div>
       )}

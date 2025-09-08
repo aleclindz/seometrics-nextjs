@@ -14,6 +14,7 @@ export class TechnicalSEOAbility extends BaseAbility {
   getFunctionNames(): string[] {
     return [
       'audit_site',
+      'SEO_analyze_technical',
       'check_technical_seo',
       'plan_crawl',
       'analyze_crawl',
@@ -29,6 +30,7 @@ export class TechnicalSEOAbility extends BaseAbility {
       case 'audit_site':
         return await this.auditSite(args);
       case 'check_technical_seo':
+      case 'SEO_analyze_technical':
         return await this.checkTechnicalSEO(args);
       case 'plan_crawl':
         return await this.planCrawl(args);
