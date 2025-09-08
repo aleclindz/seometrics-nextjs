@@ -198,13 +198,29 @@ export async function syncGSCSearchAnalytics(options: GSCSyncOptions): Promise<{
   try {
     console.log(`[GSC SYNC] Starting search analytics sync for ${options.siteUrl}`);
 
-    // Initialize Google Auth
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '{}'),
-      scopes: ['https://www.googleapis.com/auth/webmasters.readonly']
+    // Get OAuth credentials from user's GSC connection (same as other GSC APIs)
+    const { data: connection, error: connError } = await supabase
+      .from('gsc_connections')
+      .select('*')
+      .eq('user_token', options.userToken)
+      .single();
+
+    if (connError || !connection) {
+      throw new Error('GSC connection not found for user');
+    }
+
+    // Initialize Google OAuth2 (same method as other GSC APIs)
+    const clientId = process.env.GOOGLE_CLIENT_ID!;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    
+    // Set user credentials
+    oauth2Client.setCredentials({
+      access_token: connection.access_token,
+      refresh_token: connection.refresh_token,
     });
 
-    const searchConsole = google.searchconsole({ version: 'v1', auth });
+    const searchConsole = google.searchconsole({ version: 'v1', auth: oauth2Client });
 
     // Define dimension sets to sync (matching GSC UI views)
     const dimensionSets: GSCDimension[][] = [
