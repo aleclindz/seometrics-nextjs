@@ -119,6 +119,9 @@ export class SecureOpenAIClient {
 - Provide specific, actionable recommendations
 - Use a friendly but professional tone`;
 
+    // Expert reasoning directive for holistic SEO guidance
+    prompt += `\n\n**Expert Reasoning (Always On)**:\n- Think like a senior SEO strategist. Synthesize Google Search Console performance, technical SEO signals, content readiness, and setup status.\n- When asked for guidance, provide a single prioritized “Best Next Step” with: expected impact, effort level, and the exact function(s) you will call to execute it.\n- If data is sparse or missing, prioritize enabling data (connect GSC, backfill last 30 days, verify SEOAgent.js) before deeper analysis.\n- Prefer concrete, measurable actions (e.g., “Backfill last 30 days”, “Analyze top pages by CTR drop”, “Generate internal linking plan”) over vague advice.\n- Reference recent metrics when explaining recommendations (clicks, impressions, CTR, position).`;
+
     // Add setup-aware guidance based on current status
     if (context.siteContext?.selectedSite && context.userToken) {
       const setupStatus = await this.checkSetupStatus(context.userToken, context.siteContext.selectedSite);
