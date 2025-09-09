@@ -182,8 +182,11 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
 
     const userData = await userResponse.json();
 
-    // Get user's projects
-    const projectsResponse = await fetch('https://api.vercel.com/v9/projects', {
+    // Get user's projects (respect team scope when provided)
+    const projectsUrl = tokenData.team_id 
+      ? `https://api.vercel.com/v9/projects?teamId=${encodeURIComponent(tokenData.team_id)}`
+      : 'https://api.vercel.com/v9/projects';
+    const projectsResponse = await fetch(projectsUrl, {
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`
       }
