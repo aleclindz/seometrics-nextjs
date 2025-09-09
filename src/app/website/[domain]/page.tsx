@@ -30,6 +30,7 @@ export default function WebsitePage() {
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
   const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string }>>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [backfilling, setBackfilling] = useState(false);
 
   // Dynamic setup status state
   const [setupStatus, setSetupStatus] = useState({
@@ -138,6 +139,65 @@ export default function WebsitePage() {
         isLoading: false,
         error: 'Network error'
       }));
+    }
+  };
+
+  // Backfill last 30 days of GSC analytics for this website
+  const backfillLast30Days = async () => {
+    if (!user?.token) return;
+    try {
+      setBackfilling(true);
+
+      // Try to find an exact matching GSC property for this domain
+      let siteUrl: string | null = null;
+      try {
+        const propsRes = await fetch(`/api/gsc/properties?userToken=${user.token}`);
+        if (propsRes.ok) {
+          const propsData = await propsRes.json();
+          const props: Array<{ siteUrl: string }> = propsData.properties || [];
+          const matches = props.filter(p => p.siteUrl.includes(domain));
+          // Prefer sc-domain property if available, else https, else http
+          const preferred =
+            matches.find(p => p.siteUrl.startsWith('sc-domain:'))?.siteUrl ||
+            matches.find(p => p.siteUrl.startsWith('https://'))?.siteUrl ||
+            matches.find(p => p.siteUrl.startsWith('http://'))?.siteUrl ||
+            null;
+          siteUrl = preferred;
+        }
+      } catch (e) {
+        // Non-fatal; will try fallbacks below
+        console.warn('[PERFORMANCE] Failed to fetch GSC properties, using fallback siteUrl');
+      }
+
+      // Fallbacks if no property match found
+      if (!siteUrl) {
+        siteUrl = `sc-domain:${domain}`;
+      }
+
+      // Trigger recent backfill (max 30 days)
+      const resp = await fetch('/api/gsc/sync-analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: user.token,
+          siteUrl,
+          syncType: 'recent',
+          daysBack: 30,
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Backfill request failed');
+      }
+
+      // Refresh performance data after backfill
+      await fetchPerformanceData();
+    } catch (e) {
+      console.error('❌ [PERFORMANCE] Backfill error:', e);
+      // No global toast system here; defer to console/logging
+    } finally {
+      setBackfilling(false);
     }
   };
 
@@ -562,18 +622,35 @@ export default function WebsitePage() {
                   {/* Header with refresh button */}
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-gray-900">Performance Overview</h2>
-                    <button
-                      onClick={fetchPerformanceData}
-                      disabled={performanceData.isLoading}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {performanceData.isLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4" />
-                      )}
-                      Refresh
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={backfillLast30Days}
+                        disabled={backfilling || performanceData.isLoading}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {backfilling ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          // clock-like icon path copied from existing GSC button style
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-7a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )}
+                        Backfill 30 Days
+                      </button>
+                      <button
+                        onClick={fetchPerformanceData}
+                        disabled={performanceData.isLoading}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {performanceData.isLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                        Refresh
+                      </button>
+                    </div>
                   </div>
 
                   {performanceData.isLoading ? (

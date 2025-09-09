@@ -229,44 +229,7 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
     }
   };
 
-  // One-click backfill last 30 days (dimensional analytics)
-  const handleBackfill30Days = async () => {
-    if (!user?.token || !connectionStatus.connected) return;
-    try {
-      setSyncing(true);
-      setError(null);
-      setSyncResults(null);
-
-      // Fetch properties to backfill
-      const propsRes = await fetch(`/api/gsc/properties?userToken=${user.token}`);
-      const props = await propsRes.json();
-      const properties: Property[] = props.properties || [];
-
-      let success = 0;
-      for (const p of properties) {
-        const resp = await fetch('/api/gsc/sync-analytics', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userToken: user.token,
-            siteUrl: p.siteUrl,
-            syncType: 'recent',
-            daysBack: 30
-          })
-        });
-        if (resp.ok) success += 1;
-        await new Promise(r => setTimeout(r, 200));
-      }
-
-      setSyncResults({ message: `Backfilled 30 days for ${success}/${properties.length} properties` });
-      await checkConnectionStatus();
-    } catch (e) {
-      console.error('[GSC COMPONENT] Backfill error:', e);
-      setError('Failed to backfill analytics');
-    } finally {
-      setSyncing(false);
-    }
-  };
+  // Backfill functionality moved to Website Performance tab
 
   const handleSyncProperties = async () => {
     if (!user?.token || !connectionStatus.connected) return;
@@ -397,25 +360,7 @@ export default function GSCConnection({ onConnectionChange }: GSCConnectionProps
                 </>
               )}
             </button>
-            <button
-              onClick={handleBackfill30Days}
-              disabled={syncing || loading}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm flex items-center gap-2"
-            >
-              {syncing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Backfilling...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-7a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Backfill 30 Days
-                </>
-              )}
-            </button>
+            {/* Backfill button removed to avoid duplication; now lives on Website Performance tab */}
             <button
               onClick={handleSync}
               disabled={syncing || loading}
