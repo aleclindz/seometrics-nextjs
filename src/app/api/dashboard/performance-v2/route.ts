@@ -67,55 +67,44 @@ export async function GET(request: NextRequest) {
       .is('page', null)  // Daily totals (no page dimension)
       .order('date', { ascending: true });
 
-    // 2. CURRENT PERIOD TOTALS
-    const currentTotalsQuery = supabase
+    // 2. COMPARISON PERIOD DAILY DATA (for trend calculation)
+    const dailyComparisonQuery = compareWith === 'previous' ? supabase
       .from('gsc_search_analytics')
-      .select('clicks, impressions, ctr, position')
+      .select('date, clicks, impressions, ctr, position')
       .eq('user_token', userToken)
       .in('site_url', siteVariants)
-      .gte('date', startDateStr)
-      .lte('date', endDateStr)
-      .is('query', null) // Aggregated totals
-      .is('page', null)
-      .is('date', null); // Aggregated across all dates in period
-
-    // 3. COMPARISON PERIOD TOTALS (for trend calculation)
-    const comparisonTotalsQuery = compareWith === 'previous' ? supabase
-      .from('gsc_search_analytics')
-      .select('clicks, impressions, ctr, position')
-      .eq('user_token', userToken)
-      .in('site_url', siteVariants)
+      .not('date', 'is', null)
       .gte('date', compareStartDateStr)
       .lte('date', compareEndDateStr)
       .is('query', null)
       .is('page', null)
-      .is('date', null) : Promise.resolve({ data: null, error: null });
+      .order('date', { ascending: true }) : Promise.resolve({ data: null, error: null });
 
-    // 4. TOP QUERIES (with trends)
+    // 3. TOP QUERIES (aggregated rows for the exact range)
     const topQueriesQuery = supabase
       .from('gsc_search_analytics')
       .select('query, clicks, impressions, ctr, position')
       .eq('user_token', userToken)
       .in('site_url', siteVariants)
-      .gte('date', startDateStr)
-      .lte('date', endDateStr)
+      .is('date', null) // Aggregated rows
+      .eq('start_date', startDateStr)
+      .eq('end_date', endDateStr)
       .not('query', 'is', null)
       .is('page', null) // Query-only data
-      .is('date', null) // Aggregated across date range
       .order('impressions', { ascending: false })
       .limit(20);
 
-    // 5. TOP PAGES
+    // 4. TOP PAGES (aggregated rows for the exact range)
     const topPagesQuery = supabase
       .from('gsc_search_analytics')
       .select('page, clicks, impressions, ctr, position')
       .eq('user_token', userToken)
       .in('site_url', siteVariants)
-      .gte('date', startDateStr)
-      .lte('date', endDateStr)
+      .is('date', null)
+      .eq('start_date', startDateStr)
+      .eq('end_date', endDateStr)
       .not('page', 'is', null)
-      .is('query', null) // Page-only data
-      .is('date', null) // Aggregated across date range
+      .is('query', null)
       .order('clicks', { ascending: false })
       .limit(20);
 
@@ -125,12 +114,13 @@ export async function GET(request: NextRequest) {
       .select('device, clicks, impressions, ctr, position')
       .eq('user_token', userToken)
       .in('site_url', siteVariants)
-      .gte('date', startDateStr)
-      .lte('date', endDateStr)
+      .is('date', null)
+      .eq('start_date', startDateStr)
+      .eq('end_date', endDateStr)
       .not('device', 'is', null)
       .is('query', null)
       .is('page', null)
-      .is('date', null);
+      ;
 
     // 7. COUNTRY BREAKDOWN (top 10)
     const countryBreakdownQuery = supabase
@@ -138,12 +128,12 @@ export async function GET(request: NextRequest) {
       .select('country, clicks, impressions, ctr, position')
       .eq('user_token', userToken)
       .in('site_url', siteVariants)
-      .gte('date', startDateStr)
-      .lte('date', endDateStr)
+      .is('date', null)
+      .eq('start_date', startDateStr)
+      .eq('end_date', endDateStr)
       .not('country', 'is', null)
       .is('query', null)
       .is('page', null)
-      .is('date', null)
       .order('clicks', { ascending: false })
       .limit(10);
 
@@ -153,19 +143,19 @@ export async function GET(request: NextRequest) {
       .select('appearance, clicks, impressions, ctr, position')
       .eq('user_token', userToken)
       .in('site_url', siteVariants)
-      .gte('date', startDateStr)
-      .lte('date', endDateStr)
+      .is('date', null)
+      .eq('start_date', startDateStr)
+      .eq('end_date', endDateStr)
       .not('appearance', 'is', null)
       .is('query', null)
       .is('page', null)
-      .is('date', null)
       .order('impressions', { ascending: false });
 
     // Execute all queries in parallel
     const [
       dailyMetricsResult,
-      currentTotalsResult,
-      comparisonTotalsResult,
+      // currentTotals calculated from dailyMetrics
+      dailyComparisonQuery,
       topQueriesResult,
       topPagesResult,
       deviceBreakdownResult,
@@ -173,8 +163,7 @@ export async function GET(request: NextRequest) {
       appearanceBreakdownResult
     ] = await Promise.all([
       dailyMetricsQuery,
-      currentTotalsQuery,
-      comparisonTotalsQuery,
+      dailyComparisonQuery,
       topQueriesQuery,
       topPagesQuery,
       deviceBreakdownQuery,
@@ -185,8 +174,7 @@ export async function GET(request: NextRequest) {
     // Check for errors
     const errors = [
       dailyMetricsResult.error,
-      currentTotalsResult.error,
-      comparisonTotalsResult?.error,
+      dailyComparisonQuery && (dailyComparisonQuery as any).error,
       topQueriesResult.error,
       topPagesResult.error,
       deviceBreakdownResult.error,
@@ -209,16 +197,33 @@ export async function GET(request: NextRequest) {
       position: day.position || 0
     }));
 
-    // Calculate current period totals
-    const currentTotals = currentTotalsResult.data?.[0] || {
-      clicks: 0,
-      impressions: 0,
-      ctr: 0,
-      position: 0
-    };
+    // Calculate current period totals from daily series
+    const currentTotals = dailyTimeSeries.reduce((acc, d) => ({
+      clicks: acc.clicks + (d.clicks || 0),
+      impressions: acc.impressions + (d.impressions || 0),
+      ctr: acc.ctr + ((d.ctr || 0) / 100) * (d.impressions || 0), // weighted CTR approximation
+      position: acc.position + (d.position || 0)
+    }), { clicks: 0, impressions: 0, ctr: 0, position: 0 });
+    // Average position over days
+    if (dailyTimeSeries.length > 0) {
+      currentTotals.position = currentTotals.position / dailyTimeSeries.length;
+      currentTotals.ctr = currentTotals.impressions > 0 ? (currentTotals.clicks / currentTotals.impressions) : 0;
+    }
 
-    // Calculate trends vs comparison period
-    const comparisonTotals = comparisonTotalsResult?.data?.[0];
+    // Calculate trends vs comparison period using previous period daily data
+    const comparisonDaily = (dailyComparisonQuery as any)?.data || [];
+    const comparisonTotals = (comparisonDaily as any[]).reduce((acc, d: any) => ({
+      clicks: acc.clicks + (d.clicks || 0),
+      impressions: acc.impressions + (d.impressions || 0),
+      ctr: acc.ctr + (d.ctr || 0),
+      position: acc.position + (d.position || 0)
+    }), { clicks: 0, impressions: 0, ctr: 0, position: 0 });
+    if ((comparisonDaily as any[]).length > 0) {
+      comparisonTotals.position = comparisonTotals.position / (comparisonDaily as any[]).length;
+      comparisonTotals.ctr = comparisonTotals.impressions > 0 ? (comparisonTotals.clicks / comparisonTotals.impressions) : 0;
+    } else if (!compareWith) {
+      // No comparison requested
+    }
     const trends = comparisonTotals ? {
       clicks: calculateTrend(currentTotals.clicks, comparisonTotals.clicks),
       impressions: calculateTrend(currentTotals.impressions, comparisonTotals.impressions),

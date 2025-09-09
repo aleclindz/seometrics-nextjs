@@ -160,23 +160,13 @@ async function upsertAnalyticsBatch(records: GSCAnalyticsRow[]): Promise<void> {
     console.log(`[GSC SYNC] Upserting batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(records.length/BATCH_SIZE)} (${batch.length} records)`);
     
     try {
-      // Prefer column-based conflict keys to maximize compatibility
-      // If the DB doesn't have a matching unique constraint, fall back to insert after a pre-clean.
-      let { error } = await supabase
+      // Use plain insert; we pre-clean the range to avoid duplicates and reduce constraint conflicts
+      const { error } = await supabase
         .from('gsc_search_analytics')
-        .upsert(batch, {
-          onConflict: 'user_token,site_url,search_type,data_state,date,query,page,country,device,appearance'
-        });
-
+        .insert(batch);
       if (error) {
-        console.warn('[GSC SYNC] Upsert with column conflict keys failed, falling back to insert:', error);
-        const insertRes = await supabase
-          .from('gsc_search_analytics')
-          .insert(batch);
-        if (insertRes.error) {
-          console.error('[GSC SYNC] Batch insert error after upsert fallback:', insertRes.error);
-          throw insertRes.error;
-        }
+        console.error('[GSC SYNC] Batch insert error:', error);
+        throw error;
       }
 
       // Small delay between batches
@@ -209,19 +199,32 @@ export async function syncGSCSearchAnalytics(options: GSCSyncOptions): Promise<{
     // Pre-clean existing data for this user/site and date range to avoid duplicates
     try {
       const { startDate, endDate } = options;
-      const del = await supabase
+      // Delete daily-grain rows in range
+      const delDaily = await supabase
         .from('gsc_search_analytics')
         .delete()
         .eq('user_token', options.userToken)
         .eq('site_url', options.siteUrl)
-        .or(
-          `and(date.gte.${startDate},date.lte.${endDate}),and(date.is.null,start_date.eq.${startDate},end_date.eq.${endDate})`
-        );
-      if (del.error) {
-        console.warn('[GSC SYNC] Pre-clean delete warning:', del.error.message || del.error);
-      } else {
-        console.log('[GSC SYNC] Pre-clean removed rows:', del.data ? (del as any).count || 'unknown' : 'ok');
+        .not('date', 'is', null)
+        .gte('date', startDate)
+        .lte('date', endDate);
+      if (delDaily.error) {
+        console.warn('[GSC SYNC] Pre-clean daily delete warning:', delDaily.error.message || delDaily.error);
       }
+
+      // Delete aggregated rows for the exact period (date is null)
+      const delAgg = await supabase
+        .from('gsc_search_analytics')
+        .delete()
+        .eq('user_token', options.userToken)
+        .eq('site_url', options.siteUrl)
+        .is('date', null)
+        .eq('start_date', startDate)
+        .eq('end_date', endDate);
+      if (delAgg.error) {
+        console.warn('[GSC SYNC] Pre-clean aggregated delete warning:', delAgg.error.message || delAgg.error);
+      }
+      console.log('[GSC SYNC] Pre-clean completed');
     } catch (e) {
       console.warn('[GSC SYNC] Pre-clean delete failed (non-fatal):', (e as any)?.message || e);
     }
@@ -250,17 +253,15 @@ export async function syncGSCSearchAnalytics(options: GSCSyncOptions): Promise<{
 
     const searchConsole = google.webmasters({ version: 'v3', auth: oauth2Client });
 
-    // Define dimension sets to sync (matching GSC UI views)
+    // Define dimension sets to sync
+    // Avoid composite date+dimension sets to reduce data volume and prevent unique-key collisions
     const dimensionSets: GSCDimension[][] = [
-      ['date'],                    // Daily totals (for time series charts)
-      ['query'],                   // Top queries
-      ['page'],                    // Top pages  
-      ['country'],                 // Geographic data
-      ['device'],                  // Device breakdown
-      ['searchAppearance'],        // Rich results data
-      ['date', 'query'],           // Query trends over time
-      ['date', 'page'],            // Page performance over time
-      ['query', 'page'],           // Query-page relationships
+      ['date'],             // Daily totals (time series)
+      ['query'],            // Aggregated by query (over range)
+      ['page'],             // Aggregated by page (over range)
+      ['country'],          // Aggregated by country
+      ['device'],           // Aggregated by device
+      ['searchAppearance'], // Aggregated by search appearance
     ];
 
     let totalRecordsProcessed = 0;

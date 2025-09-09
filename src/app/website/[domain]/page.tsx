@@ -711,7 +711,7 @@ export default function WebsitePage() {
                       <div className="bg-white border rounded-lg p-4">
                         <div className="text-sm font-semibold mb-2">Top Queries</div>
                         <div className="h-20 rounded-lg bg-gray-50 p-2 overflow-y-auto">
-                          {performanceData.topQueries.slice(0, 3).map((query: any, i: number) => (
+                          {(performanceData.topQueries || []).slice(0, 3).map((query: any, i: number) => (
                             <div key={i} className="text-xs mb-1 truncate">
                               <span className="font-medium">&ldquo;{query.query}&rdquo;</span>
                               <span className="text-gray-500 ml-1">({query.clicks})</span>
@@ -719,7 +719,7 @@ export default function WebsitePage() {
                           ))}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {performanceData.topQueries.length} total queries tracked
+                          {(performanceData.topQueries?.length || 0)} total queries tracked
                         </div>
                       </div>
 
@@ -727,7 +727,7 @@ export default function WebsitePage() {
                       <div className="bg-white border rounded-lg p-4">
                         <div className="text-sm font-semibold mb-2">Traffic Sources</div>
                         <div className="h-20 rounded-lg bg-gray-50 p-2 overflow-y-auto">
-                          {performanceData.referrers.length > 0 ? performanceData.referrers.slice(0, 3).map((ref: any, i: number) => (
+                          {(performanceData.referrers && performanceData.referrers.length > 0) ? performanceData.referrers.slice(0, 3).map((ref: any, i: number) => (
                             <div key={i} className="text-xs mb-1 flex justify-between">
                               <span className="font-medium truncate">{ref.source}</span>
                               <span className="text-gray-500">{ref.percentage}%</span>
