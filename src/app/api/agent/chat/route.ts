@@ -773,6 +773,8 @@ async function processOpenAIResponse(
       if (toolData?.data?.actionCard) {
         actionCard = toolData.data.actionCard;
       } else {
+        const normalizedSite = (selectedSite || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+        const detailsUrl = normalizedSite ? `/website/${encodeURIComponent(normalizedSite)}` : '#';
         actionCard = {
           type: 'technical-fix',
           data: {
@@ -781,7 +783,7 @@ async function processOpenAIResponse(
             status: 'completed',
             affectedPages: 1,
             links: [
-              { label: 'View Details', url: '#' }
+              { label: 'View Details', url: detailsUrl }
             ]
           }
         };
@@ -851,6 +853,50 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
   if (first.name === 'KEYWORDS_add_keywords' || first.name === 'update_keyword_strategy') {
     const added = res?.data?.added || res?.summary?.keywords_added || 0;
     return `✅ Added ${added} keywords to your strategy. Check the Strategy tab for updates.`;
+  }
+
+  // get_site_status → produce a helpful summary + next step
+  if (first.name === 'get_site_status' && res && typeof res === 'object' && res.success && res.data) {
+    const d = res.data;
+    const metrics = d.current_metrics || {};
+    const clicks = metrics.clicks_last_28_days ?? metrics.clicks_last_30_days ?? 0;
+    const imps = metrics.impressions_last_28_days ?? metrics.impressions_last_30_days ?? 0;
+    const ctr = metrics.click_through_rate ?? '0%';
+    const pos = metrics.average_position ?? 0;
+    const gsc = d.integrations?.google_search_console?.connected ? 'connected' : 'not connected';
+    const smart = d.integrations?.smartjs?.active ? 'active' : 'inactive';
+
+    // Best next step logic
+    let nextTitle = '';
+    let nextWhy = '';
+    let nextAction = '';
+    if (gsc !== 'connected') {
+      nextTitle = 'Connect Google Search Console';
+      nextWhy = 'Unlock performance insights and daily monitoring';
+      nextAction = 'I can connect GSC for this site.';
+    } else if (imps > 0 && ctr && parseFloat(String(ctr).replace('%','')) < 1) {
+      nextTitle = 'Improve CTR on top pages';
+      nextWhy = 'High impressions but very low CTR suggests title/description optimization';
+      nextAction = 'I can analyze top pages and propose meta updates.';
+    } else if (smart !== 'active') {
+      nextTitle = 'Install SEOAgent.js';
+      nextWhy = 'Enable automatic meta/alt tags and structured data';
+      nextAction = 'I can provide the install snippet and verify it.';
+    } else {
+      nextTitle = 'Review performance trends';
+      nextWhy = 'Identify rising/falling queries and pages over the last month';
+      nextAction = 'I can analyze trends and suggest actions.';
+    }
+
+    return [
+      '📊 Performance Snapshot',
+      `• Impressions: ${imps.toLocaleString()}  • Clicks: ${clicks.toLocaleString()}  • CTR: ${ctr}  • Avg Pos: ${Number(pos).toFixed(1)}`,
+      `• GSC: ${gsc}  • SEOAgent.js: ${smart}`,
+      '',
+      '✅ Best Next Step',
+      `• ${nextTitle} — ${nextWhy}`,
+      `• ${nextAction}`
+    ].join('\n');
   }
 
   // Generic fallback

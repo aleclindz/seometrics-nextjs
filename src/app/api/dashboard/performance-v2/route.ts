@@ -231,6 +231,37 @@ export async function GET(request: NextRequest) {
       position: calculateTrend(currentTotals.position, comparisonTotals.position, true) // Lower position is better
     } : null;
 
+    // Fallback: if aggregated top queries/pages are empty for exact range, use most recent aggregated rows
+    let topQueriesData = topQueriesResult.data || [] as any[];
+    if (!topQueriesData || topQueriesData.length === 0) {
+      const fallback = await supabase
+        .from('gsc_search_analytics')
+        .select('query, clicks, impressions, ctr, position, ingested_at')
+        .eq('user_token', userToken)
+        .in('site_url', siteVariants)
+        .is('date', null)
+        .not('query', 'is', null)
+        .is('page', null)
+        .order('ingested_at', { ascending: false })
+        .limit(20);
+      if (!fallback.error && fallback.data) topQueriesData = fallback.data;
+    }
+
+    let topPagesData = topPagesResult.data || [] as any[];
+    if (!topPagesData || topPagesData.length === 0) {
+      const fallback = await supabase
+        .from('gsc_search_analytics')
+        .select('page, clicks, impressions, ctr, position, ingested_at')
+        .eq('user_token', userToken)
+        .in('site_url', siteVariants)
+        .is('date', null)
+        .not('page', 'is', null)
+        .is('query', null)
+        .order('ingested_at', { ascending: false })
+        .limit(20);
+      if (!fallback.error && fallback.data) topPagesData = fallback.data;
+    }
+
     // Format response data
     const performanceData = {
       // Overview metrics
@@ -248,7 +279,7 @@ export async function GET(request: NextRequest) {
       dailyMetrics: dailyTimeSeries,
       
       // Top performing content
-      topQueries: (topQueriesResult.data || []).slice(0, 10).map(q => ({
+      topQueries: (topQueriesData || []).slice(0, 10).map((q: any) => ({
         query: q.query,
         clicks: q.clicks || 0,
         impressions: q.impressions || 0,
@@ -256,7 +287,7 @@ export async function GET(request: NextRequest) {
         position: (q.position || 0).toFixed(1)
       })),
       
-      topPages: (topPagesResult.data || []).slice(0, 10).map(p => ({
+      topPages: (topPagesData || []).slice(0, 10).map((p: any) => ({
         page: p.page,
         clicks: p.clicks || 0,
         impressions: p.impressions || 0,
