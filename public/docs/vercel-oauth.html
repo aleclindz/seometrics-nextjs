@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SEOAgent × Vercel OAuth Setup</title>
+    <meta name="description" content="Configure Vercel OAuth so customers can securely connect their Vercel projects to SEOAgent." />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; color: #111827; background: #f9fafb; }
+      .container { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
+      h1 { font-size: 34px; margin: 0 0 12px; }
+      h2 { font-size: 22px; margin: 28px 0 12px; }
+      h3 { font-size: 18px; margin: 20px 0 8px; }
+      p { line-height: 1.6; }
+      code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px 20px; margin: 14px 0; }
+      ul { margin: 8px 0 12px 18px; }
+      .note { background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 14px; border-radius: 8px; color: #1e40af; }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .small { color: #6b7280; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Vercel OAuth Setup</h1>
+      <p class="small">SEOAgent &middot; OAuth Configuration</p>
+
+      <div class="card note">
+        <strong>Goal:</strong> Create one OAuth app in Vercel so <em>any</em> customer can authorize SEOAgent to access their projects (team‑aware) and link a project to their website.
+      </div>
+
+      <h2>1) Create a Vercel OAuth App</h2>
+      <div class="card">
+        <ol>
+          <li>In Vercel, go to <strong>Settings &rarr; OAuth Apps</strong> (Team or Personal scope).</li>
+          <li>Set Redirect URL to <code>https://seoagent.com/api/hosting/vercel/oauth</code>.</li>
+          <li>Scopes: <code>read:project</code>, <code>write:project</code> (add <code>read:deployment</code>/<code>write:deployment</code> later if you’ll trigger deployments).</li>
+          <li>Save and copy <strong>Client ID</strong> and <strong>Client Secret</strong>.</li>
+        </ol>
+      </div>
+
+      <h2>2) Configure SEOAgent Environment</h2>
+      <div class="card">
+        <ul>
+          <li><code>VERCEL_CLIENT_ID</code></li>
+          <li><code>VERCEL_CLIENT_SECRET</code></li>
+          <li><code>NEXT_PUBLIC_APP_URL</code> (e.g. <code>https://seoagent.com</code>)</li>
+        </ul>
+        <p>Redeploy SEOAgent after saving the variables.</p>
+      </div>
+
+      <h2>3) Customer Authorization Flow</h2>
+      <div class="card">
+        <ol>
+          <li>Customer clicks “Connect Vercel” in the Website Setup modal.</li>
+          <li>SEOAgent generates the Vercel authorize URL with <code>client_id</code>, the exact <code>redirect_uri</code>, and a CSRF <code>state</code>.</li>
+          <li>Customer approves; Vercel redirects back with <code>code</code> and <code>state</code>.</li>
+          <li>SEOAgent exchanges the code for an access token; if <code>team_id</code> is present, subsequent API calls include <code>?teamId=...</code>.</li>
+          <li>Projects are listed; the customer picks one to link to their website.</li>
+        </ol>
+      </div>
+
+      <h2>Security & Troubleshooting</h2>
+      <div class="card">
+        <ul>
+          <li>CSRF protection: <code>state</code> is stored and verified on callback.</li>
+          <li>Store tokens server‑side (consider encryption at rest).</li>
+          <li>“App ID is invalid”: Verify <code>VERCEL_CLIENT_ID</code>/<code>SECRET</code> and exact Redirect URL.</li>
+          <li>“No projects returned”: Use <code>?teamId=...</code> when token includes <code>team_id</code>.</li>
+          <li>Callback errors: Confirm <code>NEXT_PUBLIC_APP_URL</code> and unexpired <code>state</code> (10 minutes).</li>
+        </ul>
+      </div>
+
+      <p class="small">Back to <a href="/docs/vercel-integration.html">Vercel Integration</a></p>
+    </div>
+  </body>
+  </html>
+

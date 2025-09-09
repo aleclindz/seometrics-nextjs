@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SEOAgent × Vercel Integration</title>
+    <meta name="description" content="How to connect Vercel projects to SEOAgent using OAuth and link projects for hosting workflows." />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; color: #111827; background: #f9fafb; }
+      .container { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
+      h1 { font-size: 34px; margin: 0 0 12px; }
+      h2 { font-size: 22px; margin: 28px 0 12px; }
+      h3 { font-size: 18px; margin: 20px 0 8px; }
+      p { line-height: 1.6; }
+      code, .code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px 20px; margin: 14px 0; }
+      ul { margin: 8px 0 12px 18px; }
+      .note { background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 14px; border-radius: 8px; color: #1e40af; }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .small { color: #6b7280; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Vercel Integration</h1>
+      <p class="small">SEOAgent &middot; Hosting Integration Guide</p>
+
+      <div class="card note">
+        <strong>Summary:</strong> Connect a Vercel account/team so SEOAgent can list projects and link one to your website. This uses Vercel OAuth for secure, revocable access.
+      </div>
+
+      <h2>Prerequisites</h2>
+      <div class="card">
+        <ul>
+          <li>A Vercel account (Team or Personal) for your projects</li>
+          <li>Your SEOAgent app domain (e.g. <code>https://seoagent.com</code>)</li>
+        </ul>
+      </div>
+
+      <h2>Create a Vercel OAuth App</h2>
+      <div class="card">
+        <ol>
+          <li>In Vercel: Settings &rarr; OAuth Apps (choose Team or Personal scope).</li>
+          <li>Redirect URL: <code>https://seoagent.com/api/hosting/vercel/oauth</code></li>
+          <li>Scopes: <code>read:project</code>, <code>write:project</code> (add <code>read:deployment</code>/<code>write:deployment</code> later if needed).</li>
+          <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong>.</li>
+        </ol>
+      </div>
+
+      <h2>Configure SEOAgent Environment</h2>
+      <div class="card">
+        <p>Add these environment variables to your SEOAgent deployment:</p>
+        <ul>
+          <li><code>VERCEL_CLIENT_ID</code></li>
+          <li><code>VERCEL_CLIENT_SECRET</code></li>
+          <li><code>NEXT_PUBLIC_APP_URL</code> (e.g. <code>https://seoagent.com</code>)</li>
+        </ul>
+        <p>Redeploy SEOAgent after saving.</p>
+      </div>
+
+      <h2>Connecting a Project (Customer Flow)</h2>
+      <div class="card">
+        <ol>
+          <li>Open SEOAgent &rarr; Website Setup modal &rarr; “Connect Vercel”.</li>
+          <li>Approve the OAuth request in Vercel (team-aware if token contains <code>team_id</code>).</li>
+          <li>SEOAgent lists your Vercel projects; select the one for your site.</li>
+          <li>SEOAgent stores the connection so future hosting actions can target this project.</li>
+        </ol>
+      </div>
+
+      <h2>Security</h2>
+      <div class="card">
+        <ul>
+          <li>CSRF protection via stored <code>state</code> value.</li>
+          <li>Access tokens are stored server-side; consider encrypting at rest.</li>
+          <li>When <code>team_id</code> is present, API calls include <code>?teamId=...</code>.</li>
+        </ul>
+      </div>
+
+      <h2>Troubleshooting</h2>
+      <div class="card">
+        <ul>
+          <li><strong>“App ID is invalid”</strong>: Ensure <code>VERCEL_CLIENT_ID</code>/<code>SECRET</code> match your OAuth app and the Redirect URL is exact.</li>
+          <li><strong>No projects returned</strong>: Token may be team‑scoped; ensure you include <code>?teamId</code> on project list.</li>
+          <li><strong>Callback failed</strong>: Check <code>NEXT_PUBLIC_APP_URL</code> and <code>state</code> expiry (10 minutes).</li>
+        </ul>
+      </div>
+
+      <p class="small">Need OAuth specifics? See <a href="/docs/vercel-oauth.html">Vercel OAuth Setup</a>.</p>
+    </div>
+  </body>
+  </html>
+
