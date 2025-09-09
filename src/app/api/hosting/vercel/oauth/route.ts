@@ -28,13 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 1: Initiate OAuth flow
-    if (!userToken) {
-      return NextResponse.json(
-        { error: 'userToken parameter is required for OAuth initiation' },
-        { status: 400 }
-      );
-    }
-
+    // If no userToken, this is likely from Vercel marketplace - initiate anonymous flow
     return initiateOAuthFlow(userToken);
 
   } catch (error) {
@@ -49,16 +43,19 @@ export async function GET(request: NextRequest) {
 /**
  * Initiate Vercel OAuth flow
  */
-async function initiateOAuthFlow(userToken: string): Promise<NextResponse> {
+async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
   try {
-    // Store OAuth state in database for security
-    const state = `${userToken}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    // Generate state for OAuth flow
+    const state = userToken 
+      ? `${userToken}_${Date.now()}_${Math.random().toString(36).substring(7)}`
+      : `anonymous_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     
+    // Store OAuth state in database for security
     const { error } = await supabase
       .from('oauth_states')
       .insert({
         state,
-        user_token: userToken,
+        user_token: userToken || null, // Allow null for marketplace flow
         provider: 'vercel',
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
         created_at: new Date().toISOString()
@@ -92,6 +89,12 @@ async function initiateOAuthFlow(userToken: string): Promise<NextResponse> {
 
     console.log('[VERCEL OAUTH] Redirecting to Vercel OAuth:', oauthUrl);
 
+    // If no userToken (marketplace flow), redirect directly to Vercel
+    if (!userToken) {
+      return NextResponse.redirect(oauthUrl);
+    }
+
+    // If userToken exists (dashboard flow), return JSON for frontend handling
     return NextResponse.json({
       success: true,
       message: 'OAuth flow initiated',
@@ -198,13 +201,7 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
       projects = projectsData.projects || [];
     }
 
-    // Clean up OAuth state
-    await supabase
-      .from('oauth_states')
-      .delete()
-      .eq('state', state);
-
-    // Return success response with integration data
+    // Prepare integration data
     const integrationData = {
       provider: 'vercel',
       accessToken: tokenData.access_token,
@@ -225,7 +222,43 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
 
     console.log('[VERCEL OAUTH] OAuth flow completed successfully');
 
-    // Redirect to success page with integration data
+    // Check if this was an anonymous OAuth flow (from marketplace)
+    const isAnonymousFlow = !oauthState.user_token;
+
+    if (isAnonymousFlow) {
+      // Store integration data temporarily for after user signs up/logs in
+      const tempIntegrationId = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      
+      const { error: tempError } = await supabase
+        .from('temp_integrations')
+        .insert({
+          temp_id: tempIntegrationId,
+          integration_data: integrationData,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes
+        });
+
+      if (tempError) {
+        console.error('[VERCEL OAUTH] Error storing temp integration:', tempError);
+      }
+
+      // Clean up OAuth state
+      await supabase
+        .from('oauth_states')
+        .delete()
+        .eq('state', state);
+
+      // Redirect to signup/login with integration data
+      const signupUrl = `${process.env.NEXT_PUBLIC_APP_URL}/login?mode=signup&vercel_integration=${tempIntegrationId}&source=marketplace`;
+      return NextResponse.redirect(signupUrl);
+    }
+
+    // Clean up OAuth state
+    await supabase
+      .from('oauth_states')
+      .delete()
+      .eq('state', state);
+
+    // Existing user flow - redirect to dashboard
     const successUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?tab=integrations&vercel_oauth=success&data=${encodeURIComponent(JSON.stringify(integrationData))}`;
 
     return NextResponse.redirect(successUrl);
