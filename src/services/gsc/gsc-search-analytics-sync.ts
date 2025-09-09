@@ -160,15 +160,23 @@ async function upsertAnalyticsBatch(records: GSCAnalyticsRow[]): Promise<void> {
     console.log(`[GSC SYNC] Upserting batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(records.length/BATCH_SIZE)} (${batch.length} records)`);
     
     try {
-      const { error } = await supabase
+      // Prefer column-based conflict keys to maximize compatibility
+      // If the DB doesn't have a matching unique constraint, fall back to insert after a pre-clean.
+      let { error } = await supabase
         .from('gsc_search_analytics')
         .upsert(batch, {
-          onConflict: 'gsc_analytics_dimensional_unique'
+          onConflict: 'user_token,site_url,search_type,data_state,date,query,page,country,device,appearance'
         });
 
       if (error) {
-        console.error('[GSC SYNC] Batch upsert error:', error);
-        throw error;
+        console.warn('[GSC SYNC] Upsert with column conflict keys failed, falling back to insert:', error);
+        const insertRes = await supabase
+          .from('gsc_search_analytics')
+          .insert(batch);
+        if (insertRes.error) {
+          console.error('[GSC SYNC] Batch insert error after upsert fallback:', insertRes.error);
+          throw insertRes.error;
+        }
       }
 
       // Small delay between batches
@@ -197,6 +205,26 @@ export async function syncGSCSearchAnalytics(options: GSCSyncOptions): Promise<{
 }> {
   try {
     console.log(`[GSC SYNC] Starting search analytics sync for ${options.siteUrl}`);
+
+    // Pre-clean existing data for this user/site and date range to avoid duplicates
+    try {
+      const { startDate, endDate } = options;
+      const del = await supabase
+        .from('gsc_search_analytics')
+        .delete()
+        .eq('user_token', options.userToken)
+        .eq('site_url', options.siteUrl)
+        .or(
+          `and(date.gte.${startDate},date.lte.${endDate}),and(date.is.null,start_date.eq.${startDate},end_date.eq.${endDate})`
+        );
+      if (del.error) {
+        console.warn('[GSC SYNC] Pre-clean delete warning:', del.error.message || del.error);
+      } else {
+        console.log('[GSC SYNC] Pre-clean removed rows:', del.data ? (del as any).count || 'unknown' : 'ok');
+      }
+    } catch (e) {
+      console.warn('[GSC SYNC] Pre-clean delete failed (non-fatal):', (e as any)?.message || e);
+    }
 
     // Get OAuth credentials from user's GSC connection (same as other GSC APIs)
     const { data: connection, error: connError } = await supabase
