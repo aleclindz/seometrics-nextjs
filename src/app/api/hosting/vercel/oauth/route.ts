@@ -73,10 +73,14 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
     const vercelClientId = process.env.VERCEL_CLIENT_ID;
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/hosting/vercel/oauth`;
     
-    if (!vercelClientId) {
+    // Check for placeholder/missing credentials
+    if (!vercelClientId || vercelClientId === 'your_vercel_client_id_here') {
       return NextResponse.json(
-        { error: 'Vercel OAuth not configured. Missing VERCEL_CLIENT_ID.' },
-        { status: 500 }
+        { 
+          error: 'Vercel OAuth not configured. Please create a Vercel Integration at vercel.com/integrations/console and update VERCEL_CLIENT_ID and VERCEL_CLIENT_SECRET in your environment variables.',
+          setupRequired: true
+        },
+        { status: 400 }
       );
     }
 
@@ -129,6 +133,16 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
       return NextResponse.json(
         { error: 'Invalid or expired OAuth state' },
         { status: 400 }
+      );
+    }
+
+    // Verify OAuth credentials are properly configured
+    if (!process.env.VERCEL_CLIENT_ID || !process.env.VERCEL_CLIENT_SECRET || 
+        process.env.VERCEL_CLIENT_ID === 'your_vercel_client_id_here' ||
+        process.env.VERCEL_CLIENT_SECRET === 'your_vercel_client_secret_here') {
+      return NextResponse.json(
+        { error: 'Vercel OAuth credentials not configured. Please set up your Vercel Integration first.' },
+        { status: 500 }
       );
     }
 

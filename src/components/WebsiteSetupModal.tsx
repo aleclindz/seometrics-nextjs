@@ -346,7 +346,14 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         // Redirect to Vercel OAuth
         window.location.href = data.oauthUrl;
       } else {
-        setHostError(data.error || 'Failed to initiate Vercel connection');
+        // Handle setup required error specifically
+        if (data.setupRequired) {
+          setHostError(
+            `${data.error} Steps: 1) Go to vercel.com/integrations/console 2) Create a new integration 3) Update your environment variables with the Client ID and Secret`
+          );
+        } else {
+          setHostError(data.error || 'Failed to initiate Vercel connection');
+        }
       }
     } catch (error) {
       console.error('Error connecting to Vercel:', error);
