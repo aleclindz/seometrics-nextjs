@@ -71,7 +71,9 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
 
     // Construct Vercel OAuth URL
     const vercelClientId = process.env.VERCEL_CLIENT_ID;
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/hosting/vercel/oauth`;
+    // Force seoagent.com in production, ignore VERCEL_URL to avoid seometrics.ai redirects
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+    const redirectUri = `${baseUrl}/api/hosting/vercel/oauth`;
     
     // Check for placeholder/missing credentials
     if (!vercelClientId || vercelClientId === 'your_vercel_client_id_here') {
@@ -91,6 +93,16 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
       `scope=read:project,write:project&` +
       `state=${state}`;
 
+    console.log('[VERCEL OAUTH] OAuth Configuration:', {
+      clientId: vercelClientId?.substring(0, 8) + '...',
+      redirectUri,
+      state,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      calculatedBaseUrl: baseUrl,
+      vercelUrl: process.env.VERCEL_URL,
+      nextPublicBaseUrl: process.env.NEXT_PUBLIC_BASE_URL,
+      nodeEnv: process.env.NODE_ENV
+    });
     console.log('[VERCEL OAUTH] Redirecting to Vercel OAuth:', oauthUrl);
 
     // Always return JSON for programmatic handling
@@ -156,7 +168,7 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
         client_id: process.env.VERCEL_CLIENT_ID!,
         client_secret: process.env.VERCEL_CLIENT_SECRET!,
         code,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/hosting/vercel/oauth`
+        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000')}/api/hosting/vercel/oauth`
       })
     });
 
@@ -259,7 +271,8 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
         .eq('state', state);
 
       // Redirect to signup/login with integration data
-      const signupUrl = `${process.env.NEXT_PUBLIC_APP_URL}/login?mode=signup&vercel_integration=${tempIntegrationId}&source=marketplace`;
+      const baseUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+      const signupUrl = `${baseUrlForRedirect}/login?mode=signup&vercel_integration=${tempIntegrationId}&source=marketplace`;
       return NextResponse.redirect(signupUrl);
     }
 
@@ -270,7 +283,8 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
       .eq('state', state);
 
     // Existing user flow - redirect to dashboard
-    const successUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?tab=integrations&vercel_oauth=success&data=${encodeURIComponent(JSON.stringify(integrationData))}`;
+    const baseUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+    const successUrl = `${baseUrlForRedirect}/dashboard/settings?tab=integrations&vercel_oauth=success&data=${encodeURIComponent(JSON.stringify(integrationData))}`;
 
     return NextResponse.redirect(successUrl);
 
@@ -278,7 +292,8 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
     console.error('[VERCEL OAUTH] Error handling callback:', error);
     
     // Redirect to error page
-    const errorUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?tab=integrations&vercel_oauth=error&message=${encodeURIComponent('OAuth callback failed')}`;
+    const baseUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+    const errorUrl = `${baseUrlForRedirect}/dashboard/settings?tab=integrations&vercel_oauth=error&message=${encodeURIComponent('OAuth callback failed')}`;
     return NextResponse.redirect(errorUrl);
   }
 }
