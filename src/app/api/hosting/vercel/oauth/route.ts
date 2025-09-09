@@ -89,17 +89,14 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
 
     console.log('[VERCEL OAUTH] Redirecting to Vercel OAuth:', oauthUrl);
 
-    // If no userToken (marketplace flow), redirect directly to Vercel
-    if (!userToken) {
-      return NextResponse.redirect(oauthUrl);
-    }
-
-    // If userToken exists (dashboard flow), return JSON for frontend handling
+    // Always return JSON for programmatic handling
+    // The frontend will handle the redirect
     return NextResponse.json({
       success: true,
       message: 'OAuth flow initiated',
       oauthUrl,
-      state
+      state,
+      isMarketplaceFlow: !userToken
     });
 
   } catch (error) {
