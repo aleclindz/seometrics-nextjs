@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
     const [
       dailyMetricsResult,
       // currentTotals calculated from dailyMetrics
-      dailyComparisonQuery,
+      dailyComparisonResult,
       topQueriesResult,
       topPagesResult,
       deviceBreakdownResult,
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
     // Check for errors
     const errors = [
       dailyMetricsResult.error,
-      dailyComparisonQuery && (dailyComparisonQuery as any).error,
+      dailyComparisonResult && (dailyComparisonResult as any).error,
       topQueriesResult.error,
       topPagesResult.error,
       deviceBreakdownResult.error,
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate trends vs comparison period using previous period daily data
-    const comparisonDaily = (dailyComparisonQuery as any)?.data || [];
+    const comparisonDaily = (dailyComparisonResult as any)?.data || [];
     const comparisonTotals = (comparisonDaily as any[]).reduce((acc, d: any) => ({
       clicks: acc.clicks + (d.clicks || 0),
       impressions: acc.impressions + (d.impressions || 0),
