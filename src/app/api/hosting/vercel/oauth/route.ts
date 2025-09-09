@@ -105,15 +105,23 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
     });
     console.log('[VERCEL OAUTH] Redirecting to Vercel OAuth:', oauthUrl);
 
-    // Always return JSON for programmatic handling
-    // The frontend will handle the redirect
-    return NextResponse.json({
-      success: true,
-      message: 'OAuth flow initiated',
-      oauthUrl,
-      state,
-      isMarketplaceFlow: !userToken
-    });
+    // Handle marketplace vs dashboard flows differently
+    const isMarketplaceFlow = !userToken;
+    
+    if (isMarketplaceFlow) {
+      // Marketplace flow - redirect directly to Vercel OAuth
+      console.log('[VERCEL OAUTH] Marketplace flow detected - redirecting to OAuth');
+      return NextResponse.redirect(oauthUrl);
+    } else {
+      // Dashboard flow - return JSON for frontend to handle
+      console.log('[VERCEL OAUTH] Dashboard flow detected - returning JSON');
+      return NextResponse.json({
+        success: true,
+        message: 'OAuth flow initiated',
+        oauthUrl,
+        state
+      });
+    }
 
   } catch (error) {
     console.error('[VERCEL OAUTH] Error initiating OAuth:', error);
