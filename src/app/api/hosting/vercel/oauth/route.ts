@@ -55,7 +55,7 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
       .from('oauth_states')
       .insert({
         state,
-        user_token: userToken || null, // Allow null for marketplace flow
+        user_token: userToken || 'anonymous', // Use 'anonymous' instead of null to satisfy NOT NULL constraint
         provider: 'vercel',
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
         created_at: new Date().toISOString()
@@ -220,7 +220,7 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
     console.log('[VERCEL OAUTH] OAuth flow completed successfully');
 
     // Check if this was an anonymous OAuth flow (from marketplace)
-    const isAnonymousFlow = !oauthState.user_token;
+    const isAnonymousFlow = !oauthState.user_token || oauthState.user_token === 'anonymous';
 
     if (isAnonymousFlow) {
       // Store integration data temporarily for after user signs up/logs in
