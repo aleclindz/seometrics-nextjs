@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     // Step 1: Initiate OAuth flow
     // If no userToken, this is likely from Vercel marketplace - initiate anonymous flow
-    return initiateOAuthFlow(userToken);
+    return initiateOAuthFlow(userToken || undefined);
 
   } catch (error) {
     console.error('[VERCEL OAUTH] Error:', error);
