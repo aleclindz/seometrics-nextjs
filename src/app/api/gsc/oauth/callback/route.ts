@@ -162,6 +162,28 @@ export async function GET(request: NextRequest) {
 
     console.log('[GSC OAUTH CALLBACK] Successfully stored GSC connection for user:', loginUser.email);
     
+    // Update all websites for this user to reflect GSC connected status
+    try {
+      console.log('[GSC OAUTH CALLBACK] Updating website GSC status for user token:', userToken);
+      const { data: updatedWebsites, error: updateError } = await supabase
+        .from('websites')
+        .update({ 
+          gsc_status: 'connected',
+          last_status_check: new Date().toISOString()
+        })
+        .eq('user_token', userToken)
+        .select('domain, gsc_status');
+      
+      if (updateError) {
+        console.error('[GSC OAUTH CALLBACK] Error updating website GSC status:', updateError);
+      } else {
+        console.log('[GSC OAUTH CALLBACK] Updated GSC status for websites:', updatedWebsites?.map(w => w.domain));
+      }
+    } catch (error) {
+      console.error('[GSC OAUTH CALLBACK] Error updating website status:', error);
+      // Don't fail the callback, just log the error
+    }
+    
     // Trigger property sync in background to populate properties
     try {
       console.log('[GSC OAUTH CALLBACK] Triggering property sync');

@@ -131,17 +131,32 @@ export async function GET(request: NextRequest) {
     if (needsRefresh) {
       console.log('[SETUP STATUS] Refreshing connection statuses for empty/none statuses only...');
       
-      // Refresh GSC status by checking gsc_connections table ONLY if not already connected
-      if (gscStatus === 'none') {
+      // Refresh GSC status by checking gsc_connections table
+      // Always check if forceRefresh is true, or if status is 'none'
+      if (gscStatus === 'none' || forceRefresh) {
+        console.log('[SETUP STATUS] Checking GSC connection status...');
         const { data: gscConnection, error: gscError } = await supabase
           .from('gsc_connections')
-          .select('id, is_active')
+          .select('id, is_active, expires_at')
           .eq('user_token', userToken)
           .eq('is_active', true)
           .limit(1);
 
         if (!gscError && gscConnection && gscConnection.length > 0) {
-          gscStatus = 'connected';
+          // Check if connection is expired
+          const connection = gscConnection[0];
+          const isExpired = new Date() >= new Date(connection.expires_at);
+          
+          if (isExpired) {
+            gscStatus = 'error'; // Mark as error if expired
+            console.log('[SETUP STATUS] GSC connection expired');
+          } else {
+            gscStatus = 'connected';
+            console.log('[SETUP STATUS] Active GSC connection found');
+          }
+        } else {
+          gscStatus = 'none';
+          console.log('[SETUP STATUS] No active GSC connection found');
         }
         console.log('[SETUP STATUS] GSC status refreshed:', gscStatus);
       } else {
