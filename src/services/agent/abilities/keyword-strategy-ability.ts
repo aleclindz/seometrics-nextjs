@@ -25,6 +25,7 @@ export class KeywordStrategyAbility extends BaseAbility {
       'KEYWORDS_get_strategy',
       'KEYWORDS_add_keywords',
       'KEYWORDS_brainstorm',
+      'KEYWORDS_brainstorm_auto',
       'KEYWORDS_organize_clusters',
       'KEYWORDS_suggest_content',
       'KEYWORDS_analyze_gaps'
@@ -43,6 +44,8 @@ export class KeywordStrategyAbility extends BaseAbility {
       case 'brainstorm_keywords':
       case 'KEYWORDS_brainstorm':
         return await this.brainstormKeywords(args);
+      case 'KEYWORDS_brainstorm_auto':
+        return await this.brainstormFromSite(args);
       case 'organize_topic_clusters':
       case 'KEYWORDS_organize_clusters':
         return await this.organizeTopicClusters(args);
@@ -247,6 +250,129 @@ export class KeywordStrategyAbility extends BaseAbility {
       return this.error('Failed to brainstorm keywords', error);
     }
   }
+
+  /**
+   * Auto-brainstorm keywords by inferring seed terms from GSC data or a quick homepage crawl
+   */
+  private async brainstormFromSite(args: {
+    site_url?: string;
+    website_token?: string;
+    generate_count?: number;
+    avoid_duplicates?: boolean;
+  }): Promise<FunctionCallResult> {
+    try {
+      if (!args.site_url && !args.website_token) {
+        return this.error('Either site_url or website_token is required');
+      }
+
+      const domain = args.site_url ? this.cleanDomain(args.site_url) : undefined;
+
+      // First try to get seeds from GSC performance data
+      let seeds: string[] = [];
+      let seedSource: 'gsc' | 'crawl' | 'none' = 'none';
+      try {
+        const { ContentIntelligenceService } = await import('../../content/content-intelligence-service');
+        const cis = new ContentIntelligenceService();
+        const opportunities = await cis.getKeywordOpportunities(this.userToken || '', domain || '');
+        if (opportunities && opportunities.length > 0) {
+          seeds = opportunities.slice(0, 8).map((o: any) => o.keyword);
+          seedSource = 'gsc';
+        }
+      } catch (e) {
+        // Non-fatal; fall back to crawl
+        console.log('[KEYWORDS AUTO] GSC seed fetch failed or unavailable. Falling back to crawl.');
+      }
+
+      // If no GSC seeds, try a quick homepage crawl for title/description/headings
+      if (seeds.length === 0 && domain) {
+        try {
+          const url = domain.startsWith('http') ? domain : `https://${domain}`;
+          const res = await fetch(url, { method: 'GET' });
+          if (res.ok) {
+            const html = await res.text();
+            seeds = this.extractSeedsFromHTML(html).slice(0, 8);
+            if (seeds.length > 0) {
+              seedSource = 'crawl';
+            }
+          }
+        } catch (e) {
+          console.log('[KEYWORDS AUTO] Homepage fetch failed:', e);
+        }
+      }
+
+      if (seeds.length === 0) {
+        return this.error('Unable to infer seed keywords from GSC or site. Provide base_keywords or connect GSC.');
+      }
+
+      // Reuse existing brainstorm API with inferred seeds
+      const payload = {
+        userToken: this.userToken,
+        ...(args.website_token ? { websiteToken: args.website_token } : {}),
+        ...(domain ? { domain } : {}),
+        baseKeywords: seeds,
+        topicFocus: '',
+        generateCount: args.generate_count || 15,
+        avoidDuplicates: args.avoid_duplicates !== false
+      };
+
+      const response = await this.fetchAPI('/api/keyword-strategy/brainstorm', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.success) {
+        return this.error(response.error || 'Failed to brainstorm keywords');
+      }
+
+      return this.success({
+        generated_keywords: response.generated_keywords,
+        seed_keywords: seeds,
+        seed_source: seedSource,
+        total_generated: response.total_generated,
+        suggestions: response.suggestions
+      });
+
+    } catch (error) {
+      return this.error('Failed to auto-brainstorm keywords', error);
+    }
+  }
+
+  // Simple HTML seed extraction from title/meta/headers
+  private extractSeedsFromHTML(html: string): string[] {
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const metaMatch = html.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i) ||
+                      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*name=["']description["'][^>]*>/i);
+    const h1Matches = Array.from(html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)).map(m => this.stripTags(m[1]));
+    const h2Matches = Array.from(html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)).map(m => this.stripTags(m[1]));
+
+    const text = [titleMatch?.[1] || '', metaMatch?.[1] || '', ...h1Matches, ...h2Matches]
+      .join(' ')
+      .toLowerCase();
+
+    const words = text
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !STOPWORDS.has(w));
+
+    const freq = new Map<string, number>();
+    for (const w of words) {
+      freq.set(w, (freq.get(w) || 0) + 1);
+    }
+    return Array.from(freq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([w]) => w);
+  }
+
+  private stripTags(s: string): string {
+    return s.replace(/<[^>]*>/g, ' ');
+  }
+}
+
+// Minimal stopword set for seed extraction
+const STOPWORDS = new Set<string>([
+  'the','and','for','with','that','this','from','your','you','are','was','were','will','have','has','not','but','about','into','over','under','than','then','they','them','their','our','ours','who','what','when','where','why','how','can','all','any','more','most','some','such','only','other','its','also','just','like','been','being','into','out','onto','off','because','while','between','within','across','after','before','again','same','each'
+]);
 
   /**
    * Organize existing keywords into topic clusters

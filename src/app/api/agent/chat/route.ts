@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Store conversation message (async, non-blocking)
+// Store conversation message; returns success boolean
 async function storeConversationMessage(
   userToken: string,
   websiteToken: string,
@@ -21,7 +21,7 @@ async function storeConversationMessage(
   functionCall?: any,
   actionCard?: any,
   metadata?: any
-): Promise<void> {
+): Promise<boolean> {
   try {
     await supabase
       .from('agent_conversations')
@@ -36,10 +36,41 @@ async function storeConversationMessage(
         message_order: messageOrder,
         metadata: metadata || {}
       });
+    return true;
   } catch (error) {
     // Silently fail if table doesn't exist or other storage errors
     // This ensures chat functionality continues even if conversation storage fails
     console.log('[CONVERSATION STORAGE] Failed to store message (non-blocking):', error);
+    return false;
+  }
+}
+
+// Determine next message order from DB to avoid collisions with partial history
+async function getNextMessageOrder(
+  userToken: string,
+  websiteToken: string,
+  conversationId: string
+): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('agent_conversations')
+      .select('message_order')
+      .eq('user_token', userToken)
+      .eq('website_token', websiteToken)
+      .eq('conversation_id', conversationId)
+      .order('message_order', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.log('[CONVERSATION STORAGE] Could not fetch next message order:', error);
+      return 1;
+    }
+
+    const lastOrder = data && data.length > 0 ? (data[0].message_order as number) : 0;
+    return lastOrder + 1;
+  } catch (err) {
+    console.log('[CONVERSATION STORAGE] Next order fallback due to error:', err);
+    return 1;
   }
 }
 
@@ -78,21 +109,19 @@ export async function POST(request: NextRequest) {
       ? clientWebsiteToken 
       : (selectedSite || userToken);
     
-    // Calculate next message order
-    const userMessageOrder = (conversationHistory?.length || 0) + 1;
-    const assistantMessageOrder = userMessageOrder + 1;
+    // Calculate next message order from DB (not client history)
+    const userMessageOrder = await getNextMessageOrder(userToken, websiteToken, conversationId);
 
-    // Store user message (async, non-blocking)
-    storeConversationMessage(
+    // Store user message (await for first write correctness)
+    await storeConversationMessage(
       userToken,
       websiteToken,
       conversationId,
       'user',
       message,
       userMessageOrder
-    ).catch(error => {
-      console.log('[CONVERSATION STORAGE] User message storage failed (non-blocking):', error);
-    });
+    );
+    const assistantMessageOrder = userMessageOrder + 1;
 
     // Get OpenAI API key from server environment
     const apiKey = process.env.OPENAI_API_KEY;
@@ -105,8 +134,8 @@ export async function POST(request: NextRequest) {
         await recordActivity(userToken, selectedSite || '', testResponse.functionCall, testResponse.actionCard);
       }
 
-      // Store test conversation messages (async, non-blocking)
-      storeConversationMessage(
+      // Store test conversation messages
+      await storeConversationMessage(
         userToken,
         websiteToken,
         conversationId,
@@ -116,9 +145,7 @@ export async function POST(request: NextRequest) {
         testResponse.functionCall,
         testResponse.actionCard,
         { test_response: true }
-      ).catch(error => {
-        console.log('[CONVERSATION STORAGE] Test response storage failed (non-blocking):', error);
-      });
+      );
       
       return NextResponse.json({
         success: true,
@@ -135,8 +162,8 @@ export async function POST(request: NextRequest) {
       // This case is already handled above, but keeping for safety
       const testResponse = getTestResponse(message);
       
-      // Store test conversation messages (async, non-blocking) 
-      storeConversationMessage(
+      // Store test conversation messages
+      await storeConversationMessage(
         userToken,
         websiteToken,
         conversationId,
@@ -146,9 +173,7 @@ export async function POST(request: NextRequest) {
         testResponse.functionCall,
         testResponse.actionCard,
         { test_response: true }
-      ).catch(error => {
-        console.log('[CONVERSATION STORAGE] Test response storage failed (non-blocking):', error);
-      });
+      );
       
       return NextResponse.json({
         success: true,
@@ -906,6 +931,16 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
       return `- ${kw}${intent}${cluster}`;
     }).join('\n');
     return `✨ Generated ${count} keyword ideas:\n\n${bullets}\n\nUse "View details" to select and save keywords.`;
+  }
+  if (first.name === 'KEYWORDS_brainstorm_auto') {
+    const ideas = res?.data?.generated_keywords || res?.generated_keywords || [];
+    const seeds = res?.data?.seed_keywords || res?.seed_keywords || [];
+    const source = res?.data?.seed_source || res?.seed_source || 'auto';
+    const count = ideas.length || 0;
+    const seedNote = seeds.length ? ` (seeds from ${source}: ${seeds.slice(0,3).join(', ')}${seeds.length>3?'…':''})` : '';
+    const top = ideas.slice(0, Math.min(10, ideas.length));
+    const bullets = top.map((k: any) => `- ${k.keyword || k}`).join('\n');
+    return `✨ Generated ${count} keyword ideas${seedNote}:\n\n${bullets}\n\nUse the Strategy tab to save selected keywords.`;
   }
   if (first.name === 'KEYWORDS_add_keywords' || first.name === 'update_keyword_strategy') {
     const added = res?.data?.added || res?.summary?.keywords_added || 0;

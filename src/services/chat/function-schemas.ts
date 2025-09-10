@@ -195,6 +195,29 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     category: 'content',
     requiresSetup: false
   },
+  'KEYWORDS_brainstorm_auto': {
+    schema: {
+      name: 'KEYWORDS_brainstorm_auto',
+      description: 'Automatically brainstorm keyword ideas for a website using existing GSC data when available, or by quickly crawling the homepage to infer seed topics. No seeds required.',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL or domain (optional; primary site used if omitted)' },
+          generate_count: { type: 'integer', description: 'How many keywords to generate', default: 15 },
+          avoid_duplicates: { type: 'boolean', description: 'Avoid duplicates from tracked keywords', default: true }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: z.string().optional(),
+      generate_count: z.number().int().optional().default(15),
+      avoid_duplicates: z.boolean().optional().default(true)
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
 
   'CONTENT_optimize_existing': {
     schema: {
