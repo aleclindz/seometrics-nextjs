@@ -60,7 +60,7 @@ export class ContentAbility extends BaseAbility {
   }
 
   /**
-   * Generate an article using smart suggestions with automatic internal links (updated for new flow)
+   * Generate an article using the enhanced generator (simplified; no internal-link injection)
    */
   private async generateArticle(args: { 
     site_url?: string;
@@ -76,34 +76,21 @@ export class ContentAbility extends BaseAbility {
   }): Promise<FunctionCallResult> {
     try {
       // Handle legacy parameters (backward compatibility)
-      const specificTopic = args.specific_topic || args.topic;
-      const articleType = args.article_type || (args.content_type === 'guide' ? 'guide' : 'blog');
-      const tone = args.tone || 'professional';
+      const topic = args.specific_topic || args.topic || 'Article Topic';
+      const articleType = (args.article_type || (args.content_type === 'guide' ? 'guide' : 'blog')) as any;
+      const tone = (args.tone || 'professional') as 'professional' | 'casual' | 'technical';
 
-      // Use the new article generation with automatic internal links
-      const internalLinksArgs = {
-        topic: specificTopic || 'Article Topic',
-        site_url: args.site_url,
+      // Directly use the enhanced generator (no internal links, no SVS)
+      return await this.generateEnhancedArticle({
+        topic,
         target_keywords: args.target_keywords,
-        article_type: articleType as any,
-        word_count: args.word_count,
-        tone: tone as any
-      };
-
-      // If we have a specific topic, use the internal linking version
-      if (specificTopic) {
-        return await this.generateArticleWithInternalLinks(internalLinksArgs);
-      }
-
-      // Fallback to smart article generation for backward compatibility
-      const smartArgs = {
         site_url: args.site_url,
-        specific_topic: specificTopic,
         article_type: articleType,
-        tone: tone
-      };
-
-      return await this.generateSmartArticle(smartArgs);
+        word_count: args.word_count,
+        tone,
+        include_citations: true,
+        include_images: true
+      });
 
     } catch (error) {
       return this.error('Failed to generate article', error);
@@ -173,7 +160,7 @@ export class ContentAbility extends BaseAbility {
       const articleId = queueResponse.article.id;
 
       // Then generate the enhanced content
-      let response = await this.fetchAPI('/api/articles/generate', {
+      const response = await this.fetchAPI('/api/articles/generate', {
         method: 'POST',
         body: JSON.stringify({
           userToken: this.userToken,
@@ -192,34 +179,7 @@ export class ContentAbility extends BaseAbility {
           imageStyle: args.image_style || 'clean, modern, web illustration, professional'
         })
       });
-
-      // Fallback: if queue-based generation fails (e.g., "Article not found"), try direct SVS generation
-      if (!response?.success) {
-        try {
-          const websiteDomain = (args.site_url || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-          const direct = await this.fetchAPI('/api/articles/generate-svs', {
-            method: 'POST',
-            body: JSON.stringify({
-              userToken: this.userToken,
-              title: args.topic,
-              keywords: args.target_keywords || [],
-              websiteDomain,
-              targetTopic: args.topic,
-              contentLength: this.mapWordCountToLength(args.word_count),
-              tone: args.tone || 'professional',
-              performSVSAnalysis: true,
-              saveToDatabase: true
-            })
-          });
-          if (direct?.success) {
-            response = direct;
-          }
-        } catch (e) {
-          // keep original response
-        }
-      }
-
-      return response?.success ? 
+      return response.success ? 
         this.success({
           ...response,
           message: 'Enhanced article generated successfully with research, images, and schema',
@@ -230,7 +190,7 @@ export class ContentAbility extends BaseAbility {
             article_type: args.article_type || 'blog'
           }
         }) :
-        this.error(response?.error || 'Enhanced article generation failed');
+        this.error(response.error || 'Enhanced article generation failed');
     } catch (error) {
       return this.error('Failed to generate enhanced article', error);
     }
