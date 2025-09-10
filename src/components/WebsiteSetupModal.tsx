@@ -410,11 +410,23 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     try {
       setSmartjsLoading(true);
       
-      // Use the simple status function instead of the API call
-      const status = getSmartJSStatus(website.url);
-      console.log('🔍 [SETUP MODAL] Testing SEOAgent.js installation, result:', status);
+      console.log('🔍 [SETUP MODAL] Testing SEOAgent.js installation for:', website.url);
       
-      if (status === 'active') {
+      // Call the proper API endpoint to test installation
+      const response = await fetch('/api/smartjs/check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          websiteUrl: website.url
+        })
+      });
+      
+      const result = await response.json();
+      console.log('✅ [SETUP MODAL] SEOAgent.js test result:', result);
+      
+      if (result.success && result.data?.status === 'active') {
         setSmartjsDetected(true);
         // Only update parent if status actually changed
         if (website.smartjsStatus !== 'active') {
@@ -428,7 +440,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         }
       }
     } catch (error) {
-      console.error('Error testing SEOAgent.js:', error);
+      console.error('❌ [SETUP MODAL] Error testing SEOAgent.js:', error);
       setSmartjsDetected(false);
     } finally {
       setSmartjsLoading(false);
