@@ -309,6 +309,26 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
+  'SEO_get_crawl_results': {
+    schema: {
+      name: 'SEO_get_crawl_results',
+      description: 'Fetch results for a previously started site crawl (Firecrawl-backed) and summarize basic technical SEO signals',
+      parameters: {
+        type: 'object',
+        properties: {
+          job_id: { type: 'string', description: 'ID of the crawl job to fetch' }
+        },
+        required: ['job_id'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      job_id: z.string().min(1)
+    }),
+    category: 'seo',
+    requiresSetup: false
+  },
+
   'SITEMAP_generate_submit': {
     schema: {
       name: 'SITEMAP_generate_submit',

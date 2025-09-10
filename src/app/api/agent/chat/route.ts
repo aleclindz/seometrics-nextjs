@@ -942,6 +942,27 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
     const bullets = top.map((k: any) => `- ${k.keyword || k}`).join('\n');
     return `✨ Generated ${count} keyword ideas${seedNote}:\n\n${bullets}\n\nUse the Strategy tab to save selected keywords.`;
   }
+
+  if (first.name === 'SEO_crawl_website') {
+    const jobId = res?.data?.job_id || res?.job_id || 'job';
+    return `🕸️ Started crawl job (${jobId}). I’ll fetch results and highlight technical issues when ready.`;
+  }
+
+  if (first.name === 'SEO_get_crawl_results') {
+    const total = res?.data?.total_pages ?? res?.total_pages ?? 0;
+    const analyzed = res?.data?.analyzed_pages ?? res?.analyzed_pages ?? 0;
+    const issues = res?.data?.issues ?? res?.issues ?? {};
+    const lines = [
+      `🧭 Crawl results: ${analyzed}/${total} pages analyzed`,
+      `• Missing titles: ${issues.missing_title ?? 0}`,
+      `• Missing meta descriptions: ${issues.missing_meta_description ?? 0}`,
+      `• Missing H1: ${issues.missing_h1 ?? 0}`,
+      `• Missing canonical: ${issues.missing_canonical ?? 0}`,
+      `• Noindex: ${issues.noindex ?? 0}`
+    ];
+    lines.push('', 'Want me to propose fixes for the top issues?');
+    return lines.join('\n');
+  }
   if (first.name === 'KEYWORDS_add_keywords' || first.name === 'update_keyword_strategy') {
     const added = res?.data?.added || res?.summary?.keywords_added || 0;
     return `✅ Added ${added} keywords to your strategy. Check the Strategy tab for updates.`;

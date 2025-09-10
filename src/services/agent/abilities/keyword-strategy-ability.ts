@@ -283,18 +283,17 @@ export class KeywordStrategyAbility extends BaseAbility {
         console.log('[KEYWORDS AUTO] GSC seed fetch failed or unavailable. Falling back to crawl.');
       }
 
-      // If no GSC seeds, try a quick homepage crawl for title/description/headings
+      // If no GSC seeds, try a quick homepage crawl for title/description/headings via Firecrawl
       if (seeds.length === 0 && domain) {
         try {
           const url = domain.startsWith('http') ? domain : `https://${domain}`;
-          const res = await fetch(url, { method: 'GET' });
-          if (res.ok) {
-            const html = await res.text();
-            seeds = this.extractSeedsFromHTML(html).slice(0, 8);
-            if (seeds.length > 0) {
-              seedSource = 'crawl';
-            }
-          }
+          const scrape = await this.fetchAPI('/api/crawl/firecrawl', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'scrape', url })
+          });
+          const html = scrape?.page?.html || '';
+          seeds = this.extractSeedsFromHTML(html).slice(0, 8);
+          if (seeds.length > 0) seedSource = 'crawl';
         } catch (e) {
           console.log('[KEYWORDS AUTO] Homepage fetch failed:', e);
         }
