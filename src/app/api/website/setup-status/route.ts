@@ -84,13 +84,12 @@ export async function GET(request: NextRequest) {
     console.log('[SETUP STATUS] Checking setup status for:', domain);
     
     // Query websites table for current status using DomainQueryService
-    // Note: Check both host_status and hosting_status for compatibility
     // Include cleaned_domain for proper URL construction
     const websiteResult = await DomainQueryService.queryTableByDomain(
       'websites',
       userToken, 
       domain,
-      'gsc_status, seoagentjs_status, cms_status, host_status, hosting_status, last_status_check, domain, cleaned_domain'
+      'gsc_status, seoagentjs_status, cms_status, hosting_status, last_status_check, domain, cleaned_domain'
     );
 
     if (!websiteResult.success || !websiteResult.data || websiteResult.data.length === 0) {
@@ -112,28 +111,33 @@ export async function GET(request: NextRequest) {
     const website = websiteResult.data[0];
     
     // Check if we need to refresh status (older than 1 hour or forced refresh)
-    // BUT: Only refresh if status is actually empty/none, not if it's been explicitly set
+    // BUT: Only refresh individual statuses if they are actually empty/none, not if they're been explicitly set
     const lastCheck = website.last_status_check ? new Date(website.last_status_check) : null;
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const hasValidStatuses = (
-      website.cms_status !== 'none' || 
-      website.hosting_status !== 'none' || 
-      website.gsc_status === 'connected'
-    );
-    const needsRefresh = !hasValidStatuses && (forceRefresh || !lastCheck || lastCheck < oneHourAgo);
+    
+    // Individual status refresh logic - only refresh what needs checking
+    // CRITICAL: Don't overwrite working 'connected' or 'active' statuses, even with forceRefresh
+    const shouldRefreshGSC = (website.gsc_status === 'none' || website.gsc_status === 'error') || 
+                            (!lastCheck || lastCheck < oneHourAgo);
+    const shouldRefreshSEOAgent = (website.seoagentjs_status === 'inactive' || website.seoagentjs_status === 'error') || 
+                                 (!lastCheck || lastCheck < oneHourAgo);
+    const shouldRefreshCMS = (website.cms_status === 'none' || website.cms_status === 'error') || 
+                            (!lastCheck || lastCheck < oneHourAgo);
+    const shouldRefreshHosting = (website.hosting_status === 'none' || website.hosting_status === 'error') || 
+                                (!lastCheck || lastCheck < oneHourAgo);
+    
+    const needsAnyRefresh = shouldRefreshGSC || shouldRefreshSEOAgent || shouldRefreshCMS || shouldRefreshHosting;
 
     let gscStatus = website.gsc_status;
     let seoagentjsStatus = website.seoagentjs_status;
     let cmsStatus = website.cms_status;
-    // Use hosting_status if available, otherwise fall back to host_status
-    let hostingStatus = website.hosting_status || website.host_status;
+    let hostingStatus = website.hosting_status;
 
-    if (needsRefresh) {
-      console.log('[SETUP STATUS] Refreshing connection statuses for empty/none statuses only...');
+    if (needsAnyRefresh) {
+      console.log('[SETUP STATUS] Refreshing connection statuses selectively...');
       
       // Refresh GSC status by checking gsc_connections table
-      // Always check if forceRefresh is true, or if status is 'none'
-      if (gscStatus === 'none' || forceRefresh) {
+      if (shouldRefreshGSC) {
         console.log('[SETUP STATUS] Checking GSC connection status...');
         const { data: gscConnection, error: gscError } = await supabase
           .from('gsc_connections')
@@ -160,19 +164,19 @@ export async function GET(request: NextRequest) {
         }
         console.log('[SETUP STATUS] GSC status refreshed:', gscStatus);
       } else {
-        console.log('[SETUP STATUS] GSC status already connected, skipping refresh');
+        console.log('[SETUP STATUS] GSC status is working (' + gscStatus + '), skipping refresh');
       }
 
-      // Refresh SEOAgent.js status by checking if script is accessible ONLY if not already active
-      if (seoagentjsStatus === 'inactive') {
+      // Refresh SEOAgent.js status by checking if script is accessible 
+      if (shouldRefreshSEOAgent) {
         seoagentjsStatus = await detectSEOAgentStatus(website.domain, website.cleaned_domain);
         console.log('[SETUP STATUS] SEOAgent.js status refreshed:', seoagentjsStatus);
       } else {
-        console.log('[SETUP STATUS] SEOAgent.js already active, skipping refresh');
+        console.log('[SETUP STATUS] SEOAgent.js status is working (' + seoagentjsStatus + '), skipping refresh');
       }
       
-      // Refresh CMS status by checking cms_connections table ONLY if not already connected
-      if (cmsStatus === 'none') {
+      // Refresh CMS status by checking cms_connections table
+      if (shouldRefreshCMS) {
         try {
           const { data: cmsConnections, error: cmsError } = await supabase
             .from('cms_connections')
@@ -193,11 +197,11 @@ export async function GET(request: NextRequest) {
           // Keep existing status on error
         }
       } else {
-        console.log('[SETUP STATUS] CMS status already connected, skipping refresh');
+        console.log('[SETUP STATUS] CMS status is working (' + cmsStatus + '), skipping refresh');
       }
       
-      // Refresh hosting status by checking host_connections table ONLY if not already connected
-      if (hostingStatus === 'none') {
+      // Refresh hosting status by checking host_connections table
+      if (shouldRefreshHosting) {
         try {
           const { data: hostConnections, error: hostError } = await supabase
             .from('host_connections')
@@ -218,26 +222,18 @@ export async function GET(request: NextRequest) {
           // Keep existing status on error
         }
       } else {
-        console.log('[SETUP STATUS] Hosting status already connected, skipping refresh');
+        console.log('[SETUP STATUS] Hosting status is working (' + hostingStatus + '), skipping refresh');
       }
 
       // Update the website record with refreshed statuses
       try {
-        // Update both hosting columns if they exist to maintain compatibility
         const updateData: any = {
           gsc_status: gscStatus,
           seoagentjs_status: seoagentjsStatus,
           cms_status: cmsStatus,
+          hosting_status: hostingStatus,
           last_status_check: new Date().toISOString()
         };
-        
-        // Update the appropriate hosting column
-        if (website.hosting_status !== undefined) {
-          updateData.hosting_status = hostingStatus;
-        }
-        if (website.host_status !== undefined) {
-          updateData.host_status = hostingStatus;
-        }
         
         await supabase
           .from('websites')
