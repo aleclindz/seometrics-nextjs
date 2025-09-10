@@ -173,7 +173,7 @@ export class ContentAbility extends BaseAbility {
       const articleId = queueResponse.article.id;
 
       // Then generate the enhanced content
-      const response = await this.fetchAPI('/api/articles/generate', {
+      let response = await this.fetchAPI('/api/articles/generate', {
         method: 'POST',
         body: JSON.stringify({
           userToken: this.userToken,
@@ -193,7 +193,33 @@ export class ContentAbility extends BaseAbility {
         })
       });
 
-      return response.success ? 
+      // Fallback: if queue-based generation fails (e.g., "Article not found"), try direct SVS generation
+      if (!response?.success) {
+        try {
+          const websiteDomain = (args.site_url || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+          const direct = await this.fetchAPI('/api/articles/generate-svs', {
+            method: 'POST',
+            body: JSON.stringify({
+              userToken: this.userToken,
+              title: args.topic,
+              keywords: args.target_keywords || [],
+              websiteDomain,
+              targetTopic: args.topic,
+              contentLength: this.mapWordCountToLength(args.word_count),
+              tone: args.tone || 'professional',
+              performSVSAnalysis: true,
+              saveToDatabase: true
+            })
+          });
+          if (direct?.success) {
+            response = direct;
+          }
+        } catch (e) {
+          // keep original response
+        }
+      }
+
+      return response?.success ? 
         this.success({
           ...response,
           message: 'Enhanced article generated successfully with research, images, and schema',
@@ -204,7 +230,7 @@ export class ContentAbility extends BaseAbility {
             article_type: args.article_type || 'blog'
           }
         }) :
-        this.error(response.error || 'Enhanced article generation failed');
+        this.error(response?.error || 'Enhanced article generation failed');
     } catch (error) {
       return this.error('Failed to generate enhanced article', error);
     }

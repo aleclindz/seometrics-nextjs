@@ -201,7 +201,7 @@ Return only the JSON array, no other text.`;
       max_tokens: 900
     });
 
-    const response = completion.choices[0]?.message?.content;
+    let response = completion.choices[0]?.message?.content;
     if (!response) {
       // Fallback to heuristic generation if LLM did not respond
       const generatedKeywords = heuristicGenerateKeywords({
@@ -231,17 +231,27 @@ Return only the JSON array, no other text.`;
     // Parse the JSON response
     let generatedKeywords = [];
     try {
+      // Try raw parse first
       generatedKeywords = JSON.parse(response);
-    } catch (parseError) {
-      console.error('[KEYWORD BRAINSTORM] Error parsing OpenAI response:', parseError);
-      console.error('[KEYWORD BRAINSTORM] Raw response:', response);
-      // Fallback to heuristic generation on parse errors
-      generatedKeywords = heuristicGenerateKeywords({
-        domain: websiteDomain,
-        baseKeywords,
-        topicFocus,
-        generateCount
-      });
+    } catch (_) {
+      // Strip common code fences and try again
+      try {
+        const cleaned = response
+          .replace(/```json/gi, '')
+          .replace(/```/g, '')
+          .trim();
+        generatedKeywords = JSON.parse(cleaned);
+      } catch (parseError) {
+        console.error('[KEYWORD BRAINSTORM] Error parsing OpenAI response:', parseError);
+        console.error('[KEYWORD BRAINSTORM] Raw response:', response);
+        // Fallback to heuristic generation on parse errors
+        generatedKeywords = heuristicGenerateKeywords({
+          domain: websiteDomain,
+          baseKeywords,
+          topicFocus,
+          generateCount
+        });
+      }
     }
 
     // Enforce requested cluster if provided
