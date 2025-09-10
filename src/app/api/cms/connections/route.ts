@@ -162,15 +162,16 @@ export async function POST(request: NextRequest) {
     console.log('[CMS CONNECTIONS] Creating connection:', connection_name);
     console.log('[CMS CONNECTIONS] website_id received:', website_id, typeof website_id);
 
-    // Verify the website belongs to the user
+    // Verify the website belongs to the user (website_id should be numeric database ID)
     const { data: website, error: websiteError } = await supabase
       .from('websites')
-      .select('id')
-      .eq('id', website_id)
+      .select('id, domain')
+      .eq('id', parseInt(website_id))
       .eq('user_token', userToken)
       .single();
 
     if (websiteError || !website) {
+      console.error('[CMS CONNECTIONS] Website lookup failed:', websiteError);
       return NextResponse.json(
         { error: 'Website not found or access denied' },
         { status: 404 }
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
       .from('cms_connections')
       .select('id, connection_name, status')
       .eq('user_token', userToken)
-      .eq('website_id', website_id)
+      .eq('website_id', parseInt(website_id))
       .single();
 
     if (existingConnection) {
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
       .from('cms_connections')
       .insert({
         user_token: userToken,
-        website_id: parseInt(website_id),
+        website_id: parseInt(website_id), // Use the numeric database ID
         connection_name,
         cms_type,
         base_url: base_url.replace(/\/$/, ''), // Remove trailing slash

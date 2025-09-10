@@ -82,14 +82,41 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         const websitesList = data.websites || [];
         setWebsites(websitesList);
         
-        // If preselectedWebsiteId is a token (UUID), convert it to the actual ID
-        if (preselectedWebsiteId && typeof preselectedWebsiteId === 'string' && preselectedWebsiteId.includes('-')) {
-          const matchingWebsite = websitesList.find((w: Website) => w.website_token === preselectedWebsiteId);
+        // Convert preselectedWebsiteId to the actual database ID
+        if (preselectedWebsiteId && typeof preselectedWebsiteId === 'string') {
+          let matchingWebsite = null;
+          
+          // Try different matching strategies:
+          // 1. UUID token match
+          if (preselectedWebsiteId.includes('-')) {
+            matchingWebsite = websitesList.find((w: Website) => w.website_token === preselectedWebsiteId);
+          }
+          
+          // 2. Domain string match (cleaned_domain or domain)
+          if (!matchingWebsite) {
+            matchingWebsite = websitesList.find((w: Website) => {
+              // Check if website has cleaned_domain field and matches
+              if ((w as any).cleaned_domain === preselectedWebsiteId) {
+                return true;
+              }
+              // Also check raw domain (handles sc-domain: prefixed domains)
+              return w.domain === preselectedWebsiteId || w.domain === `sc-domain:${preselectedWebsiteId}`;
+            });
+          }
+          
+          // 3. Numeric ID match (already a database ID)
+          if (!matchingWebsite && !isNaN(Number(preselectedWebsiteId))) {
+            matchingWebsite = websitesList.find((w: Website) => w.id === Number(preselectedWebsiteId));
+          }
+          
           if (matchingWebsite) {
+            console.log('CMSConnectionForm: Mapped preselectedWebsiteId', preselectedWebsiteId, 'to website ID', matchingWebsite.id);
             setFormData(prev => ({
               ...prev,
               website_id: matchingWebsite.id.toString()
             }));
+          } else {
+            console.warn('CMSConnectionForm: Could not find matching website for preselectedWebsiteId:', preselectedWebsiteId);
           }
         }
       }

@@ -767,6 +767,17 @@ async function processOpenAIResponse(
     if (functionCall.name === 'KEYWORDS_brainstorm' || functionCall.name === 'brainstorm_keywords') {
       // Don’t create a generic action card with a broken "View Details" link for brainstorming
       actionCard = null;
+    } else if (functionCall.name === 'KEYWORDS_get_strategy') {
+      // Show a simple informational card without a View Details link; the narrative covers details
+      actionCard = {
+        type: 'technical-fix',
+        data: {
+          title: getFunctionDisplayName(functionCall.name),
+          description: getDescriptionForFunction(functionCall.name),
+          status: 'completed',
+          affectedPages: 1
+        }
+      };
     } else if (functionCall.result && typeof functionCall.result === 'object' && 'success' in functionCall.result && functionCall.result.success) {
       // Let tools provide their own action cards when available
       const toolData = functionCall.result as any;
