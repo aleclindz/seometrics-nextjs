@@ -34,31 +34,48 @@ function heuristicGenerateKeywords(opts: {
   const seeds = (opts.baseKeywords && opts.baseKeywords.length > 0)
     ? opts.baseKeywords
     : (opts.topicFocus ? [opts.topicFocus] : ['translation benefits']);
+
+  // Provide paraphrases to avoid awkward repetitions for common clusters
+  const paraphrases: Record<string, string[]> = {
+    'translation benefits': [
+      'benefits of translating videos',
+      'advantages of translated content',
+      'grow reach with video translation',
+      'audience growth via translation',
+      'translation impact on channel growth'
+    ]
+  };
   const out: any[] = [];
   const templates = [
     'benefits of {seed} for youtube',
-    'why translate youtube videos for {seed}',
-    '{seed} translation for youtube shorts',
-    'how to increase reach with {seed} translation',
-    'best tools for {seed} on youtube',
-    'youtube translation roi {seed}',
-    '{seed} vs subtitles for youtube growth',
-    'does {seed} improve watch time on youtube',
-    'localize youtube channel with {seed}',
-    '{seed} translation pricing for creators'
+    'how to increase reach with {seed}',
+    'best tools to support {seed}',
+    '{seed} for youtube shorts',
+    'case studies: {seed}',
+    'roi of {seed}',
+    '{seed} vs subtitles',
+    'does {seed} improve watch time',
+    'localize your channel: {seed}',
+    'pricing guide: {seed}'
   ];
   let i = 0;
   while (out.length < Math.max(5, Math.min(opts.generateCount, 30)) && i < 200) {
     i++;
-    const seed = seeds[Math.floor(Math.random()*seeds.length)] || 'translation benefits';
+    let seed = seeds[Math.floor(Math.random()*seeds.length)] || 'translation benefits';
+    // Paraphrase the seed if we have known variants
+    const variants = paraphrases[seed.toLowerCase()];
+    if (variants && Math.random() < 0.8) {
+      seed = variants[Math.floor(Math.random()*variants.length)];
+    }
     const t = templates[Math.floor(Math.random()*templates.length)];
-    const kw = t.replace('{seed}', seed);
+    let kw = t.replace('{seed}', seed);
+    kw = kw.replace(/\s+/g, ' ').trim();
     if (out.some(k => k.keyword.toLowerCase() === kw.toLowerCase())) continue;
     out.push({
       keyword: kw,
       search_intent: intents[out.length % intents.length],
       keyword_type: 'long_tail',
-      suggested_topic_cluster: clusters[out.length % clusters.length],
+      suggested_topic_cluster: opts.topicFocus || 'translation benefits',
       rationale: `Relevant to ${opts.domain} audience seeking ${seed} outcomes`
     });
   }
@@ -136,6 +153,8 @@ export async function POST(request: NextRequest) {
     const baseKeywordsList = baseKeywords.length > 0 ? baseKeywords.join(', ') : '';
     const existingKeywordsList = existingKeywords.length > 0 ? existingKeywords.join(', ') : '';
 
+    const clusterConstraint = topicFocus ? `\n- All results must belong to the topic cluster: "${topicFocus}" (use this exact value for suggested_topic_cluster)\n- Avoid repeating the seed phrase verbatim; use natural paraphrases and related language` : '';
+
     const prompt = `Generate ${generateCount} long-tail keyword variations for SEO content strategy.
 
 Website: ${websiteDomain}
@@ -152,6 +171,7 @@ Requirements:
 - Make them specific and actionable
 - Ensure they're relevant to the website's domain
 ${existingKeywords.length > 0 ? '- MUST avoid duplicating existing keywords' : ''}
+${clusterConstraint}
 
 Format as a JSON array of objects with this structure:
 {
@@ -222,6 +242,14 @@ Return only the JSON array, no other text.`;
         topicFocus,
         generateCount
       });
+    }
+
+    // Enforce requested cluster if provided
+    if (topicFocus) {
+      generatedKeywords = generatedKeywords.map((kw: any) => ({
+        ...kw,
+        suggested_topic_cluster: topicFocus
+      }));
     }
 
     // Filter out any duplicates that might have slipped through

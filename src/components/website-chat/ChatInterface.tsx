@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -555,49 +556,52 @@ What would you like to work on first?`,
         </div>
 
         {/* Brainstorm Details Modal */}
-        {brainstormModalOpen && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b">
-                <div className="font-semibold">Keyword Ideas</div>
-                <div className="flex items-center gap-2">
-                  <button onClick={copyBrainstormToClipboard} className="text-sm px-2 py-1 border rounded hover:bg-gray-50">Copy</button>
-                  <button onClick={closeBrainstormModal} className="text-sm px-2 py-1 border rounded hover:bg-gray-50">✕</button>
+        {brainstormModalOpen && typeof document !== 'undefined' && createPortal(
+          (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b">
+                  <div className="font-semibold">Keyword Ideas</div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={copyBrainstormToClipboard} className="text-sm px-2 py-1 border rounded hover:bg-gray-50">Copy</button>
+                    <button onClick={closeBrainstormModal} className="text-sm px-2 py-1 border rounded hover:bg-gray-50">✕</button>
+                  </div>
+                </div>
+                <div className="p-4 overflow-y-auto max-h-[60vh]">
+                  {brainstormIdeas.length === 0 ? (
+                    <div className="text-sm text-gray-500">No ideas to display.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {brainstormIdeas.map((idea: any, idx: number) => (
+                        <label key={idx} className="flex items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={!!selectedIdeas[idx]}
+                            onChange={(e) => setSelectedIdeas(prev => ({ ...prev, [idx]: e.target.checked }))}
+                          />
+                          <div>
+                            <div className="font-medium text-gray-900">{idea.keyword}</div>
+                            <div className="text-xs text-gray-600">
+                              {(idea.search_intent || 'unknown')} {idea.suggested_topic_cluster ? `• cluster: ${idea.suggested_topic_cluster}` : ''}
+                            </div>
+                            {idea.rationale && (
+                              <div className="text-xs text-gray-500 mt-1">{idea.rationale}</div>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+                  <button onClick={closeBrainstormModal} className="text-sm px-3 py-2 border rounded hover:bg-gray-50">Cancel</button>
+                  <button onClick={saveSelectedKeywords} className="text-sm px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
                 </div>
               </div>
-              <div className="p-4 overflow-y-auto max-h-[60vh]">
-                {brainstormIdeas.length === 0 ? (
-                  <div className="text-sm text-gray-500">No ideas to display.</div>
-                ) : (
-                  <div className="space-y-2">
-                    {brainstormIdeas.map((idea: any, idx: number) => (
-                      <label key={idx} className="flex items-start gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={!!selectedIdeas[idx]}
-                          onChange={(e) => setSelectedIdeas(prev => ({ ...prev, [idx]: e.target.checked }))}
-                        />
-                        <div>
-                          <div className="font-medium text-gray-900">{idea.keyword}</div>
-                          <div className="text-xs text-gray-600">
-                            {(idea.search_intent || 'unknown')} {idea.suggested_topic_cluster ? `• cluster: ${idea.suggested_topic_cluster}` : ''}
-                          </div>
-                          {idea.rationale && (
-                            <div className="text-xs text-gray-500 mt-1">{idea.rationale}</div>
-                          )}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
-                <button onClick={closeBrainstormModal} className="text-sm px-3 py-2 border rounded hover:bg-gray-50">Cancel</button>
-                <button onClick={saveSelectedKeywords} className="text-sm px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
-              </div>
             </div>
-          </div>
+          ),
+          document.body
         )}
       </CardContent>
     </Card>

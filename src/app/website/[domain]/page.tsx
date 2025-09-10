@@ -1109,7 +1109,7 @@ export default function WebsitePage() {
               {activeTab === 'strategy' && (
                 <section>
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">SEO Strategy</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Topic Clusters</h2>
                     <button
                       onClick={fetchStrategyData}
                       disabled={strategyData.isLoading}
