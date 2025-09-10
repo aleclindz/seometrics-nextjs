@@ -367,12 +367,6 @@ export class KeywordStrategyAbility extends BaseAbility {
   private stripTags(s: string): string {
     return s.replace(/<[^>]*>/g, ' ');
   }
-}
-
-// Minimal stopword set for seed extraction
-const STOPWORDS = new Set<string>([
-  'the','and','for','with','that','this','from','your','you','are','was','were','will','have','has','not','but','about','into','over','under','than','then','they','them','their','our','ours','who','what','when','where','why','how','can','all','any','more','most','some','such','only','other','its','also','just','like','been','being','into','out','onto','off','because','while','between','within','across','after','before','again','same','each'
-]);
 
   /**
    * Organize existing keywords into topic clusters
@@ -924,3 +918,8 @@ const STOPWORDS = new Set<string>([
     return Math.max(0, priority);
   }
 }
+
+// Minimal stopword set for seed extraction
+const STOPWORDS = new Set<string>([
+  'the','and','for','with','that','this','from','your','you','are','was','were','will','have','has','not','but','about','into','over','under','than','then','they','them','their','our','ours','who','what','when','where','why','how','can','all','any','more','most','some','such','only','other','its','also','just','like','been','being','into','out','onto','off','because','while','between','within','across','after','before','again','same','each'
+]);
