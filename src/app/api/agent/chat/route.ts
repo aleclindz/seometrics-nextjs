@@ -838,6 +838,52 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
   const first = executed[0];
   const res = Object.values(results)[0];
 
+  // Human-readable summaries for common keyword functions
+  if (first.name === 'KEYWORDS_get_strategy' && res && typeof res === 'object') {
+    // Try to normalize fields across possible shapes
+    const data = (res.data ?? res) as any;
+    const strategy = data.strategy ?? {};
+    const raw = data.raw_data ?? {};
+    const has = Boolean(strategy.has_strategy ?? raw.hasStrategy);
+    const total = Number(strategy.total_keywords ?? raw.totalKeywords ?? 0);
+    const clusters = strategy.topic_clusters ?? raw.topicClusters ?? [];
+    const nextSteps: string[] = Array.isArray(strategy.next_steps) ? strategy.next_steps : [];
+
+    if (!has || total === 0) {
+      const bullets = nextSteps.length
+        ? nextSteps.map(s => `• ${s}`).join('\n')
+        : [
+            '• Brainstorm 10–20 long‑tail keywords that reflect buyer intent',
+            '• Group them into 3–5 topic clusters',
+            '• Pick 1–2 primary keywords per cluster and plan content'
+          ].join('\n');
+      return [
+        '🔎 I checked your keyword strategy — none found yet.',
+        '',
+        'Recommended next steps:',
+        bullets
+      ].join('\n');
+    }
+
+    // Build a brief overview if a strategy exists
+    const breakdown = strategy.keyword_breakdown ?? {};
+    const primary = breakdown.primary ?? raw.primaryKeywords ?? 0;
+    const secondary = breakdown.secondary ?? raw.secondaryKeywords ?? 0;
+    const longTail = breakdown.long_tail ?? raw.longTailKeywords ?? 0;
+    const clusterCount = Array.isArray(clusters) ? clusters.length : (raw.totalClusters ?? 0);
+
+    return [
+      '✅ Retrieved your keyword strategy overview',
+      `• Total keywords: ${total}  (primary: ${primary}, secondary: ${secondary}, long‑tail: ${longTail})`,
+      `• Topic clusters: ${clusterCount}`,
+      '',
+      'Next suggestions:',
+      '• Focus 60%+ on long‑tail keywords for faster wins',
+      '• Expand clusters with supporting articles and internal links',
+      '• Identify content gaps and prioritize by expected impact'
+    ].join('\n');
+  }
+
   if (first.name === 'KEYWORDS_brainstorm' || first.name === 'brainstorm_keywords') {
     const ideas = res?.data?.generated_keywords || res?.generated_keywords || [];
     const count = ideas.length || 0;

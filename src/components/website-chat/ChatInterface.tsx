@@ -447,6 +447,7 @@ What would you like to work on first?`,
                     </Badge>
                   )}
                 </div>
+                {/* Special handling for brainstorm */}
                 {message.functionCall?.result?.success && message.functionCall?.name?.includes('brainstorm') ? (
                   <div className="text-sm text-gray-600">
                     Generated keyword ideas. <button className="underline" onClick={() => openBrainstormModal(
@@ -456,12 +457,21 @@ What would you like to work on first?`,
                     )}>View details</button>
                   </div>
                 ) : (
+                  // For other functions, avoid dumping raw JSON by default
                   message.functionCall?.result?.success && message.functionCall?.result?.data && (
                     <div className="text-sm text-gray-600">
-                      {typeof message.functionCall?.result?.data === 'string' 
-                        ? message.functionCall?.result?.data
-                        : JSON.stringify(message.functionCall?.result?.data, null, 2)
-                      }
+                      {message.functionCall?.name === 'KEYWORDS_get_strategy' ? (
+                        // Suppress raw data; the assistant message + card summarize it
+                        <div className="text-gray-500">Summary shown above. Use the card to view details.</div>
+                      ) : (
+                        <details>
+                          <summary className="cursor-pointer select-none">Show raw result</summary>
+                          <pre className="mt-2 text-xs whitespace-pre-wrap">{typeof message.functionCall?.result?.data === 'string' 
+                            ? message.functionCall?.result?.data
+                            : JSON.stringify(message.functionCall?.result?.data, null, 2)
+                          }</pre>
+                        </details>
+                      )}
                     </div>
                   )
                 )}
