@@ -313,6 +313,76 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
             required
           />
         </div>
+
+        {/* Test buttons */}
+        <div className="flex gap-3 mt-4">
+          <button
+            type="button"
+            onClick={testToken}
+            disabled={!formData.base_url || !formData.api_token || testingToken}
+            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+          >
+            {testingToken ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Testing...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Test Connection
+              </>
+            )}
+          </button>
+          
+          <button
+            type="button"
+            onClick={discoverContentTypes}
+            disabled={!formData.base_url || !formData.api_token || discovering || tokenValid !== true}
+            className="flex items-center px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+          >
+            {discovering ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Discovering...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Discover Content Types
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Connection status feedback */}
+        {tokenValid === true && (
+          <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm font-medium text-green-800 dark:text-green-200">Connection successful!</span>
+            </div>
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1">API token is valid and ready to use.</p>
+          </div>
+        )}
+        
+        {tokenValid === false && (
+          <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <span className="text-sm font-medium text-red-800 dark:text-red-200">Connection failed</span>
+            </div>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Please check your credentials and try again.</p>
+          </div>
+        )}
       </div>
     );
   };
