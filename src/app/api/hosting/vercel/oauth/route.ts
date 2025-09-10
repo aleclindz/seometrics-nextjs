@@ -88,6 +88,7 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
 
     const oauthUrl = `https://vercel.com/oauth/authorize?` +
       `client_id=${vercelClientId}&` +
+      `team_id=team_HSnkJEctgKF6Sx3vSXqUi33P&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `response_type=code&` +
       `scope=read:project,write:project&` +
