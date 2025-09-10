@@ -43,6 +43,9 @@ export async function GET(request: NextRequest) {
         
       console.log('[GSC CONNECTION] All connections for user:', allConnections, 'Error:', allError);
       
+      // Update websites table gsc_status to 'none' when no connection
+      await updateWebsiteGSCStatus(userToken, false);
+      
       return NextResponse.json({
         connected: false,
         message: 'No Google Search Console connection found',
@@ -67,6 +70,9 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true);
 
     console.log('[GSC CONNECTION] Connection found for user token:', userToken);
+    
+    // Update websites table gsc_status to match connection status
+    await updateWebsiteGSCStatus(userToken, !isExpired);
 
     return NextResponse.json({
       connected: true,
@@ -133,5 +139,24 @@ export async function DELETE(request: NextRequest) {
       { error: 'Failed to disconnect' }, 
       { status: 500 }
     );
+  }
+}
+
+async function updateWebsiteGSCStatus(userToken: string, isConnected: boolean) {
+  try {
+    console.log('[GSC CONNECTION] Updating websites table gsc_status to:', isConnected ? 'connected' : 'none');
+    
+    await supabase
+      .from('websites')
+      .update({ 
+        gsc_status: isConnected ? 'connected' : 'none',
+        last_status_check: new Date().toISOString()
+      })
+      .eq('user_token', userToken);
+      
+    console.log('[GSC CONNECTION] Websites table gsc_status updated successfully');
+  } catch (dbError) {
+    console.error('[GSC CONNECTION] Failed to update websites table gsc_status:', dbError);
+    // Don't throw - this is a secondary update
   }
 }

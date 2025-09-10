@@ -111,35 +111,6 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     }
   }, [isOpen, website]);
 
-  // Check SEOAgent.js installation status
-  const checkSmartJSStatus = async () => {
-    if (!user?.token) return;
-
-    try {
-      console.log('🔍 [SETUP MODAL] Starting SEOAgent.js Status Check for website:', website.url);
-      
-      // Use the simple status function instead of the API call
-      const status = getSmartJSStatus(website.url);
-      console.log('✅ [SETUP MODAL] SEOAgent.js Status Check Result:', status);
-      
-      if (status === 'active') {
-        setSmartjsDetected(true);
-        // Only update parent if status actually changed
-        if (website.smartjsStatus !== 'active') {
-          onStatusUpdate?.({ smartjsStatus: 'active' });
-        }
-      } else {
-        setSmartjsDetected(false);
-        // Only update parent if status actually changed
-        if (website.smartjsStatus !== 'inactive') {
-          onStatusUpdate?.({ smartjsStatus: 'inactive' });
-        }
-      }
-    } catch (error) {
-      console.error('❌ [SETUP MODAL] Error checking SEOAgent.js status:', error);
-      setSmartjsDetected(false);
-    }
-  };
 
   // GSC Functions
   const checkGSCStatus = async () => {
@@ -153,15 +124,8 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       console.log('✅ [SETUP MODAL] GSC Status Check Result:', JSON.stringify(data, null, 2));
       setGscStatus(data);
       
-      // Update parent component with GSC status
-      const gscConnected = data.connected === true;
-      if (gscConnected && website.gscStatus !== 'connected') {
-        console.log('🔄 [SETUP MODAL] Updating parent GSC status to connected');
-        onStatusUpdate?.({ gscStatus: 'connected' });
-      } else if (!gscConnected && website.gscStatus !== 'none') {
-        console.log('🔄 [SETUP MODAL] Updating parent GSC status to none');
-        onStatusUpdate?.({ gscStatus: 'none' });
-      }
+      // Database is updated by the GSC connection API - no need to call onStatusUpdate
+      console.log('✅ [SETUP MODAL] GSC status checked, database updated by API');
     } catch (error) {
       console.error('❌ [SETUP MODAL] Error checking GSC connection:', error);
       setGscError('Failed to check connection status');
@@ -419,7 +383,8 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          websiteUrl: website.url
+          websiteUrl: website.url,
+          userToken: user.token
         })
       });
       
@@ -428,16 +393,10 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       
       if (result.success && result.data?.status === 'active') {
         setSmartjsDetected(true);
-        // Only update parent if status actually changed
-        if (website.smartjsStatus !== 'active') {
-          onStatusUpdate?.({ smartjsStatus: 'active' });
-        }
+        // Database is updated by the API - no need to call onStatusUpdate
       } else {
         setSmartjsDetected(false);
-        // Only update parent if status actually changed  
-        if (website.smartjsStatus !== 'inactive') {
-          onStatusUpdate?.({ smartjsStatus: 'inactive' });
-        }
+        // Database is updated by the API - no need to call onStatusUpdate
       }
     } catch (error) {
       console.error('❌ [SETUP MODAL] Error testing SEOAgent.js:', error);
@@ -542,11 +501,11 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
             <div className="flex items-center gap-3">
               <button
                 onClick={() => {
-                  // Manually refresh all connection statuses
+                  // Manual refresh - only check status, don't auto-update
                   checkGSCStatus();
                   fetchCMSConnections();
                   fetchHostConnections();
-                  checkSmartJSStatus();
+                  // Note: SEOAgent.js status should only be updated via explicit test button
                 }}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >

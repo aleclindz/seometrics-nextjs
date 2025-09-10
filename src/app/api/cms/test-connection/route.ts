@@ -72,6 +72,11 @@ export async function POST(request: NextRequest) {
       await updateConnectionStatus(connection_id, userToken, testResult.success, testResult.message, (testResult.details as any)?.schemas);
     }
 
+    // Update the websites table cms_status based on test result
+    if (userToken && base_url) {
+      await updateWebsiteCMSStatus(userToken, base_url, testResult.success);
+    }
+
     if (testResult.success) {
       return NextResponse.json({
         success: true,
@@ -912,5 +917,28 @@ function processSchemaFields(schemaData: any) {
   } catch (error) {
     console.error('[CMS TEST] Error processing schema fields:', error);
     return { attributes: {}, hasRichText: false, hasMedia: false, hasRelations: false, fieldCount: 0 };
+  }
+}
+
+async function updateWebsiteCMSStatus(userToken: string, baseUrl: string, success: boolean) {
+  try {
+    console.log('[CMS TEST] Updating websites table cms_status to:', success ? 'connected' : 'error');
+    
+    // Extract domain from base URL for matching
+    const domain = baseUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+    
+    await supabase
+      .from('websites')
+      .update({ 
+        cms_status: success ? 'connected' : 'error',
+        last_status_check: new Date().toISOString()
+      })
+      .eq('user_token', userToken)
+      .or(`domain.ilike.%${domain}%,cleaned_domain.ilike.%${domain}%`);
+      
+    console.log('[CMS TEST] Websites table cms_status updated successfully');
+  } catch (dbError) {
+    console.error('[CMS TEST] Failed to update websites table cms_status:', dbError);
+    // Don't throw - this is a secondary update
   }
 }
