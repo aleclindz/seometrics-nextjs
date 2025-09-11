@@ -9,6 +9,7 @@
 
 import { BaseAbility, FunctionCallResult } from './base-ability';
 import { ContentIntelligenceService } from '../../content/content-intelligence-service';
+import { enqueueContentGeneration } from '@/services/queue/content-producer';
 
 export class ContentAbility extends BaseAbility {
   getFunctionNames(): string[] {
