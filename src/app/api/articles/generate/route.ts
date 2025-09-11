@@ -52,8 +52,7 @@ export async function POST(request: NextRequest) {
           *,
           websites:website_id (
             id,
-            domain,
-            name
+            domain
           )
         `)
         .eq('id', articleId)
@@ -146,7 +145,7 @@ export async function POST(request: NextRequest) {
         title: article.title,
         keywords: targetKeywords,
         websiteDomain: article.websites?.domain,
-        websiteDescription: article.websites?.name,
+        // websiteDescription intentionally omitted; column may not exist
         contentLength: contentLength as 'short' | 'medium' | 'long',
         tone: tone as 'professional' | 'casual' | 'technical',
         articleType,
