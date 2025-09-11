@@ -10,7 +10,9 @@
     "baseUrl": "../../"
   },
   "include": [
-    "packages/worker/src/**/*.ts"
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }
-
