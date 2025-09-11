@@ -48,12 +48,14 @@ export async function POST(request: NextRequest) {
         title,
         slug,
         target_keywords: targetKeywords || [],
-        status: 'queued'
+        content_outline: {},
+        status: 'pending'
       })
       .select()
       .single();
 
     if (error) {
+      console.error('[ARTICLES START] Insert error:', error);
       return NextResponse.json({ success: false, error: 'Failed to enqueue article' }, { status: 500 });
     }
 
@@ -63,4 +65,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
-

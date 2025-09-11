@@ -1,4 +1,5 @@
 import { Queue, Worker, Job, QueueEvents } from 'bullmq';
+import { EnhancedArticleGenerator, EnhancedArticleRequest } from '@/services/content/enhanced-article-generator';
 import IORedis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 
@@ -333,9 +334,165 @@ export class AgentQueueManager {
   }
 
   private async processContentGeneration(job: Job<AgentJobData>): Promise<JobResult> {
-    // Implement content generation logic
     const startTime = Date.now();
-    // ... content generation implementation
+    const { userToken, payload } = job.data;
+    const articleId = payload?.articleId as number;
+    if (!articleId || !userToken) {
+      throw new Error('Missing articleId or userToken');
+    }
+
+    // Load article + website
+    const { data: article, error: fetchError } = await supabase
+      .from('article_queue')
+      .select(`
+        *,
+        websites:website_id (
+          id,
+          domain,
+          website_token
+        )
+      `)
+      .eq('id', articleId)
+      .eq('user_token', userToken)
+      .maybeSingle();
+
+    if (fetchError || !article) {
+      throw new Error('Article not found for content generation');
+    }
+
+    // Set status generating
+    await supabase
+      .from('article_queue')
+      .update({ status: 'generating', updated_at: new Date().toISOString() })
+      .eq('id', articleId);
+
+    // Log start
+    await supabase.from('article_generation_logs').insert({
+      article_queue_id: articleId,
+      step: 'content_generation',
+      status: 'started',
+      input_data: {
+        targetKeywords: article.target_keywords || [],
+        tone: 'professional',
+        contentLength: 'medium',
+        articleType: 'blog',
+        includeImages: false,
+        includeCitations: false
+      }
+    });
+
+    const generator = new EnhancedArticleGenerator();
+    const req: EnhancedArticleRequest = {
+      title: article.title,
+      keywords: article.target_keywords || [],
+      websiteDomain: article.websites?.domain,
+      contentLength: 'medium',
+      tone: 'professional',
+      articleType: 'blog',
+      includeCitations: true,
+      referenceStyle: 'link',
+      includeImages: true,
+      numImages: 2,
+      imageProvider: 'openai',
+      imageStyle: 'clean, modern, web illustration, professional'
+    };
+
+    const result = await generator.generateComprehensiveArticle(req);
+    const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const wordCount = stripHtml(result.content).split(/\s+/).filter(Boolean).length;
+
+    // Update queue row to generated
+    await supabase
+      .from('article_queue')
+      .update({
+        article_content: result.content,
+        meta_title: result.metaTitle,
+        meta_description: result.metaDescription,
+        content_outline: result.contentOutline,
+        word_count: wordCount,
+        status: 'generated',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', articleId);
+
+    // Best-effort: persist extended fields if available
+    try {
+      await supabase
+        .from('article_queue')
+        .update({
+          citations: result.citations || null,
+          images: result.images || null,
+          schema_json: result.schemaJson || null
+        })
+        .eq('id', articleId);
+    } catch {}
+
+    // Log completion
+    await supabase.from('article_generation_logs').insert({
+      article_queue_id: articleId,
+      step: 'content_generation',
+      status: 'completed',
+      duration_seconds: Math.round((Date.now() - startTime) / 1000),
+      output_data: {
+        wordCount,
+        hasMetaTitle: !!result.metaTitle,
+        hasMetaDescription: !!result.metaDescription,
+        hasContentOutline: !!result.contentOutline,
+        imagesCount: (result.images || []).length,
+        citationsCount: (result.citations || []).length
+      }
+    });
+
+    // Post a follow-up assistant message in chat: "Draft is ready"
+    try {
+      const websiteToken = article.websites?.website_token;
+      if (websiteToken) {
+        // Find last conversation
+        const { data: lastMsg } = await supabase
+          .from('agent_conversations')
+          .select('conversation_id, message_order')
+          .eq('user_token', userToken)
+          .eq('website_token', websiteToken)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const conversationId = lastMsg?.conversation_id || crypto.randomUUID();
+        const nextOrder = (lastMsg?.message_order || 0) + 1;
+
+        await supabase
+          .from('agent_conversations')
+          .insert({
+            user_token: userToken,
+            website_token: websiteToken,
+            conversation_id: conversationId,
+            message_role: 'assistant',
+            message_content: `✅ Draft is ready: "${article.title}" (~${wordCount} words, ${ (result.images||[]).length } images, ${ (result.citations||[]).length } citations). You can review it in the Content tab.`,
+            message_order: nextOrder,
+            function_call: null,
+            action_card: {
+              type: 'progress',
+              data: {
+                title: 'Article Generated',
+                description: 'Draft created successfully. Images can be added later.',
+                progress: 100,
+                status: 'completed',
+                estimatedTime: 'Completed',
+                currentStep: 'Draft ready',
+                totalSteps: 2,
+                currentStepIndex: 2,
+                links: article.websites?.domain ? [
+                  { label: 'Open Content', url: `/website/${article.websites.domain}` }
+                ] : []
+              }
+            },
+            metadata: { article_id: articleId }
+          });
+      }
+    } catch (e) {
+      console.log('[QUEUE CONTENT] Unable to post draft-ready message:', e);
+    }
+
     return {
       success: true,
       stats: { executionTimeMs: Date.now() - startTime }

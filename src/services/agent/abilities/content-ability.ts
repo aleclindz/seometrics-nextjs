@@ -159,16 +159,27 @@ export class ContentAbility extends BaseAbility {
 
       const articleId = queueResponse.articleId;
 
-      // Fire-and-forget processing trigger (do not await)
+      // Enqueue on BullMQ (Upstash). Fall back to background call if enqueue fails.
       try {
-        const base = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || '') : '';
-        fetch(`${base}/api/articles/generate/process`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userToken: this.userToken, articleId }),
-          keepalive: true as any
-        } as any).catch(() => {});
-      } catch {}
+        await enqueueContentGeneration(`generate-article-${articleId}`, {
+          userToken: this.userToken,
+          articleId,
+          websiteId,
+          topic: args.topic,
+          targetKeywords: args.target_keywords || []
+        });
+      } catch (e) {
+        try {
+          const base = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith('http'))
+            ? process.env.NEXT_PUBLIC_APP_URL
+            : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+          fetch(`${base}/api/articles/generate/process`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Vercel-Background': '1' },
+            body: JSON.stringify({ userToken: this.userToken, articleId })
+          }).catch(() => {});
+        } catch {}
+      }
 
       // Return immediately with progress info
       return this.success({
