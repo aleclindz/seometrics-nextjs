@@ -41,24 +41,44 @@ export async function POST(request: NextRequest) {
 
     console.log('[GENERATE EDGE] Starting enhanced generation for article:', articleId, `(${articleType})`);
 
-    // Get the article from queue
-    const { data: article, error: fetchError } = await supabase
-      .from('article_queue')
-      .select(`
-        *,
-        websites:website_id (
-          id,
-          domain,
-          name
-        )
-      `)
-      .eq('id', articleId)
-      .eq('user_token', userToken)
-      .single();
+    // Helper: small sleep
+    const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-    if (fetchError || !article) {
+    // Get the article from queue with retry to avoid read-after-write lag
+    async function fetchArticle() {
+      const { data, error } = await supabase
+        .from('article_queue')
+        .select(`
+          *,
+          websites:website_id (
+            id,
+            domain,
+            name
+          )
+        `)
+        .eq('id', articleId)
+        .eq('user_token', userToken)
+        .maybeSingle();
+      return { data, error };
+    }
+
+    let articleFetch;
+    let attempts = 0;
+    const maxAttempts = 10; // ~1s total wait
+    do {
+      // eslint-disable-next-line no-await-in-loop
+      articleFetch = await fetchArticle();
+      if (articleFetch.data) break;
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(120);
+      attempts++;
+    } while (attempts < maxAttempts);
+
+    const article = articleFetch.data;
+    if (!article) {
+      console.error('[GENERATE EDGE] Article fetch failed:', articleFetch.error);
       return new Response(
-        JSON.stringify({ error: 'Article not found' }),
+        JSON.stringify({ error: 'Article not found (retry exhausted)' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }

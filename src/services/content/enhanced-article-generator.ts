@@ -194,17 +194,12 @@ QUALITY REQUIREMENTS:
 - Start with <div class="tldr-box"><h3>TL;DR</h3><ul>...</ul></div>
 - Use semantic HTML: <h2>, <h3>, <p>, <strong>, <ul>, <li>, <em>
 - Include specific examples, data points, and actionable advice
-- Add internal linking opportunities: [internal link: topic]
 - Create scannable content with clear headings and bullet points
 - Include semantic keywords naturally throughout
 - Each major section should have 2-3 well-developed paragraphs
 - Use transition phrases between sections for flow
  - Include a dedicated FAQ section with 3-5 common questions and concise answers
- - Optimize for Semantic Visibility (SVS):
-   • Explicit Q&A patterns (What is..., How to..., Why...)
-   • Clear entity mentions and relationships (brands, tools, standards)
-   • 3-5 credible citations (studies, docs) in a References section
-   • Clean, AI-parseable structure; avoid overly long sentences
+ - Use clear structure; keep sentences readable (avoid overly long sentences)
 
 META REQUIREMENTS:
 - metaTitle: 50-60 characters, include primary keyword "${params.keywords[0] || ''}"
