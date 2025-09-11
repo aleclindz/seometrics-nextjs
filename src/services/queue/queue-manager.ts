@@ -337,6 +337,7 @@ export class AgentQueueManager {
     const startTime = Date.now();
     const { userToken, payload } = job.data;
     const articleId = payload?.articleId as number;
+    const explicitConversationId = payload?.conversationId as string | undefined;
     if (!articleId || !userToken) {
       throw new Error('Missing articleId or userToken');
     }
@@ -447,18 +448,34 @@ export class AgentQueueManager {
     try {
       const websiteToken = article.websites?.website_token;
       if (websiteToken) {
-        // Find last conversation
-        const { data: lastMsg } = await supabase
-          .from('agent_conversations')
-          .select('conversation_id, message_order')
-          .eq('user_token', userToken)
-          .eq('website_token', websiteToken)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        let conversationId = explicitConversationId;
+        let nextOrder = 1;
 
-        const conversationId = lastMsg?.conversation_id || crypto.randomUUID();
-        const nextOrder = (lastMsg?.message_order || 0) + 1;
+        if (!conversationId) {
+          // Find latest conversation for this site
+          const { data: lastMsg } = await supabase
+            .from('agent_conversations')
+            .select('conversation_id, message_order')
+            .eq('user_token', userToken)
+            .eq('website_token', websiteToken)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          conversationId = lastMsg?.conversation_id || crypto.randomUUID();
+          nextOrder = (lastMsg?.message_order || 0) + 1;
+        } else {
+          // Compute next message_order within this conversation
+          const { data: lastInConv } = await supabase
+            .from('agent_conversations')
+            .select('message_order')
+            .eq('user_token', userToken)
+            .eq('website_token', websiteToken)
+            .eq('conversation_id', conversationId)
+            .order('message_order', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          nextOrder = (lastInConv?.message_order || 0) + 1;
+        }
 
         await supabase
           .from('agent_conversations')
@@ -467,7 +484,7 @@ export class AgentQueueManager {
             website_token: websiteToken,
             conversation_id: conversationId,
             message_role: 'assistant',
-            message_content: `✅ Draft is ready: "${article.title}" (~${wordCount} words, ${ (result.images||[]).length } images, ${ (result.citations||[]).length } citations). You can review it in the Content tab.`,
+            message_content: `✅ Draft is ready: "${article.title}" (~${wordCount} words, ${(result.images||[]).length} images, ${(result.citations||[]).length} citations). You can review it in the Content tab.`,
             message_order: nextOrder,
             function_call: null,
             action_card: {

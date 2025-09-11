@@ -26,7 +26,9 @@
     "open-app": "node scripts/open-app.js",
     "open-login": "node scripts/open-login.js",
     "open-test": "node scripts/open-test.js",
-    "check-tables": "node scripts/check-agent-tables.js"
+    "check-tables": "node scripts/check-agent-tables.js",
+    "build:worker": "tsc -p packages/worker/tsconfig.json",
+    "start:worker": "node packages/worker/dist/index.js"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.12",

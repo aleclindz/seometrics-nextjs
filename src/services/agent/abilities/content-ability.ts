@@ -167,7 +167,8 @@ export class ContentAbility extends BaseAbility {
           articleId,
           websiteId,
           topic: args.topic,
-          targetKeywords: args.target_keywords || []
+          targetKeywords: args.target_keywords || [],
+          conversationId: (args as any)?.conversation_id || null
         });
       } catch (e) {
         try {

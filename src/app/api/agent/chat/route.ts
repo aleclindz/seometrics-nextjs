@@ -294,6 +294,12 @@ export async function POST(request: NextRequest) {
         }
         
         functionArgs = validation.data;
+        // Pass through conversation_id from client when available so downstream abilities can use it
+        try {
+          if (!('conversation_id' in functionArgs) && (clientConversationId || conversationId)) {
+            (functionArgs as any).conversation_id = clientConversationId || conversationId;
+          }
+        } catch {}
         executedToolCalls.push({ name: functionName, arguments: functionArgs, id: toolCall.id });
 
         // Execute the function

@@ -37,8 +37,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Article not found' }, { status: 404 });
     }
 
-    // Set status generating
-    await supabase.from('article_queue').update({ status: 'generating', updated_at: new Date().toISOString() }).eq('id', articleId);
+    // Set status generating (only if currently pending or generation_failed)
+    const { data: genLock, error: genErr } = await supabase
+      .from('article_queue')
+      .update({ status: 'generating', updated_at: new Date().toISOString() })
+      .eq('id', articleId)
+      .in('status', ['pending', 'generation_failed'])
+      .select('id')
+      .maybeSingle();
+
+    // If no row was updated, another worker may be processing or it's already generated
+    if (genErr) {
+      console.error('[ARTICLES PROCESS] Status update error:', genErr);
+    } else if (!genLock) {
+      const { data: current } = await supabase
+        .from('article_queue')
+        .select('status')
+        .eq('id', articleId)
+        .maybeSingle();
+      return NextResponse.json({ success: true, articleId, status: current?.status || 'unknown' });
+    }
 
     // Log start
     await supabase.from('article_generation_logs').insert({
@@ -119,4 +137,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message || 'Processing failed' }, { status: 500 });
   }
 }
-
