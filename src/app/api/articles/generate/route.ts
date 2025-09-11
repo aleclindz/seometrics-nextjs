@@ -6,6 +6,8 @@ import { ImageProvider } from '@/services/content/image-generation-service';
 
 // Use Node.js runtime for longer timeout support (needed for OpenAI API calls)
 export const runtime = 'nodejs';
+// Request a longer max duration on Vercel if available (falls back to default if not supported)
+export const maxDuration = 60;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

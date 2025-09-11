@@ -86,7 +86,7 @@ export class EnhancedArticleGenerator {
         researchResult = await this.researchService.performResearch({
           title,
           keywords,
-          maxResults: 6
+          maxResults: 3
         });
         console.log(`[ENHANCED GENERATOR] Research completed: ${researchResult.sources.length} sources`);
       } catch (error) {
@@ -240,9 +240,9 @@ RESPONSE FORMAT: Return ONLY valid JSON (no markdown backticks):
             { role: 'user', content: prompt }
           ],
           temperature: 0.2,
-          max_tokens: 4000
+          max_tokens: 2200
         }),
-        signal: AbortSignal.timeout(35000)
+        signal: AbortSignal.timeout(20000)
       });
 
       if (!response.ok) {

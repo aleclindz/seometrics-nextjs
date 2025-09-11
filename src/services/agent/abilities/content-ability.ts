@@ -168,13 +168,13 @@ export class ContentAbility extends BaseAbility {
           targetKeywords: args.target_keywords || [],
           contentLength: this.mapWordCountToLength(args.word_count),
           tone: args.tone || 'professional',
-          includeImages: args.include_images ?? true,
+          includeImages: false,
           
           // Enhanced options
           articleType: args.article_type || 'blog',
-          includeCitations: args.include_citations ?? true,
-          referenceStyle: args.reference_style || 'link',
-          numImages: args.num_images || 2,
+          includeCitations: false,
+          referenceStyle: 'link',
+          numImages: 0,
           imageProvider: args.image_provider || 'openai',
           imageStyle: args.image_style || 'clean, modern, web illustration, professional'
         })
@@ -184,8 +184,8 @@ export class ContentAbility extends BaseAbility {
           ...response,
           message: 'Enhanced article generated successfully with research, images, and schema',
           features_used: {
-            research: args.include_citations ?? true,
-            images: args.include_images ?? true,
+            research: false,
+            images: false,
             schema: true,
             article_type: args.article_type || 'blog'
           }
