@@ -142,13 +142,13 @@ export class ContentAbility extends BaseAbility {
         return this.error('Website ID is required. Please specify site_url or website_id parameter.');
       }
 
-      // First, create an article in the queue
-      const queueResponse = await this.fetchAPI('/api/articles', {
+      // Enqueue article generation (background queue)
+      const queueResponse = await this.fetchAPI('/api/articles/generate/start', {
         method: 'POST',
         body: JSON.stringify({
-          title: args.topic,
           userToken: this.userToken,
-          websiteId: websiteId,
+          websiteId,
+          title: args.topic,
           targetKeywords: args.target_keywords || []
         })
       });
@@ -157,40 +157,37 @@ export class ContentAbility extends BaseAbility {
         return this.error(queueResponse.error || 'Failed to create article');
       }
 
-      const articleId = queueResponse.article.id;
+      const articleId = queueResponse.articleId;
 
-      // Then generate the enhanced content
-      const response = await this.fetchAPI('/api/articles/generate', {
-        method: 'POST',
-        body: JSON.stringify({
-          userToken: this.userToken,
-          articleId: articleId,
-          targetKeywords: args.target_keywords || [],
-          contentLength: this.mapWordCountToLength(args.word_count),
-          tone: args.tone || 'professional',
-          includeImages: false,
-          
-          // Enhanced options
-          articleType: args.article_type || 'blog',
-          includeCitations: false,
-          referenceStyle: 'link',
-          numImages: 0,
-          imageProvider: args.image_provider || 'openai',
-          imageStyle: args.image_style || 'clean, modern, web illustration, professional'
-        })
-      });
-      return response.success ? 
-        this.success({
-          ...response,
-          message: 'Enhanced article generated successfully with research, images, and schema',
-          features_used: {
-            research: false,
-            images: false,
-            schema: true,
-            article_type: args.article_type || 'blog'
+      // Fire-and-forget processing trigger (do not await)
+      try {
+        const base = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || '') : '';
+        fetch(`${base}/api/articles/generate/process`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userToken: this.userToken, articleId }),
+          keepalive: true as any
+        } as any).catch(() => {});
+      } catch {}
+
+      // Return immediately with progress info
+      return this.success({
+        message: 'Article generation started. I will notify you when the draft is ready.',
+        articleId,
+        actionCard: {
+          type: 'progress',
+          data: {
+            title: 'Article Generation Started',
+            description: 'Creating a draft without images to ensure fast delivery. Images can be added later.',
+            progress: 10,
+            status: 'running',
+            estimatedTime: '~1 minute',
+            currentStep: 'Generating draft content',
+            totalSteps: 2,
+            currentStepIndex: 1
           }
-        }) :
-        this.error(response.error || 'Enhanced article generation failed');
+        }
+      });
     } catch (error) {
       return this.error('Failed to generate enhanced article', error);
     }

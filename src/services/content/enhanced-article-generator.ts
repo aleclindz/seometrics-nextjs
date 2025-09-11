@@ -242,7 +242,8 @@ RESPONSE FORMAT: Return ONLY valid JSON (no markdown backticks):
           temperature: 0.2,
           max_tokens: 2200
         }),
-        signal: AbortSignal.timeout(20000)
+        // Allow up to ~55s for model completion to align with function budget
+        signal: AbortSignal.timeout(55000)
       });
 
       if (!response.ok) {
