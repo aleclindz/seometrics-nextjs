@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
     // Get the article from queue with retry to avoid read-after-write lag
-    async function fetchArticle() {
+    const fetchArticle = async () => {
       const { data, error } = await supabase
         .from('article_queue')
         .select(`
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         .eq('user_token', userToken)
         .maybeSingle();
       return { data, error };
-    }
+    };
 
     let articleFetch;
     let attempts = 0;
