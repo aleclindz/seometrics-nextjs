@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state');
     const userToken = searchParams.get('userToken');
 
+    console.log('[VERCEL OAUTH] Request params:', { code: !!code, state: !!state, userToken: userToken ? userToken.substring(0, 10) + '...' : 'null' });
+
     // Step 2: Handle OAuth callback
     if (code && state) {
       return handleOAuthCallback(code, state);
@@ -29,6 +31,7 @@ export async function GET(request: NextRequest) {
 
     // Step 1: Initiate OAuth flow
     // If no userToken, this is likely from Vercel marketplace - initiate anonymous flow
+    console.log('[VERCEL OAUTH] Initiating OAuth flow with userToken:', userToken ? 'provided' : 'null (anonymous)');
     return initiateOAuthFlow(userToken || undefined);
 
   } catch (error) {
