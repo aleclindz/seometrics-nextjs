@@ -71,8 +71,8 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
 
     // Construct Vercel OAuth URL
     const vercelClientId = process.env.VERCEL_CLIENT_ID;
-    // Force seoagent.com in production, ignore VERCEL_URL to avoid seometrics.ai redirects
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+    // Force www.seoagent.com in production, ignore VERCEL_URL to avoid seometrics.ai redirects
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://www.seoagent.com' : 'http://localhost:3000');
     const redirectUri = `${baseUrl}/api/hosting/vercel/oauth`;
     
     // Check for placeholder/missing credentials
@@ -177,7 +177,7 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
         client_id: process.env.VERCEL_CLIENT_ID!,
         client_secret: process.env.VERCEL_CLIENT_SECRET!,
         code,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000')}/api/hosting/vercel/oauth`
+        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://www.seoagent.com' : 'http://localhost:3000')}/api/hosting/vercel/oauth`
       })
     });
 
@@ -280,7 +280,7 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
         .eq('state', state);
 
       // Redirect to signup/login with integration data
-      const baseUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+      const baseUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://www.seoagent.com' : 'http://localhost:3000');
       const signupUrl = `${baseUrlForRedirect}/login?mode=signup&vercel_integration=${tempIntegrationId}&source=marketplace`;
       return NextResponse.redirect(signupUrl);
     }

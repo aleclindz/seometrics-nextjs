@@ -13,7 +13,7 @@
 - **Logo**: Upload a square logo (recommended 256x256px)
 
 ### OAuth Configuration
-- **Redirect URL**: `https://seoagent.com/api/hosting/vercel/oauth`
+- **Redirect URL**: `https://www.seoagent.com/api/hosting/vercel/oauth`
 - **Scopes**: Select the following permissions:
   - `read:project` - Read project information
   - `write:project` - Write/deploy to projects
@@ -61,7 +61,7 @@ Don't forget to also update the environment variables in your Vercel production 
 
 ## Important Notes
 
-- The redirect URL must match exactly: `https://seoagent.com/api/hosting/vercel/oauth`
+- The redirect URL must match exactly: `https://www.seoagent.com/api/hosting/vercel/oauth`
 - Keep your Client Secret secure and never commit it to version control
 - The integration will only work with the proper credentials in place
 
