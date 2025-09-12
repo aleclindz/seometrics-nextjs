@@ -360,6 +360,7 @@ export class AgentQueueManager {
         websites:website_id (
           id,
           domain,
+          cleaned_domain,
           website_token
         )
       `)
@@ -393,10 +394,22 @@ export class AgentQueueManager {
     });
 
     const generator = new EnhancedArticleGenerator();
+    const normalizeDomain = (d?: string | null): string | undefined => {
+      if (!d) return undefined;
+      let s = String(d).trim();
+      s = s.replace(/^sc-domain:/i, '');
+      s = s.replace(/^https?:\/\//i, '');
+      s = s.replace(/^www\./i, '');
+      // keep only hostname
+      s = s.split('/')[0];
+      return s || undefined;
+    };
+    const websiteDomain = normalizeDomain((article as any)?.websites?.cleaned_domain) 
+      || normalizeDomain((article as any)?.websites?.domain);
     const req: EnhancedArticleRequest = {
       title: article.title,
       keywords: article.target_keywords || [],
-      websiteDomain: article.websites?.domain,
+      websiteDomain,
       contentLength: 'medium',
       tone: 'professional',
       articleType: 'blog',
