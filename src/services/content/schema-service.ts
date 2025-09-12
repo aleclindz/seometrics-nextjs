@@ -199,8 +199,14 @@ export class SchemaService {
    * Add breadcrumb schema
    */
   addBreadcrumbSchema(baseSchema: any, url: string, title: string): any {
-    const urlParts = new URL(url);
-    const domain = `${urlParts.protocol}//${urlParts.hostname}`;
+    // If URL is invalid or empty, return base schema without breadcrumbs
+    let domain: string | null = null;
+    try {
+      const urlParts = new URL(url);
+      domain = `${urlParts.protocol}//${urlParts.hostname}`;
+    } catch {
+      return baseSchema;
+    }
     
     baseSchema.breadcrumb = {
       '@type': 'BreadcrumbList',

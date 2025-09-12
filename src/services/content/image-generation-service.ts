@@ -65,7 +65,8 @@ export class ImageGenerationService {
             model: 'gpt-image-1',
             prompt: p.prompt,
             size: '1024x1024',
-            quality: 'standard',
+            // OpenAI now supports: 'low' | 'medium' | 'high' | 'auto'
+            quality: 'high',
             n: 1
           }),
           signal: AbortSignal.timeout(25000)
