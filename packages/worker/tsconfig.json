@@ -3,16 +3,21 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "dist",
-    "module": "commonjs",
-    "target": "es2019",
+    "rootDir": "../../",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "baseUrl": "../../"
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "../../src/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "../../strapi-cms/**/*",
+    "../../supabase/functions/**/*"
   ]
 }

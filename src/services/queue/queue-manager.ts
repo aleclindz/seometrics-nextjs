@@ -1,5 +1,5 @@
 import { Queue, Worker, Job, QueueEvents } from 'bullmq';
-import { EnhancedArticleGenerator, EnhancedArticleRequest } from '@/services/content/enhanced-article-generator';
+import { EnhancedArticleGenerator, EnhancedArticleRequest } from '../content/enhanced-article-generator';
 import IORedis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 
@@ -55,6 +55,7 @@ export class AgentQueueManager {
   private queues: Map<string, Queue> = new Map();
   private workers: Map<string, Worker> = new Map();
   private events: Map<string, QueueEvents> = new Map();
+  private workersStarted = false;
 
   constructor() {
     this.initializeQueues();
@@ -87,8 +88,7 @@ export class AgentQueueManager {
       this.setupEventListeners(queueName, events);
     });
 
-    // Initialize workers
-    this.initializeWorkers();
+    // Workers are started explicitly via startWorkers()
   }
 
   private setupEventListeners(queueName: string, events: QueueEvents) {
@@ -171,6 +171,14 @@ export class AgentQueueManager {
     this.workers.set(QUEUE_NAMES.TECHNICAL_SEO, seoWorker);
     this.workers.set(QUEUE_NAMES.CMS_PUBLISHING, cmsWorker);
     this.workers.set(QUEUE_NAMES.VERIFICATION, verificationWorker);
+  }
+
+  // Public method to start workers explicitly (idempotent)
+  startWorkers() {
+    if (this.workersStarted) return;
+    this.initializeWorkers();
+    this.workersStarted = true;
+    console.log('[QUEUE MANAGER] Workers started');
   }
 
   // Queue a new agent action
