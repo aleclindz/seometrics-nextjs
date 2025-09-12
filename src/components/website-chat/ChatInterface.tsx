@@ -259,7 +259,9 @@ What would you like to work on first?`,
         // If a long-running action started, begin short-term polling for DB-updated messages
         try {
           const isProgress = assistantMessage.actionCard?.type === 'progress';
-          const isRunning = isProgress && (assistantMessage.actionCard?.status === 'running' || (assistantMessage.actionCard?.progress ?? 0) < 100);
+          const status = assistantMessage.actionCard?.data?.status as string | undefined;
+          const progress = assistantMessage.actionCard?.data?.progress as number | undefined;
+          const isRunning = isProgress && (status === 'running' || (progress ?? 0) < 100);
           if (isRunning && (websiteToken || selectedSite) && (conversationId || data.conversationId)) {
             startPollingUpdates(120000); // poll for up to 2 minutes
           }
@@ -320,7 +322,7 @@ What would you like to work on first?`,
           setMessages(loaded);
           // Stop polling if we see a completed progress card
           const last = loaded[loaded.length - 1];
-          const completed = last?.actionCard?.type === 'progress' && last?.actionCard?.status === 'completed';
+          const completed = last?.actionCard?.type === 'progress' && last?.actionCard?.data?.status === 'completed';
           if (completed && pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current as any);
             pollIntervalRef.current = null;
