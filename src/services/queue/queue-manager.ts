@@ -343,9 +343,11 @@ export class AgentQueueManager {
 
   private async processContentGeneration(job: Job<AgentJobData>): Promise<JobResult> {
     const startTime = Date.now();
-    const { userToken, payload } = job.data;
-    const articleId = payload?.articleId as number;
-    const explicitConversationId = payload?.conversationId as string | undefined;
+    const { userToken, payload } = job.data as any;
+    // Support both shapes: payload.{articleId,conversationId} and top-level fields
+    const jd: any = job.data as any;
+    const articleId = (payload?.articleId ?? jd.articleId) as number;
+    const explicitConversationId = (payload?.conversationId ?? jd.conversationId) as string | undefined;
     if (!articleId || !userToken) {
       throw new Error('Missing articleId or userToken');
     }
