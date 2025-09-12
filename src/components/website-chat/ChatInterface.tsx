@@ -54,6 +54,8 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
   const [brainstormIdeas, setBrainstormIdeas] = useState<any[]>([]);
   const [selectedIdeas, setSelectedIdeas] = useState<Record<number, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollUntilRef = useRef<number>(0);
 
   useEffect(() => {
     // Initialize with setup-aware welcome message
@@ -254,6 +256,15 @@ What would you like to work on first?`,
         
         setMessages(prev => [...prev, assistantMessage]);
 
+        // If a long-running action started, begin short-term polling for DB-updated messages
+        try {
+          const isProgress = assistantMessage.actionCard?.type === 'progress';
+          const isRunning = isProgress && (assistantMessage.actionCard?.status === 'running' || (assistantMessage.actionCard?.progress ?? 0) < 100);
+          if (isRunning && (websiteToken || selectedSite) && (conversationId || data.conversationId)) {
+            startPollingUpdates(120000); // poll for up to 2 minutes
+          }
+        } catch {}
+
         // If the assistant executed a keyword strategy update, notify listeners to refresh strategy
         if (data.functionCall && data.functionCall.result && data.functionCall.result.success) {
           const fname = data.functionCall.name || '';
@@ -277,6 +288,54 @@ What would you like to work on first?`,
       setIsLoading(false);
     }
   };
+
+  // Start polling for new conversation messages (e.g., worker follow-ups)
+  const startPollingUpdates = (durationMs: number = 60000) => {
+    const until = Date.now() + durationMs;
+    pollUntilRef.current = until;
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current as any);
+    pollIntervalRef.current = setInterval(async () => {
+      if (Date.now() > pollUntilRef.current) {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current as any);
+        pollIntervalRef.current = null;
+        return;
+      }
+      try {
+        if (!userToken || !(websiteToken || selectedSite) || !conversationId) return;
+        const lookupToken = websiteToken || selectedSite!;
+        const resp = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${encodeURIComponent(lookupToken)}&conversationId=${conversationId}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!data?.success || !data?.conversation?.messages) return;
+        const loaded: ChatMessage[] = data.conversation.messages.map((msg: any) => ({
+          id: msg.id,
+          role: msg.message_role,
+          content: msg.message_content,
+          timestamp: new Date(msg.created_at),
+          functionCall: msg.function_call,
+          actionCard: msg.action_card
+        }));
+        // Only update if we have more messages than currently shown
+        if (loaded.length > messages.length) {
+          setMessages(loaded);
+          // Stop polling if we see a completed progress card
+          const last = loaded[loaded.length - 1];
+          const completed = last?.actionCard?.type === 'progress' && last?.actionCard?.status === 'completed';
+          if (completed && pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current as any);
+            pollIntervalRef.current = null;
+          }
+        }
+      } catch {}
+    }, 5000);
+  };
+
+  // Clear polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current as any);
+    };
+  }, []);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

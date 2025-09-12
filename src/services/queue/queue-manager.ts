@@ -500,7 +500,16 @@ export class AgentQueueManager {
           nextOrder = (lastInConv?.message_order || 0) + 1;
         }
 
-        await supabase
+        console.log('[QUEUE CONTENT] Posting draft-ready message:', {
+          userToken,
+          websiteToken,
+          conversationId,
+          nextOrder,
+          articleId,
+          wordCount
+        });
+
+        const { error: insertError } = await supabase
           .from('agent_conversations')
           .insert({
             user_token: userToken,
@@ -528,6 +537,12 @@ export class AgentQueueManager {
             },
             metadata: { article_id: articleId }
           });
+
+        if (insertError) {
+          console.log('[QUEUE CONTENT] Draft-ready message insert failed:', insertError);
+        } else {
+          console.log('[QUEUE CONTENT] Draft-ready message inserted:', { conversationId, nextOrder, articleId });
+        }
       }
     } catch (e) {
       console.log('[QUEUE CONTENT] Unable to post draft-ready message:', e);

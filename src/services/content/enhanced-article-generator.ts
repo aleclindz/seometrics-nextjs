@@ -188,6 +188,11 @@ WORD COUNT TARGET: ${wordTarget} words
 TONE: ${stylePrompt}
 DOMAIN CONTEXT: ${params.websiteDomain || 'general website'}
 
+SITE CONTEXT INSTRUCTIONS:
+- Ground examples, use cases, and references in the site's niche inferred from the domain when possible.
+- If the domain clearly indicates a niche, tailor content to it (e.g., for a domain like translateyoutubevideos.com, include YouTube-focused translation workflows, examples, and terminology where relevant).
+- Keep this contextualization natural and relevant; do not force irrelevant mentions.
+
 ${template.structure}
 
 QUALITY REQUIREMENTS:

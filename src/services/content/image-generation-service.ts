@@ -54,36 +54,50 @@ export class ImageGenerationService {
     for (const p of prompts) {
       try {
         console.log('[IMAGE SERVICE] Generating OpenAI image:', p.alt);
-        
-        const response = await fetch('https://api.openai.com/v1/images/generations', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'gpt-image-1',
-            prompt: p.prompt,
-            size: '1024x1024',
-            // OpenAI now supports: 'low' | 'medium' | 'high' | 'auto'
-            quality: 'high',
-            n: 1
-          }),
-          signal: AbortSignal.timeout(25000)
-        });
 
-        if (response.ok) {
-          const data = await response.json();
-          const url = data?.data?.[0]?.url;
-          if (url) {
-            images.push({ 
-              url, 
-              alt: p.alt, 
-              provider: 'openai' 
+        // Simple retry: 2 attempts with short backoff
+        let lastErr: any = null;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const response = await fetch('https://api.openai.com/v1/images/generations', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: 'gpt-image-1',
+                prompt: p.prompt,
+                size: '1024x1024',
+                // OpenAI supports: 'low' | 'medium' | 'high' | 'auto' — choose medium for balance
+                quality: 'medium',
+                n: 1
+              }),
+              signal: AbortSignal.timeout(45000)
             });
+
+            if (response.ok) {
+              const data = await response.json();
+              const url = data?.data?.[0]?.url;
+              if (url) {
+                images.push({ url, alt: p.alt, provider: 'openai' });
+              }
+              lastErr = null;
+              break;
+            } else {
+              const txt = await response.text();
+              lastErr = new Error(`OpenAI API error ${response.status}: ${txt}`);
+              console.log('[IMAGE SERVICE] OpenAI API error:', response.status, txt);
+            }
+          } catch (e) {
+            lastErr = e;
+            console.log(`[IMAGE SERVICE] OpenAI generation attempt ${attempt} failed:`, e);
           }
-        } else {
-          console.log('[IMAGE SERVICE] OpenAI API error:', response.status, await response.text());
+          // Backoff 1s before next attempt
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        if (lastErr) {
+          console.log('[IMAGE SERVICE] OpenAI generation failed after retries:', lastErr);
         }
       } catch (error) {
         console.log('[IMAGE SERVICE] OpenAI generation failed:', error);
@@ -117,7 +131,7 @@ export class ImageGenerationService {
             samples: 1,
             steps: 30
           }),
-          signal: AbortSignal.timeout(25000)
+          signal: AbortSignal.timeout(45000)
         });
 
         if (response.ok) {

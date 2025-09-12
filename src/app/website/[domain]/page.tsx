@@ -420,8 +420,13 @@ export default function WebsitePage() {
 
       if (articlesRes.ok) {
         const aData = await articlesRes.json();
-        const domainClean = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        const siteArticles = (aData.articles || []).filter((a: any) => (a.websites?.domain || '').replace(/^https?:\/\//, '').replace(/\/$/, '') === domainClean);
+        const normalize = (d: string) => d
+          .replace(/^sc-domain:/i, '')
+          .replace(/^https?:\/\//i, '')
+          .replace(/^www\./i, '')
+          .replace(/\/$/, '');
+        const domainClean = normalize(domain);
+        const siteArticles = (aData.articles || []).filter((a: any) => normalize(a.websites?.domain || '') === domainClean);
 
         const published = siteArticles.filter((a: any) => a.status === 'published' || a.published_at);
         const scheduled = siteArticles.filter((a: any) => a.scheduled_for && !a.published_at);
