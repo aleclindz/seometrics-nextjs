@@ -1,0 +1,1222 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ActionItemService = void 0;
+const supabase_js_1 = require("@supabase/supabase-js");
+const UrlNormalizationService_1 = require("./UrlNormalizationService");
+const IndexingIssueAnalyzer_1 = require("./IndexingIssueAnalyzer");
+const supabase = (0, supabase_js_1.createClient)(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+class ActionItemService {
+    /**
+     * Detect all SEO issues for a website by scanning various data sources
+     */
+    static async detectIssues(userToken, siteUrl) {
+        console.log(`[ACTION ITEMS] Detecting issues for ${siteUrl}`);
+        const detectedIssues = [];
+        try {
+            // Note: Verification is handled when manually triggered via the UI
+            // Detect indexing issues from URL inspections
+            const indexingIssues = await this.detectIndexingIssues(userToken, siteUrl);
+            detectedIssues.push(...indexingIssues);
+            // Detect sitemap issues
+            const sitemapIssues = await this.detectSitemapIssues(userToken, siteUrl);
+            detectedIssues.push(...sitemapIssues);
+            // Detect robots.txt issues
+            const robotsIssues = await this.detectRobotsIssues(userToken, siteUrl);
+            detectedIssues.push(...robotsIssues);
+            // Detect schema markup issues
+            const schemaIssues = await this.detectSchemaIssues(userToken, siteUrl);
+            detectedIssues.push(...schemaIssues);
+            // Detect mobile usability issues
+            const mobileIssues = await this.detectMobileIssues(userToken, siteUrl);
+            detectedIssues.push(...mobileIssues);
+            console.log(`[ACTION ITEMS] Detected ${detectedIssues.length} issues`);
+            return detectedIssues;
+        }
+        catch (error) {
+            console.error('[ACTION ITEMS] Error detecting issues:', error);
+            return [];
+        }
+    }
+    /**
+     * Create action items from detected issues, avoiding duplicates
+     */
+    static async createActionItem(userToken, siteUrl, issue) {
+        try {
+            // Check for existing similar action item to avoid duplicates
+            const existing = await this.findSimilarActionItem(userToken, siteUrl, issue);
+            if (existing) {
+                console.log(`[ACTION ITEMS] Similar issue already exists: ${issue.title}`);
+                return existing;
+            }
+            // Calculate priority score
+            const priorityScore = this.calculatePriorityScore(issue.severity, issue.estimatedImpact, issue.affectedUrls.length);
+            const { data, error } = await supabase
+                .from('seo_action_items')
+                .insert({
+                user_token: userToken,
+                site_url: siteUrl,
+                issue_type: issue.type,
+                issue_category: issue.category,
+                severity: issue.severity,
+                title: issue.title,
+                description: issue.description,
+                impact_description: issue.impactDescription,
+                fix_recommendation: issue.fixRecommendation,
+                affected_urls: issue.affectedUrls,
+                reference_id: issue.referenceId,
+                reference_table: issue.referenceTable,
+                estimated_impact: issue.estimatedImpact,
+                estimated_effort: issue.estimatedEffort,
+                priority_score: priorityScore,
+                metadata: issue.metadata || {}
+            })
+                .select()
+                .single();
+            if (error) {
+                console.error('[ACTION ITEMS] Error creating action item:', error);
+                return null;
+            }
+            console.log(`[ACTION ITEMS] Created action item: ${issue.title}`);
+            return data;
+        }
+        catch (error) {
+            console.error('[ACTION ITEMS] Error creating action item:', error);
+            return null;
+        }
+    }
+    /**
+     * Update action item status and metadata
+     */
+    static async updateActionItem(actionItemId, updates) {
+        try {
+            const { data, error } = await supabase
+                .from('seo_action_items')
+                .update(updates)
+                .eq('id', actionItemId)
+                .select()
+                .single();
+            if (error) {
+                console.error('[ACTION ITEMS] Error updating action item:', error);
+                return null;
+            }
+            console.log(`[ACTION ITEMS] Updated action item: ${actionItemId}`);
+            return data;
+        }
+        catch (error) {
+            console.error('[ACTION ITEMS] Error updating action item:', error);
+            return null;
+        }
+    }
+    /**
+     * Verify that completed action items are actually resolved
+     */
+    static async verifyCompletion(actionItemId) {
+        try {
+            const { data: actionItem, error } = await supabase
+                .from('seo_action_items')
+                .select('*')
+                .eq('id', actionItemId)
+                .single();
+            if (error || !actionItem) {
+                console.error('[ACTION ITEMS] Action item not found for verification');
+                return false;
+            }
+            let verificationResult = false;
+            let verificationDetails = {};
+            // Verify based on action type
+            switch (actionItem.issue_category) {
+                case 'sitemap':
+                    verificationResult = await this.verifySitemapFix(actionItem);
+                    break;
+                case 'robots':
+                    verificationResult = await this.verifyRobotsFix(actionItem);
+                    break;
+                case 'indexing':
+                    verificationResult = await this.verifyIndexingFix(actionItem);
+                    break;
+                case 'schema':
+                    verificationResult = await this.verifySchemaFix(actionItem);
+                    break;
+                case 'mobile':
+                    verificationResult = await this.verifyMobileFix(actionItem);
+                    break;
+                default:
+                    verificationResult = true; // Assume verified for other types
+                    break;
+            }
+            // Update verification status
+            await this.updateActionItem(actionItemId, {
+                verification_status: verificationResult ? 'verified' : 'needs_recheck',
+                verification_attempts: (actionItem.verification_attempts || 0) + 1,
+                verification_details: verificationDetails,
+                status: verificationResult ? 'verified' : 'needs_verification'
+            });
+            return verificationResult;
+        }
+        catch (error) {
+            console.error('[ACTION ITEMS] Error verifying completion:', error);
+            return false;
+        }
+    }
+    /**
+     * Get action items with optional filtering
+     */
+    static async getActionItems(userToken, siteUrl, options = {}) {
+        try {
+            let query = supabase
+                .from('seo_action_items')
+                .select('*')
+                .eq('user_token', userToken)
+                .eq('site_url', siteUrl);
+            if (options.status && options.status.length > 0) {
+                query = query.in('status', options.status);
+            }
+            if (options.category) {
+                query = query.eq('issue_category', options.category);
+            }
+            if (options.severity) {
+                query = query.eq('severity', options.severity);
+            }
+            if (options.limit) {
+                query = query.limit(options.limit);
+            }
+            query = query.order('priority_score', { ascending: false })
+                .order('detected_at', { ascending: true });
+            const { data, error } = await query;
+            if (error) {
+                console.error('[ACTION ITEMS] Error fetching action items:', error);
+                return [];
+            }
+            return data || [];
+        }
+        catch (error) {
+            console.error('[ACTION ITEMS] Error fetching action items:', error);
+            return [];
+        }
+    }
+    // Private helper methods
+    /**
+     * Generate URL variations to handle different formats (sc-domain:, https://, www. variations)
+     */
+    static getNormalizedUrls(siteUrl) {
+        const variations = new Set();
+        // Add the original URL
+        variations.add(siteUrl);
+        // Extract domain from different formats
+        let domain = siteUrl;
+        // Handle sc-domain: format
+        if (domain.startsWith('sc-domain:')) {
+            domain = domain.replace('sc-domain:', '');
+            variations.add(`https://${domain}`);
+            variations.add(`https://www.${domain}`);
+            variations.add(`http://${domain}`);
+            variations.add(`http://www.${domain}`);
+        }
+        else {
+            // Handle regular URLs
+            domain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '');
+            variations.add(`sc-domain:${domain}`);
+            variations.add(`https://${domain}`);
+            variations.add(`https://www.${domain}`);
+            variations.add(`http://${domain}`);
+            variations.add(`http://www.${domain}`);
+        }
+        return Array.from(variations);
+    }
+    static async detectIndexingIssues(userToken, siteUrl) {
+        const issues = [];
+        const { data: inspections } = await supabase
+            .from('url_inspections')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('site_url', siteUrl);
+        if (!inspections)
+            return issues;
+        // Group issues by type
+        const blockedPages = inspections.filter(i => !i.can_be_indexed && i.index_status !== 'PASS');
+        const mobileUnfriendly = inspections.filter(i => i.can_be_indexed && !i.mobile_usable);
+        if (blockedPages.length > 0) {
+            // Use IndexingIssueAnalyzer to get detailed problem analysis
+            const analysis = IndexingIssueAnalyzer_1.IndexingIssueAnalyzer.analyzeIndexingIssues(blockedPages);
+            issues.push({
+                type: 'indexing_blocked_pages',
+                category: 'indexing',
+                severity: analysis.totalAffectedPages > 5 ? 'critical' : 'high',
+                title: `${analysis.totalAffectedPages} Pages Cannot Be Indexed`,
+                description: analysis.summary,
+                impactDescription: `${analysis.totalAffectedPages} pages cannot appear in Google search results, which means potential customers won&apos;t find them when searching for your products or services.`,
+                fixRecommendation: analysis.detailedExplanation + '\n\n' + analysis.recommendedActions.join('\n\n'),
+                affectedUrls: blockedPages.map(p => p.inspected_url),
+                estimatedImpact: analysis.totalAffectedPages > 10 ? 'high' : 'medium',
+                estimatedEffort: analysis.autoFixableCount > 0 ? 'easy' : 'medium',
+                metadata: {
+                    analysisData: analysis,
+                    autoFixableCount: analysis.autoFixableCount,
+                    codeFixableCount: analysis.codeFixableCount,
+                    manualOnlyCount: analysis.manualOnlyCount,
+                    problemsByType: analysis.problemsByType
+                }
+            });
+        }
+        return issues;
+    }
+    static async detectSitemapIssues(userToken, siteUrl) {
+        const issues = [];
+        // Normalize URL to handle both regular URLs and sc-domain: format
+        const urlVariations = this.getNormalizedUrls(siteUrl);
+        try {
+            // First, get fresh sitemap status from GSC API
+            const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gsc/sitemap-status?userToken=${userToken}&siteUrl=${encodeURIComponent(siteUrl)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (gscResponse.ok) {
+                const gscData = await gscResponse.json();
+                console.log(`[ACTION ITEMS] GSC sitemap check: ${gscData.success ? gscData.summary?.totalSitemaps || 0 : 0} sitemaps found`);
+            }
+        }
+        catch (error) {
+            console.log('[ACTION ITEMS] GSC sitemap check failed, falling back to database only');
+        }
+        // Try to find sitemap with any of the URL variations (now updated with fresh GSC data)
+        const { data: sitemap } = await supabase
+            .from('sitemap_submissions')
+            .select('*')
+            .eq('user_token', userToken)
+            .in('site_url', urlVariations)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        // NEW: Actually test if sitemap.xml exists at the URL regardless of database records
+        let sitemapActuallyExists = false;
+        let hasDynamicServing = false;
+        const testUrl = UrlNormalizationService_1.UrlNormalizationService.domainPropertyToHttps(siteUrl) + '/sitemap.xml';
+        const baseUrl = UrlNormalizationService_1.UrlNormalizationService.domainPropertyToHttps(siteUrl);
+        // Step 1: Test if sitemap.xml is accessible via direct request
+        try {
+            console.log(`[ACTION ITEMS] Testing actual sitemap URL: ${testUrl}`);
+            const sitemapResponse = await fetch(testUrl, {
+                method: 'HEAD', // Use HEAD to avoid downloading large XML files
+                timeout: 10000 // 10 second timeout
+            });
+            if (sitemapResponse.ok) {
+                const contentType = sitemapResponse.headers.get('content-type') || '';
+                sitemapActuallyExists = contentType.includes('xml') || contentType.includes('text');
+                console.log(`[ACTION ITEMS] Sitemap URL test: ${sitemapResponse.status}, content-type: ${contentType}, exists: ${sitemapActuallyExists}`);
+            }
+        }
+        catch (error) {
+            console.log(`[ACTION ITEMS] Sitemap URL test failed: ${error}`);
+            sitemapActuallyExists = false;
+        }
+        // Step 2: Check for hosting provider integration capability
+        // Note: Dynamic serving via JavaScript has been removed - now requires server-side deployment
+        let hostingProviderDetected = false;
+        if (!sitemapActuallyExists) {
+            try {
+                console.log(`[ACTION ITEMS] Analyzing hosting provider for automated deployment: ${baseUrl}`);
+                // Basic hosting provider detection (to be enhanced with HostDetectionService)
+                const homeResponse = await fetch(baseUrl, {
+                    method: 'GET',
+                    timeout: 10000,
+                    headers: {
+                        'User-Agent': 'SEOAgent-HostDetectionBot/1.0'
+                    }
+                });
+                if (homeResponse.ok) {
+                    // Check response headers for hosting provider indicators
+                    const server = homeResponse.headers.get('server') || '';
+                    const xPoweredBy = homeResponse.headers.get('x-powered-by') || '';
+                    const cfRay = homeResponse.headers.get('cf-ray');
+                    const xVercelId = homeResponse.headers.get('x-vercel-id');
+                    hostingProviderDetected = !!(cfRay || xVercelId || server.includes('cloudflare') || server.includes('vercel'));
+                    console.log(`[ACTION ITEMS] Hosting provider indicators: cf-ray=${!!cfRay}, vercel-id=${!!xVercelId}, server=${server}`);
+                }
+            }
+            catch (error) {
+                console.log(`[ACTION ITEMS] Hosting provider detection failed: ${error}`);
+                hostingProviderDetected = false;
+            }
+        }
+        // If sitemap exists but no database record, it means it wasn't submitted to GSC
+        if (sitemapActuallyExists && !sitemap) {
+            issues.push({
+                type: 'sitemap_not_submitted',
+                category: 'sitemap',
+                severity: 'medium',
+                title: 'Sitemap Exists but Not Submitted to GSC',
+                description: 'A sitemap.xml file exists at your website but has not been submitted to Google Search Console.',
+                impactDescription: 'Google may not discover all your pages efficiently without a submitted sitemap.',
+                fixRecommendation: 'Submit your existing sitemap to Google Search Console.',
+                affectedUrls: [testUrl],
+                estimatedImpact: 'medium',
+                estimatedEffort: 'easy',
+                metadata: {
+                    sitemapUrl: testUrl,
+                    actuallyExists: true,
+                    hostingProviderDetected,
+                    detectionMethod: 'direct_url_test'
+                }
+            });
+        }
+        // If no sitemap exists, suggest hosting provider integration or manual setup
+        else if (!sitemapActuallyExists && !sitemap) {
+            const requiresHostingIntegration = hostingProviderDetected;
+            const fixRecommendation = requiresHostingIntegration
+                ? 'Enable hosting provider integration for automated sitemap deployment, or manually upload a sitemap.xml file to your website root directory.'
+                : 'Generate and upload a sitemap.xml file to your website root directory, then submit it to Google Search Console.';
+            issues.push({
+                type: 'sitemap_missing',
+                category: 'sitemap',
+                severity: 'high',
+                title: 'XML Sitemap Missing',
+                description: 'No XML sitemap exists at your website and none has been submitted to Google Search Console.',
+                impactDescription: 'Missing sitemaps make it harder for search engines to discover and index your pages.',
+                fixRecommendation,
+                affectedUrls: [siteUrl],
+                estimatedImpact: 'high',
+                estimatedEffort: requiresHostingIntegration ? 'easy' : 'medium',
+                referenceTable: 'sitemap_submissions',
+                metadata: {
+                    sitemapUrl: testUrl,
+                    actuallyExists: false,
+                    hostingProviderDetected,
+                    requiresHostingIntegration,
+                    detectionMethod: 'direct_url_test'
+                }
+            });
+        }
+        // If database record exists but actual sitemap doesn't (broken sitemap)
+        else if (!sitemapActuallyExists && sitemap) {
+            const fixRecommendation = hostingProviderDetected
+                ? 'Use hosting provider integration to automatically deploy the sitemap, or manually fix the sitemap URL.'
+                : 'Fix the sitemap URL or regenerate and resubmit the sitemap manually.';
+            issues.push({
+                type: 'sitemap_broken',
+                category: 'sitemap',
+                severity: 'high',
+                title: 'Submitted Sitemap Not Accessible',
+                description: 'A sitemap has been submitted to Google Search Console but the URL is not accessible or returns invalid content.',
+                impactDescription: 'Google cannot process your sitemap, affecting page discovery and indexing.',
+                fixRecommendation,
+                affectedUrls: [sitemap.sitemap_url],
+                estimatedImpact: 'high',
+                estimatedEffort: hostingProviderDetected ? 'easy' : 'medium',
+                referenceId: sitemap.id,
+                referenceTable: 'sitemap_submissions',
+                metadata: {
+                    sitemapUrl: sitemap.sitemap_url,
+                    actuallyExists: false,
+                    hostingProviderDetected,
+                    detectionMethod: 'direct_url_test'
+                }
+            });
+        }
+        // If sitemap exists and is submitted but Google hasn't downloaded it yet
+        else if (sitemap && (sitemap.google_download_status === 'pending' || !sitemap.google_last_downloaded)) {
+            issues.push({
+                type: 'sitemap_not_downloaded',
+                category: 'sitemap',
+                severity: 'medium',
+                title: 'Sitemap Not Downloaded by Google',
+                description: 'Sitemap has been submitted but Google has not downloaded it yet.',
+                impactDescription: 'Google may not be aware of all your pages until the sitemap is processed.',
+                fixRecommendation: 'Wait for Google to process the sitemap or resubmit if it has been more than 24 hours.',
+                affectedUrls: [sitemap.sitemap_url],
+                estimatedImpact: 'medium',
+                estimatedEffort: 'easy',
+                referenceId: sitemap.id,
+                referenceTable: 'sitemap_submissions',
+                metadata: {
+                    sitemapUrl: sitemap.sitemap_url,
+                    actuallyExists: sitemapActuallyExists,
+                    hostingProviderDetected,
+                    detectionMethod: sitemapActuallyExists ? 'direct_url_test' : 'database_only'
+                }
+            });
+        }
+        return issues;
+    }
+    static async detectRobotsIssues(userToken, siteUrl) {
+        const issues = [];
+        // Use URL variations to handle different formats
+        const urlVariations = this.getNormalizedUrls(siteUrl);
+        const { data: robots } = await supabase
+            .from('robots_analyses')
+            .select('*')
+            .eq('user_token', userToken)
+            .in('site_url', urlVariations)
+            .order('analyzed_at', { ascending: false })
+            .limit(1)
+            .single();
+        // NEW: Actually test if robots.txt exists at the URL regardless of database records
+        let robotsActuallyExists = false;
+        let hasDynamicServing = false;
+        const testUrl = UrlNormalizationService_1.UrlNormalizationService.domainPropertyToHttps(siteUrl) + '/robots.txt';
+        const baseUrl = UrlNormalizationService_1.UrlNormalizationService.domainPropertyToHttps(siteUrl);
+        // Step 1: Direct URL test
+        try {
+            console.log(`[ACTION ITEMS] Testing actual robots.txt URL: ${testUrl}`);
+            const robotsResponse = await fetch(testUrl, {
+                method: 'HEAD', // Use HEAD to avoid downloading content
+                timeout: 10000 // 10 second timeout
+            });
+            if (robotsResponse.ok) {
+                const contentType = robotsResponse.headers.get('content-type') || '';
+                robotsActuallyExists = contentType.includes('text') || robotsResponse.status === 200;
+                console.log(`[ACTION ITEMS] ✅ Robots.txt found via direct access: ${robotsResponse.status}, content-type: ${contentType}`);
+            }
+        }
+        catch (error) {
+            console.log(`[ACTION ITEMS] ❌ Direct robots.txt access failed: ${error}`);
+        }
+        // Step 2: Check for hosting provider integration capability
+        // Note: Dynamic serving via JavaScript has been removed - now requires server-side deployment
+        let hostingProviderDetected = false;
+        if (!robotsActuallyExists) {
+            try {
+                console.log(`[ACTION ITEMS] Analyzing hosting provider for automated deployment: ${baseUrl}`);
+                // Basic hosting provider detection (to be enhanced with HostDetectionService)
+                const homeResponse = await fetch(baseUrl, {
+                    method: 'GET',
+                    timeout: 10000,
+                    headers: {
+                        'User-Agent': 'SEOAgent-HostDetectionBot/1.0'
+                    }
+                });
+                if (homeResponse.ok) {
+                    // Check response headers for hosting provider indicators
+                    const server = homeResponse.headers.get('server') || '';
+                    const xPoweredBy = homeResponse.headers.get('x-powered-by') || '';
+                    const cfRay = homeResponse.headers.get('cf-ray');
+                    const xVercelId = homeResponse.headers.get('x-vercel-id');
+                    hostingProviderDetected = !!(cfRay || xVercelId || server.includes('cloudflare') || server.includes('vercel'));
+                    console.log(`[ACTION ITEMS] Hosting provider indicators: cf-ray=${!!cfRay}, vercel-id=${!!xVercelId}, server=${server}`);
+                }
+            }
+            catch (error) {
+                console.log(`[ACTION ITEMS] Hosting provider detection failed: ${error}`);
+                hostingProviderDetected = false;
+            }
+        }
+        // Generate issues based on detection results - suggest hosting provider integration or manual deployment
+        if (!robotsActuallyExists) {
+            const requiresHostingIntegration = hostingProviderDetected;
+            // Provide deployment instructions based on hosting provider detection
+            const automaticFixInstructions = `Automated deployment via hosting provider integration:
+1. Enable hosting provider integration in SEOAgent settings
+2. The robots.txt file will be automatically deployed to your website root
+3. Sitemap URL will be automatically included`;
+            const manualFixInstructions = `Manual robots.txt setup:
+1. Create a file named "robots.txt" with this content:
+   User-agent: *
+   Allow: /
+   
+   Sitemap: ${baseUrl}/sitemap.xml
+   
+   # Block admin areas
+   Disallow: /admin/
+   Disallow: /wp-admin/
+
+2. Upload this file to your website's root directory
+3. Verify it's accessible at: ${testUrl}
+
+For developers:
+- Place robots.txt in the public/static folder of your web application
+- For CDN/hosting platforms (Vercel/Netlify), place in public/ directory`;
+            const fixRecommendation = requiresHostingIntegration
+                ? `${automaticFixInstructions}\n\nAlternatively:\n${manualFixInstructions}`
+                : manualFixInstructions;
+            issues.push({
+                type: requiresHostingIntegration ? 'robots_missing_hosting_integration' : 'robots_missing_manual_fix',
+                category: 'robots',
+                severity: 'medium',
+                title: requiresHostingIntegration ? 'Robots.txt Missing - Hosting Integration Available' : 'Robots.txt File Missing - Manual Setup Required',
+                description: requiresHostingIntegration
+                    ? 'No robots.txt file exists at your website. Automated deployment is available via hosting provider integration.'
+                    : 'No robots.txt file exists at your website. This file must be deployed at the server level.',
+                impactDescription: 'Missing robots.txt can lead to crawling inefficiencies and missed SEO opportunities. Search engines may not know which parts of your site to crawl.',
+                fixRecommendation,
+                affectedUrls: [testUrl],
+                estimatedImpact: 'medium',
+                estimatedEffort: requiresHostingIntegration ? 'easy' : 'medium',
+                referenceId: robots?.id,
+                referenceTable: 'robots_analyses',
+                metadata: {
+                    robotsUrl: testUrl,
+                    actuallyExists: false,
+                    hostingProviderDetected,
+                    requiresHostingIntegration,
+                    automatable: requiresHostingIntegration
+                }
+            });
+        }
+        else if (robotsActuallyExists && (!robots || !robots.exists)) {
+            // Static robots.txt exists but hasn't been analyzed
+            issues.push({
+                type: 'robots_not_analyzed',
+                category: 'robots',
+                severity: 'low',
+                title: 'Robots.txt Exists but Not Analyzed',
+                description: 'A robots.txt file exists at your website but has not been analyzed for optimization opportunities.',
+                impactDescription: 'Without analysis, you may miss opportunities to improve crawling efficiency.',
+                fixRecommendation: 'Run robots.txt analysis to check for optimization opportunities and ensure it includes your sitemap URL.',
+                affectedUrls: [testUrl],
+                estimatedImpact: 'low',
+                estimatedEffort: 'easy',
+                metadata: { robotsUrl: testUrl, actuallyExists: true, hostingProviderDetected, automatable: true }
+            });
+        }
+        // If database record exists but actual robots.txt doesn't (broken robots.txt)
+        else if (!robotsActuallyExists && robots && robots.exists) {
+            issues.push({
+                type: 'robots_broken',
+                category: 'robots',
+                severity: 'high',
+                title: 'Robots.txt Not Accessible',
+                description: 'Robots.txt is recorded as existing but the URL is not accessible or returns invalid content.',
+                impactDescription: 'Search engines cannot access your robots.txt file, affecting crawling behavior.',
+                fixRecommendation: 'Fix the robots.txt URL or regenerate the robots.txt file.',
+                affectedUrls: [testUrl],
+                estimatedImpact: 'high',
+                estimatedEffort: 'medium',
+                referenceId: robots.id,
+                referenceTable: 'robots_analyses',
+                metadata: { robotsUrl: testUrl, actuallyExists: false, hostingProviderDetected }
+            });
+        }
+        // If robots exists and is recorded but Google has fetch errors
+        else if (robots && robots.exists && (robots.google_fetch_status === 'error' || robots.google_fetch_errors > 0)) {
+            issues.push({
+                type: 'robots_fetch_errors',
+                category: 'robots',
+                severity: 'medium',
+                title: 'Robots.txt Fetch Errors',
+                description: 'Google is encountering errors when trying to fetch your robots.txt file.',
+                impactDescription: 'Fetch errors can prevent proper crawling of your website.',
+                fixRecommendation: 'Check robots.txt accessibility and fix any server-side issues.',
+                affectedUrls: [testUrl],
+                estimatedImpact: 'medium',
+                estimatedEffort: 'medium',
+                referenceId: robots.id,
+                referenceTable: 'robots_analyses',
+                metadata: { robotsUrl: testUrl, actuallyExists: robotsActuallyExists }
+            });
+        }
+        return issues;
+    }
+    static async detectSchemaIssues(userToken, siteUrl) {
+        const issues = [];
+        const { data: schemas } = await supabase
+            .from('schema_generations')
+            .select('*')
+            .ilike('page_url', `${siteUrl}%`);
+        if (!schemas || schemas.length === 0) {
+            // Generate basic schema suggestions for homepage
+            const basicSuggestions = this.generateSchemaTypesForUrl(siteUrl);
+            issues.push({
+                type: 'schema_missing_all',
+                category: 'schema',
+                severity: 'medium',
+                title: 'No Schema Markup Found',
+                description: 'Website lacks structured data markup.',
+                impactDescription: 'Missing schema markup reduces rich snippet opportunities in search results.',
+                fixRecommendation: 'Add appropriate schema markup to key pages (Organization, WebSite, Article, etc.).',
+                affectedUrls: [siteUrl],
+                estimatedImpact: 'medium',
+                estimatedEffort: 'medium',
+                metadata: {
+                    suggestedSchemas: [{
+                            pageUrl: siteUrl,
+                            schemaTypes: basicSuggestions,
+                            reason: 'Homepage/base site schema markup'
+                        }]
+                }
+            });
+        }
+        else {
+            const missingSchema = schemas.filter(s => s.schemas_generated === 0);
+            if (missingSchema.length > 0) {
+                // Generate specific schema suggestions for each missing page
+                const detailedSuggestions = missingSchema.map(schema => ({
+                    pageUrl: schema.page_url,
+                    schemaTypes: this.generateSchemaTypesForUrl(schema.page_url),
+                    reason: this.getSchemaReasonForUrl(schema.page_url),
+                    benefits: this.getSchemasBenefits(this.generateSchemaTypesForUrl(schema.page_url))
+                }));
+                issues.push({
+                    type: 'schema_missing_pages',
+                    category: 'schema',
+                    severity: missingSchema.length > 10 ? 'high' : 'medium',
+                    title: `${missingSchema.length} Pages Missing Schema Markup`,
+                    description: `${missingSchema.length} pages lack structured data markup.`,
+                    impactDescription: 'Pages without schema markup miss opportunities for enhanced search result displays.',
+                    fixRecommendation: 'Add appropriate schema markup to these pages based on their content type.',
+                    affectedUrls: missingSchema.map(s => s.page_url),
+                    estimatedImpact: 'medium',
+                    estimatedEffort: 'medium',
+                    metadata: {
+                        missingCount: missingSchema.length,
+                        suggestedSchemas: detailedSuggestions
+                    }
+                });
+            }
+        }
+        return issues;
+    }
+    static async detectMobileIssues(userToken, siteUrl) {
+        const issues = [];
+        const { data: inspections } = await supabase
+            .from('url_inspections')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('site_url', siteUrl)
+            .eq('mobile_usable', false);
+        if (inspections && inspections.length > 0) {
+            issues.push({
+                type: 'mobile_usability_issues',
+                category: 'mobile',
+                severity: inspections.length > 5 ? 'high' : 'medium',
+                title: `${inspections.length} Pages Have Mobile Usability Issues`,
+                description: `${inspections.length} pages have mobile-unfriendly elements.`,
+                impactDescription: 'Mobile usability issues can hurt mobile search performance and user experience.',
+                fixRecommendation: 'Review and fix mobile usability issues such as content width and clickable element spacing.',
+                affectedUrls: inspections.map(i => i.inspected_url),
+                estimatedImpact: 'medium',
+                estimatedEffort: 'medium',
+                metadata: { mobileIssuesCount: inspections.length }
+            });
+        }
+        return issues;
+    }
+    static async findSimilarActionItem(userToken, siteUrl, issue) {
+        const { data, error } = await supabase
+            .from('seo_action_items')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('site_url', siteUrl)
+            .eq('issue_type', issue.type)
+            .eq('issue_category', issue.category)
+            .not('status', 'in', '(verified,closed,dismissed)')
+            .limit(1)
+            .single();
+        return error ? null : data;
+    }
+    static calculatePriorityScore(severity, impact, affectedUrlCount) {
+        let score = 50;
+        // Severity bonus
+        switch (severity) {
+            case 'critical':
+                score += 40;
+                break;
+            case 'high':
+                score += 25;
+                break;
+            case 'medium':
+                score += 10;
+                break;
+            case 'low':
+                score += 0;
+                break;
+        }
+        // Impact bonus
+        switch (impact) {
+            case 'high':
+                score += 20;
+                break;
+            case 'medium':
+                score += 10;
+                break;
+            case 'low':
+                score += 5;
+                break;
+        }
+        // Multiple URL bonus
+        score += Math.min((affectedUrlCount - 1) * 2, 10);
+        return Math.min(score, 100);
+    }
+    // Verification methods
+    static async verifySitemapFix(actionItem) {
+        try {
+            // First, refresh sitemap status from GSC API
+            console.log(`[ACTION ITEMS] Starting sitemap verification for ${actionItem.site_url}`);
+            const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gsc/sitemap-status?userToken=${actionItem.user_token}&siteUrl=${encodeURIComponent(actionItem.site_url)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            let gscRefreshSuccess = false;
+            if (gscResponse.ok) {
+                const gscData = await gscResponse.json();
+                gscRefreshSuccess = gscData.success;
+                console.log('[ACTION ITEMS] GSC sitemap verification response:', {
+                    success: gscData.success,
+                    sitemapCount: gscData.summary?.totalSitemaps || 0,
+                    downloadedCount: gscData.summary?.downloadedSitemaps || 0
+                });
+            }
+            else {
+                console.log('[ACTION ITEMS] GSC sitemap check failed:', gscResponse.status);
+            }
+            // Add small delay to ensure database updates are committed after GSC refresh
+            if (gscRefreshSuccess) {
+                console.log('[ACTION ITEMS] Waiting for database updates to commit...');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            // Get all user sitemaps and find the matching one using URL normalization
+            const { data: allSitemaps } = await supabase
+                .from('sitemap_submissions')
+                .select('*')
+                .eq('user_token', actionItem.user_token)
+                .order('created_at', { ascending: false });
+            console.log(`[ACTION ITEMS] All user sitemaps for verification:`, allSitemaps?.map(s => ({
+                id: s.id,
+                site_url: s.site_url,
+                sitemap_url: s.sitemap_url,
+                last_downloaded: s.last_downloaded,
+                status: s.status,
+                is_pending: s.is_pending
+            })));
+            // Find matching sitemap using the robust URL normalization service
+            const matchingSitemap = allSitemaps && allSitemaps.length > 0
+                ? UrlNormalizationService_1.UrlNormalizationService.findMatchingSitemap(
+                // Convert action item site_url to a sitemap URL format for matching
+                UrlNormalizationService_1.UrlNormalizationService.domainPropertyToHttps(actionItem.site_url) + '/sitemap.xml', allSitemaps) || allSitemaps.find(s => UrlNormalizationService_1.UrlNormalizationService.isSameSite(s.site_url, actionItem.site_url))
+                : null;
+            console.log(`[ACTION ITEMS] Matching sitemap found:`, matchingSitemap ? {
+                id: matchingSitemap.id,
+                site_url: matchingSitemap.site_url,
+                sitemap_url: matchingSitemap.sitemap_url,
+                last_downloaded: matchingSitemap.last_downloaded,
+                status: matchingSitemap.status,
+                is_pending: matchingSitemap.is_pending
+            } : null);
+            // Verify sitemap exists and has been downloaded by Google
+            const isVerified = !!(matchingSitemap &&
+                matchingSitemap.last_downloaded &&
+                matchingSitemap.status === 'processed');
+            console.log(`[ACTION ITEMS] Verification result:`, {
+                hasMatchingSitemap: !!matchingSitemap,
+                hasDownloadDate: !!matchingSitemap?.last_downloaded,
+                status: matchingSitemap?.status,
+                isPending: matchingSitemap?.is_pending,
+                isVerified
+            });
+            // If no sitemap is found or not downloaded, use enhanced detection logic
+            let sitemapUrlExists = false;
+            let hasDynamicServing = false;
+            if (!isVerified) {
+                const siteUrl = UrlNormalizationService_1.UrlNormalizationService.domainPropertyToHttps(actionItem.site_url);
+                // Step 1: Direct URL test (existing logic)
+                try {
+                    const urlsToCheck = [
+                        `${siteUrl}/sitemap.xml`,
+                        `${siteUrl.replace('https://', 'https://www.')}/sitemap.xml`
+                    ];
+                    for (const sitemapUrl of urlsToCheck) {
+                        try {
+                            const sitemapResponse = await fetch(sitemapUrl, { method: 'HEAD' });
+                            if (sitemapResponse.ok) {
+                                sitemapUrlExists = true;
+                                console.log(`[ACTION ITEMS] ✅ Sitemap found via direct access: ${sitemapUrl}`);
+                                break;
+                            }
+                        }
+                        catch (e) {
+                            // Continue to next URL
+                        }
+                    }
+                }
+                catch (error) {
+                    console.log('[ACTION ITEMS] Error checking direct sitemap access:', error);
+                }
+                // Step 2: Enhanced SEOAgent.js dynamic serving detection
+                if (!sitemapUrlExists) {
+                    try {
+                        console.log(`[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: ${siteUrl}`);
+                        const homeResponse = await fetch(siteUrl, {
+                            method: 'GET',
+                            timeout: 10000,
+                            headers: {
+                                'User-Agent': 'SEOAgent-ActionItemBot/1.0'
+                            }
+                        });
+                        if (homeResponse.ok) {
+                            const homeContent = await homeResponse.text();
+                            // Check for SEOAgent.js installation markers
+                            const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
+                            const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
+                            hasDynamicServing = hasScript && hasWebsiteToken;
+                            console.log(`[ACTION ITEMS] SEOAgent.js detection: script=${hasScript}, token=${hasWebsiteToken}, dynamic=${hasDynamicServing}`);
+                            if (hasDynamicServing) {
+                                sitemapUrlExists = true;
+                                console.log(`[ACTION ITEMS] ✅ Dynamic sitemap serving detected via SEOAgent.js`);
+                            }
+                        }
+                    }
+                    catch (error) {
+                        console.log(`[ACTION ITEMS] SEOAgent.js detection failed: ${error}`);
+                        hasDynamicServing = false;
+                    }
+                }
+            }
+            console.log(`[ACTION ITEMS] Final sitemap verification for ${actionItem.site_url}:`, {
+                sitemapExists: !!matchingSitemap,
+                sitemapUrl: matchingSitemap?.sitemap_url,
+                lastDownloaded: matchingSitemap?.last_downloaded,
+                status: matchingSitemap?.status,
+                isPending: matchingSitemap?.is_pending,
+                sitemapUrlExists,
+                hasDynamicServing,
+                gscRefreshSuccess,
+                isVerified
+            });
+            // ENHANCED: Verification passes if either:
+            // 1. GSC shows sitemap is downloaded and processed (original logic)
+            // 2. Sitemap actually exists at the URL (includes dynamic serving detection)
+            const finalVerification = isVerified || sitemapUrlExists;
+            console.log(`[ACTION ITEMS] Enhanced verification result: ${finalVerification} (GSC verified: ${isVerified}, URL exists: ${sitemapUrlExists}, dynamic serving: ${hasDynamicServing})`);
+            return finalVerification;
+        }
+        catch (error) {
+            console.error('[ACTION ITEMS] Error verifying sitemap fix:', error);
+            return false;
+        }
+    }
+    static async verifyRobotsFix(actionItem) {
+        try {
+            console.log(`[ACTION ITEMS] Starting robots.txt verification for ${actionItem.site_url}`);
+            // Check if robots.txt file is actually accessible
+            const siteUrl = UrlNormalizationService_1.UrlNormalizationService.domainPropertyToHttps(actionItem.site_url);
+            const urlsToCheck = [
+                `${siteUrl}/robots.txt`,
+                `${siteUrl.replace('https://', 'https://www.')}/robots.txt`
+            ];
+            let robotsFileExists = false;
+            let robotsContent = '';
+            let hasDynamicServing = false;
+            // Step 1: Test direct robots.txt access
+            for (const robotsUrl of urlsToCheck) {
+                try {
+                    console.log(`[ACTION ITEMS] Checking robots.txt at: ${robotsUrl}`);
+                    const response = await fetch(robotsUrl, {
+                        method: 'GET',
+                        headers: {
+                            'User-Agent': 'SEOAgent Bot 1.0'
+                        }
+                    });
+                    if (response.ok) {
+                        robotsContent = await response.text();
+                        // Check if it's actual robots.txt content (not HTML)
+                        const isValidRobots = robotsContent.includes('User-agent:') ||
+                            robotsContent.includes('Disallow:') ||
+                            robotsContent.includes('Allow:') ||
+                            robotsContent.includes('Sitemap:');
+                        if (isValidRobots) {
+                            robotsFileExists = true;
+                            console.log(`[ACTION ITEMS] ✅ Valid robots.txt found at: ${robotsUrl}`);
+                            console.log(`[ACTION ITEMS] Content preview: ${robotsContent.substring(0, 200)}...`);
+                            break;
+                        }
+                        else {
+                            console.log(`[ACTION ITEMS] ❌ Invalid robots.txt content (HTML returned) at: ${robotsUrl}`);
+                        }
+                    }
+                    else {
+                        console.log(`[ACTION ITEMS] ❌ Robots.txt not accessible at: ${robotsUrl} (Status: ${response.status})`);
+                    }
+                }
+                catch (fetchError) {
+                    console.log(`[ACTION ITEMS] ❌ Error fetching robots.txt at ${robotsUrl}:`, fetchError);
+                }
+            }
+            // Step 2: If no valid robots.txt found, check for SEOAgent.js dynamic serving capability
+            if (!robotsFileExists) {
+                try {
+                    console.log(`[ACTION ITEMS] Testing for SEOAgent.js dynamic serving on: ${siteUrl}`);
+                    const homeResponse = await fetch(siteUrl, {
+                        method: 'GET',
+                        timeout: 10000,
+                        headers: {
+                            'User-Agent': 'SEOAgent-ActionItemBot/1.0'
+                        }
+                    });
+                    if (homeResponse.ok) {
+                        const homeContent = await homeResponse.text();
+                        // Check for SEOAgent.js installation markers
+                        const hasScript = homeContent.includes('seoagent.js') || homeContent.includes('SEO-METRICS');
+                        const hasWebsiteToken = homeContent.includes('idv = ') || homeContent.includes('website_token');
+                        const hasRobotsServing = homeContent.includes('initializeRobotsServing') ||
+                            homeContent.includes('robots.txt serving');
+                        hasDynamicServing = hasScript && hasWebsiteToken;
+                        console.log(`[ACTION ITEMS] SEOAgent.js detection: script=${hasScript}, token=${hasWebsiteToken}, robotsServing=${hasRobotsServing}, dynamic=${hasDynamicServing}`);
+                        if (hasDynamicServing) {
+                            // SEOAgent.js is installed but robots.txt serving has limitations for direct URL access
+                            console.log(`[ACTION ITEMS] ⚠️  SEOAgent.js detected but robots.txt not directly accessible - this is expected for JavaScript-based serving`);
+                            robotsFileExists = true; // Consider it "exists" from a capability standpoint
+                        }
+                    }
+                }
+                catch (error) {
+                    console.log(`[ACTION ITEMS] SEOAgent.js detection failed: ${error}`);
+                    hasDynamicServing = false;
+                }
+            }
+            // Update database record to reflect actual status
+            if (robotsFileExists) {
+                console.log(`[ACTION ITEMS] Updating database with robots.txt verification success`);
+                await supabase
+                    .from('robots_analyses')
+                    .upsert({
+                    user_token: actionItem.user_token,
+                    site_url: actionItem.site_url,
+                    exists: true,
+                    accessible: hasDynamicServing ? false : true, // Direct access limited for dynamic serving
+                    size: robotsContent.length || 0,
+                    content: robotsContent || 'Dynamic serving via SEOAgent.js',
+                    google_fetch_status: hasDynamicServing ? 'warning' : 'success',
+                    google_fetch_errors: 0,
+                    analyzed_at: new Date().toISOString()
+                }, {
+                    onConflict: 'user_token,site_url'
+                });
+            }
+            console.log(`[ACTION ITEMS] Robots.txt verification result for ${actionItem.site_url}:`, {
+                fileExists: robotsFileExists,
+                hasDynamicServing,
+                contentLength: robotsContent.length,
+                isDirectlyAccessible: robotsFileExists && !hasDynamicServing,
+                urlsChecked: urlsToCheck
+            });
+            return robotsFileExists;
+        }
+        catch (error) {
+            console.error('[ACTION ITEMS] Error verifying robots.txt fix:', error);
+            return false;
+        }
+    }
+    static async verifyIndexingFix(actionItem) {
+        if (!actionItem.affected_urls || actionItem.affected_urls.length === 0) {
+            return true;
+        }
+        console.log(`[ACTION ITEMS] Verifying indexing fix for ${actionItem.affected_urls.length} URLs`);
+        // First, try to refresh indexing data via GSC URL Inspection API
+        let gscRefreshSuccess = false;
+        try {
+            // Limit to 3 URLs to avoid rate limits and timeouts
+            const urlsToInspect = actionItem.affected_urls.slice(0, 3);
+            console.log(`[ACTION ITEMS] Making POST request to URL inspection API with ${urlsToInspect.length} URLs`);
+            const gscResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gsc/url-inspection`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userToken: actionItem.user_token,
+                    siteUrl: actionItem.site_url,
+                    urls: urlsToInspect
+                })
+            });
+            if (gscResponse.ok) {
+                const gscData = await gscResponse.json();
+                if (gscData.success) {
+                    gscRefreshSuccess = true;
+                    console.log(`[ACTION ITEMS] GSC URL inspection successful for ${urlsToInspect.length} URLs:`, {
+                        indexable: gscData.data.summary.indexable,
+                        blocked: gscData.data.summary.blocked,
+                        errors: gscData.data.summary.errors
+                    });
+                }
+            }
+            else {
+                console.log(`[ACTION ITEMS] GSC URL inspection failed with status:`, gscResponse.status);
+            }
+        }
+        catch (error) {
+            console.log(`[ACTION ITEMS] GSC URL Inspection failed:`, error);
+        }
+        // Wait a moment for database updates if GSC calls were successful
+        if (gscRefreshSuccess) {
+            console.log('[ACTION ITEMS] Waiting for GSC data to be processed...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        // Check current database state
+        const { data: inspections } = await supabase
+            .from('url_inspections')
+            .select('*')
+            .eq('site_url', actionItem.site_url)
+            .in('inspected_url', actionItem.affected_urls);
+        if (!inspections || inspections.length === 0) {
+            console.log(`[ACTION ITEMS] No URL inspections found for verification`);
+            return false;
+        }
+        console.log(`[ACTION ITEMS] Found ${inspections.length} inspections for verification:`, inspections.map(i => ({
+            url: i.inspected_url,
+            canBeIndexed: i.can_be_indexed,
+            indexStatus: i.index_status,
+            fetchStatus: i.fetch_status,
+            robotsTxtState: i.robots_txt_state
+        })));
+        // Check if all previously blocked pages are now indexable
+        const allIndexable = inspections.every(i => i.can_be_indexed && i.index_status !== 'FAIL');
+        console.log(`[ACTION ITEMS] Indexing verification result:`, {
+            totalInspections: inspections.length,
+            indexableCount: inspections.filter(i => i.can_be_indexed).length,
+            passedCount: inspections.filter(i => i.index_status !== 'FAIL').length,
+            allIndexable,
+            gscRefreshSuccess
+        });
+        return allIndexable;
+    }
+    static async verifySchemaFix(actionItem) {
+        if (!actionItem.affected_urls || actionItem.affected_urls.length === 0) {
+            return true;
+        }
+        const { data: schemas } = await supabase
+            .from('schema_generations')
+            .select('*')
+            .in('page_url', actionItem.affected_urls);
+        if (!schemas)
+            return false;
+        // Check if all previously schema-less pages now have schema
+        return schemas.every(s => s.schemas_generated > 0);
+    }
+    static async verifyMobileFix(actionItem) {
+        try {
+            console.log(`[ACTION ITEMS] Starting mobile usability verification for ${actionItem.site_url}`);
+            if (!actionItem.affected_urls || actionItem.affected_urls.length === 0) {
+                console.log('[ACTION ITEMS] No affected URLs to verify, assuming fixed');
+                return true;
+            }
+            // Check current mobile usability status from URL inspections
+            const { data: currentInspections, error } = await supabase
+                .from('url_inspections')
+                .select('inspected_url, mobile_usable, mobile_usability_issues')
+                .eq('user_token', actionItem.user_token)
+                .eq('site_url', actionItem.site_url)
+                .in('inspected_url', actionItem.affected_urls);
+            if (error) {
+                console.error('[ACTION ITEMS] Error checking mobile inspections:', error);
+                return false;
+            }
+            if (!currentInspections || currentInspections.length === 0) {
+                console.log('[ACTION ITEMS] No URL inspections found for mobile verification');
+                return false;
+            }
+            // Count how many URLs are now mobile-friendly
+            const mobileFriendlyUrls = currentInspections.filter(inspection => inspection.mobile_usable === true);
+            const improvementThreshold = 0.8; // 80% of URLs should be mobile-friendly
+            const isVerified = mobileFriendlyUrls.length / currentInspections.length >= improvementThreshold;
+            console.log(`[ACTION ITEMS] Mobile verification: ${mobileFriendlyUrls.length}/${currentInspections.length} URLs mobile-friendly`);
+            console.log(`[ACTION ITEMS] Mobile verification result: ${isVerified ? 'PASSED' : 'FAILED'}`);
+            return isVerified;
+        }
+        catch (error) {
+            console.error('[ACTION ITEMS] Error verifying mobile fix:', error);
+            return false;
+        }
+    }
+    // Helper method to generate schema types based on URL patterns
+    static generateSchemaTypesForUrl(pageUrl) {
+        const url = pageUrl.toLowerCase();
+        if (url.includes('/blog/') || url.includes('/article/') || url.includes('/post/')) {
+            return ['Article', 'BreadcrumbList', 'Organization'];
+        }
+        else if (url.includes('/product/') || url.includes('/shop/') || url.includes('/store/')) {
+            return ['Product', 'BreadcrumbList', 'Organization'];
+        }
+        else if (url.includes('/about') || url.includes('/team')) {
+            return ['Organization', 'BreadcrumbList'];
+        }
+        else if (url.includes('/contact')) {
+            return ['Organization', 'ContactPage', 'BreadcrumbList'];
+        }
+        else if (url.includes('/service/') || url.includes('/services/')) {
+            return ['Service', 'Organization', 'BreadcrumbList'];
+        }
+        else if (url.includes('/event/') || url.includes('/events/')) {
+            return ['Event', 'BreadcrumbList', 'Organization'];
+        }
+        else if (url.includes('/location/') || url.includes('/locations/')) {
+            return ['LocalBusiness', 'BreadcrumbList', 'Organization'];
+        }
+        else if (url === pageUrl.match(/^https?:\/\/[^\/]+\/?$/)?.[0]) {
+            // This is homepage
+            return ['WebSite', 'Organization'];
+        }
+        else {
+            // Generic page
+            return ['WebPage', 'BreadcrumbList', 'Organization'];
+        }
+    }
+    // Helper method to explain why certain schemas are recommended
+    static getSchemaReasonForUrl(pageUrl) {
+        const url = pageUrl.toLowerCase();
+        if (url.includes('/blog/') || url.includes('/article/') || url.includes('/post/')) {
+            return 'Article content detected - helps search engines understand content structure and display rich snippets';
+        }
+        else if (url.includes('/product/') || url.includes('/shop/') || url.includes('/store/')) {
+            return 'Product page detected - enables rich product snippets with pricing, availability, and reviews';
+        }
+        else if (url.includes('/about') || url.includes('/team')) {
+            return 'About page detected - helps establish entity information and brand authority';
+        }
+        else if (url.includes('/contact')) {
+            return 'Contact page detected - enables location and business hours display in search results';
+        }
+        else if (url.includes('/service/') || url.includes('/services/')) {
+            return 'Service page detected - helps display service offerings and business information';
+        }
+        else if (url.includes('/event/') || url.includes('/events/')) {
+            return 'Event page detected - enables event rich snippets with dates, locations, and ticket information';
+        }
+        else if (url.includes('/location/') || url.includes('/locations/')) {
+            return 'Location page detected - helps with local search visibility and business listings';
+        }
+        else if (url === pageUrl.match(/^https?:\/\/[^\/]+\/?$/)?.[0]) {
+            return 'Homepage detected - establishes website identity and enables site-wide search features';
+        }
+        else {
+            return 'Standard page detected - improves search engine understanding and navigation';
+        }
+    }
+    // Helper method to describe benefits of specific schema types
+    static getSchemasBenefits(schemaTypes) {
+        const benefits = [];
+        schemaTypes.forEach(schemaType => {
+            switch (schemaType) {
+                case 'Article':
+                    benefits.push('Rich article snippets with author, date, and reading time');
+                    break;
+                case 'Product':
+                    benefits.push('Product rich snippets with price, availability, and star ratings');
+                    break;
+                case 'Organization':
+                    benefits.push('Brand knowledge panel and business information display');
+                    break;
+                case 'WebSite':
+                    benefits.push('Site search box in Google results and enhanced site links');
+                    break;
+                case 'LocalBusiness':
+                    benefits.push('Local business listings with hours, phone, and directions');
+                    break;
+                case 'Event':
+                    benefits.push('Event rich snippets with dates, locations, and ticket links');
+                    break;
+                case 'Service':
+                    benefits.push('Service listings with descriptions and business details');
+                    break;
+                case 'ContactPage':
+                    benefits.push('Enhanced business contact information display');
+                    break;
+                case 'BreadcrumbList':
+                    benefits.push('Breadcrumb navigation in search results');
+                    break;
+                case 'WebPage':
+                    benefits.push('Improved page understanding and search result relevance');
+                    break;
+                default:
+                    benefits.push(`Enhanced ${schemaType} markup for better search visibility`);
+            }
+        });
+        return benefits;
+    }
+}
+exports.ActionItemService = ActionItemService;

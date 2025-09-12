@@ -1,0 +1,183 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.dynamic = void 0;
+exports.GET = GET;
+const server_1 = require("next/server");
+const googleapis_1 = require("googleapis");
+const supabase_js_1 = require("@supabase/supabase-js");
+// Force dynamic rendering
+exports.dynamic = 'force-dynamic';
+const supabase = (0, supabase_js_1.createClient)(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+// Helper function to get the correct base URL
+function getBaseUrl() {
+    // Force seoagent.com in production, ignore VERCEL_URL to avoid seometrics.ai redirects
+    return process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
+}
+async function GET(request) {
+    try {
+        console.log('[GSC OAUTH CALLBACK] Processing OAuth callback');
+        const { searchParams } = new URL(request.url);
+        const code = searchParams.get('code');
+        const state = searchParams.get('state');
+        const error = searchParams.get('error');
+        // Handle OAuth errors
+        if (error) {
+            console.log('[GSC OAUTH CALLBACK] OAuth error:', error);
+            return server_1.NextResponse.redirect(`${getBaseUrl()}/dashboard?error=oauth_denied`);
+        }
+        if (!code || !state) {
+            console.log('[GSC OAUTH CALLBACK] Missing code or state parameter');
+            return server_1.NextResponse.redirect(`${getBaseUrl()}/dashboard?error=invalid_request`);
+        }
+        // Verify state parameter
+        let stateData;
+        try {
+            stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        }
+        catch (e) {
+            console.log('[GSC OAUTH CALLBACK] Invalid state parameter');
+            return server_1.NextResponse.redirect(`${getBaseUrl()}/dashboard?error=invalid_state`);
+        }
+        const { userToken } = stateData;
+        // Get OAuth credentials
+        const clientId = process.env.GOOGLE_CLIENT_ID;
+        const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+        const baseUrl = getBaseUrl();
+        const redirectUri = `${baseUrl}/api/gsc/oauth/callback`;
+        if (!clientId || !clientSecret) {
+            console.log('[GSC OAUTH CALLBACK] Missing OAuth credentials');
+            return server_1.NextResponse.redirect(`${baseUrl}/dashboard?error=server_error`);
+        }
+        // Create OAuth2 client
+        const oauth2Client = new googleapis_1.google.auth.OAuth2(clientId, clientSecret, redirectUri);
+        // Exchange code for tokens
+        const { tokens } = await oauth2Client.getToken(code);
+        if (!tokens.access_token || !tokens.refresh_token) {
+            console.log('[GSC OAUTH CALLBACK] Missing required tokens');
+            return server_1.NextResponse.redirect(`${baseUrl}/dashboard?error=token_error`);
+        }
+        // Set credentials to get user info
+        oauth2Client.setCredentials(tokens);
+        // Get user email from Google
+        const oauth2 = googleapis_1.google.oauth2({ version: 'v2', auth: oauth2Client });
+        const userInfo = await oauth2.userinfo.get();
+        const email = userInfo.data.email;
+        if (!email) {
+            console.log('[GSC OAUTH CALLBACK] Unable to get user email');
+            return server_1.NextResponse.redirect(`${baseUrl}/dashboard?error=email_error`);
+        }
+        // Verify user exists in database
+        const { data: loginUser, error: authError } = await supabase
+            .from('login_users')
+            .select('*')
+            .eq('token', userToken)
+            .single();
+        if (authError || !loginUser) {
+            console.log('[GSC OAUTH CALLBACK] Authentication failed or user not found');
+            return server_1.NextResponse.redirect(`${getBaseUrl()}/login?error=auth_required`);
+        }
+        // Calculate expiry time
+        const expiresAt = new Date(Date.now() + (tokens.expiry_date || Date.now() + 3600 * 1000));
+        // Store connection in database
+        console.log('[GSC OAUTH CALLBACK] Attempting to store GSC connection for userToken:', userToken);
+        // First, try to find existing connection
+        const { data: existingConnection } = await supabase
+            .from('gsc_connections')
+            .select('id')
+            .eq('user_token', userToken)
+            .single();
+        const connectionData = {
+            user_token: userToken,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            expires_at: expiresAt.toISOString(),
+            email: email,
+            scope: 'https://www.googleapis.com/auth/webmasters',
+            is_active: true,
+            last_sync_at: null,
+            sync_errors: []
+        };
+        let connection;
+        let dbError;
+        if (existingConnection) {
+            // Update existing connection
+            console.log('[GSC OAUTH CALLBACK] Updating existing connection:', existingConnection.id);
+            const result = await supabase
+                .from('gsc_connections')
+                .update(connectionData)
+                .eq('id', existingConnection.id)
+                .select()
+                .single();
+            connection = result.data;
+            dbError = result.error;
+        }
+        else {
+            // Insert new connection
+            console.log('[GSC OAUTH CALLBACK] Creating new connection');
+            const result = await supabase
+                .from('gsc_connections')
+                .insert(connectionData)
+                .select()
+                .single();
+            connection = result.data;
+            dbError = result.error;
+        }
+        if (dbError) {
+            console.error('[GSC OAUTH CALLBACK] Database error details:', {
+                error: dbError,
+                message: dbError.message,
+                code: dbError.code,
+                details: dbError.details,
+                hint: dbError.hint
+            });
+            return server_1.NextResponse.redirect(`${getBaseUrl()}/dashboard?error=db_error&details=${encodeURIComponent(dbError.message)}`);
+        }
+        console.log('[GSC OAUTH CALLBACK] Successfully stored GSC connection for user:', loginUser.email);
+        // Update all websites for this user to reflect GSC connected status
+        try {
+            console.log('[GSC OAUTH CALLBACK] Updating website GSC status for user token:', userToken);
+            const { data: updatedWebsites, error: updateError } = await supabase
+                .from('websites')
+                .update({
+                gsc_status: 'connected',
+                last_status_check: new Date().toISOString()
+            })
+                .eq('user_token', userToken)
+                .select('domain, gsc_status');
+            if (updateError) {
+                console.error('[GSC OAUTH CALLBACK] Error updating website GSC status:', updateError);
+            }
+            else {
+                console.log('[GSC OAUTH CALLBACK] Updated GSC status for websites:', updatedWebsites?.map(w => w.domain));
+            }
+        }
+        catch (error) {
+            console.error('[GSC OAUTH CALLBACK] Error updating website status:', error);
+            // Don't fail the callback, just log the error
+        }
+        // Trigger property sync in background to populate properties
+        try {
+            console.log('[GSC OAUTH CALLBACK] Triggering property sync');
+            const baseUrl = getBaseUrl();
+            // Make a background request to sync properties
+            fetch(`${baseUrl}/api/gsc/properties?userToken=${userToken}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).catch(error => {
+                console.error('[GSC OAUTH CALLBACK] Background property sync failed:', error);
+            });
+        }
+        catch (error) {
+            console.error('[GSC OAUTH CALLBACK] Error triggering property sync:', error);
+            // Don't fail the redirect, just log the error
+        }
+        // Redirect to dashboard with success message
+        return server_1.NextResponse.redirect(`${getBaseUrl()}/dashboard?gsc_connected=true`);
+    }
+    catch (error) {
+        console.error('[GSC OAUTH CALLBACK] Unexpected error:', error);
+        return server_1.NextResponse.redirect(`${getBaseUrl()}/dashboard?error=unexpected`);
+    }
+}

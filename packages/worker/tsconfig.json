@@ -4,16 +4,14 @@
     "noEmit": false,
     "outDir": "dist",
     "rootDir": "../../",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "target": "ES2022",
+    "module": "commonjs",
+    "target": "es2019",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "baseUrl": "../../"
   },
   "include": [
-    "src/**/*.ts",
-    "../../src/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

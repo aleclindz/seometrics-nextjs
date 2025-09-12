@@ -1,0 +1,178 @@
+"use strict";
+/**
+ * Secure OpenAI Client - Server-Side Only
+ *
+ * This client replaces the browser-exposed OpenAI client and provides:
+ * - Server-side API key protection
+ * - Multi-turn tool execution loop
+ * - Token management and history trimming
+ * - Dynamic tool exposure
+ * - Model routing based on task type
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SecureOpenAIClient = void 0;
+exports.isBrowser = isBrowser;
+const agent_memory_1 = require("../agent/agent-memory");
+class SecureOpenAIClient {
+    agentMemory;
+    constructor() {
+        // No API key needed - server handles it
+    }
+    // Initialize agent memory for a specific website
+    initializeMemory(websiteToken, userToken) {
+        if (!this.agentMemory || this.agentMemory['websiteToken'] !== websiteToken) {
+            this.agentMemory = new agent_memory_1.AgentMemory(websiteToken, userToken);
+        }
+    }
+    async sendMessage(message, context) {
+        try {
+            const systemPrompt = await this.buildSystemPrompt(context);
+            const availableTools = this.getAvailableTools(context);
+            // Call our secure server endpoint
+            const response = await fetch('/api/llm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    systemPrompt,
+                    history: context.history || [],
+                    userMessage: message,
+                    userToken: context.userToken,
+                    siteUrl: context.siteContext?.selectedSite,
+                    availableTools
+                })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'LLM request failed');
+            }
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'LLM processing failed');
+            }
+            return {
+                content: result.content,
+                toolResults: result.toolResults,
+                steps: result.steps,
+                model: result.model
+            };
+        }
+        catch (error) {
+            console.error('[SECURE OPENAI] Error:', error);
+            return {
+                content: "I'm experiencing some technical difficulties. Please try again in a moment."
+            };
+        }
+    }
+    async buildSystemPrompt(context) {
+        let prompt = `You are SEOAgent, an expert SEO assistant for SEOAgent.com. You help users with:
+
+1. **Google Search Console Integration**: Connect websites, sync performance data, analyze search metrics
+2. **Content Optimization**: Generate SEO articles, analyze content gaps, optimize existing pages
+3. **Technical SEO**: Monitor SEOAgent.js performance, check website health, provide recommendations
+4. **CMS Management**: Connect WordPress, Webflow, and other platforms for content publishing
+5. **Performance Analytics**: Track rankings, traffic, and conversion metrics
+
+**Available Functions**: You have access to powerful functions to help users. When a user asks to do something, use the appropriate function rather than just explaining how to do it.
+
+**SEOAgent.js Integration**: The user's websites use SEOAgent.js for automatic meta tags and alt text generation. You can check its status and performance.
+
+**Communication Style**: 
+- Be helpful, concise, and action-oriented
+- Offer to perform tasks using functions when appropriate
+- Provide specific, actionable recommendations
+- Use a friendly but professional tone`;
+        // Expert reasoning directive for holistic SEO guidance
+        prompt += `\n\n**Expert Reasoning (Always On)**:\n- Think like a senior SEO strategist. Synthesize Google Search Console performance, technical SEO signals, content readiness, and setup status.\n- When asked for guidance, provide a single prioritized “Best Next Step” with: expected impact, effort level, and the exact function(s) you will call to execute it.\n- If data is sparse or missing, prioritize enabling data (connect GSC, backfill last 30 days, verify SEOAgent.js) before deeper analysis.\n- Prefer concrete, measurable actions (e.g., “Backfill last 30 days”, “Analyze top pages by CTR drop”, “Generate internal linking plan”) over vague advice.\n- Reference recent metrics when explaining recommendations (clicks, impressions, CTR, position).`;
+        // Add setup-aware guidance based on current status
+        if (context.siteContext?.selectedSite && context.userToken) {
+            const setupStatus = await this.checkSetupStatus(context.userToken, context.siteContext.selectedSite);
+            if (setupStatus && !setupStatus.isFullySetup) {
+                prompt += `\n\n**IMPORTANT - Setup Priority**: This user needs to complete their setup first. Focus on getting them connected:`;
+                if (!setupStatus.gscConnected) {
+                    prompt += `\n- ❌ Google Search Console: Not connected - PRIORITY #1`;
+                }
+                if (!setupStatus.seoagentjsInstalled) {
+                    prompt += `\n- ❌ SEOAgent.js Script: Not installed - PRIORITY #2`;
+                }
+                prompt += `\n- When users greet you or ask general questions, prioritize explaining the setup process`;
+                prompt += `\n- Use functions like connect_gsc and get_site_status to help with setup`;
+                prompt += `\n- Be encouraging and explain how these connections unlock powerful automation`;
+            }
+            else if (setupStatus && setupStatus.isFullySetup) {
+                prompt += `\n\n**Setup Status**: ✅ Fully connected! GSC connected and SEOAgent.js installed. Focus on optimization and automation.`;
+            }
+        }
+        if (context.siteContext?.userSites?.length) {
+            prompt += `\n\n**User's Websites**:\n`;
+            context.siteContext.userSites.forEach(site => {
+                prompt += `- ${site.name} (${site.url})\n`;
+            });
+        }
+        if (context.siteContext?.selectedSite) {
+            prompt += `\n**Currently Selected Site**: ${context.siteContext.selectedSite}`;
+        }
+        // Add memory context if available
+        if (context.siteContext?.selectedSite && context.userToken) {
+            this.initializeMemory(context.siteContext.selectedSite, context.userToken);
+            try {
+                const websiteContext = await this.agentMemory?.getWebsiteContext();
+                if (websiteContext && Object.keys(websiteContext).length > 0) {
+                    prompt += `\n\n**Website Context & Memory**:\n`;
+                    if (websiteContext.seo_focus?.length) {
+                        prompt += `- SEO Focus Areas: ${websiteContext.seo_focus.join(', ')}\n`;
+                    }
+                    if (websiteContext.content_style) {
+                        prompt += `- Content Style: ${websiteContext.content_style}\n`;
+                    }
+                    if (websiteContext.successful_keywords?.length) {
+                        prompt += `- Successful Keywords: ${websiteContext.successful_keywords.slice(0, 5).join(', ')}\n`;
+                    }
+                }
+            }
+            catch (error) {
+                console.log('[SECURE OPENAI] Memory context error:', error);
+            }
+        }
+        return prompt;
+    }
+    getAvailableTools(context) {
+        // Dynamic tool exposure based on setup status and context
+        const baseTool = ['get_site_status', 'create_idea', 'adopt_idea'];
+        if (!context.siteContext?.selectedSite) {
+            return baseTool;
+        }
+        // Add tools based on setup status - this will be determined server-side
+        return []; // Empty means show all tools
+    }
+    // Check setup status for dynamic tool filtering and prompt adaptation
+    async checkSetupStatus(userToken, siteUrl) {
+        try {
+            // Use our existing server endpoint for setup checking
+            const response = await fetch(`/api/agent/capabilities?userToken=${encodeURIComponent(userToken)}&siteUrl=${encodeURIComponent(siteUrl)}`);
+            if (!response.ok) {
+                return null;
+            }
+            const data = await response.json();
+            if (data.success && data.setup) {
+                return {
+                    gscConnected: data.setup.gscConnected || false,
+                    seoagentjsInstalled: data.setup.seoagentjsInstalled || false,
+                    hasAuditScore: data.setup.hasAuditScore || false,
+                    isFullySetup: (data.setup.gscConnected && data.setup.seoagentjsInstalled) || false
+                };
+            }
+            return null;
+        }
+        catch (error) {
+            console.error('[SECURE OPENAI] Setup check error:', error);
+            return null;
+        }
+    }
+}
+exports.SecureOpenAIClient = SecureOpenAIClient;
+// Browser environment helper
+function isBrowser() {
+    return typeof window !== 'undefined';
+}

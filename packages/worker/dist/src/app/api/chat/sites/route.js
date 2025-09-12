@@ -1,0 +1,97 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.dynamic = void 0;
+exports.GET = GET;
+const server_1 = require("next/server");
+const supabase_js_1 = require("@supabase/supabase-js");
+const seoagent_js_status_1 = require("@/lib/seoagent-js-status");
+// Force dynamic rendering
+exports.dynamic = 'force-dynamic';
+const supabase = (0, supabase_js_1.createClient)(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+async function GET(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const userToken = searchParams.get('userToken');
+        if (!userToken) {
+            return server_1.NextResponse.json({ error: 'User token required' }, { status: 401 });
+        }
+        // Get user websites (only managed and not excluded)
+        const { data: websites, error: websitesError } = await supabase
+            .from('websites')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('is_managed', true)
+            .eq('is_excluded_from_sync', false);
+        if (websitesError) {
+            console.error('[CHAT SITES] Error fetching websites:', websitesError);
+            return server_1.NextResponse.json({ error: 'Failed to fetch websites' }, { status: 500 });
+        }
+        console.log('[CHAT SITES] Found', websites?.length || 0, 'websites for user token:', userToken);
+        // Get GSC connections for these websites
+        const { data: gscConnections, error: gscError } = await supabase
+            .from('gsc_connections')
+            .select('*')
+            .eq('user_token', userToken);
+        // Get GSC properties
+        const { data: gscProperties, error: propertiesError } = await supabase
+            .from('gsc_properties')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('is_active', true);
+        // Get CMS connections for these websites
+        const { data: cmsConnections, error: cmsError } = await supabase
+            .from('cms_connections')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('status', 'active');
+        // Get latest GSC performance data
+        const { data: performanceData, error: performanceError } = await supabase
+            .from('gsc_performance_data')
+            .select('*')
+            .eq('user_token', userToken)
+            .order('date_end', { ascending: false });
+        // Transform websites data to include GSC status and metrics
+        const enrichedWebsites = websites?.map(website => {
+            // Find GSC connection for this website
+            const gscConnection = gscConnections?.find(conn => gscProperties?.some(prop => prop.connection_id === conn.id &&
+                (prop.site_url === website.domain || prop.site_url === `https://${website.domain}` || prop.site_url === `http://${website.domain}`)));
+            // Find GSC property for this website
+            const gscProperty = gscProperties?.find(prop => prop.site_url === website.domain ||
+                prop.site_url === `https://${website.domain}` ||
+                prop.site_url === `http://${website.domain}`);
+            // Get latest performance data for this property
+            const latestPerformance = gscProperty
+                ? performanceData?.find(perf => perf.property_id === gscProperty.id)
+                : null;
+            // Find CMS connection for this website (using website.id as foreign key)
+            const cmsConnection = cmsConnections?.find(cms => cms.website_id === website.id);
+            return {
+                id: website.website_token,
+                url: website.domain,
+                name: website.domain, // You might want to add a name field to websites table
+                gscStatus: gscConnection?.is_active ? 'connected' : 'none',
+                cmsStatus: cmsConnection?.status === 'active' ? 'connected' : 'none',
+                smartjsStatus: (0, seoagent_js_status_1.getSmartJSStatus)(website.domain),
+                lastSync: gscConnection?.last_sync_at ? new Date(gscConnection.last_sync_at) : undefined,
+                metrics: latestPerformance ? {
+                    clicks: latestPerformance.total_clicks || 0,
+                    impressions: latestPerformance.total_impressions || 0,
+                    ctr: (latestPerformance.avg_ctr || 0) * 100,
+                    position: latestPerformance.avg_position || 0,
+                    dateStart: latestPerformance.date_start,
+                    dateEnd: latestPerformance.date_end
+                } : undefined,
+                gscProperty: gscProperty,
+                performanceHistory: performanceData?.filter(perf => perf.property_id === gscProperty?.id) || []
+            };
+        }) || [];
+        return server_1.NextResponse.json({
+            success: true,
+            sites: enrichedWebsites
+        });
+    }
+    catch (error) {
+        console.error('[CHAT SITES] Unexpected error:', error);
+        return server_1.NextResponse.json({ error: 'Failed to fetch sites data' }, { status: 500 });
+    }
+}
