@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "outDir": "dist",
+    "outDir": "../../dist",
     "rootDir": "../../",
     "module": "commonjs",
     "target": "es2019",
@@ -11,7 +11,8 @@
     "baseUrl": "../../"
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "../../src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
