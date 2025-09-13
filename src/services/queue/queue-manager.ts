@@ -433,6 +433,8 @@ export class AgentQueueManager {
       .from('article_queue')
       .update({
         article_content: result.content,
+        // Auto-update visible title to the enhanced metaTitle when available
+        title: result.metaTitle || article.title,
         meta_title: result.metaTitle,
         meta_description: result.metaDescription,
         content_outline: result.contentOutline,

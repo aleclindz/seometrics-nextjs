@@ -65,6 +65,7 @@ export default function ArticleWriter() {
   const [creatingArticle, setCreatingArticle] = useState(false);
   const [generatingArticle, setGeneratingArticle] = useState<number | null>(null);
   const [publishingArticle, setPublishingArticle] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error' }>(() => ({ visible: false, message: '', type: 'success' }));
   
   // Filter state
   const [selectedWebsiteFilter, setSelectedWebsiteFilter] = useState<string>('all');
@@ -213,12 +214,18 @@ export default function ArticleWriter() {
       if (response.ok) {
         // Refresh articles list to get updated data
         fetchData();
+        setToast({ visible: true, message: '✅ Article published', type: 'success' });
+        setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 2500);
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to publish article');
+        setToast({ visible: true, message: `Publish failed: ${errorData.error || 'Unknown error'}`, type: 'error' });
+        setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
       }
     } catch (err) {
       setError('Failed to publish article');
+      setToast({ visible: true, message: 'Publish failed. Please try again.', type: 'error' });
+      setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
     } finally {
       setPublishingArticle(null);
     }
@@ -429,6 +436,11 @@ export default function ArticleWriter() {
     <ProtectedRoute>
       <FeatureGate feature="articleGeneration">
         <div className="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+          {toast.visible && (
+            <div className={`fixed top-4 right-4 z-[9999] px-4 py-2 rounded-lg shadow ${toast.type==='success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+              {toast.message}
+            </div>
+          )}
           <div className="flex h-screen overflow-hidden">
             <Sidebar 
               sidebarOpen={sidebarOpen}

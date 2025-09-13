@@ -228,6 +228,12 @@ META REQUIREMENTS:
 - metaDescription: 150-160 characters, compelling with clear value proposition
 - contentOutline: array of section objects with id, title, and summary
 
+TITLE QUALITY RULES (very important):
+- Create a clickworthy, descriptive metaTitle that clearly communicates value and includes the primary keyword.
+- Prefer specifics over generic phrases; consider using numbers, brackets, or clarifiers when appropriate (e.g., "[Guide]", "2025", "Step-by-step").
+- Avoid vague titles like "Localization Strategy"; write something like "Localization Strategy for YouTube: 7 Steps to Reach Global Viewers (2025)" when the site context suggests it.
+- The H1 in the article should match the metaTitle exactly.
+
 ${researchBlock}
 
 ${citationRules}

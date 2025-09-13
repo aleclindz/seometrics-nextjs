@@ -104,6 +104,8 @@ export default function WebsitePage() {
     message: ''
   });
   const [hasCmsConnection, setHasCmsConnection] = useState<boolean>(false);
+  const [publishingId, setPublishingId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error' }>(() => ({ visible: false, message: '', type: 'success' }));
 
   // Draft preview modal state
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -510,6 +512,7 @@ export default function WebsitePage() {
   const publishDraftNow = async (articleId: number) => {
     if (!user?.token) return;
     try {
+      setPublishingId(articleId);
       const resp = await fetch('/api/articles/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -518,10 +521,19 @@ export default function WebsitePage() {
       const data = await resp.json();
       if (!resp.ok || !data.success) {
         console.error('Publish failed', data);
+        setToast({ visible: true, message: `Publish failed: ${data?.error || 'Unknown error'}`, type: 'error' });
       }
       await fetchContentData();
+      if (resp.ok && data.success) {
+        setToast({ visible: true, message: '✅ Article published successfully', type: 'success' });
+        setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 2500);
+      }
     } catch (e) {
       console.error('Publish failed', e);
+      setToast({ visible: true, message: 'Publish failed. Please try again.', type: 'error' });
+      setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -558,6 +570,11 @@ export default function WebsitePage() {
   return (
     <ProtectedRoute>
       <div className="h-screen w-full bg-gray-50 text-gray-900">
+        {toast.visible && (
+          <div className={`fixed top-4 right-4 z-[9999] px-4 py-2 rounded-lg shadow ${toast.type==='success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+            {toast.message}
+          </div>
+        )}
         {/* Top Bar */}
         <header className="h-14 border-b bg-white flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
@@ -1128,7 +1145,9 @@ export default function WebsitePage() {
                                   <div className="flex items-center gap-2">
                                     <button className="text-xs text-blue-600 hover:underline" onClick={() => openDraftPreview(a.id)}>View</button>
                                     {hasCmsConnection ? (
-                                      <button className="text-xs text-green-600 hover:underline" onClick={() => publishDraftNow(a.id)}>Publish</button>
+                                  <button className="text-xs text-green-600 hover:underline disabled:opacity-50" disabled={publishingId===a.id} onClick={() => publishDraftNow(a.id)}>
+                                    {publishingId===a.id ? 'Publishing…' : 'Publish'}
+                                  </button>
                                     ) : (
                                       <a className="text-xs text-gray-500 hover:underline" href="/content-writer">Connect CMS</a>
                                     )}

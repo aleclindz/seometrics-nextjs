@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
         
           // Prepare article data
           const articleData = {
-            title: article.title,
+            title: article.meta_title || article.title,
             content: article.article_content,
             slug: article.slug,
             excerpt: article.meta_description || '',
@@ -192,11 +192,11 @@ export async function POST(request: NextRequest) {
           
       } else if (effectiveCms?.cms_type === 'strapi') {
         // Legacy Strapi support
-        cmsArticleId = await publishToStrapi({
+        const strapiResult = await publishToStrapi({
           baseUrl: effectiveCms.base_url,
           apiToken: effectiveCms.api_token,
           contentType: effectiveCms.content_type,
-          title: article.title,
+          title: article.meta_title || article.title,
           content: article.article_content,
           slug: article.slug,
           metaTitle: article.meta_title,
@@ -204,42 +204,58 @@ export async function POST(request: NextRequest) {
           publishDraft,
           cmsConnectionId: effectiveCmsId
         });
+        cmsArticleId = strapiResult.cmsId;
+        // If slug was changed to satisfy uniqueness, update article record
+        if (strapiResult.usedSlug && strapiResult.usedSlug !== (article.slug || '')) {
+          try {
+            await supabase
+              .from('article_queue')
+              .update({ slug: strapiResult.usedSlug, updated_at: new Date().toISOString() })
+              .eq('id', articleId);
+          } catch {}
+        }
       } else {
         throw new Error('No valid CMS connection found. Please connect a CMS platform first.');
       }
 
       const publishTime = Math.round((Date.now() - publishStartTime) / 1000);
 
-      // Generate Strapi admin deep-link URL
-      const strapiAdminUrl = generateStrapiAdminUrl(
-        effectiveCms.base_url,
-        effectiveCms.content_type,
-        cmsArticleId
-      );
-
-      // Generate public URL for the published article
-      const publicUrl = generatePublicArticleUrl(
-        effectiveCms.base_url,
-        article.slug || generateOptimizedSlug(article.title)
-      );
-
-      // Update article with CMS ID, published status, admin URL, and public URL
-      const { error: updateError } = await supabase
+      // Minimal update first (DBs without url columns)
+      const { error: minimalUpdateError } = await supabase
         .from('article_queue')
         .update({
           cms_article_id: cmsArticleId,
           status: 'published',
           published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          cms_admin_url: strapiAdminUrl,
-          public_url: publicUrl,
           cms_connection_id: (article as any).cms_connection_id || effectiveCmsId
         })
         .eq('id', articleId);
 
-      if (updateError) {
-        throw new Error(`Failed to update article status: ${updateError.message}`);
+      if (minimalUpdateError) {
+        throw new Error(`Failed to update article status: ${minimalUpdateError.message}`);
       }
+
+      // Best-effort: admin/public URLs (skip if columns missing)
+      try {
+        const strapiAdminUrl = generateStrapiAdminUrl(
+          effectiveCms.base_url,
+          effectiveCms.content_type,
+          cmsArticleId
+        );
+        const publicUrl = generatePublicArticleUrl(
+          effectiveCms.base_url,
+          (article.slug || generateOptimizedSlug(article.title))
+        );
+        await supabase
+          .from('article_queue')
+          .update({
+            cms_admin_url: strapiAdminUrl,
+            public_url: publicUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', articleId);
+      } catch {}
 
       // Log successful publication
       await supabase
@@ -325,7 +341,7 @@ async function publishToStrapi({
   metaDescription?: string;
   publishDraft: boolean;
   cmsConnectionId: number;
-}): Promise<string> {
+}): Promise<{ cmsId: string; usedSlug: string }> {
   
   const cleanUrl = baseUrl.replace(/\/$/, '');
   
@@ -381,11 +397,12 @@ async function publishToStrapi({
   const formattedContent = formatContentForPublication(content, schemaInfo);
   
   // Build article data with schema-aware field mapping
-  const articleData: any = {
+  let usedSlug = slug || generateOptimizedSlug(title);
+  let articleData: any = {
     data: {
       title,
       content: formattedContent,
-      slug: slug || generateOptimizedSlug(title),
+      slug: usedSlug,
       publishedAt: publishDraft ? null : new Date().toISOString() // null = draft, date = published
     }
   };
@@ -414,24 +431,42 @@ async function publishToStrapi({
 
   console.log('[STRAPI PUBLISH] Article data:', JSON.stringify(articleData, null, 2));
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(articleData)
-  });
+  const doRequest = async () => {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(articleData)
+    });
+    return resp;
+  };
+
+  let response = await doRequest();
+  if (!response.ok && response.status === 400) {
+    const text = await response.text();
+    // Handle unique slug error by retrying with a suffix
+    if (text.includes('This attribute must be unique') && text.toLowerCase().includes('slug')) {
+      usedSlug = `${usedSlug}-${Math.random().toString(36).slice(2, 6)}`;
+      articleData.data.slug = usedSlug;
+      response = await doRequest();
+    } else {
+      // Fall through to detailed error handling below
+      // restore the text into a variable for error throw
+      // but since we've consumed text, set a marker
+      (response as any)._consumedErrorText = text;
+    }
+  }
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = (response as any)._consumedErrorText || await response.text();
     console.error('[STRAPI PUBLISH] Error response:', response.status, errorText);
     console.error('[STRAPI PUBLISH] Request URL:', url);
     console.error('[STRAPI PUBLISH] Request headers:', {
       'Authorization': `Bearer ${apiToken ? apiToken.substring(0, 10) + '...' : 'missing'}`,
       'Content-Type': 'application/json'
     });
-    
     if (response.status === 401) {
       throw new Error('Authentication failed. Please check your API token.');
     } else if (response.status === 404) {
@@ -455,7 +490,7 @@ async function publishToStrapi({
     throw new Error('No document ID returned from Strapi');
   }
 
-  return documentId.toString();
+  return { cmsId: documentId.toString(), usedSlug };
 }
 
 function formatContentForStrapi(content: string): any {
