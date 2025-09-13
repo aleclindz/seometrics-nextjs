@@ -22,8 +22,6 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state');
     const userToken = searchParams.get('userToken');
 
-    console.log('[VERCEL OAUTH] Request params:', { code: !!code, state: !!state, userToken: userToken ? userToken.substring(0, 10) + '...' : 'null' });
-
     // Step 2: Handle OAuth callback
     if (code && state) {
       return handleOAuthCallback(code, state);
@@ -31,7 +29,6 @@ export async function GET(request: NextRequest) {
 
     // Step 1: Initiate OAuth flow
     // If no userToken, this is likely from Vercel marketplace - initiate anonymous flow
-    console.log('[VERCEL OAUTH] Initiating OAuth flow with userToken:', userToken ? 'provided' : 'null (anonymous)');
     return initiateOAuthFlow(userToken || undefined);
 
   } catch (error) {
@@ -74,9 +71,18 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
 
     // Construct Vercel OAuth URL
     const vercelClientId = process.env.VERCEL_CLIENT_ID;
-    // Force www.seoagent.com in production, ignore VERCEL_URL to avoid seometrics.ai redirects
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://www.seoagent.com' : 'http://localhost:3000');
-    const redirectUri = `${baseUrl}/api/hosting/vercel/oauth`;
+    const redirectUri = process.env.VERCEL_OAUTH_REDIRECT_URI!;
+    
+    // Validate redirect URI is configured
+    if (!redirectUri) {
+      return NextResponse.json(
+        { 
+          error: 'VERCEL_OAUTH_REDIRECT_URI environment variable is required',
+          setupRequired: true
+        },
+        { status: 500 }
+      );
+    }
     
     // Check for placeholder/missing credentials
     if (!vercelClientId || vercelClientId === 'your_vercel_client_id_here') {
@@ -90,12 +96,11 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
     }
 
     const oauthUrl = `https://vercel.com/oauth/authorize?` +
-      `client_id=${vercelClientId}&` +
-      `team_id=team_HSnkJEctgKF6Sx3vSXqUi33P&` +
+      `client_id=${encodeURIComponent(vercelClientId)}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `response_type=code&` +
-      `scope=read:project,write:project&` +
-      `state=${state}`;
+      `scope=${encodeURIComponent('read:project,write:project')}&` +
+      `state=${encodeURIComponent(state)}`;
 
     console.log('[VERCEL OAUTH] OAuth Configuration:', {
       clientId: vercelClientId?.substring(0, 8) + '...',
@@ -180,7 +185,7 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
         client_id: process.env.VERCEL_CLIENT_ID!,
         client_secret: process.env.VERCEL_CLIENT_SECRET!,
         code,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://www.seoagent.com' : 'http://localhost:3000')}/api/hosting/vercel/oauth`
+        redirect_uri: process.env.VERCEL_OAUTH_REDIRECT_URI!
       })
     });
 
@@ -283,7 +288,7 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
         .eq('state', state);
 
       // Redirect to signup/login with integration data
-      const baseUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://www.seoagent.com' : 'http://localhost:3000');
+      const baseUrlForRedirect = new URL(process.env.VERCEL_OAUTH_REDIRECT_URI!).origin;
       const signupUrl = `${baseUrlForRedirect}/login?mode=signup&vercel_integration=${tempIntegrationId}&source=marketplace`;
       return NextResponse.redirect(signupUrl);
     }
