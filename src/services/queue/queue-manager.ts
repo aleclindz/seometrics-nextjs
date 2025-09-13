@@ -79,7 +79,10 @@ export class AgentQueueManager {
 
       const events = new QueueEvents(queueName, {
         connection: redisConnection,
-      });
+        // Reduce Redis command usage on Upstash by blocking longer between polls
+        // Default is ~5s; set to 60s to cut commands ~12x for idle queues
+        blockingTimeout: 300000,
+      } as any);
 
       this.queues.set(queueName, queue);
       this.events.set(queueName, events);
