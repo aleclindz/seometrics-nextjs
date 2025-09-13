@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       if (effectiveCmsId && effectiveCms?.cms_type !== 'strapi') {
         // Use new modular CMS system for WordPress, Webflow, Shopify
         try {
-          const connection = await cmsManager.getConnection(effectiveCmsId, userToken);
+          const connection = await cmsManager.getConnection(String(effectiveCmsId), userToken);
           
           if (!connection) {
             console.log('[PUBLISH EDGE] New CMS connection not found, falling back to legacy system');
