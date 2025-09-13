@@ -28,6 +28,8 @@ export default function WebsitePage() {
   const [logCollapsed, setLogCollapsed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
+  // Collapse the left chat rail by default
+  const [railCollapsed, setRailCollapsed] = useState(true);
   const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string }>>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [backfilling, setBackfilling] = useState(false);
@@ -626,14 +628,22 @@ export default function WebsitePage() {
             </button>
           </div>
           <div className="flex items-center gap-2">
+            {/* Toggle Chat Rail */}
+            <button 
+              onClick={() => setRailCollapsed(!railCollapsed)}
+              className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              title={railCollapsed ? 'Open chat' : 'Hide chat'}
+            >
+              {railCollapsed ? 'Open Chat' : 'Hide Chat'}
+            </button>
             <div className="h-8 w-8 rounded-full bg-gray-200" />
           </div>
         </header>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-[480px_1fr_auto] gap-4 p-4 h-[calc(100vh-56px)]">
+        <div className={`grid ${railCollapsed ? 'grid-cols-[0px_1fr]' : 'grid-cols-[480px_1fr]'} gap-4 p-4 h-[calc(100vh-56px)]`}>
           {/* Left: Chat */}
-          <aside className="bg-white border rounded-2xl flex flex-col overflow-hidden">
+          <aside className={`${railCollapsed ? 'hidden' : ''} bg-white border rounded-2xl flex flex-col overflow-hidden`}>
             <div className="px-4 py-3 border-b font-semibold text-sm">Chat with SEOAgent</div>
             <div className="flex-1 min-h-0 text-sm">
               <ChatInterface 
@@ -1044,47 +1054,9 @@ export default function WebsitePage() {
                       <div className="text-sm text-gray-500">{contentData.message}</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Articles */}
                       <div className="bg-white border rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-2">Internal Links</div>
-                        <div className="h-28 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-4 flex flex-col justify-center">
-                          <div className="text-center mb-2">
-                            <div className="text-xl font-bold text-blue-700">
-                              {contentData.internalLinks.applied}/{contentData.internalLinks.suggested}
-                            </div>
-                            <div className="text-xs text-blue-600">Applied / Suggested</div>
-                          </div>
-                          <div className="w-full bg-blue-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full transition-all" 
-                              style={{
-                                width: `${(contentData.internalLinks.applied / contentData.internalLinks.suggested) * 100}%`
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Suggested: {contentData.internalLinks.suggested} • Applied: {contentData.internalLinks.applied}
-                        </div>
-                      </div>
-                      
-                      <div className="bg-white border rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-2">Semantic Visibility Score</div>
-                        <div className="h-28 rounded-lg bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="text-3xl font-bold text-green-700">
-                              {contentData.semanticVisibility.score}
-                            </div>
-                            <div className="text-xs text-green-600">
-                              {contentData.semanticVisibility.trend && `${contentData.semanticVisibility.trend} trend`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500">Sitewide topical strength</div>
-                      </div>
-
-                      {/* Articles by status */}
-                      <div className="bg-white border rounded-lg p-4 col-span-2">
                         <div className="flex items-center justify-between mb-2">
                           <div className="text-sm font-semibold">Articles</div>
                         </div>
