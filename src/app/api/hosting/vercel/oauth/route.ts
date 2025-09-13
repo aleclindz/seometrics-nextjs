@@ -107,7 +107,6 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
       redirectUri,
       state,
       appUrl: process.env.NEXT_PUBLIC_APP_URL,
-      calculatedBaseUrl: baseUrl,
       vercelUrl: process.env.VERCEL_URL,
       nextPublicBaseUrl: process.env.NEXT_PUBLIC_BASE_URL,
       nodeEnv: process.env.NODE_ENV
