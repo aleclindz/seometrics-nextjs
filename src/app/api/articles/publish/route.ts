@@ -173,11 +173,11 @@ export async function POST(request: NextRequest) {
           console.log('[PUBLISH EDGE] New CMS system failed, trying legacy system:', newCMSError);
           // Fall back to legacy system if new system fails
           if (effectiveCms?.cms_type === 'strapi') {
-            cmsArticleId = await publishToStrapi({
+            const strapiFallback = await publishToStrapi({
               baseUrl: effectiveCms.base_url,
               apiToken: effectiveCms.api_token,
               contentType: effectiveCms.content_type,
-              title: article.title,
+              title: article.meta_title || article.title,
               content: article.article_content,
               slug: article.slug,
               metaTitle: article.meta_title,
@@ -185,6 +185,15 @@ export async function POST(request: NextRequest) {
               publishDraft,
               cmsConnectionId: effectiveCmsId
             });
+            cmsArticleId = strapiFallback.cmsId;
+            if (strapiFallback.usedSlug && strapiFallback.usedSlug !== (article.slug || '')) {
+              try {
+                await supabase
+                  .from('article_queue')
+                  .update({ slug: strapiFallback.usedSlug, updated_at: new Date().toISOString() })
+                  .eq('id', articleId);
+              } catch {}
+            }
           } else {
             throw newCMSError;
           }
