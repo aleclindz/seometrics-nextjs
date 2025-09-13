@@ -405,6 +405,13 @@ export default function ArticleWriter() {
   };
 
   const hasCMSConnections = cmsConnections.length > 0;
+  const hasCmsForArticle = (article: Article) => {
+    try {
+      return cmsConnections.some((c) => c.website_id === article.website_id);
+    } catch {
+      return false;
+    }
+  };
 
   // Filter articles by selected website
   const filteredArticles = selectedWebsiteFilter === 'all' 
@@ -760,7 +767,7 @@ export default function ArticleWriter() {
                                         )}
                                       </button>
                                     )}
-                                    {article.status === 'generated' && article.cms_connections && (
+                                    {article.status === 'generated' && hasCmsForArticle(article) && (
                                       <button
                                         onClick={() => handlePublishArticle(article.id)}
                                         disabled={publishingArticle === article.id}
@@ -780,6 +787,11 @@ export default function ArticleWriter() {
                                           </>
                                         )}
                                       </button>
+                                    )}
+                                    {article.status === 'generated' && !hasCmsForArticle(article) && (
+                                      <span className="inline-flex items-center px-3 py-1 text-sm text-gray-500">
+                                        Connect a CMS for this site to enable one‑click publish
+                                      </span>
                                     )}
                                     {article.status === 'published' && article.public_url && (
                                       <a

@@ -103,6 +103,7 @@ export default function WebsitePage() {
     error: null as string | null,
     message: ''
   });
+  const [hasCmsConnection, setHasCmsConnection] = useState<boolean>(false);
 
   // Draft preview modal state
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -454,6 +455,15 @@ export default function WebsitePage() {
         next.articles = { published, scheduled, drafts };
         next.hasData = true;
       }
+
+      // Detect CMS connection for this domain (site-level)
+      try {
+        const connRes = await fetch(`/api/cms/connections?userToken=${user.token}&domain=${encodeURIComponent(domain)}`);
+        if (connRes.ok) {
+          const connData = await connRes.json();
+          setHasCmsConnection((connData.connections || []).length > 0);
+        }
+      } catch {}
 
       setContentData({ ...next, isLoading: false, error: null });
     } catch (error) {
@@ -1117,7 +1127,7 @@ export default function WebsitePage() {
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <button className="text-xs text-blue-600 hover:underline" onClick={() => openDraftPreview(a.id)}>View</button>
-                                    {a.cms_connections ? (
+                                    {hasCmsConnection ? (
                                       <button className="text-xs text-green-600 hover:underline" onClick={() => publishDraftNow(a.id)}>Publish</button>
                                     ) : (
                                       <a className="text-xs text-gray-500 hover:underline" href="/content-writer">Connect CMS</a>

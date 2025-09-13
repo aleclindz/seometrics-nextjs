@@ -64,9 +64,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!article.cms_connections) {
+    // Resolve CMS connection: prefer article-level; fallback to website-level active connection
+    let effectiveCms: any = (article as any).cms_connections || null;
+    let effectiveCmsId: number | null = (article as any).cms_connection_id || null;
+    if (!effectiveCms) {
+      const { data: fallbackConn } = await supabase
+        .from('cms_connections')
+        .select('id, base_url, api_token, content_type, cms_type, status')
+        .eq('user_token', userToken)
+        .eq('website_id', article.website_id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+      if (fallbackConn) {
+        effectiveCms = fallbackConn;
+        effectiveCmsId = fallbackConn.id as unknown as number;
+      }
+    }
+    if (!effectiveCms || !effectiveCmsId) {
       return new Response(
-        JSON.stringify({ error: 'No CMS connection found for this article' }),
+        JSON.stringify({ error: 'No CMS connection found for this website' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -88,8 +105,8 @@ export async function POST(request: NextRequest) {
         step: 'publishing',
         status: 'started',
         input_data: {
-          cmsType: article.cms_connections.cms_type,
-          contentType: article.cms_connections.content_type,
+          cmsType: effectiveCms.cms_type,
+          contentType: effectiveCms.content_type,
           publishDraft
         }
       });
@@ -101,10 +118,10 @@ export async function POST(request: NextRequest) {
       
       // Check if this is a new CMS connection (modular system)
       // Skip CMS Manager for Strapi since it's not implemented there yet
-      if (article.cms_connection_id && article.cms_connections?.cms_type !== 'strapi') {
+      if (effectiveCmsId && effectiveCms?.cms_type !== 'strapi') {
         // Use new modular CMS system for WordPress, Webflow, Shopify
         try {
-          const connection = await cmsManager.getConnection(article.cms_connection_id, userToken);
+          const connection = await cmsManager.getConnection(effectiveCmsId, userToken);
           
           if (!connection) {
             console.log('[PUBLISH EDGE] New CMS connection not found, falling back to legacy system');
@@ -155,37 +172,37 @@ export async function POST(request: NextRequest) {
         } catch (newCMSError) {
           console.log('[PUBLISH EDGE] New CMS system failed, trying legacy system:', newCMSError);
           // Fall back to legacy system if new system fails
-          if (article.cms_connections?.cms_type === 'strapi') {
+          if (effectiveCms?.cms_type === 'strapi') {
             cmsArticleId = await publishToStrapi({
-              baseUrl: article.cms_connections.base_url,
-              apiToken: article.cms_connections.api_token,
-              contentType: article.cms_connections.content_type,
+              baseUrl: effectiveCms.base_url,
+              apiToken: effectiveCms.api_token,
+              contentType: effectiveCms.content_type,
               title: article.title,
               content: article.article_content,
               slug: article.slug,
               metaTitle: article.meta_title,
               metaDescription: article.meta_description,
               publishDraft,
-              cmsConnectionId: article.cms_connection_id
+              cmsConnectionId: effectiveCmsId
             });
           } else {
             throw newCMSError;
           }
         }
           
-      } else if (article.cms_connections?.cms_type === 'strapi') {
+      } else if (effectiveCms?.cms_type === 'strapi') {
         // Legacy Strapi support
         cmsArticleId = await publishToStrapi({
-          baseUrl: article.cms_connections.base_url,
-          apiToken: article.cms_connections.api_token,
-          contentType: article.cms_connections.content_type,
+          baseUrl: effectiveCms.base_url,
+          apiToken: effectiveCms.api_token,
+          contentType: effectiveCms.content_type,
           title: article.title,
           content: article.article_content,
           slug: article.slug,
           metaTitle: article.meta_title,
           metaDescription: article.meta_description,
           publishDraft,
-          cmsConnectionId: article.cms_connection_id
+          cmsConnectionId: effectiveCmsId
         });
       } else {
         throw new Error('No valid CMS connection found. Please connect a CMS platform first.');
@@ -195,14 +212,14 @@ export async function POST(request: NextRequest) {
 
       // Generate Strapi admin deep-link URL
       const strapiAdminUrl = generateStrapiAdminUrl(
-        article.cms_connections.base_url,
-        article.cms_connections.content_type,
+        effectiveCms.base_url,
+        effectiveCms.content_type,
         cmsArticleId
       );
 
       // Generate public URL for the published article
       const publicUrl = generatePublicArticleUrl(
-        article.cms_connections.base_url,
+        effectiveCms.base_url,
         article.slug || generateOptimizedSlug(article.title)
       );
 
@@ -215,7 +232,8 @@ export async function POST(request: NextRequest) {
           published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           cms_admin_url: strapiAdminUrl,
-          public_url: publicUrl
+          public_url: publicUrl,
+          cms_connection_id: (article as any).cms_connection_id || effectiveCmsId
         })
         .eq('id', articleId);
 

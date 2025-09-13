@@ -206,6 +206,23 @@ QUALITY REQUIREMENTS:
  - Include a dedicated FAQ section with 3-5 common questions and concise answers
  - Use clear structure; keep sentences readable (avoid overly long sentences)
 
+WRITING STYLE RULES:
+- Use active voice (e.g., "Management canceled the meeting.")
+- Address the reader directly (e.g., "You’ll find these strategies save time.")
+- Be direct and concise (e.g., "Call me at 3pm.")
+- Use simple language; cut fluff; focus on clarity
+- Mix sentence length for rhythm (short punchy + longer explanatory)
+- Keep it conversational and real; avoid hype and clichés
+- Avoid filler phrases, jargon, hashtags, emojis, semicolons, em-dashes
+- Replace uncertainty with clarity when evidence allows
+
+SEO/BLOG ENHANCEMENTS:
+- Where relevant, include 2024–2025 stats and trend data (cite sources)
+- Add 1–2 expert quotes with attribution
+- Include 3–8 internal links and 2–5 external links where natural
+- Provide optimized metadata (title and description)
+- Maintain clear structure: 4–6 H2s with 1–2 H3s under each
+
 META REQUIREMENTS:
 - metaTitle: 50-60 characters, include primary keyword "${params.keywords[0] || ''}"
 - metaDescription: 150-160 characters, compelling with clear value proposition
