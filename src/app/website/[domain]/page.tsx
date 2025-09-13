@@ -103,6 +103,25 @@ export default function WebsitePage() {
     error: null as string | null,
     message: ''
   });
+
+  // Draft preview modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [previewTitle, setPreviewTitle] = useState<string>('');
+
+  const openDraftPreview = async (articleId: number) => {
+    if (!user?.token) return;
+    try {
+      const resp = await fetch(`/api/articles/${articleId}?userToken=${user.token}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data?.success && data.article) {
+        setPreviewTitle(data.article.title || 'Draft Preview');
+        setPreviewHtml(data.article.article_content || '<p>No content</p>');
+        setPreviewOpen(true);
+      }
+    } catch {}
+  };
   const [clusterExpanded, setClusterExpanded] = useState<Record<string, boolean>>({});
 
   // Fetch performance data
@@ -1096,7 +1115,14 @@ export default function WebsitePage() {
                                     <div className="font-medium text-gray-900 truncate">{a.title}</div>
                                     <div className="text-xs text-gray-500">Updated {new Date(a.updated_at).toLocaleDateString()}</div>
                                   </div>
-                                  <button className="text-xs text-green-600 hover:underline" onClick={() => publishDraftNow(a.id)}>Publish</button>
+                                  <div className="flex items-center gap-2">
+                                    <button className="text-xs text-blue-600 hover:underline" onClick={() => openDraftPreview(a.id)}>View</button>
+                                    {a.cms_connections ? (
+                                      <button className="text-xs text-green-600 hover:underline" onClick={() => publishDraftNow(a.id)}>Publish</button>
+                                    ) : (
+                                      <a className="text-xs text-gray-500 hover:underline" href="/content-writer">Connect CMS</a>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                               {contentData.articles.drafts.length === 0 && (
@@ -1234,6 +1260,24 @@ export default function WebsitePage() {
           onStatusUpdate={handleSetupStatusUpdate}
         />
       </div>
+
+      {/* Draft Preview Modal */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div className="font-semibold truncate mr-4">{previewTitle}</div>
+              <button onClick={() => setPreviewOpen(false)} className="text-sm px-2 py-1 border rounded hover:bg-gray-50">✕</button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[70vh] prose max-w-none">
+              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+            </div>
+            <div className="px-4 py-3 border-t text-right">
+              <button onClick={() => setPreviewOpen(false)} className="text-sm px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }
