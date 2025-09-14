@@ -641,7 +641,10 @@ export default function WebsitePage() {
         </header>
 
         {/* Main Grid */}
-        <div className={`grid ${railCollapsed ? 'grid-cols-[0px_1fr_auto]' : 'grid-cols-[480px_1fr_auto]'} gap-4 p-4 h-[calc(100vh-56px)]`}>
+        <div
+          className={`grid grid-cols-3 gap-4 p-4 h-[calc(100vh-56px)]`}
+          style={{ gridTemplateColumns: railCollapsed ? '0px 1fr 20rem' : '480px 1fr 20rem' }}
+        >
           {/* Left: Chat */}
           <aside className={`${railCollapsed ? 'w-0 min-w-0 opacity-0 pointer-events-none' : ''} bg-white border rounded-2xl flex flex-col overflow-hidden`}>
             <div className="px-4 py-3 border-b font-semibold text-sm">Chat with SEOAgent</div>
@@ -1057,9 +1060,9 @@ export default function WebsitePage() {
                     <div className="grid grid-cols-1 gap-4">
                       {/* Articles */}
                       <div className="bg-white border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="text-sm font-semibold">Articles</div>
-                        </div>
+                         <div className="flex items-center justify-between mb-2">
+                           <div className="text-sm font-semibold">Articles</div>
+                         </div>
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           {/* Published */}
                           <div>
@@ -1133,7 +1136,7 @@ export default function WebsitePage() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                      </div>
                   )}
                 </section>
               )}

@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state');
     const userToken = searchParams.get('userToken');
 
-    console.log('[DEBUG] OAuth request - userToken received:', userToken ? 'YES (' + userToken.substring(0, 10) + '...)' : 'NO');
 
     // Step 2: Handle OAuth callback
     if (code && state) {
@@ -300,11 +299,12 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
       .delete()
       .eq('state', state);
 
-    // Existing user flow - redirect to dashboard
-    const baseUrlForRedirect = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
-    const successUrl = `${baseUrlForRedirect}/dashboard/settings?tab=integrations&vercel_oauth=success&data=${encodeURIComponent(JSON.stringify(integrationData))}`;
+    // Existing user flow - redirect to integration installation page
+    const baseUrlForRedirect = new URL(process.env.VERCEL_OAUTH_REDIRECT_URI!).origin;
+    const userToken = oauthState.user_token;
+    const installUrl = `${baseUrlForRedirect}/vercel-integration?data=${encodeURIComponent(JSON.stringify(integrationData))}&userToken=${encodeURIComponent(userToken)}`;
 
-    return NextResponse.redirect(successUrl);
+    return NextResponse.redirect(installUrl);
 
   } catch (error) {
     console.error('[VERCEL OAUTH] Error handling callback:', error);
