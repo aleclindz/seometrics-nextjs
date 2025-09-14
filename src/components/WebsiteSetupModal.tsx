@@ -296,7 +296,12 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   };
 
   const handleVercelConnection = async () => {
+    console.log('[DEBUG] User object:', user);
+    console.log('[DEBUG] User token exists:', !!user?.token);
+    console.log('[DEBUG] User token length:', user?.token?.length || 'N/A');
+    
     if (!user?.token) {
+      console.error('[DEBUG] No user token - aborting');
       setHostError('Authentication error: User token not available. Please refresh the page and try again.');
       return;
     }
@@ -304,6 +309,8 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     try {
       setHostLoading(true);
       setHostError(null);
+      
+      console.log('[DEBUG] Making request with token:', user.token.substring(0, 10) + '...');
       
       // Initiate Vercel OAuth flow
       const response = await fetch(`/api/hosting/vercel/oauth?userToken=${user.token}`);

@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state');
     const userToken = searchParams.get('userToken');
 
+    console.log('[DEBUG] OAuth request - userToken received:', userToken ? 'YES (' + userToken.substring(0, 10) + '...)' : 'NO');
+
     // Step 2: Handle OAuth callback
     if (code && state) {
       return handleOAuthCallback(code, state);
