@@ -641,9 +641,9 @@ export default function WebsitePage() {
         </header>
 
         {/* Main Grid */}
-        <div className={`grid ${railCollapsed ? 'grid-cols-[0px_1fr]' : 'grid-cols-[480px_1fr]'} gap-4 p-4 h-[calc(100vh-56px)]`}>
+        <div className={`grid ${railCollapsed ? 'grid-cols-[0px_1fr_auto]' : 'grid-cols-[480px_1fr_auto]'} gap-4 p-4 h-[calc(100vh-56px)]`}>
           {/* Left: Chat */}
-          <aside className={`${railCollapsed ? 'hidden' : ''} bg-white border rounded-2xl flex flex-col overflow-hidden`}>
+          <aside className={`${railCollapsed ? 'w-0 min-w-0 opacity-0 pointer-events-none' : ''} bg-white border rounded-2xl flex flex-col overflow-hidden`}>
             <div className="px-4 py-3 border-b font-semibold text-sm">Chat with SEOAgent</div>
             <div className="flex-1 min-h-0 text-sm">
               <ChatInterface 
