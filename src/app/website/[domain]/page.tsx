@@ -6,7 +6,6 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/website-chat/ChatInterface';
-import ActivityFeed from '@/components/website-chat/ActivityFeed';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import { ChevronDown, Send, Loader2, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
@@ -28,8 +27,6 @@ export default function WebsitePage() {
   const [logCollapsed, setLogCollapsed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
-  // Collapse the left chat rail by default
-  const [railCollapsed, setRailCollapsed] = useState(true);
   const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string }>>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [backfilling, setBackfilling] = useState(false);
@@ -628,25 +625,14 @@ export default function WebsitePage() {
             </button>
           </div>
           <div className="flex items-center gap-2">
-            {/* Toggle Chat Rail */}
-            <button 
-              onClick={() => setRailCollapsed(!railCollapsed)}
-              className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              title={railCollapsed ? 'Open chat' : 'Hide chat'}
-            >
-              {railCollapsed ? 'Open Chat' : 'Hide Chat'}
-            </button>
             <div className="h-8 w-8 rounded-full bg-gray-200" />
           </div>
         </header>
 
         {/* Main Grid */}
-        <div
-          className={`grid grid-cols-3 gap-4 p-4 h-[calc(100vh-56px)]`}
-          style={{ gridTemplateColumns: railCollapsed ? '0px 1fr 20rem' : '480px 1fr 20rem' }}
-        >
+        <div className="grid grid-cols-2 gap-4 p-4 h-[calc(100vh-56px)]" style={{ gridTemplateColumns: '480px 1fr' }}>
           {/* Left: Chat */}
-          <aside className={`${railCollapsed ? 'w-0 min-w-0 opacity-0 pointer-events-none' : ''} bg-white border rounded-2xl flex flex-col overflow-hidden`}>
+          <aside className="bg-white border rounded-2xl flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b font-semibold text-sm">Chat with SEOAgent</div>
             <div className="flex-1 min-h-0 text-sm">
               <ChatInterface 
@@ -1223,29 +1209,7 @@ export default function WebsitePage() {
             </div>
           </main>
 
-          {/* Right: Activity Log */}
-          <aside className={`bg-white border rounded-2xl flex flex-col overflow-hidden transition-all duration-200 ${
-            logCollapsed ? 'w-11' : 'w-80'
-          }`}>
-            <div className={`${logCollapsed ? 'px-1' : 'px-4'} py-3 border-b flex items-center ${logCollapsed ? 'justify-center' : 'justify-between'}`}>
-              {!logCollapsed && <div className="font-semibold">Activity Log</div>}
-              <button 
-                onClick={() => setLogCollapsed(!logCollapsed)}
-                className="p-1 hover:bg-gray-100 rounded text-gray-500 flex-shrink-0"
-              >
-                {logCollapsed ? '»' : '«'}
-              </button>
-            </div>
-            {logCollapsed ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="origin-center -rotate-90 text-xs text-gray-500">Activity</div>
-              </div>
-            ) : (
-              <div className="p-0 overflow-auto">
-                <ActivityFeed domain={domain} userToken={user?.token || ''} hideHeader />
-              </div>
-            )}
-          </aside>
+          {/* Right: Activity Log removed */}
         </div>
 
         {/* Setup Modal */}
