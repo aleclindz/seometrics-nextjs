@@ -51,7 +51,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
   const [formData, setFormData] = useState({
     connection_name: connection?.connection_name || '',
     website_id: connection?.website_id || preselectedWebsiteId || '',
-    cms_type: connection?.cms_type || 'strapi',
+    cms_type: connection?.cms_type || 'wordpress',
     base_url: connection?.base_url || '',
     api_token: connection?.api_token || '',
     content_type: connection?.content_type || ''
@@ -186,6 +186,17 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       return;
     }
 
+    // WordPress doesn't need content type discovery - skip to final step
+    if (formData.cms_type === 'wordpress') {
+      setFormData(prev => ({
+        ...prev,
+        content_type: 'posts', // WordPress uses posts by default
+        connection_name: prev.connection_name || `WordPress - ${prev.base_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
+      }));
+      setCurrentStep(3);
+      return;
+    }
+
     try {
       setDiscovering(true);
       setError(null);
@@ -287,23 +298,58 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
   );
 
   const renderStep1 = () => {
+    const getCMSDisplayName = () => {
+      switch (formData.cms_type) {
+        case 'wordpress': return 'WordPress';
+        case 'wix': return 'Wix';
+        case 'strapi': return 'Strapi';
+        default: return 'CMS';
+      }
+    };
+
+    const getCMSDescription = () => {
+      switch (formData.cms_type) {
+        case 'wordpress': return 'Enter your WordPress site URL and Application Password';
+        case 'wix': return 'Enter your Wix Site ID and API token to get started';
+        case 'strapi': return 'Enter your Strapi URL and API token to get started';
+        default: return 'Configure your CMS connection';
+      }
+    };
+
     return (
       <div className="space-y-4">
         <div className="text-center mb-6">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Connect to your {formData.cms_type === 'wix' ? 'Wix' : 'Strapi'} CMS
+            Connect to your {getCMSDisplayName()} CMS
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {formData.cms_type === 'wix'
-              ? 'Enter your Wix Site ID and API token to get started'
-              : 'Enter your Strapi URL and API token to get started'
-            }
+            {getCMSDescription()}
           </p>
+        </div>
+
+        {/* CMS Type Selector */}
+        <div>
+          <label htmlFor="cms_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            CMS Platform *
+          </label>
+          <select
+            id="cms_type"
+            name="cms_type"
+            value={formData.cms_type}
+            onChange={handleInputChange}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            required
+          >
+            <option value="wordpress">WordPress</option>
+            <option value="strapi">Strapi</option>
+            <option value="wix">Wix</option>
+          </select>
         </div>
 
         <div>
           <label htmlFor="base_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {formData.cms_type === 'wix' ? 'Wix Site ID *' : 'Strapi Base URL *'}
+            {formData.cms_type === 'wordpress' ? 'WordPress Site URL *' :
+             formData.cms_type === 'wix' ? 'Wix Site ID *' : 'Strapi Base URL *'}
           </label>
           <input
             id="base_url"
@@ -311,13 +357,20 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
             name="base_url"
             value={formData.base_url}
             onChange={handleInputChange}
-            placeholder={formData.cms_type === 'wix'
+            placeholder={formData.cms_type === 'wordpress'
+              ? "https://your-wordpress-site.com"
+              : formData.cms_type === 'wix'
               ? "Your Wix site ID (e.g., 12345678-1234-1234-1234-123456789abc)"
               : "https://your-strapi-instance.railway.app"
             }
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             required
           />
+          {formData.cms_type === 'wordpress' && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p>Enter your full WordPress site URL (e.g., https://myblog.com)</p>
+            </div>
+          )}
           {formData.cms_type === 'wix' && (
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               <p>Find your Site ID in your Wix dashboard under Settings → Business Info</p>
@@ -327,7 +380,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
 
         <div>
           <label htmlFor="api_token" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            API Token *
+            {formData.cms_type === 'wordpress' ? 'Application Password *' : 'API Token *'}
           </label>
           <input
             id="api_token"
@@ -335,10 +388,21 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
             name="api_token"
             value={formData.api_token}
             onChange={handleInputChange}
-            placeholder={formData.cms_type === 'wix' ? "Your Wix API Key" : "Your Strapi API token"}
+            placeholder={formData.cms_type === 'wordpress'
+              ? "username:application-password"
+              : formData.cms_type === 'wix'
+              ? "Your Wix API Key"
+              : "Your Strapi API token"
+            }
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             required
           />
+          {formData.cms_type === 'wordpress' && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p>Format: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">username:your-app-password</code></p>
+              <p className="mt-1">Create an Application Password in WordPress Admin → Users → Profile → Application Passwords</p>
+            </div>
+          )}
         </div>
 
         {/* Test buttons */}
@@ -373,14 +437,14 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
             {discovering ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                Discovering...
+                {formData.cms_type === 'wordpress' ? 'Configuring...' : 'Discovering...'}
               </>
             ) : (
               <>
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={formData.cms_type === 'wordpress' ? "M13 7l5 5m0 0l-5 5m5-5H6" : "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"} />
                 </svg>
-                Discover Content Types
+                {formData.cms_type === 'wordpress' ? 'Continue Setup' : 'Discover Content Types'}
               </>
             )}
           </button>
