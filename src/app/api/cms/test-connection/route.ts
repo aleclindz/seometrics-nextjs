@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
       testResult = await testStrapiConnection(base_url, actualApiToken, content_type);
     } else if (cms_type === 'wix') {
       testResult = await testWixConnection(base_url, actualApiToken, content_type);
+    } else if (cms_type === 'wordpress') {
+      testResult = await testWordPressConnection(base_url, actualApiToken, content_type);
     } else {
       return NextResponse.json(
         { error: `CMS type '${cms_type}' is not yet supported` },
@@ -920,22 +922,246 @@ function processSchemaFields(schemaData: any) {
   }
 }
 
+async function testWordPressConnection(siteUrl: string, applicationPassword: string, contentType: string = 'posts') {
+  try {
+    console.log('[WORDPRESS TEST] Testing WordPress connection to:', siteUrl);
+
+    // Parse application password - should be in format "username:password"
+    const parts = applicationPassword.split(':');
+    if (parts.length !== 2) {
+      return {
+        success: false,
+        message: 'Invalid application password format. Should be "username:password"',
+        details: { error: 'Invalid format', expectedFormat: 'username:password' }
+      };
+    }
+
+    const [username, password] = parts;
+    const auth = btoa(`${username}:${password}`);
+    const cleanUrl = siteUrl.replace(/\/$/, '');
+
+    // Test 1: Basic WordPress REST API connectivity
+    console.log('[WORDPRESS TEST] Testing basic connectivity...');
+    const apiResponse = await fetch(`${cleanUrl}/wp-json/wp/v2/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!apiResponse.ok) {
+      if (apiResponse.status === 401) {
+        return {
+          success: false,
+          message: 'Authentication failed. Please check your username and application password.',
+          details: { status: 401, error: 'Unauthorized' }
+        };
+      } else if (apiResponse.status === 404) {
+        return {
+          success: false,
+          message: 'WordPress REST API not found. Please ensure WordPress is installed and REST API is enabled.',
+          details: { status: 404, error: 'REST API not found' }
+        };
+      }
+
+      const errorText = await apiResponse.text();
+      return {
+        success: false,
+        message: `WordPress connection failed with status ${apiResponse.status}`,
+        details: { status: apiResponse.status, error: errorText }
+      };
+    }
+
+    const apiInfo = await apiResponse.json();
+    console.log('[WORDPRESS TEST] Basic connectivity successful');
+
+    // Test 2: User authentication and permissions
+    console.log('[WORDPRESS TEST] Testing user authentication...');
+    const userResponse = await fetch(`${cleanUrl}/wp-json/wp/v2/users/me`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!userResponse.ok) {
+      return {
+        success: false,
+        message: 'User authentication failed. Please check your application password.',
+        details: { status: userResponse.status, error: 'User auth failed' }
+      };
+    }
+
+    const userData = await userResponse.json();
+    console.log('[WORDPRESS TEST] User authenticated:', userData.name || userData.username);
+
+    // Test 3: Post access and permissions
+    console.log('[WORDPRESS TEST] Testing post access...');
+    const postsResponse = await fetch(`${cleanUrl}/wp-json/wp/v2/posts?per_page=1`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!postsResponse.ok) {
+      return {
+        success: false,
+        message: 'Failed to access posts. Please check your user permissions.',
+        details: { status: postsResponse.status, error: 'Posts access failed' }
+      };
+    }
+
+    const posts = await postsResponse.json();
+    console.log('[WORDPRESS TEST] Posts access successful, found:', posts.length, 'posts');
+
+    // Test 4: Write permissions by creating a draft post
+    console.log('[WORDPRESS TEST] Testing write permissions...');
+    const testPost = {
+      title: 'SEOAgent Test Post - Safe to Delete',
+      content: 'This is a test post created by SEOAgent to verify write permissions. You can safely delete this post.',
+      status: 'draft',
+      meta: {
+        _edit_lock: Math.floor(Date.now() / 1000) + ':1'
+      }
+    };
+
+    const createResponse = await fetch(`${cleanUrl}/wp-json/wp/v2/posts`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testPost)
+    });
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.log('[WORDPRESS TEST] Post creation failed:', createResponse.status, errorText);
+
+      return {
+        success: true, // Connection works but write access limited
+        message: `Connection successful, but post creation failed (${createResponse.status}). You may have read-only permissions.`,
+        details: {
+          readAccess: true,
+          writeAccess: false,
+          siteInfo: apiInfo.name || 'WordPress Site',
+          userInfo: userData.name || userData.username,
+          postsCount: posts.length,
+          writeError: errorText
+        }
+      };
+    }
+
+    const createdPost = await createResponse.json();
+    console.log('[WORDPRESS TEST] Test post created successfully:', createdPost.id);
+
+    // Clean up: Delete the test post
+    if (createdPost.id) {
+      try {
+        await fetch(`${cleanUrl}/wp-json/wp/v2/posts/${createdPost.id}?force=true`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('[WORDPRESS TEST] Test post cleaned up');
+      } catch (cleanupError) {
+        console.log('[WORDPRESS TEST] Could not clean up test post:', cleanupError);
+      }
+    }
+
+    // Get categories for additional context
+    let categories = [];
+    try {
+      const categoriesResponse = await fetch(`${cleanUrl}/wp-json/wp/v2/categories?per_page=10`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (categoriesResponse.ok) {
+        categories = await categoriesResponse.json();
+      }
+    } catch (categoriesError) {
+      console.log('[WORDPRESS TEST] Could not fetch categories:', categoriesError);
+    }
+
+    return {
+      success: true,
+      message: `WordPress connection successful! Full read and write access confirmed for "${apiInfo.name || 'WordPress Site'}".`,
+      details: {
+        readAccess: true,
+        writeAccess: true,
+        siteInfo: {
+          name: apiInfo.name || 'WordPress Site',
+          description: apiInfo.description || '',
+          url: cleanUrl,
+          version: apiInfo.version || 'Unknown'
+        },
+        userInfo: {
+          id: userData.id,
+          name: userData.name || userData.username,
+          email: userData.email,
+          roles: userData.roles || []
+        },
+        postsCount: posts.length,
+        categoriesCount: categories.length,
+        discoveredContentTypes: [{
+          uid: 'wp::posts::post',
+          apiID: 'posts',
+          displayName: 'Posts',
+          pluralName: 'posts',
+          singularName: 'post',
+          apiEndpoint: 'wp-json/wp/v2/posts',
+          fieldCount: 8, // title, content, excerpt, status, author, etc.
+          hasRichText: true,
+          hasMedia: true,
+          hasUID: false,
+          hasString: true,
+          hasText: true,
+          hasRelation: true,
+          hasDraftAndPublish: true,
+          isEmpty: false,
+          category: 'blog',
+          suitableForBlogging: 28 // High score for WordPress posts
+        }],
+        contentTypesCount: 1
+      }
+    };
+
+  } catch (error) {
+    console.error('[WORDPRESS TEST] Connection test error:', error);
+    return {
+      success: false,
+      message: 'Could not connect to WordPress. Please check your site URL and application password.',
+      details: { error: error instanceof Error ? error.message : 'Unknown error' }
+    };
+  }
+}
+
 async function updateWebsiteCMSStatus(userToken: string, baseUrl: string, success: boolean) {
   try {
     console.log('[CMS TEST] Updating websites table cms_status to:', success ? 'connected' : 'error');
-    
+
     // Extract domain from base URL for matching
     const domain = baseUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
-    
+
     await supabase
       .from('websites')
-      .update({ 
+      .update({
         cms_status: success ? 'connected' : 'error',
         last_status_check: new Date().toISOString()
       })
       .eq('user_token', userToken)
       .or(`domain.ilike.%${domain}%,cleaned_domain.ilike.%${domain}%`);
-      
+
     console.log('[CMS TEST] Websites table cms_status updated successfully');
   } catch (dbError) {
     console.error('[CMS TEST] Failed to update websites table cms_status:', dbError);
