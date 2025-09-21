@@ -177,13 +177,14 @@ export class VercelIntegration {
   }
 
   /**
-   * Deploy sitemap and robots.txt using the configured method
+   * Deploy sitemap, robots.txt, and llms.txt using the configured method
    */
   async deploySEOFiles(
-    domain: string, 
-    sitemapContent: string, 
+    domain: string,
+    sitemapContent: string,
     robotsContent: string,
-    userToken: string
+    userToken: string,
+    llmsTxtContent?: string
   ): Promise<VercelDeploymentResult> {
     const startTime = Date.now();
 
@@ -395,15 +396,16 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
    * Deploy via vercel.json redirects to SEOAgent proxy (Recommended for existing projects)
    */
   private async deployViaRedirects(
-    domain: string, 
-    sitemapContent: string, 
+    domain: string,
+    sitemapContent: string,
     robotsContent: string,
-    userToken: string
+    userToken: string,
+    llmsTxtContent?: string
   ): Promise<VercelDeploymentResult> {
     console.log('[VERCEL] Deploying via redirects to SEOAgent proxy');
 
     // First, store the content in SEOAgent's proxy service
-    await this.storeSEOContentInProxy(domain, sitemapContent, robotsContent, userToken);
+    await this.storeSEOContentInProxy(domain, sitemapContent, robotsContent, userToken, llmsTxtContent);
 
     // Get existing vercel.json config
     const currentConfig = await this.getVercelConfig();
@@ -417,8 +419,14 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         statusCode: 307 // Temporary redirect to ensure fresh content
       },
       {
-        source: '/robots.txt', 
+        source: '/robots.txt',
         destination: `${this.config.robotsProxyUrl}?domain=${domain}&token=${userToken}`,
+        permanent: false,
+        statusCode: 307
+      },
+      {
+        source: '/llms.txt',
+        destination: `https://seoagent.com/api/llms-txt/serve?domain=${domain}&token=${userToken}`,
         permanent: false,
         statusCode: 307
       }
@@ -426,7 +434,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Merge with existing redirects, removing any existing SEO redirects
     const existingRedirects = (currentConfig.redirects || [])
-      .filter(redirect => !redirect.source.match(/^\/(sitemap\.xml|robots\.txt)$/));
+      .filter(redirect => !redirect.source.match(/^\/(sitemap\.xml|robots\.txt|llms\.txt)$/));
     
     const updatedConfig: VercelConfig = {
       ...currentConfig,
@@ -600,7 +608,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     domain: string,
     sitemapContent: string,
     robotsContent: string,
-    userToken: string
+    userToken: string,
+    llmsTxtContent?: string
   ): Promise<void> {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/hosting/store-seo-content`, {
@@ -613,6 +622,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
           userToken,
           sitemapContent,
           robotsContent,
+          llmsTxtContent,
           provider: 'vercel'
         })
       });

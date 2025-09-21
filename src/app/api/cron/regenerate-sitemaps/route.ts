@@ -135,7 +135,31 @@ export async function POST(request: NextRequest) {
         if (response.ok) {
           const result = await response.json();
           console.log(`[CRON SITEMAP] ✅ Successfully regenerated sitemap for ${displayUrl}`);
-          
+
+          // Also generate llms.txt for this website
+          try {
+            console.log(`[CRON SITEMAP] Generating llms.txt for ${displayUrl}`);
+            const llmsTxtResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/technical-seo/generate-llms-txt`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userToken: website.user_token,
+                siteUrl: websiteUrl
+              }),
+            });
+
+            if (llmsTxtResponse.ok) {
+              const llmsResult = await llmsTxtResponse.json();
+              console.log(`[CRON SITEMAP] ✅ Successfully generated llms.txt for ${displayUrl} (${llmsResult.data?.fileSize || 0} bytes)`);
+            } else {
+              console.warn(`[CRON SITEMAP] ⚠️ Failed to generate llms.txt for ${displayUrl}: ${llmsTxtResponse.status}`);
+            }
+          } catch (llmsError) {
+            console.warn(`[CRON SITEMAP] ⚠️ Error generating llms.txt for ${displayUrl}:`, llmsError);
+          }
+
           results.success++;
           results.details.push({
             website: displayUrl,

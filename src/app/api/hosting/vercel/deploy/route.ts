@@ -10,12 +10,13 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { 
-      userToken, 
-      integrationId, 
-      domain, 
-      sitemapContent, 
+    const {
+      userToken,
+      integrationId,
+      domain,
+      sitemapContent,
       robotsContent,
+      llmsTxtContent,
       deploymentMethod = 'redirects'
     } = await request.json();
 
@@ -71,7 +72,8 @@ export async function POST(request: NextRequest) {
         domain,
         sitemapContent,
         robotsContent,
-        userToken
+        userToken,
+        llmsTxtContent
       );
 
       if (deploymentResult.success) {
