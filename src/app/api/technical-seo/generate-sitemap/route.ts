@@ -3,6 +3,7 @@ import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 import { DomainUtils } from '@/lib/utils/DomainUtils';
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
+import { startCrawl, getCrawlStatus, getCrawlResult } from '@/services/crawl/firecrawl-client';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,104 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Built-in website crawler for discovering paginated content
+async function crawlWebsiteBuiltIn(baseUrl: string): Promise<string[]> {
+  const discoveredUrls = new Set<string>();
+  const visitedPages = new Set<string>();
+  const maxPages = 20; // Reasonable limit for pagination crawling
+  
+  // Helper function to fetch and parse HTML
+  async function fetchAndParse(url: string): Promise<string[]> {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'SEOAgent-Crawler/1.0 (+https://seoagent.com)'
+        },
+        timeout: 10000 // 10 second timeout
+      } as any);
+      
+      if (!response.ok) return [];
+      
+      const html = await response.text();
+      const links: string[] = [];
+      
+      // Simple regex-based link extraction (better than external dependency)
+      const linkPattern = /href=["']([^"']*?)["']/gi;
+      let match;
+      
+      while ((match = linkPattern.exec(html)) !== null) {
+        const href = match[1];
+        
+        // Convert relative URLs to absolute
+        let fullUrl: string;
+        try {
+          if (href.startsWith('http')) {
+            fullUrl = href;
+          } else if (href.startsWith('/')) {
+            fullUrl = baseUrl.replace(/\/$/, '') + href;
+          } else {
+            fullUrl = url.replace(/\/[^\/]*$/, '/') + href;
+          }
+          
+          // Only include links from the same domain
+          if (fullUrl.startsWith(baseUrl.replace(/\/$/, ''))) {
+            links.push(fullUrl);
+          }
+        } catch (e) {
+          // Skip invalid URLs
+        }
+      }
+      
+      return links;
+    } catch (error) {
+      console.log(`[CRAWLER] Failed to fetch ${url}:`, error);
+      return [];
+    }
+  }
+  
+  // Start with common blog paths
+  const blogPaths = ['/blog', '/articles', '/posts', '/news'];
+  const startUrls = blogPaths.map(path => baseUrl.replace(/\/$/, '') + path);
+  
+  // Add the main blog URL
+  for (const startUrl of startUrls) {
+    if (visitedPages.has(startUrl)) continue;
+    visitedPages.add(startUrl);
+    
+    console.log(`[CRAWLER] Crawling blog page: ${startUrl}`);
+    const links = await fetchAndParse(startUrl);
+    
+    for (const link of links) {
+      // Add blog post links (look for common blog URL patterns)
+      if (link.match(/\/(blog|articles|posts|news)\/[^\/]+\/?$/)) {
+        discoveredUrls.add(link);
+      }
+      
+      // Add pagination links for further crawling
+      if ((link.includes('/page/') || link.includes('?page=') || 
+           link.includes('/blog/') && link.match(/\/\d+\/?$/)) &&
+          !visitedPages.has(link) && visitedPages.size < maxPages) {
+        
+        visitedPages.add(link);
+        console.log(`[CRAWLER] Following pagination: ${link}`);
+        
+        // Crawl pagination page
+        const paginationLinks = await fetchAndParse(link);
+        for (const paginationLink of paginationLinks) {
+          if (paginationLink.match(/\/(blog|articles|posts|news)\/[^\/]+\/?$/)) {
+            discoveredUrls.add(paginationLink);
+          }
+        }
+      }
+    }
+    
+    // Small delay between requests
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  return Array.from(discoveredUrls);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,10 +127,13 @@ export async function POST(request: NextRequest) {
     
     console.log(`[SITEMAP GENERATION] Processing: siteUrl=${siteUrl}, cleanSiteUrl=${cleanSiteUrl}, domain=${domain}`);
 
-    // Step 1: Discover URLs for the sitemap
+    // Step 1: Discover URLs for the sitemap using comprehensive crawling
     console.log('[SITEMAP GENERATION] Discovering URLs for sitemap');
     
-    // Get URLs from GSC URL inspections (pages we know about)
+    // Build a comprehensive URL list
+    const discoveredUrls = new Set<string>();
+    
+    // Step 1a: Get URLs from GSC URL inspections (pages we know about)
     const { data: inspections, error: inspectionsError } = await supabase
       .from('url_inspections')
       .select('inspected_url, can_be_indexed, index_status, last_crawl_time')
@@ -43,9 +145,6 @@ export async function POST(request: NextRequest) {
       console.error('[SITEMAP GENERATION] Error fetching URL inspections:', inspectionsError);
     }
 
-    // Build a comprehensive URL list
-    const discoveredUrls = new Set<string>();
-    
     // Add URLs from GSC inspections
     if (inspections?.length) {
       inspections.forEach(inspection => {
@@ -53,9 +152,77 @@ export async function POST(request: NextRequest) {
           discoveredUrls.add(inspection.inspected_url);
         }
       });
+      console.log(`[SITEMAP GENERATION] Added ${inspections.length} URLs from GSC inspections`);
     }
 
-    // Add common pages that should always be in sitemap
+    // Step 1b: Crawl website to discover all URLs (including paginated content)
+    try {
+      console.log('[SITEMAP GENERATION] Starting comprehensive website crawl');
+      
+      // Start Firecrawl job with focused limits for faster discovery
+      const crawlJob = await startCrawl({
+        url: cleanSiteUrl,
+        maxPages: 100, // Focused limit for faster crawling
+        includePaths: ['/blog'], // Focus specifically on blog section
+        excludePaths: ['/admin', '/wp-admin', '/login', '/private', '/auth'], // Skip admin areas
+        parseJS: true // Handle JavaScript-rendered content
+      });
+
+      console.log(`[SITEMAP GENERATION] Crawl started with job ID: ${crawlJob.jobId}`);
+
+      // Poll for completion with timeout
+      let attempts = 0;
+      const maxAttempts = 24; // 2 minutes max wait time (5 second intervals)
+      let crawlComplete = false;
+
+      while (attempts < maxAttempts && !crawlComplete) {
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+        attempts++;
+
+        try {
+          const status = await getCrawlStatus(crawlJob.jobId);
+          console.log(`[SITEMAP GENERATION] Crawl status check ${attempts}/${maxAttempts}: ${status.status}`);
+          
+          if (status.done) {
+            crawlComplete = true;
+            break;
+          }
+        } catch (statusError) {
+          console.log(`[SITEMAP GENERATION] Status check failed (attempt ${attempts}), continuing...`);
+        }
+      }
+
+      if (crawlComplete) {
+        // Get crawl results
+        const crawlResults = await getCrawlResult(crawlJob.jobId);
+        console.log(`[SITEMAP GENERATION] Crawl completed successfully. Discovered ${crawlResults.length} pages`);
+
+        // Add all discovered URLs
+        crawlResults.forEach(page => {
+          if (page.url && page.url.startsWith('http')) {
+            discoveredUrls.add(page.url);
+          }
+        });
+      } else {
+        console.log(`[SITEMAP GENERATION] Crawl timeout after ${maxAttempts} attempts, proceeding with existing URLs`);
+      }
+
+    } catch (crawlError) {
+      console.error('[SITEMAP GENERATION] Firecrawl error, trying built-in crawler:', crawlError);
+      
+      // Step 1c: Fallback to built-in crawler for paginated content
+      try {
+        console.log('[SITEMAP GENERATION] Starting built-in crawler fallback');
+        const crawledUrls = await crawlWebsiteBuiltIn(cleanSiteUrl);
+        console.log(`[SITEMAP GENERATION] Built-in crawler discovered ${crawledUrls.length} additional URLs`);
+        
+        crawledUrls.forEach(url => discoveredUrls.add(url));
+      } catch (builtInError) {
+        console.error('[SITEMAP GENERATION] Built-in crawler also failed:', builtInError);
+      }
+    }
+
+    // Step 1c: Add common pages that should always be in sitemap
     const commonPages = [
       cleanSiteUrl,
       `${cleanSiteUrl}/`,
@@ -72,7 +239,7 @@ export async function POST(request: NextRequest) {
     // Convert to array and sort
     const urlList = Array.from(discoveredUrls).sort();
 
-    console.log(`[SITEMAP GENERATION] Found ${urlList.length} URLs for sitemap`);
+    console.log(`[SITEMAP GENERATION] Final URL discovery complete: ${urlList.length} URLs found for sitemap`);
 
     // Step 2: Generate XML sitemap
     const currentDate = new Date().toISOString();
