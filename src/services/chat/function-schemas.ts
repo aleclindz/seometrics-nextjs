@@ -83,6 +83,42 @@ export const BulkArticleIdeasSchema = z.object({
   website_token: z.string().optional()
 });
 
+export const QueueManagementSchema = z.object({
+  site_url: flexibleUrlSchema.optional(),
+  website_token: z.string().optional(),
+  action: z.enum(['view', 'analyze', 'status']).optional().default('view'),
+  limit: z.number().int().min(1).max(100).optional().default(20),
+  status_filter: z.enum(['draft', 'pending', 'generating', 'completed']).optional()
+});
+
+export const AddToQueueSchema = z.object({
+  topic: z.string().min(1),
+  site_url: flexibleUrlSchema.optional(),
+  website_token: z.string().optional(),
+  priority: z.number().int().min(1).max(10).optional().default(1),
+  scheduled_date: z.string().optional(),
+  keywords: z.array(z.string()).optional(),
+  format: z.enum(['listicle', 'how-to', 'guide', 'faq', 'comparison', 'update', 'case-study', 'beginner-guide']).optional(),
+  authority_level: z.enum(['foundation', 'intermediate', 'advanced']).optional().default('foundation'),
+  word_count: z.number().int().min(500).max(5000).optional().default(1500)
+});
+
+export const RemoveFromQueueSchema = z.object({
+  identifier: z.union([z.string(), z.number()]),
+  site_url: flexibleUrlSchema.optional(),
+  website_token: z.string().optional()
+});
+
+export const ReorderQueueSchema = z.object({
+  strategy: z.enum(['priority', 'date', 'format', 'authority', 'traffic']).optional(),
+  custom_order: z.array(z.object({
+    id: z.number().int(),
+    position: z.number().int()
+  })).optional(),
+  site_url: flexibleUrlSchema.optional(),
+  website_token: z.string().optional()
+});
+
 // Type inference from Zod schemas
 export type ConnectGSCArgs = z.infer<typeof ConnectGSCSchema>;
 export type SyncGSCDataArgs = z.infer<typeof SyncGSCDataSchema>;
@@ -92,6 +128,10 @@ export type GetSiteStatusArgs = z.infer<typeof GetSiteStatusSchema>;
 export type AuditSiteArgs = z.infer<typeof AuditSiteSchema>;
 export type AutonomousTopicSelectionArgs = z.infer<typeof AutonomousTopicSelectionSchema>;
 export type BulkArticleIdeasArgs = z.infer<typeof BulkArticleIdeasSchema>;
+export type QueueManagementArgs = z.infer<typeof QueueManagementSchema>;
+export type AddToQueueArgs = z.infer<typeof AddToQueueSchema>;
+export type RemoveFromQueueArgs = z.infer<typeof RemoveFromQueueSchema>;
+export type ReorderQueueArgs = z.infer<typeof ReorderQueueSchema>;
 
 // Function schema registry with validation
 export interface FunctionDefinition {
@@ -780,6 +820,156 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: BulkArticleIdeasSchema,
+    category: 'content',
+    requiresSetup: true
+  },
+
+  'CONTENT_manage_queue': {
+    schema: {
+      name: 'CONTENT_manage_queue',
+      description: 'View and analyze the content generation queue. Shows upcoming articles with their metadata, priorities, and schedules. Can filter by status or analyze queue statistics.',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional; uses primary site if omitted)' },
+          website_token: { type: 'string', description: 'Website token for specific site' },
+          action: {
+            type: 'string',
+            enum: ['view', 'analyze', 'status'],
+            description: 'Type of queue operation',
+            default: 'view'
+          },
+          limit: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
+            description: 'Maximum number of queue items to show',
+            default: 20
+          },
+          status_filter: {
+            type: 'string',
+            enum: ['draft', 'pending', 'generating', 'completed'],
+            description: 'Filter queue by status'
+          }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: QueueManagementSchema,
+    category: 'content',
+    requiresSetup: true
+  },
+
+  'CONTENT_add_to_queue': {
+    schema: {
+      name: 'CONTENT_add_to_queue',
+      description: 'Add a specific topic to the content generation queue with custom settings. Allows specifying priority, format, keywords, and scheduling.',
+      parameters: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: 'Article topic or title' },
+          site_url: { type: 'string', description: 'Website URL (optional; uses primary site if omitted)' },
+          website_token: { type: 'string', description: 'Website token for specific site' },
+          priority: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 10,
+            description: 'Priority level (1 = highest priority)',
+            default: 1
+          },
+          scheduled_date: { type: 'string', description: 'ISO date string for when to publish (optional)' },
+          keywords: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Target keywords for SEO optimization'
+          },
+          format: {
+            type: 'string',
+            enum: ['listicle', 'how-to', 'guide', 'faq', 'comparison', 'update', 'case-study', 'beginner-guide'],
+            description: 'Specific article format'
+          },
+          authority_level: {
+            type: 'string',
+            enum: ['foundation', 'intermediate', 'advanced'],
+            description: 'Content authority level for strategic progression',
+            default: 'foundation'
+          },
+          word_count: {
+            type: 'integer',
+            minimum: 500,
+            maximum: 5000,
+            description: 'Target word count',
+            default: 1500
+          }
+        },
+        required: ['topic'],
+        additionalProperties: false
+      }
+    },
+    validator: AddToQueueSchema,
+    category: 'content',
+    requiresSetup: true
+  },
+
+  'CONTENT_remove_from_queue': {
+    schema: {
+      name: 'CONTENT_remove_from_queue',
+      description: 'Remove articles from the content generation queue. Can remove by article ID, position number, or topic title/keyword match.',
+      parameters: {
+        type: 'object',
+        properties: {
+          identifier: {
+            oneOf: [
+              { type: 'string', description: 'Article title or keyword to search for' },
+              { type: 'integer', description: 'Article ID or position number in queue' }
+            ],
+            description: 'Article identifier - can be ID, position (1-based), or title/keyword'
+          },
+          site_url: { type: 'string', description: 'Website URL (optional; uses primary site if omitted)' },
+          website_token: { type: 'string', description: 'Website token for specific site' }
+        },
+        required: ['identifier'],
+        additionalProperties: false
+      }
+    },
+    validator: RemoveFromQueueSchema,
+    category: 'content',
+    requiresSetup: true
+  },
+
+  'CONTENT_reorder_queue': {
+    schema: {
+      name: 'CONTENT_reorder_queue',
+      description: 'Reorder the content generation queue using different strategies or custom ordering. Helps optimize content scheduling for maximum impact.',
+      parameters: {
+        type: 'object',
+        properties: {
+          strategy: {
+            type: 'string',
+            enum: ['priority', 'date', 'format', 'authority', 'traffic'],
+            description: 'Reordering strategy - priority: by priority level, date: by schedule, traffic: by potential, authority: foundation->advanced, format: by article type'
+          },
+          custom_order: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'integer', description: 'Article queue ID' },
+                position: { type: 'integer', description: 'New position (1-based)' }
+              },
+              required: ['id', 'position']
+            },
+            description: 'Custom ordering with specific ID->position mappings'
+          },
+          site_url: { type: 'string', description: 'Website URL (optional; uses primary site if omitted)' },
+          website_token: { type: 'string', description: 'Website token for specific site' }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: ReorderQueueSchema,
     category: 'content',
     requiresSetup: true
   }

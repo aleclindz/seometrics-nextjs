@@ -29,7 +29,11 @@ export class ContentAbility extends BaseAbility {
       'CONTENT_suggest_ideas',
       'CONTENT_get_context',
       'CONTENT_analyze_gsc_topics', // NEW: Autonomous GSC-based topic analysis
-      'CONTENT_generate_bulk_ideas' // NEW: Bulk article idea generation
+      'CONTENT_generate_bulk_ideas', // NEW: Bulk article idea generation
+      'CONTENT_manage_queue', // NEW: Queue management (view, edit, reorder)
+      'CONTENT_add_to_queue', // NEW: Add specific topics to queue
+      'CONTENT_remove_from_queue', // NEW: Remove topics from queue
+      'CONTENT_reorder_queue' // NEW: Reorder queue priorities
     ];
   }
 
@@ -55,6 +59,14 @@ export class ContentAbility extends BaseAbility {
         return await this.analyzeGSCTopics(args);
       case 'CONTENT_generate_bulk_ideas':
         return await this.generateBulkIdeas(args);
+      case 'CONTENT_manage_queue':
+        return await this.manageQueue(args);
+      case 'CONTENT_add_to_queue':
+        return await this.addToQueue(args);
+      case 'CONTENT_remove_from_queue':
+        return await this.removeFromQueue(args);
+      case 'CONTENT_reorder_queue':
+        return await this.reorderQueue(args);
       case 'optimize_content':
         return await this.optimizeContent(args);
       case 'publish_content':
@@ -1107,6 +1119,381 @@ export class ContentAbility extends BaseAbility {
 
     } catch (error) {
       return this.error('Failed to generate bulk article ideas', error);
+    }
+  }
+
+  /**
+   * Manage content queue - view, filter, and analyze upcoming articles
+   */
+  private async manageQueue(args: {
+    site_url?: string;
+    website_token?: string;
+    action?: 'view' | 'analyze' | 'status';
+    limit?: number;
+    status_filter?: 'draft' | 'pending' | 'generating' | 'completed';
+  }): Promise<FunctionCallResult> {
+    try {
+      const limit = args.limit || 20;
+      const action = args.action || 'view';
+
+      // Call queue API
+      let queryParams = `userToken=${this.userToken}&limit=${limit}`;
+      if (args.website_token) queryParams += `&websiteToken=${args.website_token}`;
+      if (args.status_filter) queryParams += `&status=${args.status_filter}`;
+
+      const response = await this.fetchAPI(`/api/content/article-queue?${queryParams}`);
+
+      if (!response.success) {
+        return this.error(`Failed to fetch queue: ${response.error}`, response.error);
+      }
+
+      const queue = response.queue || [];
+
+      if (action === 'status') {
+        const statusCounts = queue.reduce((acc: any, item: any) => {
+          acc[item.status] = (acc[item.status] || 0) + 1;
+          return acc;
+        }, {});
+
+        return this.success({
+          message: `📊 **Queue Status Summary**\n\nTotal Items: ${queue.length}\nStatus Breakdown: ${Object.entries(statusCounts).map(([status, count]) => `${status}: ${count}`).join(', ')}\nNext Scheduled: ${queue[0]?.scheduledFor ? new Date(queue[0].scheduledFor).toLocaleString() : 'None'}`,
+          statusCounts,
+          totalItems: queue.length,
+          nextScheduled: queue[0]?.scheduledFor || null
+        });
+      }
+
+      // Format queue for display
+      let result = `📝 **Content Queue (${queue.length} items)**\n\n`;
+
+      if (queue.length === 0) {
+        result += `No articles in queue. Use \`generate_bulk_ideas\` to add topics.\n\n`;
+        result += `💡 **Quick Actions:**\n`;
+        result += `- Generate ideas: "Generate 10 article ideas for next week"\n`;
+        result += `- Add specific topic: "Add 'SEO best practices' to my content queue"`;
+
+        return this.success({
+          message: result,
+          queue: [],
+          isEmpty: true
+        });
+      }
+
+      queue.slice(0, limit).forEach((item: any, index: number) => {
+        const scheduledDate = new Date(item.scheduledFor).toLocaleDateString();
+        const status = item.status || 'draft';
+        const statusEmoji: Record<string, string> = {
+          draft: '📝',
+          pending: '⏳',
+          generating: '🔄',
+          completed: '✅',
+          failed: '❌'
+        };
+        const emoji = statusEmoji[status] || '📝';
+
+        result += `**${index + 1}. ${item.title}**\n`;
+        result += `- 📅 Scheduled: ${scheduledDate}\n`;
+        result += `- ${emoji} Status: ${status}\n`;
+
+        if (item.articleFormat?.type) {
+          result += `- 📊 Format: ${item.articleFormat.type}\n`;
+        }
+
+        if (item.targetKeywords && item.targetKeywords.length > 0) {
+          result += `- 🔑 Keywords: ${item.targetKeywords.slice(0, 3).join(', ')}\n`;
+        }
+
+        if (item.estimatedTrafficPotential > 0) {
+          result += `- 📈 Traffic Potential: +${item.estimatedTrafficPotential}/month\n`;
+        }
+
+        if (item.authorityLevel) {
+          result += `- 🎯 Authority: ${item.authorityLevel}\n`;
+        }
+
+        result += '\n';
+      });
+
+      result += `🛠️ **Management Actions:**\n`;
+      result += `- Edit queue: "Move article 3 to position 1" or "Change title of article 2"\n`;
+      result += `- Remove items: "Remove article about X from queue"\n`;
+      result += `- Add topics: "Add article about Y to queue with high priority"\n`;
+      result += `- Reorder: "Reorder queue by priority" or "Put SEO articles first"`;
+
+      return this.success({
+        message: result,
+        queue: queue.slice(0, limit),
+        totalItems: queue.length,
+        hasMore: queue.length > limit,
+        actions: ['edit', 'reorder', 'remove', 'add']
+      });
+
+    } catch (error) {
+      return this.error('Failed to manage content queue', error);
+    }
+  }
+
+  /**
+   * Add a specific topic to the content queue
+   */
+  private async addToQueue(args: {
+    topic: string;
+    site_url?: string;
+    website_token?: string;
+    priority?: number;
+    scheduled_date?: string;
+    keywords?: string[];
+    format?: string;
+    authority_level?: 'foundation' | 'intermediate' | 'advanced';
+    word_count?: number;
+  }): Promise<FunctionCallResult> {
+    try {
+      if (!args.topic) {
+        return this.error('Topic is required to add to queue');
+      }
+
+      // Determine website token if not provided
+      let websiteToken = args.website_token;
+      if (!websiteToken && args.site_url) {
+        const sites = await this.fetchAPI(`/api/websites?userToken=${this.userToken}`);
+        if (sites?.success && sites.websites?.length) {
+          const site = sites.websites.find((w: any) =>
+            w.domain === args.site_url || w.cleaned_domain === args.site_url
+          );
+          websiteToken = site?.website_token;
+        }
+      }
+
+      if (!websiteToken) {
+        return this.error('Website token or site URL is required');
+      }
+
+      // Create queue item data
+      const scheduledFor = args.scheduled_date
+        ? new Date(args.scheduled_date).toISOString()
+        : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // Default: 24 hours from now
+
+      const queueItem = {
+        topic: args.topic,
+        priority: args.priority || 1,
+        scheduledFor,
+        targetKeywords: args.keywords || [],
+        articleFormat: args.format ? { type: args.format } : {},
+        authorityLevel: args.authority_level || 'foundation',
+        wordCount: args.word_count || 1500,
+        status: 'draft'
+      };
+
+      // Add to queue via API
+      const response = await this.fetchAPI('/api/content/article-queue', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: this.userToken,
+          websiteToken,
+          action: 'add',
+          item: queueItem
+        })
+      });
+
+      if (!response.success) {
+        return this.error(`Failed to add to queue: ${response.error}`, response.error);
+      }
+
+      return this.success({
+        message: `✅ Added "${args.topic}" to content queue\n\n📅 Scheduled for: ${new Date(scheduledFor).toLocaleDateString()}\n🎯 Priority: ${args.priority || 1}\n📊 Format: ${args.format || 'auto-detect'}\n🔑 Keywords: ${(args.keywords || []).join(', ') || 'auto-generate'}`,
+        addedItem: response.item,
+        nextActions: [
+          'View queue: "Show me my content queue"',
+          'Modify: "Change priority of this article"',
+          'Generate more: "Generate 5 more article ideas"'
+        ]
+      });
+
+    } catch (error) {
+      return this.error('Failed to add topic to queue', error);
+    }
+  }
+
+  /**
+   * Remove topics from the content queue
+   */
+  private async removeFromQueue(args: {
+    identifier: string | number; // Can be queue ID, topic title, or position
+    site_url?: string;
+    website_token?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      if (!args.identifier) {
+        return this.error('Article identifier (ID, title, or position) is required');
+      }
+
+      // First, get the current queue to find the item
+      let queryParams = `userToken=${this.userToken}&limit=50`;
+      if (args.website_token) queryParams += `&websiteToken=${args.website_token}`;
+
+      const queueResponse = await this.fetchAPI(`/api/content/article-queue?${queryParams}`);
+
+      if (!queueResponse.success) {
+        return this.error('Failed to fetch queue for removal');
+      }
+
+      const queue = queueResponse.queue || [];
+      let itemToRemove = null;
+
+      // Find item by different identifier types
+      if (typeof args.identifier === 'number') {
+        // Could be ID or position
+        itemToRemove = queue.find((item: any) => item.id === args.identifier) ||
+                      queue[args.identifier - 1]; // Position (1-indexed)
+      } else {
+        // String - search by title
+        const searchTerm = String(args.identifier).toLowerCase();
+        itemToRemove = queue.find((item: any) =>
+          item.title.toLowerCase().includes(searchTerm)
+        );
+      }
+
+      if (!itemToRemove) {
+        return this.error(`Could not find article matching "${args.identifier}" in queue`);
+      }
+
+      // Remove via API
+      const response = await this.fetchAPI(
+        `/api/content/article-queue?id=${itemToRemove.id}&userToken=${this.userToken}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.success) {
+        return this.error(`Failed to remove item: ${response.error}`);
+      }
+
+      return this.success({
+        message: `✅ Removed "${itemToRemove.title}" from content queue\n\n📊 Queue now has ${queue.length - 1} items remaining`,
+        removedItem: itemToRemove,
+        remainingCount: queue.length - 1
+      });
+
+    } catch (error) {
+      return this.error('Failed to remove from queue', error);
+    }
+  }
+
+  /**
+   * Reorder the content queue
+   */
+  private async reorderQueue(args: {
+    strategy?: 'priority' | 'date' | 'format' | 'authority' | 'traffic';
+    custom_order?: Array<{ id: number; position: number }>;
+    site_url?: string;
+    website_token?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      // Get current queue
+      let queryParams = `userToken=${this.userToken}&limit=50`;
+      if (args.website_token) queryParams += `&websiteToken=${args.website_token}`;
+
+      const queueResponse = await this.fetchAPI(`/api/content/article-queue?${queryParams}`);
+
+      if (!queueResponse.success) {
+        return this.error('Failed to fetch queue for reordering');
+      }
+
+      let queue = queueResponse.queue || [];
+
+      if (queue.length === 0) {
+        return this.error('Queue is empty - nothing to reorder');
+      }
+
+      let reorderedQueue = [];
+
+      if (args.custom_order) {
+        // Custom reordering based on provided order
+        const orderMap = new Map(args.custom_order.map(item => [item.id, item.position]));
+        reorderedQueue = queue.sort((a: any, b: any) => {
+          const posA = orderMap.get(a.id) || 999;
+          const posB = orderMap.get(b.id) || 999;
+          return posA - posB;
+        });
+      } else {
+        // Strategy-based reordering
+        switch (args.strategy) {
+          case 'priority':
+            reorderedQueue = queue.sort((a: any, b: any) => (a.priority || 999) - (b.priority || 999));
+            break;
+          case 'date':
+            reorderedQueue = queue.sort((a: any, b: any) =>
+              new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime()
+            );
+            break;
+          case 'traffic':
+            reorderedQueue = queue.sort((a: any, b: any) =>
+              (b.estimatedTrafficPotential || 0) - (a.estimatedTrafficPotential || 0)
+            );
+            break;
+          case 'authority':
+            const authorityOrder = { foundation: 1, intermediate: 2, advanced: 3 };
+            reorderedQueue = queue.sort((a: any, b: any) =>
+              (authorityOrder[a.authorityLevel as keyof typeof authorityOrder] || 999) -
+              (authorityOrder[b.authorityLevel as keyof typeof authorityOrder] || 999)
+            );
+            break;
+          case 'format':
+            reorderedQueue = queue.sort((a: any, b: any) =>
+              (a.articleFormat?.type || 'zzz').localeCompare(b.articleFormat?.type || 'zzz')
+            );
+            break;
+          default:
+            reorderedQueue = queue.sort((a: any, b: any) =>
+              (a.priority || 999) - (b.priority || 999)
+            );
+        }
+      }
+
+      // Send reordered queue to API
+      const response = await this.fetchAPI('/api/content/article-queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reorderedItems: reorderedQueue.map((item: any, index: number) => ({
+            id: item.id,
+            position: index + 1
+          })),
+          userToken: this.userToken
+        })
+      });
+
+      if (!response.success) {
+        return this.error(`Failed to reorder queue: ${response.error}`);
+      }
+
+      const strategy = args.strategy || 'custom';
+      let result = `✅ **Queue Reordered by ${strategy}**\n\n`;
+
+      result += `📋 **New Order:**\n`;
+      reorderedQueue.slice(0, 10).forEach((item: any, index: number) => {
+        result += `${index + 1}. ${item.title}\n`;
+      });
+
+      if (reorderedQueue.length > 10) {
+        result += `... and ${reorderedQueue.length - 10} more items\n`;
+      }
+
+      result += `\n🎯 **Strategy Used:** ${strategy === 'priority' ? 'By priority level' :
+                                       strategy === 'date' ? 'By scheduled date' :
+                                       strategy === 'traffic' ? 'By traffic potential (highest first)' :
+                                       strategy === 'authority' ? 'By authority level (foundation → advanced)' :
+                                       strategy === 'format' ? 'By article format type' : 'Custom order'}`;
+
+      return this.success({
+        message: result,
+        reorderedQueue: reorderedQueue.slice(0, 10),
+        strategy,
+        totalReordered: reorderedQueue.length
+      });
+
+    } catch (error) {
+      return this.error('Failed to reorder queue', error);
     }
   }
 }

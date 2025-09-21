@@ -82,122 +82,180 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // Generate content for each article
-          for (let i = 0; i < articlesToGenerate; i++) {
+          // Check if there are queued articles ready to generate
+          const { data: queuedArticles, error: queueError } = await supabase
+            .from('content_generation_queue')
+            .select('*')
+            .eq('user_token', schedule.user_token)
+            .eq('website_token', schedule.website_token)
+            .eq('status', 'pending')
+            .lte('scheduled_for', now.toISOString())
+            .order('priority', { ascending: true })
+            .order('scheduled_for', { ascending: true })
+            .limit(articlesToGenerate);
+
+          if (queueError) {
+            console.error(`[CONTENT CRON] Error fetching queued articles:`, queueError);
+            continue;
+          }
+
+          let articlesFromQueue = queuedArticles || [];
+
+          // If we don't have enough queued articles, generate new ones
+          if (articlesFromQueue.length < articlesToGenerate) {
+            const needed = articlesToGenerate - articlesFromQueue.length;
+            console.log(`[CONTENT CRON] Need ${needed} more articles for ${schedule.websites?.domain || schedule.domain}`);
+
+            // Generate new topics to fill the gap
             try {
-              // Use autonomous topic selection based on GSC data
-              let selectedTopic = '';
-              let topicDetails = null;
+              const topicResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/content/bulk-article-ideas`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  userToken: schedule.user_token,
+                  websiteToken: schedule.website_token,
+                  domain: schedule.websites?.cleaned_domain || schedule.websites?.domain || schedule.domain,
+                  period: 'week',
+                  count: needed,
+                  addToQueue: true
+                })
+              });
 
-              try {
-                // Try intelligent topic selection first
-                const topicResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/agent/autonomous-topic-selection`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    userToken: schedule.user_token,
-                    websiteToken: schedule.website_token,
-                    domain: schedule.websites?.cleaned_domain || schedule.websites?.domain || schedule.domain,
-                    analysisType: 'quick'
-                  })
-                });
+              if (topicResponse.ok) {
+                console.log(`[CONTENT CRON] Generated ${needed} new article ideas for queue`);
 
-                if (topicResponse.ok) {
-                  const topicData = await topicResponse.json();
-                  if (topicData.success && topicData.selectedTopics && topicData.selectedTopics.length > 0) {
-                    // Select a random topic from the top recommendations
-                    const randomIndex = Math.floor(Math.random() * Math.min(3, topicData.selectedTopics.length));
-                    topicDetails = topicData.selectedTopics[randomIndex];
-                    selectedTopic = topicDetails.title;
-                    console.log(`[CONTENT CRON] Selected GSC-based topic: "${selectedTopic}" (Priority: ${topicDetails.priority})`);
-                  }
+                // Fetch the newly added queue items
+                const { data: newQueueItems } = await supabase
+                  .from('content_generation_queue')
+                  .select('*')
+                  .eq('user_token', schedule.user_token)
+                  .eq('website_token', schedule.website_token)
+                  .eq('status', 'draft')
+                  .order('created_at', { ascending: false })
+                  .limit(needed);
+
+                // Update their status to pending and set proper schedule times
+                if (newQueueItems && newQueueItems.length > 0) {
+                  const updates = newQueueItems.map((item, index) => {
+                    const scheduledTime = new Date(now);
+                    scheduledTime.setHours(
+                      schedule.preferred_hours[index % schedule.preferred_hours.length] || 12,
+                      Math.floor(Math.random() * 60),
+                      0,
+                      0
+                    );
+
+                    return supabase
+                      .from('content_generation_queue')
+                      .update({
+                        status: 'pending',
+                        scheduled_for: scheduledTime.toISOString(),
+                        schedule_id: schedule.id
+                      })
+                      .eq('id', item.id);
+                  });
+
+                  await Promise.all(updates);
+                  articlesFromQueue = [...articlesFromQueue, ...newQueueItems];
                 }
-              } catch (error) {
-                console.warn(`[CONTENT CRON] Autonomous topic selection failed, falling back to manual topics:`, error);
               }
+            } catch (error) {
+              console.error(`[CONTENT CRON] Failed to generate additional topics:`, error);
+            }
+          }
 
-              // Fallback to configured topics if autonomous selection fails
-              if (!selectedTopic) {
-                const topicSources = [
-                  ...(schedule.topic_sources || []),
-                  ...(schedule.content_pillars || [])
-                ].filter(Boolean);
-
-                if (topicSources.length > 0) {
-                  selectedTopic = topicSources[Math.floor(Math.random() * topicSources.length)];
-                } else {
-                  // Default topics if none specified
-                  const defaultTopics = [
-                    'SEO best practices',
-                    'content marketing strategies',
-                    'digital marketing tips',
-                    'website optimization',
-                    'search engine optimization'
-                  ];
-                  selectedTopic = defaultTopics[Math.floor(Math.random() * defaultTopics.length)];
-                }
-              }
-
-              // Add to generation queue
-              // Calculate scheduled time (spread throughout the day)
-              const scheduledTime = new Date(now);
-              scheduledTime.setHours(
-                schedule.preferred_hours[i % schedule.preferred_hours.length] || 12,
-                Math.floor(Math.random() * 60), // Random minute
-                0,
-                0
-              );
-
+          // Process each queued article
+          for (const queueItem of articlesFromQueue.slice(0, articlesToGenerate)) {
+            try {
+              // Update status to generating
               await supabase
                 .from('content_generation_queue')
-                .insert({
-                  user_token: schedule.user_token,
-                  website_token: schedule.website_token,
-                  schedule_id: schedule.id,
-                  scheduled_for: scheduledTime.toISOString(),
-                  topic: selectedTopic,
-                  target_word_count: schedule.target_word_count,
-                  content_style: schedule.content_style,
-                  status: 'pending'
-                });
+                .update({ status: 'generating' })
+                .eq('id', queueItem.id);
 
-              // Generate the article content with enhanced prompt if we have topic details
-              const enhancedPrompt = topicDetails ?
-                `Write a comprehensive ${schedule.target_word_count}-word article about "${selectedTopic}" in a ${schedule.content_style} style.
+              // Parse metadata for enhanced generation
+              let metadata: any = {};
+              try {
+                metadata = JSON.parse(queueItem.metadata || '{}');
+              } catch (e) {
+                console.warn('Failed to parse queue item metadata');
+              }
 
-Target these specific queries: ${topicDetails.targetQueries?.join(', ')}
+              const topicDetails = {
+                title: queueItem.topic,
+                targetKeywords: queueItem.target_keywords || metadata.targetKeywords || [],
+                targetQueries: queueItem.target_queries || metadata.targetQueries || [],
+                contentBrief: queueItem.content_brief || metadata.contentBrief || '',
+                articleFormat: queueItem.article_format || metadata.articleFormat || {},
+                authorityLevel: queueItem.authority_level || metadata.authorityLevel || 'foundation',
+                estimatedTrafficPotential: queueItem.estimated_traffic_potential || metadata.estimatedTrafficPotential || 0
+              };
 
-${topicDetails.contentBrief}
+              // Enhanced prompt based on queue metadata
+              const enhancedPrompt = `Write a comprehensive ${queueItem.target_word_count || schedule.target_word_count}-word article about "${queueItem.topic}" in a ${queueItem.content_style || schedule.content_style} style.
 
-Include practical tips, examples, and actionable advice. This topic has an estimated traffic potential of ${topicDetails.estimatedTrafficPotential} monthly visitors based on GSC data analysis.` :
-                `Write a comprehensive ${schedule.target_word_count}-word article about "${selectedTopic}" in a ${schedule.content_style} style. Include practical tips, examples, and actionable advice.`;
+${topicDetails.articleFormat.type ? `Article Format: ${topicDetails.articleFormat.type}` : ''}
+${topicDetails.authorityLevel ? `Authority Level: ${topicDetails.authorityLevel}` : ''}
+${topicDetails.targetKeywords.length > 0 ? `Target Keywords: ${topicDetails.targetKeywords.join(', ')}` : ''}
+${topicDetails.targetQueries.length > 0 ? `Target Queries: ${topicDetails.targetQueries.join(', ')}` : ''}
 
-              await generateArticleContent({
+${topicDetails.contentBrief || 'Include practical tips, examples, and actionable advice.'}
+
+${topicDetails.estimatedTrafficPotential > 0 ? `This topic has an estimated traffic potential of ${topicDetails.estimatedTrafficPotential} monthly visitors based on GSC data analysis.` : ''}`;
+
+              const articleResult = await generateArticleContent({
                 userToken: schedule.user_token,
                 websiteToken: schedule.website_token,
                 domain: schedule.websites?.cleaned_domain || schedule.websites?.domain || schedule.domain,
-                topic: selectedTopic,
+                topic: queueItem.topic,
                 prompt: enhancedPrompt,
-                wordCount: schedule.target_word_count,
-                contentStyle: schedule.content_style,
+                wordCount: queueItem.target_word_count || schedule.target_word_count,
+                contentStyle: queueItem.content_style || schedule.content_style,
                 includeImages: schedule.include_images,
                 autoPublish: schedule.auto_publish,
-                topicDetails
+                topicDetails,
+                queueItemId: queueItem.id
               });
 
-              results.generated++;
-              console.log(`[CONTENT CRON] Generated article for ${schedule.websites?.domain || schedule.domain}: "${selectedTopic}"`);
+              if (articleResult && articleResult.success) {
+                // Update queue item as completed
+                await supabase
+                  .from('content_generation_queue')
+                  .update({
+                    status: 'completed',
+                    generated_article_id: articleResult.articleId
+                  })
+                  .eq('id', queueItem.id);
+
+                results.generated++;
+                console.log(`[CONTENT CRON] Generated queued article: "${queueItem.topic}" (Queue ID: ${queueItem.id})`);
+              } else {
+                // Mark as failed
+                await supabase
+                  .from('content_generation_queue')
+                  .update({ status: 'failed' })
+                  .eq('id', queueItem.id);
+
+                results.failed++;
+                console.error(`[CONTENT CRON] Failed to generate queued article: "${queueItem.topic}"`);
+              }
 
               // Add delay between articles to avoid rate limiting
               await new Promise(resolve => setTimeout(resolve, 2000));
 
             } catch (error) {
               results.failed++;
-              const errorMsg = `Failed to generate article for ${schedule.websites?.domain || schedule.domain}: ${error}`;
+              const errorMsg = `Failed to generate queued article ${queueItem.id}: ${error}`;
               results.errors.push(errorMsg);
               console.error(`[CONTENT CRON] ${errorMsg}`);
+
+              // Mark queue item as failed
+              await supabase
+                .from('content_generation_queue')
+                .update({ status: 'failed' })
+                .eq('id', queueItem.id);
             }
           }
 
@@ -263,6 +321,7 @@ async function generateArticleContent(params: {
   includeImages: boolean;
   autoPublish: boolean;
   topicDetails?: any;
+  queueItemId?: number;
 }) {
   try {
     // Call the existing article generation API internally

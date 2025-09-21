@@ -66,6 +66,19 @@ export async function POST(request: NextRequest) {
           target_word_count: idea.recommendedLength,
           content_style: 'professional', // Default, can be customized
           status: 'draft',
+          // Enhanced schema fields
+          topic_cluster: idea.mainTopic,
+          content_pillar: idea.mainTopic, // Can be more specific based on content strategy
+          target_keywords: JSON.stringify(idea.targetKeywords || []),
+          short_description: idea.contentBrief?.substring(0, 200) || `Article about ${idea.title}`,
+          article_format: JSON.stringify(idea.articleFormat || {}),
+          authority_level: idea.authorityLevel || 'foundation',
+          priority: idea.priority || (index + 1),
+          estimated_traffic_potential: idea.estimatedTrafficPotential || 0,
+          target_queries: JSON.stringify(idea.targetQueries || []),
+          content_brief: idea.contentBrief || '',
+          queue_position: index + 1,
+          // Legacy metadata field for backward compatibility
           metadata: JSON.stringify({
             priority: idea.priority,
             targetKeywords: idea.targetKeywords,
