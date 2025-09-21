@@ -264,7 +264,32 @@ export default function Dashboard() {
 
               {/* GSC Connection or No Connection State */}
               {!checkingGsc && !gscConnected && (
-                <div className="mb-8">
+                <div className="mb-8 space-y-6">
+                  {/* YouTube Video Introduction */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Welcome to SEOAgent! 🎉
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Watch this quick intro to get started with your automated SEO setup
+                      </p>
+                    </div>
+                    <div className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+                      <div className="aspect-video">
+                        <iframe
+                          src="https://www.youtube.com/embed/njpfEI83EQw"
+                          title="SEOAgent Introduction"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          className="w-full h-full"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* GSC Connection */}
                   <GSCConnection onConnectionChange={handleGscConnectionChange} />
                 </div>
               )}

@@ -316,29 +316,30 @@ function LoginForm() {
 
   // Mailgun-style signup form
   return (
-    <div className="min-h-screen bg-slate-800 flex">
+    <div className="min-h-screen bg-slate-800 flex py-8">
       {/* Left side - Logo and form */}
       <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-lg">
           {/* Logo */}
           <div className="flex items-center mb-8">
-            <Image 
-              src="/assets/agent_icon.png" 
-              alt="SEOAgent" 
-              width={40}
-              height={40}
-              className="mr-3"
-            />
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
+              <Image 
+                src="/assets/agent_icon.png" 
+                alt="SEOAgent" 
+                width={32}
+                height={32}
+              />
+            </div>
             <span className="text-2xl font-bold text-white">SEOAgent</span>
           </div>
           
-          <div className="bg-white rounded-xl shadow-xl p-8">
-            <h1 className="text-2xl font-semibold text-slate-800 mb-6">Get started with SEOAgent today!</h1>
+          <div className="bg-white rounded-xl shadow-xl p-6">
+            <h1 className="text-xl font-semibold text-slate-800 mb-4">Get started with SEOAgent today!</h1>
             
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {/* First Name */}
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
                   First Name
                 </label>
                 <input
@@ -348,13 +349,13 @@ function LoginForm() {
                   required
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
               {/* Last Name */}
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
                   Last Name
                 </label>
                 <input
@@ -364,13 +365,13 @@ function LoginForm() {
                   required
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
               {/* Company */}
               <div>
-                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
                   Company
                 </label>
                 <input
@@ -379,13 +380,13 @@ function LoginForm() {
                   type="text"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Work Email
                 </label>
                 <input
@@ -396,13 +397,13 @@ function LoginForm() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
               {/* Password */}
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Password
                 </label>
                 <input
@@ -413,13 +414,13 @@ function LoginForm() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
               {/* Confirm Password */}
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                   Password Confirmation
                 </label>
                 <input
@@ -430,7 +431,7 @@ function LoginForm() {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -443,20 +444,20 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-indigo-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
 
-            <p className="mt-6 text-sm text-gray-600">
+            <p className="mt-4 text-sm text-gray-600">
               By creating a SEOAgent account, you agree to the{' '}
               <a href="/terms" className="text-indigo-600 hover:text-indigo-500">
                 SEOAgent Terms of Service
               </a>
             </p>
 
-            <div className="mt-6 text-center">
+            <div className="mt-4 text-center">
               <span className="text-sm text-gray-600">Already have an account? </span>
               <button
                 type="button"
@@ -479,58 +480,58 @@ function LoginForm() {
       </div>
 
       {/* Right side - Information */}
-      <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:px-20 xl:px-24">
+      <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:px-12 xl:px-16">
         <div className="max-w-md">
-          <div className="text-white space-y-8">
+          <div className="text-white space-y-6">
             <div>
-              <h2 className="text-2xl font-bold mb-4">Why Choose SEOAgent?</h2>
-              <p className="text-slate-300 text-lg leading-relaxed">
+              <h2 className="text-xl font-bold mb-3">Why Choose SEOAgent?</h2>
+              <p className="text-slate-300 text-base leading-relaxed">
                 Put your technical SEO on complete autopilot with AI-powered automation that never sleeps.
               </p>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-3"></div>
+                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-2"></div>
                 <div>
-                  <h3 className="text-lg font-semibold mb-1">Automated Technical SEO</h3>
-                  <p className="text-slate-300">
-                    Fix canonical tags, meta descriptions, schema markup, and indexing issues automatically
+                  <h3 className="text-base font-semibold mb-1">Make Your Website Google-Friendly</h3>
+                  <p className="text-slate-300 text-sm">
+                    Make your website more readable to Google and AI so it gets prioritized in search results and recommendations
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-3"></div>
+                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-2"></div>
                 <div>
-                  <h3 className="text-lg font-semibold mb-1">Multi-CMS Content Publishing</h3>
-                  <p className="text-slate-300">
-                    Generate and publish SEO-optimized content to WordPress, Strapi, Webflow, and more
+                  <h3 className="text-base font-semibold mb-1">Create Content That Ranks</h3>
+                  <p className="text-slate-300 text-sm">
+                    Automatically write and publish articles that people actually search for, helping you attract more visitors
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-3"></div>
+                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-2"></div>
                 <div>
-                  <h3 className="text-lg font-semibold mb-1">24/7 SEO Monitoring</h3>
-                  <p className="text-slate-300">
-                    Real-time alerts for critical SEO changes with automatic fix suggestions
+                  <h3 className="text-base font-semibold mb-1">Never Miss an Issue</h3>
+                  <p className="text-slate-300 text-sm">
+                    Get instant alerts when something breaks your SEO, plus automatic fixes to keep your rankings safe
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-700 rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-3">Ready to get started?</h3>
-              <p className="text-slate-300 mb-4">
+            <div className="bg-slate-700 rounded-lg p-4">
+              <h3 className="text-base font-semibold mb-2">Ready to get started?</h3>
+              <p className="text-slate-300 text-sm mb-3">
                 Book a personalized onboarding call to maximize your SEO results
               </p>
               <a
-                href="https://calendly.com/seoagent-onboarding"
+                href="https://calendly.com/alec-aleclindz/30min"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center w-full px-4 py-2 bg-white text-slate-800 rounded-lg font-medium hover:bg-slate-100 transition-colors"
+                className="inline-flex items-center justify-center w-full px-4 py-2 bg-white text-slate-800 rounded-lg font-medium hover:bg-slate-100 transition-colors text-sm"
               >
                 Schedule Onboarding Call
               </a>
