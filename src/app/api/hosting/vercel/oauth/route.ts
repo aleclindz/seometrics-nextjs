@@ -361,6 +361,29 @@ export async function POST(request: NextRequest) {
 
     console.log('[VERCEL OAUTH] Integration created successfully:', integration.id);
 
+    // Update hosting_status in websites table to reflect connected status
+    try {
+      const { data: websiteUpdate, error: websiteError } = await supabase
+        .from('websites')
+        .update({
+          hosting_status: 'connected',
+          last_status_check: new Date().toISOString()
+        })
+        .eq('user_token', userToken)
+        .select()
+        .single();
+
+      if (websiteError) {
+        console.error('[VERCEL OAUTH] Warning: Could not update website hosting_status:', websiteError);
+        // Don't fail the integration creation, just log the warning
+      } else {
+        console.log('[VERCEL OAUTH] Successfully updated website hosting_status to connected');
+      }
+    } catch (updateError) {
+      console.error('[VERCEL OAUTH] Error updating website hosting_status:', updateError);
+      // Continue with successful response
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Vercel integration created successfully',

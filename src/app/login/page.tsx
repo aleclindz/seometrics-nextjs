@@ -130,12 +130,12 @@ function LoginForm() {
             </div>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Check your email
+            🎉 Account Created!
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            We&apos;ve sent a verification link to
+            We&apos;ve sent a verification email to:
           </p>
-          <p className="mt-1 text-center text-sm font-medium text-gray-900 dark:text-white">
+          <p className="mt-1 text-center text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-md">
             {verificationEmail}
           </p>
         </div>
@@ -143,9 +143,14 @@ function LoginForm() {
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
             <div className="text-center space-y-4">
-              <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 p-4">
-                <div className="text-sm text-blue-700 dark:text-blue-400">
-                  Click the link in your email to verify your account, then return here to sign in.
+              <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-4 border border-green-200 dark:border-green-800">
+                <div className="flex items-start space-x-3">
+                  <div className="text-green-500 dark:text-green-400 text-lg">✉️</div>
+                  <div className="text-sm text-green-700 dark:text-green-400 space-y-2">
+                    <p className="font-medium">Please check your email inbox</p>
+                    <p>Click the verification link in your email, then you&apos;ll be automatically redirected to your SEOAgent dashboard.</p>
+                    <p className="text-xs text-green-600 dark:text-green-500">💡 Check your spam folder if you don&apos;t see it within a few minutes</p>
+                  </div>
                 </div>
               </div>
 

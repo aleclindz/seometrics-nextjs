@@ -30,8 +30,28 @@ export default function Dashboard() {
   const [checkingGsc, setCheckingGsc] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userPlan, setUserPlan] = useState<{ plan_id: string; maxSites: number } | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
   
   const { user } = useAuth();
+
+  // Check for verification success params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const verified = urlParams.get('verified');
+    const newUser = urlParams.get('new_user');
+    
+    if (verified === 'true') {
+      setShowWelcome(true);
+      setIsNewUser(newUser === 'true');
+      
+      // Clear URL params after showing welcome
+      window.history.replaceState({}, '', '/dashboard');
+      
+      // Hide welcome after 10 seconds
+      setTimeout(() => setShowWelcome(false), 10000);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {

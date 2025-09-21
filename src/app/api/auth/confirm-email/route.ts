@@ -93,13 +93,27 @@ export async function GET(request: NextRequest) {
       console.log('[AUTH CONFIRM] User already exists, using existing token:', userToken);
     }
 
-    // Redirect to onboarding page with success indicator
-    const redirectUrl = new URL(redirectTo, request.url);
-    redirectUrl.searchParams.set('verified', 'true');
-    redirectUrl.searchParams.set('new_user', existingUser ? 'false' : 'true');
+    // Create an authenticated session for the user
+    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: data.user.email!,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?verified=true&new_user=${existingUser ? 'false' : 'true'}`
+      }
+    });
 
-    console.log('[AUTH CONFIRM] Redirecting to:', redirectUrl.toString());
-    return NextResponse.redirect(redirectUrl);
+    if (sessionError) {
+      console.error('[AUTH CONFIRM] Error generating session link:', sessionError);
+      // Fallback to normal redirect with login required
+      const redirectUrl = new URL('/dashboard', request.url);
+      redirectUrl.searchParams.set('verified', 'true');
+      redirectUrl.searchParams.set('login_required', 'true');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Redirect directly to the dashboard with the magic link to auto-login
+    console.log('[AUTH CONFIRM] Redirecting to dashboard with auto-login');
+    return NextResponse.redirect(sessionData.properties.action_link);
 
   } catch (error) {
     console.error('[AUTH CONFIRM] Unexpected error:', error);
