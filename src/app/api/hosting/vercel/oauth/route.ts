@@ -70,8 +70,7 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
       );
     }
 
-    // Construct Vercel OAuth URL
-    const vercelClientId = process.env.VERCEL_CLIENT_ID;
+    // Construct Vercel integration URL
     const redirectUri = process.env.VERCEL_OAUTH_REDIRECT_URI!;
     
     // Validate redirect URI is configured
@@ -84,33 +83,15 @@ async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
         { status: 500 }
       );
     }
-    
-    // Check for placeholder/missing credentials
-    if (!vercelClientId || vercelClientId === 'your_vercel_client_id_here') {
-      return NextResponse.json(
-        { 
-          error: 'Vercel OAuth not configured. Please create a Vercel Integration at vercel.com/integrations/console and update VERCEL_CLIENT_ID and VERCEL_CLIENT_SECRET in your environment variables.',
-          setupRequired: true
-        },
-        { status: 400 }
-      );
-    }
 
-    const oauthUrl = `https://vercel.com/oauth/authorize?` +
-      `client_id=${encodeURIComponent(vercelClientId)}&` +
-      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `response_type=code&` +
-      `scope=${encodeURIComponent('read:project,write:project')}&` +
-      `state=${encodeURIComponent(state)}`;
+    // Use Vercel integration URL instead of generic OAuth URL
+    const oauthUrl = `https://vercel.com/integrations/seoagent/new?state=${encodeURIComponent(state)}`;
 
-    console.log('[VERCEL OAUTH] OAuth Configuration:', {
-      clientId: vercelClientId?.substring(0, 8) + '...',
+    console.log('[VERCEL OAUTH] Integration Configuration:', {
+      integrationSlug: 'seoagent',
       redirectUri,
       state,
-      appUrl: process.env.NEXT_PUBLIC_APP_URL,
-      vercelUrl: process.env.VERCEL_URL,
-      nextPublicBaseUrl: process.env.NEXT_PUBLIC_BASE_URL,
-      nodeEnv: process.env.NODE_ENV
+      oauthUrl
     });
     console.log('[VERCEL OAUTH] Redirecting to Vercel OAuth:', oauthUrl);
 
