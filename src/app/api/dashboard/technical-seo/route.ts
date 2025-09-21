@@ -118,28 +118,28 @@ export async function GET(request: NextRequest) {
     // Look for schema_logs entries which track schema markup additions
     let seoagentSchemaItems = 0;
     try {
-      const { data: schemaLogs, error: schemaError } = await supabase
+      const { count: schemaLogsCount, error: schemaError } = await supabase
         .from('schema_logs')
         .select('*', { count: 'exact', head: true })
         .eq('website_token', website.website_token)
         .eq('action_type', 'schema_generated');
 
-      if (!schemaError && schemaLogs !== null) {
-        seoagentSchemaItems = schemaLogs;
+      if (!schemaError && schemaLogsCount !== null) {
+        seoagentSchemaItems = schemaLogsCount;
         console.log('[TECHNICAL SEO DASHBOARD] SEOAgent schema items:', seoagentSchemaItems);
       }
     } catch (schemaLogError) {
       console.log('[TECHNICAL SEO DASHBOARD] No schema_logs table found, checking activity_logs');
       
       // Fallback: check activity_logs for schema markup activities
-      const { data: activityLogs, error: activityError } = await supabase
+      const { count: activityLogsCount, error: activityError } = await supabase
         .from('activity_logs')
         .select('*', { count: 'exact', head: true })
         .eq('website_token', website.website_token)
         .eq('activity_type', 'schema_markup_added');
 
-      if (!activityError && activityLogs !== null) {
-        seoagentSchemaItems = activityLogs;
+      if (!activityError && activityLogsCount !== null) {
+        seoagentSchemaItems = activityLogsCount;
         console.log('[TECHNICAL SEO DASHBOARD] Schema items from activity_logs:', seoagentSchemaItems);
       }
     }
