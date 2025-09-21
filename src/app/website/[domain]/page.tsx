@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/website-chat/ChatInterface';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
+import ContentScheduleConfig from '@/components/ContentScheduleConfig';
 import { ChevronDown, Send, Loader2, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 
@@ -27,7 +28,7 @@ export default function WebsitePage() {
   const [logCollapsed, setLogCollapsed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
-  const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string }>>([]);
+  const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string; website_token?: string }>>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [backfilling, setBackfilling] = useState(false);
 
@@ -1122,6 +1123,13 @@ export default function WebsitePage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Content Scheduling Configuration */}
+                      <ContentScheduleConfig
+                        userToken={user?.token || ''}
+                        websiteToken={userWebsites.find(w => w.url === domain || w.url.includes(domain))?.website_token || ''}
+                        domain={domain}
+                      />
                       </div>
                   )}
                 </section>

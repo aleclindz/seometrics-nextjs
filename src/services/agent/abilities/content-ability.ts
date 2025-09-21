@@ -27,7 +27,8 @@ export class ContentAbility extends BaseAbility {
       'CONTENT_generate_and_publish',
       'CONTENT_generate_with_links',
       'CONTENT_suggest_ideas',
-      'CONTENT_get_context'
+      'CONTENT_get_context',
+      'CONTENT_analyze_gsc_topics' // NEW: Autonomous GSC-based topic analysis
     ];
   }
 
@@ -49,6 +50,8 @@ export class ContentAbility extends BaseAbility {
       case 'get_content_context':
       case 'CONTENT_get_context':
         return await this.getContentContext(args);
+      case 'CONTENT_analyze_gsc_topics':
+        return await this.analyzeGSCTopics(args);
       case 'optimize_content':
         return await this.optimizeContent(args);
       case 'publish_content':
@@ -874,5 +877,120 @@ export class ContentAbility extends BaseAbility {
     }
 
     return recommendations;
+  }
+
+  /**
+   * Analyze GSC data to identify optimal blog post topics using investor approach
+   * Finds underperforming assets (high impressions, low CTR) and low-hanging fruit
+   */
+  private async analyzeGSCTopics(args: {
+    site_url?: string;
+    analysis_type?: 'comprehensive' | 'quick';
+    focus_area?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      // Get the primary site URL if not provided
+      let siteUrl = args.site_url;
+      if (!siteUrl) {
+        const sites = await this.fetchAPI(`/api/websites?userToken=${this.userToken}`);
+        if (sites?.success && sites.websites?.length) {
+          siteUrl = sites.websites[0]?.domain;
+        }
+      }
+
+      if (!siteUrl) {
+        return this.error('No website found. Please connect a website first or specify site_url.');
+      }
+
+      // Call the autonomous topic selection API
+      const response = await this.fetchAPI('/api/agent/autonomous-topic-selection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userToken: this.userToken,
+          domain: siteUrl,
+          analysisType: args.analysis_type || 'comprehensive',
+          focusArea: args.focus_area
+        })
+      });
+
+      if (!response.success) {
+        return this.error(`Topic analysis failed: ${response.error}`, response.error);
+      }
+
+      const { selectedTopics, opportunities, analysis } = response;
+
+      // Format the response for the LLM
+      let result = `🎯 **GSC Topic Analysis for ${siteUrl}**\n\n`;
+
+      result += `📊 **Analysis Summary:**\n`;
+      result += `- Analyzed ${analysis.queriesAnalyzed} search queries\n`;
+      result += `- Found ${opportunities.length} optimization opportunities\n`;
+      result += `- Date range: ${analysis.dataRange.start} to ${analysis.dataRange.end}\n\n`;
+
+      if (selectedTopics && selectedTopics.length > 0) {
+        result += `🚀 **Top Recommended Topics** (Priority Order):\n\n`;
+
+        selectedTopics.slice(0, 5).forEach((topic: any, index: number) => {
+          result += `**${index + 1}. ${topic.title}**\n`;
+          result += `- **Traffic Potential:** ${topic.estimatedTrafficPotential} monthly visitors\n`;
+          result += `- **Current Performance:** ${topic.currentPerformance.totalImpressions} impressions, ${topic.currentPerformance.totalClicks} clicks\n`;
+          result += `- **Target Queries:** ${topic.targetQueries.slice(0, 3).join(', ')}\n`;
+          result += `- **Content Brief:** ${topic.contentBrief}\n`;
+          result += `- **Recommended Length:** ${topic.recommendedLength} words\n`;
+          result += `- **Urgency:** ${topic.urgency}\n\n`;
+        });
+      }
+
+      if (opportunities && opportunities.length > 0) {
+        result += `💡 **Key Opportunities Found:**\n\n`;
+
+        const opportunityTypes = {
+          underperforming_asset: '📈 Underperforming Assets (High Impressions, Low CTR)',
+          low_hanging_fruit: '🍎 Low Hanging Fruit (Page 1, Not #1)',
+          content_gap: '🔍 Content Gaps (High Volume, Low Clicks)',
+          trending_opportunity: '🔥 Trending Opportunities'
+        };
+
+        const groupedOps = opportunities.reduce((acc: any, opp: any) => {
+          if (!acc[opp.opportunityType]) acc[opp.opportunityType] = [];
+          acc[opp.opportunityType].push(opp);
+          return acc;
+        }, {});
+
+        Object.entries(groupedOps).forEach(([type, ops]: [string, any]) => {
+          result += `**${opportunityTypes[type as keyof typeof opportunityTypes]}**\n`;
+          (ops as any[]).slice(0, 3).forEach((opp: any) => {
+            result += `- "${opp.query}" (${opp.impressions} impressions, position ${opp.position.toFixed(1)})\n`;
+            result += `  ${opp.reasoning}\n`;
+          });
+          result += '\n';
+        });
+      }
+
+      result += `📝 **Next Steps:**\n`;
+      result += `1. Choose one of the top recommended topics above\n`;
+      result += `2. Use the generate_article function with the suggested title and keywords\n`;
+      result += `3. Focus on the specific queries mentioned for each topic\n`;
+      result += `4. Follow the content brief recommendations\n\n`;
+      result += `💡 **Pro Tip:** Start with Priority 1 topic for maximum impact based on GSC data analysis.`;
+
+      return this.success({
+        message: result,
+        selectedTopics,
+        opportunities: opportunities.slice(0, 10),
+        analysis,
+        nextActions: [
+          'Choose a topic from the recommendations above',
+          'Generate article using the suggested title and target queries',
+          'Monitor GSC performance after publishing'
+        ]
+      });
+
+    } catch (error) {
+      return this.error('Failed to analyze GSC topics for content strategy', error);
+    }
   }
 }

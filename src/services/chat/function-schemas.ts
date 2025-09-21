@@ -69,6 +69,12 @@ export const AuditSiteSchema = z.object({
   audit_type: z.enum(['technical', 'content', 'performance', 'full']).default('full')
 });
 
+export const AutonomousTopicSelectionSchema = z.object({
+  site_url: flexibleUrlSchema.optional(),
+  analysis_type: z.enum(['comprehensive', 'quick']).optional().default('comprehensive'),
+  focus_area: z.string().optional()
+});
+
 // Type inference from Zod schemas
 export type ConnectGSCArgs = z.infer<typeof ConnectGSCSchema>;
 export type SyncGSCDataArgs = z.infer<typeof SyncGSCDataSchema>;
@@ -76,6 +82,7 @@ export type GenerateArticleArgs = z.infer<typeof GenerateArticleSchema>;
 export type CreateIdeaArgs = z.infer<typeof CreateIdeaSchema>;
 export type GetSiteStatusArgs = z.infer<typeof GetSiteStatusSchema>;
 export type AuditSiteArgs = z.infer<typeof AuditSiteSchema>;
+export type AutonomousTopicSelectionArgs = z.infer<typeof AutonomousTopicSelectionSchema>;
 
 // Function schema registry with validation
 export interface FunctionDefinition {
@@ -703,6 +710,32 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     },
     validator: AuditSiteSchema,
     category: 'monitoring',
+    requiresSetup: true
+  },
+
+  // ===== Autonomous Content Strategy Functions =====
+  'CONTENT_analyze_gsc_topics': {
+    schema: {
+      name: 'CONTENT_analyze_gsc_topics',
+      description: 'Analyze Google Search Console data using an investor approach to identify the best blog post topics to write next. Finds underperforming assets (high impressions, low CTR) and low-hanging fruit (page 1 but not #1).',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional; uses primary site if omitted)' },
+          analysis_type: {
+            type: 'string',
+            enum: ['comprehensive', 'quick'],
+            description: 'Type of analysis - comprehensive for deep dive, quick for fast recommendations',
+            default: 'comprehensive'
+          },
+          focus_area: { type: 'string', description: 'Optional focus area to filter topics (e.g., "SEO", "marketing")' }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: AutonomousTopicSelectionSchema,
+    category: 'content',
     requiresSetup: true
   }
 };

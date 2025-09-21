@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/url-inspections",
       "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/cron/generate-scheduled-content",
+      "schedule": "0 */6 * * *"
     }
   ],
   "redirects": [
