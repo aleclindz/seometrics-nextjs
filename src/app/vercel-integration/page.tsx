@@ -74,11 +74,11 @@ export default function VercelIntegrationPage() {
         
         // Close popup and redirect parent window
         if (window.opener) {
-          window.opener.location.href = '/dashboard/settings?tab=integrations&vercel=success';
+          window.opener.location.href = '/dashboard?vercel_integration=success';
           window.close();
         } else {
           // Fallback if not in popup
-          window.location.href = '/dashboard/settings?tab=integrations&vercel=success';
+          window.location.href = '/dashboard?vercel_integration=success';
         }
       } else {
         setError(result.error || 'Installation failed');
