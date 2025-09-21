@@ -28,6 +28,15 @@ interface TopicCluster {
   opportunityScore: number;
   suggestedTitle: string;
   contentBrief: string;
+  suggestedFormat: ArticleFormat;
+  targetKeywords: string[];
+  authorityLevel: 'foundation' | 'intermediate' | 'advanced';
+}
+
+interface ArticleFormat {
+  type: 'listicle' | 'how-to' | 'guide' | 'faq' | 'comparison' | 'update' | 'case-study' | 'beginner-guide';
+  template: string;
+  wordCountRange: [number, number];
 }
 
 /**
@@ -46,7 +55,7 @@ interface TopicCluster {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userToken, websiteToken, domain, analysisType = 'comprehensive' } = await request.json();
+    const { userToken, websiteToken, domain, analysisType = 'comprehensive', generateCount = 3 } = await request.json();
 
     if (!userToken || !domain) {
       return NextResponse.json(
@@ -55,33 +64,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[AUTONOMOUS TOPIC] Starting analysis for:', { domain, analysisType });
+    console.log('[AUTONOMOUS TOPIC] Starting analysis for:', { domain, analysisType, generateCount });
 
     // Step 1: Fetch GSC Data for Analysis
     const gscData = await fetchGSCDataForAnalysis(userToken, domain);
 
-    if (!gscData.success) {
+    // Step 1.5: Fetch Keyword Strategy and Topic Clusters for Authority Building
+    const strategyData = await fetchKeywordStrategy(userToken, domain);
+
+    if (!gscData.success && !strategyData.success) {
       return NextResponse.json({
         success: false,
-        error: gscData.error || 'Failed to fetch GSC data',
-        fallback: await generateFallbackTopics(domain, userToken)
+        error: gscData.error || 'Failed to fetch data sources',
+        fallback: await generateFallbackTopics(domain, userToken, generateCount)
       });
     }
 
     // Step 2: Identify Query Opportunities (Investor Approach)
     const opportunities = await identifyQueryOpportunities(gscData.queries || []);
 
-    // Step 3: Cluster Related Topics
-    const topicClusters = await clusterTopicOpportunities(opportunities);
+    // Step 3: Cluster Related Topics with Authority Building
+    const topicClusters = await clusterTopicOpportunitiesWithStrategy(
+      opportunities,
+      strategyData.clusters || [],
+      strategyData.keywords || []
+    );
 
-    // Step 4: Score and Rank Topics
-    const rankedTopics = await scoreAndRankTopics(topicClusters, gscData.context || {});
+    // Step 4: Score and Rank Topics for Authority Building
+    const rankedTopics = await scoreAndRankTopicsForAuthority(
+      topicClusters,
+      { ...gscData.context, ...strategyData.context },
+      generateCount
+    );
 
-    // Step 5: Select Top 3 Topics for Weekly Content
-    const selectedTopics = rankedTopics.slice(0, 3);
+    // Step 5: Select Topics with Format Variety
+    const selectedTopics = await selectTopicsWithFormatVariety(rankedTopics, generateCount);
 
-    // Step 6: Generate Content Briefs
-    const contentBriefs = await generateContentBriefs(selectedTopics, gscData.context || {});
+    // Step 6: Generate Enhanced Content Briefs with Authority Focus
+    const contentBriefs = await generateEnhancedContentBriefs(
+      selectedTopics,
+      { ...gscData.context, ...strategyData.context }
+    );
 
     console.log('[AUTONOMOUS TOPIC] Analysis complete:', {
       queriesAnalyzed: (gscData.queries || []).length,
@@ -114,6 +137,63 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Failed to analyze topics' },
       { status: 500 }
     );
+  }
+}
+
+// Step 1.5: Fetch keyword strategy and topic clusters from database
+async function fetchKeywordStrategy(userToken: string, domain: string) {
+  try {
+    const cleanDomain = domain.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+    // Fetch keyword strategy data
+    const { data: strategyData, error: strategyError } = await supabase
+      .from('keyword_strategies')
+      .select(`
+        *,
+        keyword_clusters (
+          id,
+          cluster_name,
+          primary_keyword,
+          keywords,
+          intent,
+          priority,
+          status
+        ),
+        generated_keywords (
+          keyword,
+          search_volume,
+          difficulty,
+          intent,
+          priority
+        )
+      `)
+      .eq('user_token', userToken)
+      .ilike('domain', `%${cleanDomain}%`)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (strategyError || !strategyData || strategyData.length === 0) {
+      console.log('[AUTONOMOUS TOPIC] No keyword strategy found, using GSC data only');
+      return { success: false, error: 'No keyword strategy found' };
+    }
+
+    const strategy = strategyData[0];
+
+    return {
+      success: true,
+      clusters: strategy.keyword_clusters || [],
+      keywords: strategy.generated_keywords || [],
+      context: {
+        domain: cleanDomain,
+        strategyId: strategy.id,
+        totalClusters: (strategy.keyword_clusters || []).length,
+        totalKeywords: (strategy.generated_keywords || []).length
+      }
+    };
+
+  } catch (error) {
+    console.error('[AUTONOMOUS TOPIC] Error fetching keyword strategy:', error);
+    return { success: false, error: 'Failed to fetch keyword strategy' };
   }
 }
 
@@ -278,21 +358,43 @@ async function identifyQueryOpportunities(queries: any[]): Promise<QueryOpportun
   return opportunities.sort((a, b) => b.opportunityScore - a.opportunityScore);
 }
 
-// Step 3: Cluster related topics
-async function clusterTopicOpportunities(opportunities: QueryOpportunity[]): Promise<TopicCluster[]> {
+// Step 3: Enhanced topic clustering with strategy integration
+async function clusterTopicOpportunitiesWithStrategy(
+  opportunities: QueryOpportunity[],
+  strategyClusters: any[],
+  strategyKeywords: any[]
+): Promise<TopicCluster[]> {
   const clusters = new Map<string, QueryOpportunity[]>();
 
-  // Simple clustering by common keywords/phrases
-  for (const opportunity of opportunities) {
-    const mainTopic = extractMainTopic(opportunity.query);
-
-    if (!clusters.has(mainTopic)) {
-      clusters.set(mainTopic, []);
-    }
-    clusters.get(mainTopic)!.push(opportunity);
+  // First, try to match opportunities to existing strategy clusters
+  const matchedClusters = new Map<string, any>();
+  for (const cluster of strategyClusters) {
+    matchedClusters.set(cluster.cluster_name.toLowerCase(), cluster);
   }
 
-  // Convert to topic clusters with aggregated metrics
+  // Enhanced clustering with strategy awareness
+  for (const opportunity of opportunities) {
+    let assignedCluster = extractMainTopic(opportunity.query);
+
+    // Try to match to existing strategy clusters
+    for (const [clusterName, cluster] of Array.from(matchedClusters.entries())) {
+      const keywords = cluster.keywords || [];
+      const primaryKeyword = cluster.primary_keyword || '';
+
+      if (keywords.some((kw: string) => opportunity.query.toLowerCase().includes(kw.toLowerCase())) ||
+          opportunity.query.toLowerCase().includes(primaryKeyword.toLowerCase())) {
+        assignedCluster = cluster.cluster_name;
+        break;
+      }
+    }
+
+    if (!clusters.has(assignedCluster)) {
+      clusters.set(assignedCluster, []);
+    }
+    clusters.get(assignedCluster)!.push(opportunity);
+  }
+
+  // Convert to enhanced topic clusters
   const topicClusters: TopicCluster[] = [];
 
   for (const [topic, relatedOpportunities] of Array.from(clusters.entries())) {
@@ -303,6 +405,19 @@ async function clusterTopicOpportunities(opportunities: QueryOpportunity[]): Pro
     const averagePosition = relatedOpportunities.reduce((sum, opp) => sum + opp.position, 0) / relatedOpportunities.length;
     const opportunityScore = relatedOpportunities.reduce((sum, opp) => sum + opp.opportunityScore, 0);
 
+    // Find matching strategy cluster for keywords and authority level
+    const matchingCluster = matchedClusters.get(topic.toLowerCase());
+    const targetKeywords = matchingCluster ? (matchingCluster.keywords || []) : [topic];
+    const intent = matchingCluster?.intent || 'informational';
+
+    // Determine authority level based on competition and complexity
+    let authorityLevel: 'foundation' | 'intermediate' | 'advanced' = 'foundation';
+    if (averagePosition > 20 || totalImpressions < 50) authorityLevel = 'advanced';
+    else if (averagePosition > 10 || intent === 'commercial') authorityLevel = 'intermediate';
+
+    // Select format based on topic and authority level
+    const suggestedFormat = selectArticleFormat(topic, authorityLevel, intent, relatedOpportunities);
+
     topicClusters.push({
       mainTopic: topic,
       relatedQueries: relatedOpportunities.map(opp => opp.query),
@@ -310,28 +425,169 @@ async function clusterTopicOpportunities(opportunities: QueryOpportunity[]): Pro
       totalClicks,
       averagePosition,
       opportunityScore,
-      suggestedTitle: generateSuggestedTitle(topic, relatedOpportunities),
-      contentBrief: generateContentBrief(topic, relatedOpportunities)
+      suggestedTitle: generateSuggestedTitleWithFormat(topic, suggestedFormat, relatedOpportunities),
+      contentBrief: generateContentBriefWithFormat(topic, suggestedFormat, relatedOpportunities),
+      suggestedFormat,
+      targetKeywords,
+      authorityLevel
     });
   }
 
   return topicClusters.sort((a, b) => b.opportunityScore - a.opportunityScore);
 }
 
-// Step 4: Score and rank topics
-async function scoreAndRankTopics(clusters: TopicCluster[], context: any): Promise<TopicCluster[]> {
-  // Already sorted by opportunity score in clusterTopicOpportunities
-  return clusters.slice(0, 10); // Top 10 clusters
+// Article format selection based on topic and authority level
+function selectArticleFormat(
+  topic: string,
+  authorityLevel: 'foundation' | 'intermediate' | 'advanced',
+  intent: string,
+  opportunities: QueryOpportunity[]
+): ArticleFormat {
+  const formats: ArticleFormat[] = [
+    {
+      type: 'listicle',
+      template: 'X Best/Top [Topic] for [Year]',
+      wordCountRange: [1200, 2000]
+    },
+    {
+      type: 'how-to',
+      template: 'How to [Action] with [Topic]: Step-by-Step Guide',
+      wordCountRange: [1500, 2500]
+    },
+    {
+      type: 'guide',
+      template: 'The Complete Guide to [Topic]',
+      wordCountRange: [2000, 3500]
+    },
+    {
+      type: 'faq',
+      template: '[Topic] FAQ: Common Questions Answered',
+      wordCountRange: [1000, 1800]
+    },
+    {
+      type: 'comparison',
+      template: '[Topic A] vs [Topic B]: Which is Better?',
+      wordCountRange: [1500, 2200]
+    },
+    {
+      type: 'update',
+      template: '[Topic] in [Year]: Latest Updates and Trends',
+      wordCountRange: [1200, 2000]
+    },
+    {
+      type: 'case-study',
+      template: 'How We [Achieved Result] with [Topic]',
+      wordCountRange: [1800, 2800]
+    },
+    {
+      type: 'beginner-guide',
+      template: '[Topic] for Beginners: Everything You Need to Know',
+      wordCountRange: [1500, 2500]
+    }
+  ];
+
+  // Format selection logic based on signals
+  const hasQuestionWords = opportunities.some(opp =>
+    /^(what|how|why|when|where|which)\b/i.test(opp.query)
+  );
+  const hasComparison = opportunities.some(opp =>
+    /\b(vs|versus|compare|best|top|better)\b/i.test(opp.query)
+  );
+  const hasBeginner = opportunities.some(opp =>
+    /\b(beginner|start|basic|intro|learn)\b/i.test(opp.query)
+  );
+  const hasListWords = opportunities.some(opp =>
+    /\b(best|top|list|examples|types)\b/i.test(opp.query)
+  );
+
+  // Select format based on signals
+  if (hasBeginner && authorityLevel === 'foundation') {
+    return formats.find(f => f.type === 'beginner-guide') || formats[0];
+  } else if (hasListWords) {
+    return formats.find(f => f.type === 'listicle') || formats[0];
+  } else if (hasQuestionWords) {
+    return Math.random() < 0.5 ?
+      (formats.find(f => f.type === 'how-to') || formats[0]) :
+      (formats.find(f => f.type === 'faq') || formats[0]);
+  } else if (hasComparison) {
+    return formats.find(f => f.type === 'comparison') || formats[0];
+  } else if (authorityLevel === 'advanced') {
+    return formats.find(f => f.type === 'guide') || formats[0];
+  } else if (intent === 'commercial') {
+    return formats.find(f => f.type === 'case-study') || formats[0];
+  }
+
+  // Rotate through formats for variety
+  const varietyIndex = Math.floor(Math.random() * formats.length);
+  return formats[varietyIndex];
 }
 
-// Step 5: Generate detailed content briefs
-async function generateContentBriefs(topics: TopicCluster[], context: any) {
+// Step 4: Enhanced scoring for authority building
+async function scoreAndRankTopicsForAuthority(
+  clusters: TopicCluster[],
+  context: any,
+  targetCount: number
+): Promise<TopicCluster[]> {
+  // Enhanced scoring that considers authority building
+  const scoredClusters = clusters.map(cluster => {
+    let authorityScore = cluster.opportunityScore;
+
+    // Boost score for authority building progression
+    if (cluster.authorityLevel === 'foundation') authorityScore *= 1.3; // Build foundation first
+    if (cluster.authorityLevel === 'intermediate') authorityScore *= 1.1;
+
+    // Boost score for strategic keyword clusters
+    if (cluster.targetKeywords.length > 1) authorityScore *= 1.2;
+
+    return { ...cluster, authorityScore };
+  });
+
+  return scoredClusters
+    .sort((a, b) => b.authorityScore - a.authorityScore)
+    .slice(0, Math.max(targetCount * 2, 10)); // Give more options for variety selection
+}
+
+// Step 5: Select topics with format variety
+async function selectTopicsWithFormatVariety(
+  rankedTopics: TopicCluster[],
+  targetCount: number
+): Promise<TopicCluster[]> {
+  const selectedTopics: TopicCluster[] = [];
+  const usedFormats = new Set<string>();
+
+  // First pass: Select one of each format type for variety
+  for (const topic of rankedTopics) {
+    if (selectedTopics.length >= targetCount) break;
+
+    if (!usedFormats.has(topic.suggestedFormat.type)) {
+      selectedTopics.push(topic);
+      usedFormats.add(topic.suggestedFormat.type);
+    }
+  }
+
+  // Second pass: Fill remaining slots with highest scoring topics
+  for (const topic of rankedTopics) {
+    if (selectedTopics.length >= targetCount) break;
+
+    if (!selectedTopics.some(selected => selected.mainTopic === topic.mainTopic)) {
+      selectedTopics.push(topic);
+    }
+  }
+
+  return selectedTopics.slice(0, targetCount);
+}
+
+// Step 6: Generate enhanced content briefs with format details
+async function generateEnhancedContentBriefs(topics: TopicCluster[], context: any) {
   return topics.map((topic, index) => ({
     priority: index + 1,
     title: topic.suggestedTitle,
     mainTopic: topic.mainTopic,
-    targetQueries: topic.relatedQueries.slice(0, 5), // Top 5 related queries
-    estimatedTrafficPotential: Math.floor(topic.totalImpressions * 0.03), // 3% capture rate
+    targetQueries: topic.relatedQueries.slice(0, 5),
+    targetKeywords: topic.targetKeywords,
+    articleFormat: topic.suggestedFormat,
+    authorityLevel: topic.authorityLevel,
+    estimatedTrafficPotential: Math.floor(topic.totalImpressions * 0.03),
     currentPerformance: {
       totalImpressions: topic.totalImpressions,
       totalClicks: topic.totalClicks,
@@ -339,9 +595,11 @@ async function generateContentBriefs(topics: TopicCluster[], context: any) {
       ctr: topic.totalImpressions > 0 ? Math.round((topic.totalClicks / topic.totalImpressions) * 1000) / 10 : 0
     },
     contentBrief: topic.contentBrief,
-    recommendedLength: topic.totalImpressions > 500 ? 2000 : 1500,
+    recommendedLength: topic.suggestedFormat.wordCountRange[1],
     urgency: index < 3 ? 'high' : 'medium',
-    reasoning: `Opportunity score: ${Math.round(topic.opportunityScore)}. This topic cluster shows strong search demand with room for improvement.`
+    reasoning: `${topic.authorityLevel.charAt(0).toUpperCase() + topic.authorityLevel.slice(1)} authority piece using ${topic.suggestedFormat.type} format. Opportunity score: ${Math.round(topic.opportunityScore)}.`,
+    scheduledFor: null, // Will be set when added to queue
+    status: 'draft' // Start as draft for user review
   }));
 }
 
@@ -359,7 +617,83 @@ function extractMainTopic(query: string): string {
   return words.slice(0, 3).join(' ');
 }
 
-// Helper function to generate suggested title
+// Helper function to generate format-aware titles
+function generateSuggestedTitleWithFormat(mainTopic: string, format: ArticleFormat, opportunities: QueryOpportunity[]): string {
+  const topic = mainTopic.split(' ').map(word =>
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+
+  const currentYear = new Date().getFullYear();
+
+  switch (format.type) {
+    case 'listicle':
+      const listCount = Math.floor(Math.random() * 6) + 5; // 5-10 items
+      return `${listCount} Best ${topic} Tools for ${currentYear}`;
+
+    case 'how-to':
+      const actionWord = opportunities.find(o => /\b(how to|create|build|make|do)\b/i.test(o.query))?.query
+        .match(/how to (\w+)/i)?.[1] || 'master';
+      return `How to ${actionWord.charAt(0).toUpperCase() + actionWord.slice(1)} ${topic}: Step-by-Step Guide`;
+
+    case 'guide':
+      return `The Complete Guide to ${topic} in ${currentYear}`;
+
+    case 'faq':
+      return `${topic}: Frequently Asked Questions (${currentYear} Edition)`;
+
+    case 'comparison':
+      return `${topic} Comparison: Which Solution is Right for You?`;
+
+    case 'update':
+      return `${topic} in ${currentYear}: Latest Updates and Best Practices`;
+
+    case 'case-study':
+      return `How We Improved Our ${topic} Results by 200%`;
+
+    case 'beginner-guide':
+      return `${topic} for Beginners: Everything You Need to Know`;
+
+    default:
+      return `The Ultimate Guide to ${topic}`;
+  }
+}
+
+// Helper function to generate format-aware content briefs
+function generateContentBriefWithFormat(mainTopic: string, format: ArticleFormat, opportunities: QueryOpportunity[]): string {
+  const topQueries = opportunities.slice(0, 3).map(opp => opp.query);
+  const baseDescription = `targeting "${mainTopic}" that addresses these key queries: ${topQueries.join(', ')}.`;
+
+  switch (format.type) {
+    case 'listicle':
+      return `Create an engaging listicle ${baseDescription} Structure as numbered list with actionable items, include pros/cons, and provide clear recommendations for each item.`;
+
+    case 'how-to':
+      return `Create a comprehensive step-by-step tutorial ${baseDescription} Include detailed instructions, screenshots/examples, common pitfalls to avoid, and actionable tips.`;
+
+    case 'guide':
+      return `Create an authoritative, comprehensive guide ${baseDescription} Cover all aspects from basics to advanced, include expert insights, data/statistics, and practical examples.`;
+
+    case 'faq':
+      return `Create a thorough FAQ-style article ${baseDescription} Address common questions, provide detailed answers, and include troubleshooting tips.`;
+
+    case 'comparison':
+      return `Create a detailed comparison piece ${baseDescription} Include side-by-side analysis, pros/cons tables, pricing comparisons, and clear recommendations.`;
+
+    case 'update':
+      return `Create a timely update article ${baseDescription} Include latest trends, recent changes, new features, and future predictions with current data.`;
+
+    case 'case-study':
+      return `Create a compelling case study ${baseDescription} Include problem description, solution implementation, results with metrics, and lessons learned.`;
+
+    case 'beginner-guide':
+      return `Create a beginner-friendly guide ${baseDescription} Start with basics, define key terms, provide step-by-step progression, and include helpful resources.`;
+
+    default:
+      return `Create comprehensive content ${baseDescription} Focus on providing actionable insights and practical examples.`;
+  }
+}
+
+// Original helper function (keeping for backward compatibility)
 function generateSuggestedTitle(mainTopic: string, opportunities: QueryOpportunity[]): string {
   const topQuery = opportunities[0];
   const topic = mainTopic.split(' ').map(word =>
@@ -385,20 +719,60 @@ function generateContentBrief(mainTopic: string, opportunities: QueryOpportunity
 }
 
 // Fallback topic generation when GSC data is unavailable
-async function generateFallbackTopics(domain: string, userToken: string) {
-  // Generate industry-generic topics as fallback
-  const fallbackTopics = [
-    {
-      priority: 1,
-      title: `SEO Best Practices for ${domain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`,
-      mainTopic: 'seo best practices',
-      targetQueries: ['seo tips', 'search engine optimization', 'seo guide'],
-      estimatedTrafficPotential: 100,
-      contentBrief: 'Create a comprehensive guide covering modern SEO best practices.',
-      urgency: 'medium',
-      reasoning: 'Fallback topic - no GSC data available'
-    }
+async function generateFallbackTopics(domain: string, userToken: string, count: number = 3) {
+  // Generate industry-generic topics with variety as fallback
+  const baseTopics = [
+    { topic: 'seo best practices', format: 'guide' as const },
+    { topic: 'content marketing', format: 'how-to' as const },
+    { topic: 'digital marketing strategy', format: 'listicle' as const },
+    { topic: 'website optimization', format: 'faq' as const },
+    { topic: 'social media marketing', format: 'beginner-guide' as const },
+    { topic: 'email marketing', format: 'case-study' as const },
+    { topic: 'conversion optimization', format: 'comparison' as const },
+    { topic: 'analytics and tracking', format: 'update' as const }
   ];
 
+  const fallbackTopics = baseTopics.slice(0, count).map((item, index) => ({
+    priority: index + 1,
+    title: generateFallbackTitle(item.topic, item.format, domain),
+    mainTopic: item.topic,
+    targetQueries: [`${item.topic} tips`, `${item.topic} guide`, `${item.topic} strategy`],
+    targetKeywords: [item.topic],
+    articleFormat: {
+      type: item.format,
+      template: `Template for ${item.format}`,
+      wordCountRange: [1500, 2500] as [number, number]
+    },
+    authorityLevel: 'foundation' as const,
+    estimatedTrafficPotential: 100,
+    contentBrief: `Create comprehensive ${item.format} content about ${item.topic}. Include actionable tips and practical examples.`,
+    recommendedLength: 2000,
+    urgency: 'medium' as const,
+    reasoning: 'Fallback topic - no GSC data available',
+    scheduledFor: null,
+    status: 'draft' as const
+  }));
+
   return fallbackTopics;
+}
+
+function generateFallbackTitle(topic: string, format: string, domain: string): string {
+  const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const currentYear = new Date().getFullYear();
+
+  const formattedTopic = topic.split(' ').map(word =>
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+
+  switch (format) {
+    case 'guide': return `The Complete ${formattedTopic} Guide for ${cleanDomain}`;
+    case 'how-to': return `How to Master ${formattedTopic} in ${currentYear}`;
+    case 'listicle': return `10 Essential ${formattedTopic} Tips for ${currentYear}`;
+    case 'faq': return `${formattedTopic} FAQ: Common Questions Answered`;
+    case 'beginner-guide': return `${formattedTopic} for Beginners: Getting Started`;
+    case 'case-study': return `How We Improved Our ${formattedTopic} Results`;
+    case 'comparison': return `${formattedTopic} Tools: Comparing Your Options`;
+    case 'update': return `${formattedTopic} Trends and Updates for ${currentYear}`;
+    default: return `Ultimate Guide to ${formattedTopic}`;
+  }
 }

@@ -8,6 +8,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/website-chat/ChatInterface';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import ContentScheduleConfig from '@/components/ContentScheduleConfig';
+import ArticleQueueManager from '@/components/ArticleQueueManager';
 import { ChevronDown, Send, Loader2, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 
@@ -1125,11 +1126,20 @@ export default function WebsitePage() {
                       </div>
 
                       {/* Content Scheduling Configuration */}
-                      <ContentScheduleConfig
-                        userToken={user?.token || ''}
-                        websiteToken={userWebsites.find(w => w.url === domain || w.url.includes(domain))?.website_token || ''}
-                        domain={domain}
-                      />
+                      <div className="space-y-6">
+                        <ContentScheduleConfig
+                          userToken={user?.token || ''}
+                          websiteToken={userWebsites.find(w => w.url === domain || w.url.includes(domain))?.website_token || ''}
+                          domain={domain}
+                        />
+
+                        {/* Article Queue Manager */}
+                        <ArticleQueueManager
+                          userToken={user?.token || ''}
+                          websiteToken={userWebsites.find(w => w.url === domain || w.url.includes(domain))?.website_token || ''}
+                          domain={domain}
+                        />
+                      </div>
                       </div>
                   )}
                 </section>

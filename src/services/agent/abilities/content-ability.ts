@@ -28,7 +28,8 @@ export class ContentAbility extends BaseAbility {
       'CONTENT_generate_with_links',
       'CONTENT_suggest_ideas',
       'CONTENT_get_context',
-      'CONTENT_analyze_gsc_topics' // NEW: Autonomous GSC-based topic analysis
+      'CONTENT_analyze_gsc_topics', // NEW: Autonomous GSC-based topic analysis
+      'CONTENT_generate_bulk_ideas' // NEW: Bulk article idea generation
     ];
   }
 
@@ -52,6 +53,8 @@ export class ContentAbility extends BaseAbility {
         return await this.getContentContext(args);
       case 'CONTENT_analyze_gsc_topics':
         return await this.analyzeGSCTopics(args);
+      case 'CONTENT_generate_bulk_ideas':
+        return await this.generateBulkIdeas(args);
       case 'optimize_content':
         return await this.optimizeContent(args);
       case 'publish_content':
@@ -991,6 +994,119 @@ export class ContentAbility extends BaseAbility {
 
     } catch (error) {
       return this.error('Failed to analyze GSC topics for content strategy', error);
+    }
+  }
+
+  /**
+   * Generate bulk article ideas for a specified period
+   * Perfect for planning content calendars and maintaining consistent publishing
+   */
+  private async generateBulkIdeas(args: {
+    site_url?: string;
+    period?: 'week' | 'month';
+    count?: number;
+    add_to_queue?: boolean;
+    website_token?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      // Get the primary site URL if not provided
+      let siteUrl = args.site_url;
+      if (!siteUrl) {
+        const sites = await this.fetchAPI(`/api/websites?userToken=${this.userToken}`);
+        if (sites?.success && sites.websites?.length) {
+          siteUrl = sites.websites[0]?.domain;
+        }
+      }
+
+      if (!siteUrl) {
+        return this.error('No website found. Please connect a website first or specify site_url.');
+      }
+
+      const period = args.period || 'week';
+      const count = args.count || (period === 'week' ? 7 : 30);
+      const addToQueue = args.add_to_queue || false;
+
+      // Call bulk article ideas API
+      const response = await this.fetchAPI('/api/content/bulk-article-ideas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userToken: this.userToken,
+          websiteToken: args.website_token,
+          domain: siteUrl,
+          period,
+          count,
+          addToQueue
+        })
+      });
+
+      if (!response.success) {
+        return this.error(`Bulk idea generation failed: ${response.error}`, response.error);
+      }
+
+      const { articleIdeas, summary } = response;
+
+      // Format the response for the LLM
+      let result = `🚀 **Generated ${count} Article Ideas for ${period === 'week' ? 'This Week' : 'This Month'}**\n\n`;
+
+      result += `📊 **Generation Summary:**\n`;
+      result += `- Total Ideas: ${summary.totalIdeas}\n`;
+      result += `- Estimated Traffic Potential: +${summary.estimatedTotalTraffic} monthly visits\n`;
+      result += `- Format Variety: ${Object.entries(summary.formatBreakdown).map(([format, count]) => `${count} ${format}`).join(', ')}\n`;
+      result += `- Authority Levels: ${Object.entries(summary.authorityLevels).map(([level, count]) => `${count} ${level}`).join(', ')}\n`;
+
+      if (addToQueue) {
+        result += `- ✅ Added to content queue for automatic generation\n`;
+      } else {
+        result += `- 📝 Generated as drafts (not yet queued)\n`;
+      }
+      result += '\n';
+
+      if (articleIdeas && articleIdeas.length > 0) {
+        result += `📝 **Article Ideas:**\n\n`;
+
+        articleIdeas.slice(0, 10).forEach((idea: any, index: number) => {
+          const publishDate = new Date(idea.suggestedPublishDate).toLocaleDateString();
+          result += `**${index + 1}. ${idea.title}**\n`;
+          result += `- 📅 Suggested Publish: ${publishDate}\n`;
+          result += `- 📊 Format: ${idea.articleFormat?.type} (${idea.recommendedLength} words)\n`;
+          result += `- 🎯 Authority Level: ${idea.authorityLevel}\n`;
+          result += `- 🔑 Target Keywords: ${(idea.targetKeywords || []).slice(0, 3).join(', ')}\n`;
+          result += `- 📈 Traffic Potential: +${idea.estimatedTrafficPotential} monthly visits\n`;
+          result += `- 💡 Brief: ${idea.contentBrief.substring(0, 100)}...\n\n`;
+        });
+      }
+
+      result += `🎯 **Next Steps:**\n`;
+      if (addToQueue) {
+        result += `1. ✅ Ideas added to your content queue - they'll generate automatically\n`;
+        result += `2. 📝 Review the upcoming articles in your Content tab\n`;
+        result += `3. ✏️ Edit titles, schedules, or keywords as needed\n`;
+      } else {
+        result += `1. 📋 Review the ideas above and select your favorites\n`;
+        result += `2. 🗂️ Use the "Add to Queue" function to schedule them\n`;
+        result += `3. ✏️ Customize titles, keywords, or publish dates\n`;
+      }
+      result += `4. 📊 Monitor performance after publishing to optimize future topics\n\n`;
+      result += `💡 **Pro Tip:** These topics are selected based on your GSC data and keyword strategy for maximum authority building and traffic potential.`;
+
+      return this.success({
+        message: result,
+        articleIdeas: articleIdeas.slice(0, 10), // Return top 10 for LLM context
+        summary,
+        period,
+        addedToQueue: addToQueue,
+        nextActions: [
+          addToQueue ? 'Review queued articles in Content tab' : 'Select ideas to add to queue',
+          'Customize titles or schedules if needed',
+          'Monitor performance after publishing'
+        ]
+      });
+
+    } catch (error) {
+      return this.error('Failed to generate bulk article ideas', error);
     }
   }
 }

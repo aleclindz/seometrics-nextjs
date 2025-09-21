@@ -75,6 +75,14 @@ export const AutonomousTopicSelectionSchema = z.object({
   focus_area: z.string().optional()
 });
 
+export const BulkArticleIdeasSchema = z.object({
+  site_url: flexibleUrlSchema.optional(),
+  period: z.enum(['week', 'month']).optional().default('week'),
+  count: z.number().int().min(1).max(50).optional(),
+  add_to_queue: z.boolean().optional().default(false),
+  website_token: z.string().optional()
+});
+
 // Type inference from Zod schemas
 export type ConnectGSCArgs = z.infer<typeof ConnectGSCSchema>;
 export type SyncGSCDataArgs = z.infer<typeof SyncGSCDataSchema>;
@@ -83,6 +91,7 @@ export type CreateIdeaArgs = z.infer<typeof CreateIdeaSchema>;
 export type GetSiteStatusArgs = z.infer<typeof GetSiteStatusSchema>;
 export type AuditSiteArgs = z.infer<typeof AuditSiteSchema>;
 export type AutonomousTopicSelectionArgs = z.infer<typeof AutonomousTopicSelectionSchema>;
+export type BulkArticleIdeasArgs = z.infer<typeof BulkArticleIdeasSchema>;
 
 // Function schema registry with validation
 export interface FunctionDefinition {
@@ -735,6 +744,42 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       }
     },
     validator: AutonomousTopicSelectionSchema,
+    category: 'content',
+    requiresSetup: true
+  },
+
+  'CONTENT_generate_bulk_ideas': {
+    schema: {
+      name: 'CONTENT_generate_bulk_ideas',
+      description: 'Generate bulk article ideas for content planning. Creates multiple topic suggestions with variety in formats (listicles, how-tos, guides, FAQs) and authority levels. Can optionally add directly to content generation queue for automated publishing.',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional; uses primary site if omitted)' },
+          period: {
+            type: 'string',
+            enum: ['week', 'month'],
+            description: 'Time period for content planning',
+            default: 'week'
+          },
+          count: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 50,
+            description: 'Number of article ideas to generate (default: 7 for week, 30 for month)'
+          },
+          add_to_queue: {
+            type: 'boolean',
+            description: 'Whether to automatically add ideas to content generation queue',
+            default: false
+          },
+          website_token: { type: 'string', description: 'Website token for queue management (optional)' }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: BulkArticleIdeasSchema,
     category: 'content',
     requiresSetup: true
   }
