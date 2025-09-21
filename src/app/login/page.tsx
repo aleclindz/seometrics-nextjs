@@ -9,6 +9,9 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [company, setCompany] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -40,6 +43,19 @@ function LoginForm() {
 
     // Password validation for signup
     if (isSignUp) {
+      // Check required fields
+      if (!firstName.trim()) {
+        setError('First name is required')
+        setLoading(false)
+        return
+      }
+      
+      if (!lastName.trim()) {
+        setError('Last name is required')
+        setLoading(false)
+        return
+      }
+      
       // Check password length
       if (password.length < 8) {
         setError('Password must be at least 8 characters long')
@@ -110,6 +126,9 @@ function LoginForm() {
     setEmail('')
     setPassword('')
     setConfirmPassword('')
+    setFirstName('')
+    setLastName('')
+    setCompany('')
     setError('')
   }
 
@@ -183,36 +202,192 @@ function LoginForm() {
     )
   }
 
+  if (!isSignUp) {
+    // Simple sign-in form
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="flex justify-center">
+            <div className="w-16 h-16 rounded-lg flex items-center justify-center">
+              <Image 
+                src="/assets/agent_icon.png" 
+                alt="SEOAgent" 
+                width={64}
+                height={64}
+                style={{ height: '64px', width: '64px' }}
+              />
+            </div>
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+            Sign in to your account
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+            SEOAgent - AI-powered content optimization
+          </p>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Email address
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Password
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
+                  <div className="text-sm text-red-700 dark:text-red-400">{error}</div>
+                </div>
+              )}
+
+              <div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Please wait...' : 'Sign In'}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                    New to SEOAgent?
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(true)
+                    setError('')
+                    setPassword('')
+                  }}
+                  className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Create an account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Mailgun-style signup form
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-lg flex items-center justify-center">
+    <div className="min-h-screen bg-slate-800 flex">
+      {/* Left side - Logo and form */}
+      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-20 xl:px-24">
+        <div className="mx-auto w-full max-w-lg">
+          {/* Logo */}
+          <div className="flex items-center mb-8">
             <Image 
               src="/assets/agent_icon.png" 
               alt="SEOAgent" 
-              width={64}
-              height={64}
-              style={{ height: '64px', width: '64px' }}
+              width={40}
+              height={40}
+              className="mr-3"
             />
+            <span className="text-2xl font-bold text-white">SEOAgent</span>
           </div>
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-          {isSignUp ? 'Create your account' : 'Sign in to your account'}
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          SEOAgent - AI-powered content optimization
-        </p>
-      </div>
+          
+          <div className="bg-white rounded-xl shadow-xl p-8">
+            <h1 className="text-2xl font-semibold text-slate-800 mb-6">Get started with SEOAgent today!</h1>
+            
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* First Name */}
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                  First Name
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Email address
-              </label>
-              <div className="mt-1">
+              {/* Last Name */}
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Name
+                </label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Company */}
+              <div>
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+                  Company
+                </label>
+                <input
+                  id="company"
+                  name="company"
+                  type="text"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Work Email
+                </label>
                 <input
                   id="email"
                   name="email"
@@ -221,96 +396,144 @@ function LoginForm() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Password
-              </label>
-              <div className="mt-1">
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
                 <input
                   id="password"
                   name="password"
                   type="password"
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  autoComplete="new-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
-              {isSignUp && (
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Password must be at least 8 characters long
-                </p>
-              )}
-            </div>
 
-            {isSignUp && (
+              {/* Confirm Password */}
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Confirm Password
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password Confirmation
                 </label>
-                <div className="mt-1">
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm"
-                  />
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              {error && (
+                <div className="rounded-md bg-red-50 p-4 border border-red-200">
+                  <div className="text-sm text-red-700">{error}</div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {error && (
-              <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-                <div className="text-sm text-red-700 dark:text-red-400">{error}</div>
-              </div>
-            )}
-
-            <div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
-            </div>
-          </form>
+            </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                  {isSignUp ? 'Already have an account?' : 'New to SEOAgent?'}
-                </span>
-              </div>
-            </div>
+            <p className="mt-6 text-sm text-gray-600">
+              By creating a SEOAgent account, you agree to the{' '}
+              <a href="/terms" className="text-indigo-600 hover:text-indigo-500">
+                SEOAgent Terms of Service
+              </a>
+            </p>
 
-            <div className="mt-6">
+            <div className="mt-6 text-center">
+              <span className="text-sm text-gray-600">Already have an account? </span>
               <button
                 type="button"
                 onClick={() => {
-                  setIsSignUp(!isSignUp)
+                  setIsSignUp(false)
                   setError('')
                   setPassword('')
                   setConfirmPassword('')
+                  setFirstName('')
+                  setLastName('')
+                  setCompany('')
                 }}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="text-sm text-indigo-600 hover:text-indigo-500 font-medium"
               >
-                {isSignUp ? 'Sign in instead' : 'Create an account'}
+                Sign in instead
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right side - Information */}
+      <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:px-20 xl:px-24">
+        <div className="max-w-md">
+          <div className="text-white space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold mb-4">Why Choose SEOAgent?</h2>
+              <p className="text-slate-300 text-lg leading-relaxed">
+                Put your technical SEO on complete autopilot with AI-powered automation that never sleeps.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-3"></div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">Automated Technical SEO</h3>
+                  <p className="text-slate-300">
+                    Fix canonical tags, meta descriptions, schema markup, and indexing issues automatically
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-3"></div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">Multi-CMS Content Publishing</h3>
+                  <p className="text-slate-300">
+                    Generate and publish SEO-optimized content to WordPress, Strapi, Webflow, and more
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-2 h-2 bg-green-400 rounded-full mt-3"></div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">24/7 SEO Monitoring</h3>
+                  <p className="text-slate-300">
+                    Real-time alerts for critical SEO changes with automatic fix suggestions
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-700 rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-3">Ready to get started?</h3>
+              <p className="text-slate-300 mb-4">
+                Book a personalized onboarding call to maximize your SEO results
+              </p>
+              <a
+                href="https://calendly.com/seoagent-onboarding"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-full px-4 py-2 bg-white text-slate-800 rounded-lg font-medium hover:bg-slate-100 transition-colors"
+              >
+                Schedule Onboarding Call
+              </a>
             </div>
           </div>
         </div>
