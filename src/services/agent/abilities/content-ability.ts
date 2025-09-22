@@ -509,8 +509,8 @@ export class ContentAbility extends BaseAbility {
         })
       });
 
-      let suggestions = [];
-      let keywordOpportunities = [];
+      let suggestions: any[] = [];
+      let keywordOpportunities: any[] = [];
 
       if (keywordStrategy.success) {
         // Extract content-focused keywords for topic suggestions
