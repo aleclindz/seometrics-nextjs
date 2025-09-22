@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Get content schedule settings for each website
     const websiteTokens = websites?.map(w => w.website_token) || [];
-    let scheduleData = [];
+    let scheduleData: any[] = [];
 
     if (websiteTokens.length > 0) {
       const { data: schedules, error: scheduleError } = await supabase

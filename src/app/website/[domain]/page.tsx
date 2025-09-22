@@ -25,18 +25,19 @@ export default function WebsitePage() {
   console.log('WebsitePage: Raw domain from URL:', rawDomain);
   console.log('WebsitePage: Cleaned domain:', domain);
 
-  // Content automation hook
-  const automation = useContentAutomation(
-    user?.token || '',
-    websiteData?.website_token || ''
-  );
-
   // New layout state management
   const [activeTab, setActiveTab] = useState<'performance' | 'technical' | 'content' | 'strategy'>('performance');
   const [logCollapsed, setLogCollapsed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
   const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string; website_token?: string }>>([]);
+
+  // Content automation hook - find current website from userWebsites array
+  const currentWebsite = userWebsites.find(site => site.url === domain);
+  const automation = useContentAutomation(
+    user?.token || '',
+    currentWebsite?.website_token || ''
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [backfilling, setBackfilling] = useState(false);
 
