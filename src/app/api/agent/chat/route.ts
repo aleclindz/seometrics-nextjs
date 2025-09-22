@@ -236,11 +236,11 @@ export async function POST(request: NextRequest) {
           toolResults,
           steps: guard - 1
         };
-        
+
         // Process the response
         const processedResponse = await processOpenAIResponse(
-          finalResponse, 
-          userToken, 
+          finalResponse,
+          userToken,
           selectedSite,
           {
             conversationId,
@@ -249,6 +249,13 @@ export async function POST(request: NextRequest) {
           }
         );
         return NextResponse.json(processedResponse);
+      }
+
+      // Add conversational response before function execution
+      let conversationalResponse = '';
+      const firstToolCall = messageContent.tool_calls[0];
+      if (firstToolCall?.function?.name) {
+        conversationalResponse = getConversationalResponse(firstToolCall.function.name, message);
       }
 
       // First, add the assistant message with tool_calls
@@ -328,8 +335,12 @@ export async function POST(request: NextRequest) {
 
       // Short-circuit to avoid a second LLM round-trip and Vercel timeouts
       const summary = buildToolSummary(executedToolCalls, toolResults);
+      const combinedResponse = conversationalResponse
+        ? `${conversationalResponse}\n\n${summary}`
+        : summary;
+
       const immediateResponse = {
-        content: summary,
+        content: combinedResponse,
         // Provide a single function_call so activity logging works
         function_call: {
           name: executedToolCalls[0]?.name || 'executed_function',
@@ -1027,4 +1038,64 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
   }
 
   return `✅ Completed: ${first.name.replace(/_/g, ' ')}`;
+}
+
+// Generate conversational response based on function being executed
+function getConversationalResponse(functionName: string, userMessage: string): string {
+  const responses: Record<string, string[]> = {
+    'CONTENT_suggest_ideas': [
+      '🔍 Let me research your website and generate intelligent content ideas for you...',
+      '✨ I&apos;ll analyze your website and brainstorm strategic content topics...',
+      '🎯 Analyzing your business context to suggest high-impact content ideas...'
+    ],
+    'WEBSITE_crawl_and_analyze': [
+      '🕷️ Crawling and analyzing your website to understand your business model...',
+      '🔍 Let me examine your website to extract key business insights...',
+      '📊 Analyzing your website structure and content to build a strategy...'
+    ],
+    'COMPETITOR_research_and_crawl': [
+      '🔍 Researching your competitors to identify strategic opportunities...',
+      '⚡ Analyzing competitor positioning and content strategies for you...',
+      '🎯 Let me examine your competitive landscape and find gaps...'
+    ],
+    'KEYWORDS_brainstorm_strategy': [
+      '💡 Generating a comprehensive keyword strategy based on your analysis...',
+      '🎯 Creating strategic keyword recommendations tailored to your business...',
+      '✨ Brainstorming high-impact keywords for your content strategy...'
+    ],
+    'TOPICS_create_clusters': [
+      '🗂️ Organizing keywords into strategic topic clusters for content planning...',
+      '📋 Creating content pillars and topic clusters from your keyword strategy...',
+      '🎯 Structuring your keywords into actionable content themes...'
+    ],
+    'CONTENT_gap_analysis': [
+      '🔍 Analyzing content gaps compared to your competitors...',
+      '⚡ Identifying content opportunities your competitors are missing...',
+      '📊 Finding strategic content gaps in your market...'
+    ],
+    'GSC_sync_data': [
+      '📊 Syncing your latest Google Search Console data...',
+      '🔄 Updating your performance metrics from GSC...',
+      '📈 Fetching fresh search performance data...'
+    ],
+    'SEO_analyze_technical': [
+      '🔧 Scanning your website for technical SEO issues...',
+      '⚙️ Running a comprehensive technical audit...',
+      '🔍 Analyzing your site&apos;s technical SEO health...'
+    ],
+    'CONTENT_generate_article': [
+      '✍️ Creating a high-quality, SEO-optimized article for you...',
+      '📝 Generating strategic content based on your requirements...',
+      '✨ Writing an engaging article optimized for search...'
+    ]
+  };
+
+  const functionResponses = responses[functionName] || [
+    '⚡ Let me work on that for you...',
+    '🔍 Analyzing and processing your request...',
+    '🎯 Working on your SEO task...'
+  ];
+
+  // Return a random response from the available options
+  return functionResponses[Math.floor(Math.random() * functionResponses.length)];
 }

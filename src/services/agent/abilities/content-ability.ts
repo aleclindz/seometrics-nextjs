@@ -481,15 +481,105 @@ export class ContentAbility extends BaseAbility {
         return this.error('Site URL is required but could not be determined.');
       }
 
+      // Step 1: Analyze the website to understand business context
+      console.log('[CONTENT_suggest_ideas] Analyzing website:', siteUrl);
+      const websiteAnalysis = await this.fetchAPI('/api/agent/website-analyze', {
+        method: 'POST',
+        body: JSON.stringify({
+          site_url: siteUrl,
+          max_pages: 3
+        })
+      });
+
+      if (!websiteAnalysis.success) {
+        // Fallback to old method if analysis fails
+        return await this.fallbackContentSuggestions(siteUrl, args.max_suggestions || 5);
+      }
+
+      const businessAnalysis = websiteAnalysis.data.analysis;
+
+      // Step 2: Generate intelligent keyword strategy
+      console.log('[CONTENT_suggest_ideas] Generating keyword strategy');
+      const keywordStrategy = await this.fetchAPI('/api/agent/keywords-brainstorm', {
+        method: 'POST',
+        body: JSON.stringify({
+          business_analysis: businessAnalysis,
+          keyword_count: 30,
+          focus_areas: ['content marketing', 'blog topics']
+        })
+      });
+
+      let suggestions = [];
+      let keywordOpportunities = [];
+
+      if (keywordStrategy.success) {
+        // Extract content-focused keywords for topic suggestions
+        const contentKeywords = keywordStrategy.data.keyword_strategy.content_keywords || [];
+        const longTailKeywords = keywordStrategy.data.keyword_strategy.long_tail_keywords || [];
+
+        // Create topic suggestions from keywords
+        suggestions = [...contentKeywords, ...longTailKeywords]
+          .filter((kw: any) => kw.search_intent === 'informational' || kw.search_intent === 'commercial')
+          .slice(0, args.max_suggestions || 5)
+          .map((kw: any) => ({
+            title: this.generateArticleTitle(kw.keyword, kw.search_intent),
+            keyword: kw.keyword,
+            search_intent: kw.search_intent,
+            difficulty: kw.difficulty,
+            priority: kw.priority,
+            rationale: kw.rationale,
+            content_type: this.suggestContentType(kw.keyword, kw.search_intent)
+          }));
+
+        keywordOpportunities = [...contentKeywords, ...longTailKeywords]
+          .slice(0, 10)
+          .map((kw: any) => ({
+            keyword: kw.keyword,
+            search_intent: kw.search_intent,
+            difficulty: kw.difficulty,
+            priority: kw.priority
+          }));
+      }
+
+      return this.success({
+        message: `Generated ${suggestions.length} intelligent content suggestions based on website analysis and keyword research`,
+        website: siteUrl,
+        business_context: {
+          industry: businessAnalysis.industry,
+          business_model: businessAnalysis.business_model,
+          target_audience: businessAnalysis.target_audience
+        },
+        topic_suggestions: suggestions,
+        keyword_opportunities: keywordOpportunities,
+        content_gaps: this.identifyContentGaps(businessAnalysis, suggestions),
+        summary: {
+          total_keywords: keywordOpportunities.length,
+          high_potential_keywords: suggestions.filter((s: any) => s.priority === 'high').length,
+          cms_connected: false, // Will be updated when CMS integration is checked
+          suggested_articles: suggestions.length
+        },
+        analysis_method: 'intelligent_website_analysis'
+      });
+
+    } catch (error) {
+      console.error('[CONTENT_suggest_ideas] Error:', error);
+      return this.error('Failed to generate intelligent content suggestions', error);
+    }
+  }
+
+  /**
+   * Fallback to original content suggestion method if intelligent analysis fails
+   */
+  private async fallbackContentSuggestions(siteUrl: string, maxSuggestions: number): Promise<FunctionCallResult> {
+    try {
       const intelligenceService = new ContentIntelligenceService();
       const context = await intelligenceService.getWebsiteContentContext(this.userToken!, siteUrl);
 
-      // Format response for the agent
-      const suggestions = context.topic_suggestions.slice(0, args.max_suggestions || 5);
+      const suggestions = context.topic_suggestions.slice(0, maxSuggestions);
       const topKeywords = context.keywords.slice(0, 10);
 
       return this.success({
-        message: `Found ${suggestions.length} content suggestions based on your website's search performance`,
+        message: `Found ${suggestions.length} content suggestions based on your website's search performance (fallback method)`,
         website: context.domain,
         cms_info: context.cms_info,
         topic_suggestions: suggestions,
@@ -497,15 +587,85 @@ export class ContentAbility extends BaseAbility {
         content_gaps: context.content_gaps,
         summary: {
           total_keywords: context.keywords.length,
-          high_potential_keywords: context.keywords.filter(k => k.potential === 'high').length,
+          high_potential_keywords: context.keywords.filter((k: any) => k.potential === 'high').length,
           cms_connected: !!context.cms_info?.is_connected,
           suggested_articles: suggestions.length
-        }
+        },
+        analysis_method: 'search_performance_based'
       });
-
     } catch (error) {
-      return this.error('Failed to get content suggestions', error);
+      return this.error('Failed to generate fallback content suggestions', error);
     }
+  }
+
+  /**
+   * Generate an article title from a keyword and search intent
+   */
+  private generateArticleTitle(keyword: string, searchIntent: string): string {
+    const templates = {
+      informational: [
+        `The Ultimate Guide to ${keyword}`,
+        `Everything You Need to Know About ${keyword}`,
+        `${keyword}: A Complete Beginner's Guide`,
+        `How ${keyword} Works: Explained Simply`
+      ],
+      commercial: [
+        `Best ${keyword} Solutions in 2024`,
+        `${keyword}: Top Options and Pricing Guide`,
+        `How to Choose the Right ${keyword}`,
+        `${keyword} vs Alternatives: Complete Comparison`
+      ]
+    };
+
+    const intentTemplates = templates[searchIntent as keyof typeof templates] || templates.informational;
+    const randomTemplate = intentTemplates[Math.floor(Math.random() * intentTemplates.length)];
+
+    // Capitalize the keyword properly
+    const capitalizedKeyword = keyword.split(' ').map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+
+    return randomTemplate.replace(keyword, capitalizedKeyword);
+  }
+
+  /**
+   * Suggest content type based on keyword and search intent
+   */
+  private suggestContentType(keyword: string, searchIntent: string): string {
+    const typeMapping = {
+      informational: 'guide',
+      commercial: 'comparison',
+      transactional: 'review',
+      navigational: 'tutorial'
+    };
+
+    return typeMapping[searchIntent as keyof typeof typeMapping] || 'blog';
+  }
+
+  /**
+   * Identify content gaps based on business analysis and suggestions
+   */
+  private identifyContentGaps(businessAnalysis: any, suggestions: any[]): string[] {
+    const gaps = [];
+
+    // Check for missing foundational content
+    if (businessAnalysis.services_products?.length > 0 && suggestions.length < 3) {
+      gaps.push('Foundational content about your core services');
+    }
+
+    // Check for missing how-to content
+    const hasHowToContent = suggestions.some((s: any) => s.title.toLowerCase().includes('how to'));
+    if (!hasHowToContent) {
+      gaps.push('How-to guides for your industry');
+    }
+
+    // Check for missing comparison content
+    const hasComparisonContent = suggestions.some((s: any) => s.content_type === 'comparison');
+    if (!hasComparisonContent) {
+      gaps.push('Product/service comparison articles');
+    }
+
+    return gaps;
   }
 
   /**

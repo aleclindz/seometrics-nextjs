@@ -424,19 +424,33 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="flex justify-between items-center mt-6">
                 <button
-                  onClick={() => setEditingItem(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                  onClick={() => {
+                    if (confirm('Are you sure you want to delete this article from the queue?')) {
+                      deleteItem(editingItem.id);
+                      setEditingItem(null);
+                    }
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md flex items-center space-x-1"
                 >
-                  Cancel
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Article</span>
                 </button>
-                <button
-                  onClick={() => updateItem(editingItem.id, editingItem)}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
-                >
-                  Save Changes
-                </button>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setEditingItem(null)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => updateItem(editingItem.id, editingItem)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                  >
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </div>
           </div>
