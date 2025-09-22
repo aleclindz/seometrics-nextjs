@@ -43,6 +43,11 @@ export default function WebsitePage() {
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
   const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string; website_token?: string }>>([]);
+  const [business, setBusiness] = useState<{ type: string; description: string } | null>(null);
+  const [bizLoading, setBizLoading] = useState(false);
+  const [bizEditOpen, setBizEditOpen] = useState(false);
+  const [bizEditType, setBizEditType] = useState('unknown');
+  const [bizEditDesc, setBizEditDesc] = useState('');
 
   // Content automation hook - find current website from userWebsites array
   const currentWebsite = userWebsites.find(site => site.url === domain);
@@ -52,6 +57,7 @@ export default function WebsitePage() {
   );
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [backfilling, setBackfilling] = useState(false);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error' }>({ visible: false, message: '', type: 'success' });
 
   // Dynamic setup status state
   const [setupStatus, setSetupStatus] = useState({
@@ -538,11 +544,75 @@ export default function WebsitePage() {
   useEffect(() => {
     loadInitialSetupStatus(); // Load from database only, no API checking
     fetchUserWebsites();
+    fetchBusinessInfo();
     fetchPerformanceData();
     fetchTechnicalData();
     fetchContentData();
     fetchStrategyData();
   }, [user?.token, domain]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchBusinessInfo() {
+    if (!user?.token) return;
+    try {
+      const resp = await fetch(`/api/websites?userToken=${user.token}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const normalize = (d: string) => d.replace(/^sc-domain:/i,'').replace(/^https?:\/\//i,'').replace(/^www\./i,'').replace(/\/$/,'');
+      const clean = normalize(domain);
+      const w = (data.websites || []).find((x: any) => normalize(x.domain) === clean);
+      if (w) {
+        let info = {} as any;
+        try { info = w.business_info ? JSON.parse(w.business_info) : {}; } catch {}
+        setBusiness({ type: w.business_type || 'unknown', description: info.description || '' });
+      }
+    } catch {}
+  }
+
+  async function detectBusiness() {
+    if (!user?.token) return;
+    setBizLoading(true);
+    try {
+      const resp = await fetch('/api/business/profile', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userToken: user.token, domain, force: true })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setBusiness({ type: data.profile?.type || 'unknown', description: data.profile?.description || '' });
+        setToast({ visible: true, message: '✅ Business info detected', type: 'success' });
+      } else {
+        setToast({ visible: true, message: `Detection failed: ${data.error || 'Unknown error'}`, type: 'error' });
+      }
+    } catch {
+      setToast({ visible: true, message: 'Detection failed. Please try again.', type: 'error' });
+    } finally {
+      setBizLoading(false);
+      setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 2500);
+    }
+  }
+
+  async function saveBusinessEdit() {
+    if (!user?.token) return;
+    try {
+      const resp = await fetch('/api/business/update', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userToken: user.token, domain, type: bizEditType, description: bizEditDesc })
+      });
+      if (resp.ok) {
+        setBusiness({ type: bizEditType, description: bizEditDesc });
+        setBizEditOpen(false);
+        setToast({ visible: true, message: '✅ Business info updated', type: 'success' });
+        setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 2000);
+      } else {
+        const data = await resp.json();
+        setToast({ visible: true, message: `Update failed: ${data.error || 'Unknown error'}`, type: 'error' });
+        setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+      }
+    } catch {
+      setToast({ visible: true, message: 'Update failed. Please try again.', type: 'error' });
+      setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+    }
+  }
 
   // Publish a draft article now
   const publishDraftNow = async (articleId: number) => {
@@ -606,6 +676,11 @@ export default function WebsitePage() {
   return (
     <ProtectedRoute>
       <div className="h-screen w-full bg-gray-50 text-gray-900">
+        {toast.visible && (
+          <div className={`fixed top-4 right-4 z-[9999] px-4 py-2 rounded-lg shadow ${toast.type==='success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+            {toast.message}
+          </div>
+        )}
         {toast.visible && (
           <div className={`fixed top-4 right-4 z-[9999] px-4 py-2 rounded-lg shadow ${toast.type==='success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
             {toast.message}

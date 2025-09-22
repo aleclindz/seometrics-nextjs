@@ -100,11 +100,27 @@ export async function POST(request: NextRequest) {
     // Step 5: Select Topics with Format Variety
     const selectedTopics = await selectTopicsWithFormatVariety(rankedTopics, generateCount);
 
+    // Fetch business context from websites table (if available)
+    const business = await fetchBusinessContext(userToken, domain);
+
     // Step 6: Generate Enhanced Content Briefs with Authority Focus
-    const contentBriefs = await generateEnhancedContentBriefs(
+    let contentBriefs = await generateEnhancedContentBriefs(
       selectedTopics,
-      { ...gscData.context, ...strategyData.context }
+      { ...gscData.context, ...strategyData.context, business }
     );
+
+    // Optional LLM enhancement: refine title + brief with business context
+    try {
+      const enhanced = await enhanceTopicsWithLLM(contentBriefs, {
+        domain,
+        business
+      });
+      if (Array.isArray(enhanced) && enhanced.length === contentBriefs.length) {
+        contentBriefs = enhanced;
+      }
+    } catch (e) {
+      console.log('[AUTONOMOUS TOPIC] LLM enhancement skipped:', e);
+    }
 
     console.log('[AUTONOMOUS TOPIC] Analysis complete:', {
       queriesAnalyzed: (gscData.queries || []).length,
@@ -140,54 +156,175 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Pull business context from websites table
+async function fetchBusinessContext(userToken: string, domain: string) {
+  try {
+    const cleanDomain = domain.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const variants = [cleanDomain, `https://${cleanDomain}`, `sc-domain:${cleanDomain}`];
+    const { data: row } = await supabase
+      .from('websites')
+      .select('business_type,business_info,domain,website_token')
+      .eq('user_token', userToken)
+      .or(variants.map(v => `domain.eq.${v}`).join(','))
+      .maybeSingle();
+    let info: any = {};
+    try { info = row?.business_info ? JSON.parse(row.business_info) : {}; } catch {}
+    return {
+      type: row?.business_type || info?.businessType || 'unknown',
+      description: info?.description || info?.summary || '',
+      websiteToken: row?.website_token || null
+    };
+  } catch {
+    return { type: 'unknown', description: '', websiteToken: null };
+  }
+}
+
+// Use OpenAI to refine titles and briefs with business context
+async function enhanceTopicsWithLLM(topics: any[], ctx: { domain: string; business: any }) {
+  if (!process.env.OPENAI_API_KEY) return topics;
+  const system = `You are an expert content strategist.
+Given business context and draft topics, refine each with:
+- A clickworthy, specific title aligned to the business and audience
+- A concise, actionable content brief (2-4 sentences)
+Constraints: direct, active voice; avoid fluff; keep it on-niche for the business.`;
+
+  const userPayload = {
+    business: {
+      domain: ctx.domain,
+      type: ctx.business?.type || 'unknown',
+      description: ctx.business?.description || ''
+    },
+    topics: topics.map((t, i) => ({
+      index: i,
+      draftTitle: t.title,
+      mainTopic: t.mainTopic,
+      targetKeywords: t.targetKeywords,
+      targetQueries: t.targetQueries,
+      format: t.articleFormat?.type
+    }))
+  };
+
+  const prompt = `Refine these topics for the business below.
+Return JSON array of objects: { index, title, contentBrief }.
+BUSINESS:\n${JSON.stringify(userPayload.business)}\n\nTOPICS:\n${JSON.stringify(userPayload.topics)}`;
+
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 800
+    }),
+    signal: AbortSignal.timeout(12000)
+  });
+  if (!resp.ok) return topics;
+  const data = await resp.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  let parsed: any[] = [];
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return topics;
+  }
+  const byIndex: Record<number, { title: string; contentBrief: string }> = {};
+  parsed.forEach((o: any) => {
+    if (typeof o?.index === 'number') {
+      byIndex[o.index] = { title: o.title || '', contentBrief: o.contentBrief || '' };
+    }
+  });
+  return topics.map((t, i) => ({
+    ...t,
+    title: byIndex[i]?.title || t.title,
+    contentBrief: byIndex[i]?.contentBrief || t.contentBrief
+  }));
+}
+
 // Step 1.5: Fetch keyword strategy and topic clusters from database
 async function fetchKeywordStrategy(userToken: string, domain: string) {
   try {
     const cleanDomain = domain.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    // Use website_keyword_strategy view (primary source in this project)
+    const { data: viewRows, error: viewError } = await supabase
+      .from('website_keyword_strategy')
+      .select('*')
+      .or(
+        [
+          `domain.eq.${cleanDomain}`,
+          `domain.eq.sc-domain:${cleanDomain}`,
+          `domain.ilike.%${cleanDomain}%`
+        ].join(',')
+      )
+      .limit(1000);
 
-    // Fetch keyword strategy data
-    const { data: strategyData, error: strategyError } = await supabase
-      .from('keyword_strategies')
-      .select(`
-        *,
-        keyword_clusters (
-          id,
-          cluster_name,
-          primary_keyword,
-          keywords,
-          intent,
-          priority,
-          status
-        ),
-        generated_keywords (
-          keyword,
-          search_volume,
-          difficulty,
-          intent,
-          priority
-        )
-      `)
-      .eq('user_token', userToken)
-      .ilike('domain', `%${cleanDomain}%`)
-      .order('created_at', { ascending: false })
-      .limit(1);
+    if (viewError) {
+      console.error('[AUTONOMOUS TOPIC] website_keyword_strategy fallback error:', viewError);
+      return { success: false, error: 'No keyword strategy found' };
+    }
 
-    if (strategyError || !strategyData || strategyData.length === 0) {
+    if (!viewRows || viewRows.length === 0) {
       console.log('[AUTONOMOUS TOPIC] No keyword strategy found, using GSC data only');
       return { success: false, error: 'No keyword strategy found' };
     }
 
-    const strategy = strategyData[0];
+    // Map view rows into clusters + keywords format
+    const clusters = [] as any[];
+    const flatKeywords: any[] = [];
+    for (const row of viewRows) {
+      const list = (row.keywords || '')
+        .split(',')
+        .map((k: string) => k.trim())
+        .filter(Boolean);
+      clusters.push({
+        cluster_name: row.topic_cluster || 'general',
+        primary_keyword: list[0] || '',
+        keywords: list,
+        intent: 'informational',
+        priority: 0,
+        status: 'active'
+      });
+      for (const kw of list) {
+        flatKeywords.push({
+          keyword: kw,
+          search_volume: null,
+          difficulty: null,
+          intent: 'informational',
+          priority: 0
+        });
+      }
+    }
+
+    // Optionally, load existing content coverage per cluster to bias selection toward underrepresented clusters
+    const clusterCounts: Record<string, number> = {};
+    try {
+      const { data: tccRows } = await supabase
+        .from('topic_cluster_content')
+        .select('topic_cluster, article_id')
+        .eq('website_token', viewRows[0].website_token)
+        .limit(2000);
+      (tccRows || []).forEach((row: any) => {
+        const key = String(row.topic_cluster || 'general').toLowerCase();
+        clusterCounts[key] = (clusterCounts[key] || 0) + 1;
+      });
+    } catch {}
 
     return {
       success: true,
-      clusters: strategy.keyword_clusters || [],
-      keywords: strategy.generated_keywords || [],
+      clusters,
+      keywords: flatKeywords,
       context: {
         domain: cleanDomain,
-        strategyId: strategy.id,
-        totalClusters: (strategy.keyword_clusters || []).length,
-        totalKeywords: (strategy.generated_keywords || []).length
+        strategyId: null,
+        totalClusters: clusters.length,
+        totalKeywords: flatKeywords.length,
+        clusterCounts
       }
     };
 
@@ -529,6 +666,7 @@ async function scoreAndRankTopicsForAuthority(
   targetCount: number
 ): Promise<TopicCluster[]> {
   // Enhanced scoring that considers authority building
+  const counts: Record<string, number> = (context?.clusterCounts || {}) as any;
   const scoredClusters = clusters.map(cluster => {
     let authorityScore = cluster.opportunityScore;
 
@@ -538,6 +676,13 @@ async function scoreAndRankTopicsForAuthority(
 
     // Boost score for strategic keyword clusters
     if (cluster.targetKeywords.length > 1) authorityScore *= 1.2;
+
+    // Bias toward underrepresented clusters (fewer existing articles)
+    const key = String(cluster.mainTopic || '').toLowerCase();
+    const existing = counts[key] || 0;
+    // Apply a diminishing factor: fewer articles => larger multiplier (e.g., 0 => 1.4, 1 => 1.3, 2 => 1.2, 3 => 1.1)
+    const underrepMultiplier = existing === 0 ? 1.4 : existing === 1 ? 1.3 : existing === 2 ? 1.2 : existing === 3 ? 1.1 : 1.0;
+    authorityScore *= underrepMultiplier;
 
     return { ...cluster, authorityScore };
   });
