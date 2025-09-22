@@ -36,13 +36,54 @@ export async function GET(request: NextRequest) {
       throw websiteError;
     }
 
-    // Get current billing period and quota information
-    const { data: quotaInfo, error: quotaError } = await supabase
-      .rpc('get_current_billing_period', { p_user_token: userToken });
+    // Get user plan information
+    const { data: userPlanData, error: planError } = await supabase
+      .from('user_plans')
+      .select('tier')
+      .eq('user_token', userToken)
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    if (quotaError) {
-      console.error('Error fetching quota info:', quotaError);
+    if (planError) {
+      console.error('Error fetching user plan:', planError);
     }
+
+    const userTier = userPlanData?.[0]?.tier || 'free';
+
+    // Calculate quota based on plan
+    let quotaLimit = 0;
+    let articlesRemaining = 0;
+
+    if (userTier === 'free') {
+      quotaLimit = 0;
+      articlesRemaining = 0;
+    } else if (userTier === 'starter' || userTier === 'pro' || userTier === 'enterprise') {
+      quotaLimit = -1; // Unlimited
+      articlesRemaining = -1; // Unlimited
+    }
+
+    // Get plan-based frequency
+    const getPlanFrequency = (tier: string) => {
+      switch (tier) {
+        case 'starter': return '3x_weekly';
+        case 'pro': return 'daily';
+        case 'enterprise': return '3x_daily';
+        default: return 'weekly';
+      }
+    };
+
+    const planBasedFrequency = getPlanFrequency(userTier);
+
+    // Get article count for current month for display purposes
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const { data: articleCount, error: countError } = await supabase
+      .from('articles')
+      .select('id', { count: 'exact' })
+      .eq('user_token', userToken)
+      .gte('created_at', `${currentMonth}-01T00:00:00.000Z`)
+      .lt('created_at', `${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString()}`);
+
+    const articlesUsed = articleCount?.length || 0;
 
     // Get content schedule settings for each website
     const websiteTokens = websites?.map(w => w.website_token) || [];
@@ -68,24 +109,29 @@ export async function GET(request: NextRequest) {
         ...website,
         scheduling: schedule ? {
           enabled: schedule.enabled,
-          frequency: schedule.frequency,
+          frequency: planBasedFrequency, // Use plan-based frequency instead of stored frequency
           auto_publish: schedule.auto_publish,
           next_scheduled_at: schedule.next_scheduled_at
         } : {
           enabled: false,
-          frequency: 'weekly',
+          frequency: planBasedFrequency, // Use plan-based frequency
           auto_publish: false,
           next_scheduled_at: null
         }
       };
     });
 
-    const quota = quotaInfo?.[0] || {
-      quota_limit: 0,
-      articles_used: 0,
-      articles_remaining: 0,
-      start_date: null,
-      end_date: null
+    // Calculate billing period dates
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const quota = {
+      quota_limit: quotaLimit,
+      articles_used: articlesUsed,
+      articles_remaining: articlesRemaining,
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString()
     };
 
     return NextResponse.json({
@@ -155,13 +201,33 @@ export async function PUT(request: NextRequest) {
 
     // Update or create content schedule if scheduling data provided
     if (scheduling) {
+      // Get user plan to determine correct frequency
+      const { data: userPlanData, error: planError } = await supabase
+        .from('user_plans')
+        .select('tier')
+        .eq('user_token', userToken)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const userTier = userPlanData?.[0]?.tier || 'free';
+
+      // Get plan-based frequency
+      const getPlanFrequency = (tier: string) => {
+        switch (tier) {
+          case 'starter': return '3x_weekly';
+          case 'pro': return 'daily';
+          case 'enterprise': return '3x_daily';
+          default: return 'weekly';
+        }
+      };
+
       const { error: scheduleError } = await supabase
         .from('content_schedules')
         .upsert({
           user_token: userToken,
           website_token: websiteToken,
           enabled: scheduling.enabled || false,
-          frequency: scheduling.frequency || 'weekly',
+          frequency: getPlanFrequency(userTier), // Use plan-based frequency
           auto_publish: scheduling.auto_publish || false,
           updated_at: new Date().toISOString()
         });
@@ -198,13 +264,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'check_quota') {
-      // Check if user can generate an article
-      const { data: canGenerate, error } = await supabase
-        .rpc('can_generate_article', { p_user_token: userToken });
+      // Get user plan to determine if they can generate articles
+      const { data: userPlanData, error: planError } = await supabase
+        .from('user_plans')
+        .select('tier')
+        .eq('user_token', userToken)
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      if (error) {
-        throw error;
+      if (planError) {
+        throw planError;
       }
+
+      const userTier = userPlanData?.[0]?.tier || 'free';
+      const canGenerate = userTier !== 'free'; // All paid plans can generate articles
 
       return NextResponse.json({
         success: true,

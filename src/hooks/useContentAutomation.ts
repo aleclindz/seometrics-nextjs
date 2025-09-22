@@ -12,7 +12,7 @@ interface QuotaInfo {
 
 interface SchedulingSettings {
   enabled: boolean;
-  frequency: 'daily' | 'weekly' | 'monthly';
+  frequency: 'daily' | 'weekly' | 'monthly' | '3x_weekly' | '3x_daily';
   auto_publish: boolean;
   next_scheduled_at: string | null;
 }
