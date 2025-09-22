@@ -972,6 +972,181 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     validator: ReorderQueueSchema,
     category: 'content',
     requiresSetup: true
+  },
+
+  // ===== Intelligent Agent Strategy Functions =====
+  'WEBSITE_crawl_and_analyze': {
+    schema: {
+      name: 'WEBSITE_crawl_and_analyze',
+      description: 'Intelligently crawl and analyze a website to extract business model, target audience, services, industry, and SEO context for strategy development',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL to analyze' },
+          max_pages: { type: 'integer', description: 'Maximum pages to crawl and analyze', default: 5 }
+        },
+        required: ['site_url'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: flexibleUrlSchema,
+      max_pages: z.number().int().min(1).max(10).optional().default(5)
+    }),
+    category: 'seo',
+    requiresSetup: false
+  },
+
+  'COMPETITOR_research_and_crawl': {
+    schema: {
+      name: 'COMPETITOR_research_and_crawl',
+      description: 'Analyze competitor websites to identify positioning strategies, content gaps, keyword opportunities, and competitive advantages',
+      parameters: {
+        type: 'object',
+        properties: {
+          competitor_urls: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'List of competitor website URLs to analyze'
+          },
+          focus_areas: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Specific areas to focus analysis on (e.g. "pricing", "content strategy")',
+            default: []
+          },
+          user_business_context: { type: 'string', description: 'Brief description of user&apos;s business for context' }
+        },
+        required: ['competitor_urls'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      competitor_urls: z.array(z.string().url()),
+      focus_areas: z.array(z.string()).optional().default([]),
+      user_business_context: z.string().optional()
+    }),
+    category: 'seo',
+    requiresSetup: false
+  },
+
+  'KEYWORDS_brainstorm_strategy': {
+    schema: {
+      name: 'KEYWORDS_brainstorm_strategy',
+      description: 'Generate comprehensive keyword strategy based on business analysis and competitor research, including primary, long-tail, secondary, and content keywords',
+      parameters: {
+        type: 'object',
+        properties: {
+          business_analysis: {
+            type: 'object',
+            description: 'Business analysis data from website crawling'
+          },
+          competitor_data: {
+            type: 'object',
+            description: 'Competitor research insights'
+          },
+          target_keywords: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Specific keywords user wants to target',
+            default: []
+          },
+          focus_areas: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Specific focus areas for keyword strategy',
+            default: []
+          },
+          keyword_count: { type: 'integer', description: 'Total number of keywords to generate', default: 50 }
+        },
+        required: ['business_analysis'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      business_analysis: z.object({}).passthrough(),
+      competitor_data: z.object({}).passthrough().optional(),
+      target_keywords: z.array(z.string()).optional().default([]),
+      focus_areas: z.array(z.string()).optional().default([]),
+      keyword_count: z.number().int().min(10).max(100).optional().default(50)
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
+  'TOPICS_create_clusters': {
+    schema: {
+      name: 'TOPICS_create_clusters',
+      description: 'Organize keywords from strategy into semantic topic clusters for content planning and pillar page development',
+      parameters: {
+        type: 'object',
+        properties: {
+          keyword_strategy: {
+            type: 'object',
+            description: 'Keyword strategy data with categorized keywords'
+          },
+          user_token: { type: 'string', description: 'User authentication token' },
+          site_url: { type: 'string', description: 'Website URL for cluster association' },
+          cluster_count: { type: 'integer', description: 'Number of topic clusters to create', default: 8 },
+          business_context: {
+            type: 'object',
+            description: 'Business context for strategic clustering'
+          }
+        },
+        required: ['keyword_strategy', 'user_token', 'site_url'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      keyword_strategy: z.object({}).passthrough(),
+      user_token: z.string().min(1),
+      site_url: flexibleUrlSchema,
+      cluster_count: z.number().int().min(3).max(15).optional().default(8),
+      business_context: z.object({}).passthrough().optional()
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
+  'CONTENT_gap_analysis': {
+    schema: {
+      name: 'CONTENT_gap_analysis',
+      description: 'Identify content gaps and opportunities by comparing user website against competitors and analyzing missing topics, formats, and strategic angles',
+      parameters: {
+        type: 'object',
+        properties: {
+          user_website_analysis: {
+            type: 'object',
+            description: 'Analysis of user&apos;s website from crawling'
+          },
+          competitor_analysis: {
+            type: 'object',
+            description: 'Competitor research data'
+          },
+          topic_clusters: {
+            type: 'array',
+            items: { type: 'object' },
+            description: 'Existing topic clusters for context'
+          },
+          focus_content_types: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Content types to focus gap analysis on',
+            default: ['blog', 'guides', 'comparisons']
+          }
+        },
+        required: ['user_website_analysis', 'competitor_analysis'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      user_website_analysis: z.object({}).passthrough(),
+      competitor_analysis: z.object({}).passthrough(),
+      topic_clusters: z.array(z.object({}).passthrough()).optional(),
+      focus_content_types: z.array(z.string()).optional().default(['blog', 'guides', 'comparisons'])
+    }),
+    category: 'content',
+    requiresSetup: false
   }
 };
 
