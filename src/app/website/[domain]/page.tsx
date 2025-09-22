@@ -9,7 +9,7 @@ import ChatInterface from '@/components/website-chat/ChatInterface';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import ContentScheduleConfig from '@/components/ContentScheduleConfig';
 import ArticleQueueManager from '@/components/ArticleQueueManager';
-import { ChevronDown, ChevronRight, Send, Loader2, RefreshCw, TrendingUp, TrendingDown, Target, Tag, DollarSign, Wrench, Users, FileText, BookOpen, Search, Globe, Zap, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Send, Loader2, RefreshCw, TrendingUp, TrendingDown, Target, Tag, DollarSign, Wrench, Users, FileText, BookOpen, Search, Globe, Zap, Sparkles, Calendar, Clock, Eye, Edit } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 
 export default function WebsitePage() {
@@ -1027,137 +1027,165 @@ export default function WebsitePage() {
               )}
 
               {activeTab === 'content' && (
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">Content Analysis</h2>
-                    <button
-                      onClick={fetchContentData}
-                      disabled={contentData.isLoading}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {contentData.isLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4" />
-                      )}
-                      Refresh
-                    </button>
+                <section className="space-y-6">
+                  {/* Header and Settings Card */}
+                  <div className="bg-white border border-gray-200 rounded-lg">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Automated Content Scheduling</h3>
+                      </div>
+                    </div>
+                    <div className="p-6 space-y-6">
+                      {/* Enable Toggle */}
+                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input className="sr-only peer" type="checkbox" />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                        <div>
+                          <div className="font-medium text-gray-900">Enable Automated Content Generation</div>
+                          <div className="text-sm text-gray-500">SEOAgent will automatically generate and schedule blog posts for this website</div>
+                        </div>
+                      </div>
+
+                      {/* Plan Info and Settings */}
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Your Plan</label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="starter">Starter - 3 articles per week</option>
+                            <option value="pro" selected>Pro - 1 article per day</option>
+                            <option value="scale">Scale - 3 articles per day</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Auto Publish</label>
+                          <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="draft" selected>Save as Draft</option>
+                            <option value="publish">Auto-Publish</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {contentData.isLoading ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      {[1, 2].map((i) => (
-                        <div key={i} className="bg-white border rounded-lg p-4">
-                          <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
-                          <div className="h-28 rounded-lg bg-gray-100 mb-2 animate-pulse"></div>
-                          <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
-                        </div>
-                      ))}
+                  {/* Articles Management */}
+                  <div className="bg-white border border-gray-200 rounded-lg">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        Content Management
+                      </h3>
                     </div>
-                  ) : !contentData.hasData ? (
-                    <div className="bg-white border rounded-lg p-6 text-center">
-                      <div className="text-gray-600 mb-2">Content Analysis Placeholder</div>
-                      <div className="text-sm text-gray-500">{contentData.message}</div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                      {/* Articles */}
-                      <div className="bg-white border rounded-lg p-4">
-                         <div className="flex items-center justify-between mb-2">
-                           <div className="text-sm font-semibold">Articles</div>
-                         </div>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          {/* Published */}
-                          <div>
-                            <div className="text-xs font-medium text-green-700 mb-2">Published</div>
-                            <div className="space-y-2">
-                              {contentData.articles.published.slice(0,5).map((a: any) => (
-                                <div key={a.id} className="flex items-center justify-between gap-2">
-                                  <div className="truncate">
-                                    <div className="font-medium text-gray-900 truncate">{a.title}</div>
-                                    <div className="text-xs text-gray-500">{new Date(a.published_at || a.updated_at).toLocaleDateString()}</div>
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    {a.public_url && (
-                                      <a className="text-blue-600 hover:underline text-xs" href={a.public_url} target="_blank" rel="noopener noreferrer">View</a>
-                                    )}
-                                    {a.cms_admin_url && (
-                                      <a className="text-purple-600 hover:underline text-xs" href={a.cms_admin_url} target="_blank" rel="noopener noreferrer">CMS</a>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                              {contentData.articles.published.length === 0 && (
-                                <div className="text-xs text-gray-500">No published articles</div>
-                              )}
-                            </div>
+                    <div className="p-6">
+                      {contentData.isLoading ? (
+                        <div className="space-y-4">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-16 bg-gray-100 rounded animate-pulse"></div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Tab Headers */}
+                          <div className="border-b border-gray-200">
+                            <nav className="-mb-px flex space-x-8">
+                              <button className="py-2 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600">
+                                Upcoming Articles
+                              </button>
+                              <button className="py-2 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                                Published Articles
+                              </button>
+                            </nav>
                           </div>
-                          {/* Scheduled */}
-                          <div>
-                            <div className="text-xs font-medium text-orange-700 mb-2">Scheduled</div>
-                            <div className="space-y-2">
-                              {contentData.articles.scheduled.slice(0,5).map((a: any) => (
-                                <div key={a.id} className="flex items-center justify-between gap-2">
-                                  <div className="truncate">
-                                    <div className="font-medium text-gray-900 truncate">{a.title}</div>
-                                    <div className="text-xs text-gray-500">Publishes {new Date(a.scheduled_for).toLocaleString()}</div>
-                                  </div>
-                                  <button className="text-xs text-blue-600 hover:underline" onClick={() => publishDraftNow(a.id)}>Publish Now</button>
-                                </div>
-                              ))}
-                              {contentData.articles.scheduled.length === 0 && (
-                                <div className="text-xs text-gray-500">No scheduled articles</div>
-                              )}
-                            </div>
+
+                          {/* Upcoming Articles Table */}
+                          <div className="overflow-hidden border border-gray-200 rounded-lg">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">#</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled Date</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topic Cluster</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {contentData.articles?.scheduled?.length > 0 || contentData.articles?.drafts?.length > 0 ? (
+                                  [...(contentData.articles.scheduled || []), ...(contentData.articles.drafts || [])]
+                                    .slice(0, 10)
+                                    .map((article: any, index: number) => (
+                                      <tr key={article.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                          {index + 1}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                          <div className="font-medium text-gray-900">{article.title}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                          <div className="flex items-center gap-2">
+                                            <Clock className="w-4 h-4 text-gray-400" />
+                                            {article.scheduled_for ? new Date(article.scheduled_for).toLocaleDateString() :
+                                             article.updated_at ? new Date(article.updated_at).toLocaleDateString() : 'Not scheduled'}
+                                          </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                          {article.topicCluster ? (
+                                            <button
+                                              onClick={() => switchToStrategyAndExpandCluster(article.topicCluster)}
+                                              className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full border border-gray-300 hover:bg-gray-200 transition-colors cursor-pointer"
+                                            >
+                                              {article.topicCluster}
+                                            </button>
+                                          ) : (
+                                            <span className="text-xs text-gray-400">No cluster</span>
+                                          )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              onClick={() => openDraftPreview(article.id)}
+                                              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs hover:bg-gray-50"
+                                            >
+                                              <Eye className="w-3 h-3" />
+                                            </button>
+                                            <button className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs hover:bg-gray-50">
+                                              <Edit className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan={5} className="px-6 py-12 text-center">
+                                      <div className="text-gray-500">
+                                        <FileText className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                                        <h3 className="text-sm font-medium text-gray-900">No articles scheduled</h3>
+                                        <p className="text-sm text-gray-500 mt-1">Generate your first batch of AI-powered article ideas.</p>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
                           </div>
-                          {/* Drafts */}
-                          <div>
-                            <div className="text-xs font-medium text-gray-700 mb-2">Drafts</div>
-                            <div className="space-y-2">
-                              {contentData.articles.drafts.slice(0,5).map((a: any) => (
-                                <div key={a.id} className="flex items-center justify-between gap-2">
-                                  <div className="truncate">
-                                    <div className="font-medium text-gray-900 truncate">{a.title}</div>
-                                    <div className="text-xs text-gray-500">Updated {new Date(a.updated_at).toLocaleDateString()}</div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <button className="text-xs text-blue-600 hover:underline" onClick={() => openDraftPreview(a.id)}>View</button>
-                                    {hasCmsConnection ? (
-                                  <button className="text-xs text-green-600 hover:underline disabled:opacity-50" disabled={publishingId===a.id} onClick={() => publishDraftNow(a.id)}>
-                                    {publishingId===a.id ? 'Publishing…' : 'Publish'}
-                                  </button>
-                                    ) : (
-                                      <a className="text-xs text-gray-500 hover:underline" href="/content-writer">Connect CMS</a>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                              {contentData.articles.drafts.length === 0 && (
-                                <div className="text-xs text-gray-500">No drafts</div>
-                              )}
-                            </div>
+
+                          {/* Quick Actions */}
+                          <div className="flex justify-center pt-4">
+                            <button
+                              onClick={() => sendMessageToChat("Help me generate content ideas for my website. What topics would work best for my audience?")}
+                              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                            >
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Generate Content Ideas
+                            </button>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Content Scheduling Configuration */}
-                      <div className="space-y-6">
-                        <ContentScheduleConfig
-                          userToken={user?.token || ''}
-                          websiteToken={userWebsites.find(w => w.url === domain || w.url.includes(domain))?.website_token || ''}
-                          domain={domain}
-                        />
-
-                        {/* Article Queue Manager */}
-                        <ArticleQueueManager
-                          userToken={user?.token || ''}
-                          websiteToken={userWebsites.find(w => w.url === domain || w.url.includes(domain))?.website_token || ''}
-                          domain={domain}
-                          onTopicClusterClick={switchToStrategyAndExpandCluster}
-                        />
-                      </div>
-                      </div>
-                  )}
+                      )}
+                    </div>
+                  </div>
                 </section>
               )}
 
