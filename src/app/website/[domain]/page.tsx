@@ -9,6 +9,7 @@ import ChatInterface from '@/components/website-chat/ChatInterface';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import ContentScheduleConfig from '@/components/ContentScheduleConfig';
 import ArticleQueueManager from '@/components/ArticleQueueManager';
+import { useContentAutomation } from '@/hooks/useContentAutomation';
 import { ChevronDown, ChevronRight, Send, Loader2, RefreshCw, TrendingUp, TrendingDown, Target, Tag, DollarSign, Wrench, Users, FileText, BookOpen, Search, Globe, Zap, Sparkles, Calendar, Clock, Eye, Edit } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 
@@ -20,10 +21,16 @@ export default function WebsitePage() {
   const domain = rawDomain.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
   
   const { user } = useAuth();
-  
+
   console.log('WebsitePage: Raw domain from URL:', rawDomain);
   console.log('WebsitePage: Cleaned domain:', domain);
-  
+
+  // Content automation hook
+  const automation = useContentAutomation(
+    user?.token || '',
+    websiteData?.website_token || ''
+  );
+
   // New layout state management
   const [activeTab, setActiveTab] = useState<'performance' | 'technical' | 'content' | 'strategy'>('performance');
   const [logCollapsed, setLogCollapsed] = useState(false);
@@ -1040,7 +1047,23 @@ export default function WebsitePage() {
                       {/* Enable Toggle */}
                       <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                         <label className="relative inline-flex items-center cursor-pointer">
-                          <input className="sr-only peer" type="checkbox" />
+                          <input
+                            className="sr-only peer"
+                            type="checkbox"
+                            checked={automation.websites[0]?.enable_automated_content || false}
+                            onChange={async (e) => {
+                              if (automation.websites[0]) {
+                                try {
+                                  await automation.updateAutomationSettings(
+                                    automation.websites[0].website_token,
+                                    { enable_automated_content: e.target.checked }
+                                  );
+                                } catch (error) {
+                                  console.error('Failed to update automation setting:', error);
+                                }
+                              }
+                            }}
+                          />
                           <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                         </label>
                         <div>
@@ -1049,20 +1072,96 @@ export default function WebsitePage() {
                         </div>
                       </div>
 
-                      {/* Plan Info and Settings */}
+                      {/* Article Quota Display */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-gray-900">Article Quota</h4>
+                          <span className="text-xs text-gray-500">
+                            {automation.quota.billing_period.start && automation.quota.billing_period.end
+                              ? `${new Date(automation.quota.billing_period.start).toLocaleDateString()} - ${new Date(automation.quota.billing_period.end).toLocaleDateString()}`
+                              : 'Current billing period'
+                            }
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Used this month:</span>
+                            <span className="font-medium">
+                              {automation.quota.used} of {automation.quota.limit}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full ${
+                                automation.quota.remaining === 0 ? 'bg-red-500' :
+                                automation.quota.remaining <= 2 ? 'bg-yellow-500' : 'bg-green-500'
+                              }`}
+                              style={{ width: `${Math.min((automation.quota.used / automation.quota.limit) * 100, 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>{automation.quota.remaining} articles remaining</span>
+                            {automation.quota.remaining === 0 && (
+                              <span className="text-red-600 font-medium">Quota exceeded</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Automation Settings */}
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-700">Your Plan</label>
-                          <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="starter">Starter - 3 articles per week</option>
-                            <option value="pro" selected>Pro - 1 article per day</option>
-                            <option value="scale">Scale - 3 articles per day</option>
+                          <label className="text-sm font-medium text-gray-700">Frequency</label>
+                          <select
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={automation.websites[0]?.scheduling.frequency || 'weekly'}
+                            onChange={async (e) => {
+                              if (automation.websites[0]) {
+                                try {
+                                  await automation.updateAutomationSettings(
+                                    automation.websites[0].website_token,
+                                    {
+                                      scheduling: {
+                                        ...automation.websites[0].scheduling,
+                                        frequency: e.target.value as 'daily' | 'weekly' | 'monthly'
+                                      }
+                                    }
+                                  );
+                                } catch (error) {
+                                  console.error('Failed to update frequency:', error);
+                                }
+                              }
+                            }}
+                          >
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
                           </select>
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-gray-700">Auto Publish</label>
-                          <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="draft" selected>Save as Draft</option>
+                          <select
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={automation.websites[0]?.scheduling.auto_publish ? 'publish' : 'draft'}
+                            onChange={async (e) => {
+                              if (automation.websites[0]) {
+                                try {
+                                  await automation.updateAutomationSettings(
+                                    automation.websites[0].website_token,
+                                    {
+                                      scheduling: {
+                                        ...automation.websites[0].scheduling,
+                                        auto_publish: e.target.value === 'publish'
+                                      }
+                                    }
+                                  );
+                                } catch (error) {
+                                  console.error('Failed to update auto-publish setting:', error);
+                                }
+                              }
+                            }}
+                          >
+                            <option value="draft">Save as Draft</option>
                             <option value="publish">Auto-Publish</option>
                           </select>
                         </div>
