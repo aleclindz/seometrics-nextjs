@@ -46,7 +46,8 @@ export class ImageGenerationService {
   }
 
   /**
-   * Generate images using OpenAI gpt-image-1
+   * Generate images using OpenAI DALL-E 3
+   * Cost: $0.04 per 1024x1024 image (vs $0.40 for gpt-image-1)
    */
   private async generateOpenAIImages(prompts: Array<{ prompt: string; alt: string }>): Promise<GeneratedImage[]> {
     const images: GeneratedImage[] = [];
@@ -66,11 +67,10 @@ export class ImageGenerationService {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                model: 'gpt-image-1',
+                model: 'dall-e-3',
                 prompt: p.prompt,
                 size: '1024x1024',
-                // OpenAI supports: 'low' | 'medium' | 'high' | 'auto' — choose medium for balance
-                quality: 'medium',
+                quality: 'standard', // DALL-E 3 supports 'standard' or 'hd'
                 n: 1
               }),
               signal: AbortSignal.timeout(45000)

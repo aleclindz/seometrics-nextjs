@@ -35,49 +35,48 @@ interface SubscriptionData {
 }
 
 const SUBSCRIPTION_TIERS = {
-  free: {
-    name: 'Free Plan',
-    price: 0,
-    features: [
-      '1 connected site',
-      'Free alt-tags generation',
-      'Free meta-tags generation',
-      'Community support'
-    ]
-  },
   starter: {
     name: 'Starter Plan',
-    price: 29,
+    price: 19,
+    stripeTier: 'starter',
+    description: '3 articles/week',
     features: [
-      '1 managed website',
-      'Unlimited article generation',
-      'Technical SEO optimization',
-      'Content optimization',
-      'Keywords research tool',
-      'Email support'
+      '12 AI articles/month',
+      '1 website',
+      'DALL-E 3 images',
+      'SEO optimization',
+      'Multi-CMS publishing',
+      'Technical SEO automation'
     ]
   },
   pro: {
     name: 'Pro Plan',
-    price: 79,
+    price: 39,
+    stripeTier: 'pro',
+    description: '1 article/day',
     features: [
-      '5 managed websites',
-      'Unlimited article generation',
-      'All Starter features',
-      'Priority support',
-      'Analytics dashboard',
-      'Advanced SEO debugging tools'
+      '30 AI articles/month',
+      '10 websites',
+      'DALL-E 3 images',
+      'SEO optimization',
+      'Multi-CMS publishing',
+      'Technical SEO automation',
+      'Priority support'
     ]
   },
-  enterprise: {
-    name: 'Enterprise Plan',
-    price: null,
+  scale: {
+    name: 'Scale Plan',
+    price: 99,
+    stripeTier: 'scale',
+    description: '3 articles/day',
     features: [
-      'Unlimited connected sites',
-      'Unlimited articles',
-      'All Pro features',
-      'Dedicated account manager',
-      'Custom integrations',
+      '90 AI articles/month',
+      'Unlimited websites',
+      'DALL-E 3 images',
+      'SEO optimization',
+      'Multi-CMS publishing',
+      'Technical SEO automation',
+      'Priority support',
       'SLA guarantee'
     ]
   }
@@ -342,38 +341,14 @@ export default function SubscriptionManager() {
             </div>
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                ∞
+                {usage.articles || 0} / {plan.posts_allowed === -1 ? '∞' : plan.posts_allowed}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Article generation</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Articles this month</div>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {plan.tier === 'free' && (
-              <>
-                <button
-                  onClick={() => handleUpgrade('starter')}
-                  disabled={actionLoading}
-                  className="btn bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50"
-                >
-                  {actionLoading ? 'Loading...' : 'Upgrade to Starter'}
-                </button>
-                <button
-                  onClick={() => handleUpgrade('pro')}
-                  disabled={actionLoading}
-                  className="btn bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-                >
-                  {actionLoading ? 'Loading...' : 'Upgrade to Pro'}
-                </button>
-                <button
-                  onClick={() => window.open('https://calendly.com/alec-baxter/15min', '_blank')}
-                  className="btn bg-gray-900 hover:bg-gray-800 text-white"
-                >
-                  Enterprise - Book Call
-                </button>
-              </>
-            )}
-            
+            {/* Show upgrade options based on current tier */}
             {plan.tier === 'starter' && (
               <>
                 <button
@@ -381,24 +356,33 @@ export default function SubscriptionManager() {
                   disabled={actionLoading}
                   className="btn bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                 >
-                  {actionLoading ? 'Loading...' : 'Upgrade to Pro'}
+                  {actionLoading ? 'Loading...' : 'Upgrade to Pro ($39/mo)'}
                 </button>
                 <button
-                  onClick={() => window.open('https://calendly.com/alec-baxter/15min', '_blank')}
-                  className="btn bg-gray-900 hover:bg-gray-800 text-white"
+                  onClick={() => handleUpgrade('scale')}
+                  disabled={actionLoading}
+                  className="btn bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
                 >
-                  Enterprise - Book Call
+                  {actionLoading ? 'Loading...' : 'Upgrade to Scale ($99/mo)'}
                 </button>
               </>
             )}
-            
+
             {plan.tier === 'pro' && (
               <button
-                onClick={() => window.open('https://calendly.com/alec-baxter/15min', '_blank')}
-                className="btn bg-gray-900 hover:bg-gray-800 text-white"
+                onClick={() => handleUpgrade('scale')}
+                disabled={actionLoading}
+                className="btn bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
               >
-                Enterprise - Book Call
+                {actionLoading ? 'Loading...' : 'Upgrade to Scale ($99/mo)'}
               </button>
+            )}
+
+            {/* Scale tier - no upgrades available */}
+            {plan.tier === 'scale' && (
+              <div className="text-sm text-gray-600 dark:text-gray-400 py-2">
+                🎉 You&apos;re on our highest tier! Enjoy unlimited content generation.
+              </div>
             )}
 
             {subscription && (
@@ -434,58 +418,60 @@ export default function SubscriptionManager() {
         </div>
       </div>
 
-      {/* Available Plans */}
-      {plan.tier === 'free' && (
+      {/* Available Plans - Show upgrade options for users not on highest tier */}
+      {(plan.tier !== 'scale' && subscription && plan.status === 'active') && (
         <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
           <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
-            <h2 className="font-semibold text-gray-800 dark:text-gray-100">Available Plans</h2>
+            <h2 className="font-semibold text-gray-800 dark:text-gray-100">Upgrade Options</h2>
           </header>
           <div className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {Object.entries(SUBSCRIPTION_TIERS).map(([key, tier]) => {
-                if (key === plan.tier) return null;
-                
+                // Only show higher tiers than current
+                const tierOrder = { starter: 1, pro: 2, scale: 3 };
+                const currentTierOrder = tierOrder[plan.tier as keyof typeof tierOrder] || 0;
+                const thisTierOrder = tierOrder[key as keyof typeof tierOrder] || 0;
+
+                if (thisTierOrder <= currentTierOrder) return null;
+
                 return (
                   <div key={key} className="border border-gray-200 dark:border-gray-600 rounded-lg p-6">
                     <div className="mb-4">
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                         {tier.name}
                       </h3>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-                        {tier.price === 0 ? 'Free' : tier.price ? `$${tier.price}` : 'Custom'}
-                        {(tier.price && tier.price > 0) && (
+                      <div className="flex items-baseline gap-2 mt-2">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          ${tier.price}
                           <span className="text-sm font-normal text-gray-600 dark:text-gray-400">/month</span>
-                        )}
-                      </p>
+                        </p>
+                        <span className="text-sm text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/20 px-2 py-1 rounded-full">
+                          {tier.description}
+                        </span>
+                      </div>
                     </div>
-                    
+
                     <ul className="space-y-2 mb-6">
                       {tier.features.map((feature, index) => (
                         <li key={index} className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                          <svg className="w-4 h-4 text-green-600 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-green-600 dark:text-green-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
                           {feature}
                         </li>
                       ))}
                     </ul>
-                    
+
                     <button
-                      onClick={() => key === 'enterprise' 
-                        ? window.open('https://calendly.com/alec-baxter/15min', '_blank')
-                        : handleUpgrade(key)
-                      }
-                      disabled={actionLoading && key !== 'enterprise'}
+                      onClick={() => handleUpgrade(tier.stripeTier)}
+                      disabled={actionLoading}
                       className={`w-full btn ${
-                        key === 'enterprise' 
-                          ? 'bg-gray-900 hover:bg-gray-800 text-white'
-                          : key === 'pro' 
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                            : 'bg-violet-600 hover:bg-violet-700 text-white'
+                        key === 'scale'
+                          ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
                       } disabled:opacity-50`}
                     >
-                      {actionLoading && key !== 'enterprise' ? 'Loading...' : 
-                       key === 'enterprise' ? 'Book Call' : 'Upgrade Now'}
+                      {actionLoading ? 'Loading...' : `Upgrade to ${tier.name}`}
                     </button>
                   </div>
                 );

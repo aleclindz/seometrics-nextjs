@@ -4,57 +4,63 @@ export default function PricingSection() {
   const plans = [
     {
       name: "Starter",
-      price: 29,
+      price: 19,
       originalPrice: null,
-      description: "Perfect for single projects and indie hackers",
+      description: "Perfect for small blogs and personal sites",
       features: [
-        "1 site",
-        "5k pages crawled/mo", 
-        "Issue alerts",
-        "50 AI fixes/mo",
-        "Weekly report",
-        "Indexing guardrails",
-        "AI titles & metas",
-        "Alt text suggestions"
+        "12 AI articles/month",
+        "1 website",
+        "DALL-E 3 images",
+        "SEO optimization",
+        "Multi-CMS publishing",
+        "Technical SEO automation",
+        "Sitemap generation",
+        "Meta tags & alt text"
       ],
-      cta: "Start free audit",
-      popular: false
+      cta: "Start generating content",
+      popular: false,
+      tier: "starter",
+      frequency: "3 articles/week"
     },
     {
       name: "Pro",
-      price: 79,
-      originalPrice: 139,
-      description: "Best for growing businesses with multiple sites",
-      features: [
-        "10 sites",
-        "50k pages crawled/mo",
-        "Auto-fix rules", 
-        "Internal-link suggestions",
-        "A/B test titles/metas",
-        "Template regression alerts",
-        "Slack/Email notifications",
-        "Weekly health report"
-      ],
-      cta: "Start free audit",
-      popular: true
-    },
-    {
-      name: "Agency",
-      price: 299,
+      price: 39,
       originalPrice: null,
-      description: "For agencies managing multiple client sites",
+      description: "Ideal for growing businesses and content creators",
       features: [
-        "Unlimited sites",
-        "250k pages crawled/mo",
-        "Multi-client dashboard",
-        "Webhooks/Slack alerts",
-        "White-label reports",
+        "30 AI articles/month",
+        "10 websites",
+        "DALL-E 3 images",
+        "SEO optimization",
+        "Multi-CMS publishing",
+        "Technical SEO automation",
         "Priority support",
-        "Custom integrations",
         "Advanced analytics"
       ],
-      cta: "Start free audit",
-      popular: false
+      cta: "Start generating content",
+      popular: true,
+      tier: "pro",
+      frequency: "1 article/day"
+    },
+    {
+      name: "Scale",
+      price: 99,
+      originalPrice: null,
+      description: "For high-volume content needs and agencies",
+      features: [
+        "90 AI articles/month",
+        "Unlimited websites",
+        "DALL-E 3 images",
+        "SEO optimization",
+        "Multi-CMS publishing",
+        "Technical SEO automation",
+        "Priority support",
+        "Custom integrations"
+      ],
+      cta: "Start generating content",
+      popular: false,
+      tier: "scale",
+      frequency: "3 articles/day"
     }
   ];
 
@@ -63,10 +69,11 @@ export default function PricingSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Simple plans that scale with you
+            Automated content generation plans
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            All plans include 14-day trial. No credit card to start.
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            All plans include AI-powered article generation, SEO optimization, and multi-CMS publishing.
+            No free tier - professional content requires professional tools.
           </p>
         </div>
 
@@ -109,9 +116,12 @@ export default function PricingSection() {
                       )}
                     </div>
                   </div>
-                  <p className="text-gray-600 dark:text-gray-300">
+                  <p className="text-gray-600 dark:text-gray-300 mb-2">
                     {plan.description}
                   </p>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 text-sm font-medium">
+                    {plan.frequency}
+                  </div>
                 </div>
 
                 {/* Features */}
@@ -149,8 +159,8 @@ export default function PricingSection() {
 
         {/* Additional Info */}
         <div className="text-center mt-12">
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
-            All plans include 14-day trial. No credit card to start.
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Professional content generation starting at just $19/month. All plans include complete SEO automation.
           </p>
           <div className="flex flex-wrap justify-center items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
             <div className="flex items-center">
@@ -163,14 +173,27 @@ export default function PricingSection() {
               <svg className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              30-day money-back guarantee
+              DALL-E 3 images included
             </div>
             <div className="flex items-center">
               <svg className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Setup support included
+              Multi-CMS publishing
             </div>
+            <div className="flex items-center">
+              <svg className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Full SEO automation
+            </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              💡 <strong>Why no free tier?</strong> Professional content generation requires premium AI models (GPT-4, DALL-E 3)
+              and advanced SEO analysis. We pass the savings of DALL-E 3 (vs $0.40/image alternatives) directly to you
+              with transparent, affordable pricing.
+            </p>
           </div>
         </div>
       </div>

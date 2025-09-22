@@ -17,25 +17,35 @@ function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://seoagent.com' : 'http://localhost:3000');
 }
 
-// Subscription tier configuration
+// NEW: Article-focused subscription tier configuration
+// No free tier - all users must have paid subscription for article generation
 const SUBSCRIPTION_TIERS = {
   starter: {
-    priceId: process.env.STRIPE_STARTER_PRICE_ID!,
+    priceId: process.env.STRIPE_STARTER_PRICE_ID!, // $19/month
     name: 'Starter Plan',
-    sitesAllowed: 2,
-    postsAllowed: 4,
+    price: '$19/month',
+    sitesAllowed: 1,
+    postsAllowed: 12, // 3 articles/week
+    description: 'Perfect for small blogs',
+    features: ['12 AI articles/month', '1 website', 'DALL-E 3 images', 'SEO optimization', 'Multi-CMS publishing']
   },
   pro: {
-    priceId: process.env.STRIPE_PRO_PRICE_ID!,
+    priceId: process.env.STRIPE_PRO_PRICE_ID!, // $39/month
     name: 'Pro Plan',
-    sitesAllowed: 5,
-    postsAllowed: 10,
+    price: '$39/month',
+    sitesAllowed: 10,
+    postsAllowed: 30, // 1 article/day
+    description: 'Ideal for growing businesses',
+    features: ['30 AI articles/month', '10 websites', 'DALL-E 3 images', 'SEO optimization', 'Multi-CMS publishing', 'Priority support']
   },
-  enterprise: {
-    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID!,
-    name: 'Enterprise Plan',
+  scale: {
+    priceId: process.env.STRIPE_SCALE_PRICE_ID!, // $99/month (renamed from enterprise)
+    name: 'Scale Plan',
+    price: '$99/month',
     sitesAllowed: -1, // Unlimited
-    postsAllowed: -1, // Unlimited
+    postsAllowed: 90, // 3 articles/day
+    description: 'For high-volume content needs',
+    features: ['90 AI articles/month', 'Unlimited websites', 'DALL-E 3 images', 'SEO optimization', 'Multi-CMS publishing', 'Priority support', 'Custom integrations']
   },
 };
 

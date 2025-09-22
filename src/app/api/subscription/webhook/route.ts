@@ -160,14 +160,14 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log('Processing subscription deleted:', subscription.id);
 
-  // Set user back to starter plan
+  // IMPORTANT: No fallback to free tier - set to cancelled starter plan
   const { error } = await supabase
     .from('user_plans')
     .update({
       tier: 'starter',
-      sites_allowed: 2,
-      posts_allowed: 4,
-      status: 'cancelled',
+      sites_allowed: 1,
+      posts_allowed: 12,
+      status: 'cancelled', // User must reactivate to generate articles
       stripe_subscription_id: null,
       updated_at: new Date().toISOString(),
     })
@@ -220,10 +220,13 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 }
 
 function getTierLimits(tier: string) {
+  // NEW: Updated tier limits for article-focused pricing
   const limits = {
-    starter: { sites: 2, posts: 4 },
-    pro: { sites: 5, posts: 10 },
-    enterprise: { sites: -1, posts: -1 }, // Unlimited
+    starter: { sites: 1, posts: 12 },        // $19/month: 1 site, 12 articles (3/week)
+    pro: { sites: 10, posts: 30 },           // $39/month: 10 sites, 30 articles (1/day)
+    scale: { sites: -1, posts: 90 },         // $99/month: unlimited sites, 90 articles (3/day)
+    // Legacy support for old 'enterprise' tier - migrate to 'scale'
+    enterprise: { sites: -1, posts: 90 },
   };
 
   return limits[tier as keyof typeof limits] || limits.starter;

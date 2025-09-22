@@ -84,27 +84,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check quota (best-effort)
+    // CRITICAL: Check subscription and quota - NO FREE TIER
     try {
       const quotaCheck = await checkQuota(supabase, userToken, article.websites?.id);
-      if (!quotaCheck.allowed && quotaCheck.limit > 0) {
+
+      if (!quotaCheck.allowed) {
+        console.log('[GENERATE EDGE] Article generation blocked:', quotaCheck.error, quotaCheck.message);
+
         await supabase
           .from('article_queue')
           .update({
             status: 'generation_failed',
-            error_message: `Quota exceeded: You have reached your monthly limit of ${quotaCheck.limit} articles. Current usage: ${quotaCheck.currentUsage}`,
+            error_message: quotaCheck.message || 'Subscription required for article generation',
             updated_at: new Date().toISOString()
           })
           .eq('id', articleId);
 
+        // Return appropriate HTTP status based on error type
+        const statusCode = quotaCheck.error === 'NO_PLAN' || quotaCheck.error === 'INACTIVE_PLAN' ? 402 : 429;
+
         return new Response(JSON.stringify({
-          error: 'Quota exceeded',
-          message: `You have reached your monthly limit of ${quotaCheck.limit} articles. Current usage: ${quotaCheck.currentUsage}`,
-          quota: quotaCheck
-        }), { status: 429, headers: { 'Content-Type': 'application/json' } });
+          error: quotaCheck.error || 'Quota exceeded',
+          message: quotaCheck.message || 'Article generation not allowed',
+          quota: quotaCheck,
+          upgrade_required: quotaCheck.error === 'NO_PLAN' || quotaCheck.error === 'INACTIVE_PLAN',
+          pricing_tiers: {
+            starter: { price: '$19/month', articles: '12/month (3/week)', description: 'Perfect for small blogs' },
+            pro: { price: '$39/month', articles: '30/month (1/day)', description: 'Ideal for growing businesses' },
+            scale: { price: '$99/month', articles: '90/month (3/day)', description: 'For high-volume content needs' }
+          }
+        }), { status: statusCode, headers: { 'Content-Type': 'application/json' } });
       }
+
+      console.log('[GENERATE EDGE] Quota check passed:', {
+        tier: quotaCheck.tier,
+        usage: `${quotaCheck.currentUsage}/${quotaCheck.limit}`,
+        remaining: quotaCheck.remaining
+      });
+
     } catch (quotaError) {
-      console.log('[GENERATE EDGE] Quota check failed (likely missing tables), continuing without quota check:', quotaError);
+      console.error('[GENERATE EDGE] Quota check system error:', quotaError);
+
+      await supabase
+        .from('article_queue')
+        .update({
+          status: 'generation_failed',
+          error_message: 'Unable to verify subscription. Please try again.',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', articleId);
+
+      return new Response(JSON.stringify({
+        error: 'SYSTEM_ERROR',
+        message: 'Unable to verify subscription. Please try again or contact support.',
+        retry: true
+      }), { status: 503, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Update status to generating
@@ -422,12 +456,51 @@ async function checkQuota(supabase: any, userToken: string, siteId?: number) {
       .eq('user_token', userToken)
       .single();
 
+    // CRITICAL: No free tier for article generation - must have paid plan
     if (planError || !userPlan) {
-      return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: 'starter' };
+      return {
+        allowed: false,
+        currentUsage: 0,
+        limit: 0,
+        remaining: 0,
+        tier: null,
+        error: 'NO_PLAN',
+        message: 'Article generation requires a paid plan. Please upgrade to Starter ($19/month), Pro ($39/month), or Scale ($99/month).'
+      };
     }
 
+    // Must have active subscription (not trial, cancelled, or past_due)
     if (userPlan.status !== 'active') {
-      return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: userPlan.tier };
+      const statusMessages = {
+        'trial': 'Your trial has ended. Please upgrade to continue generating articles.',
+        'cancelled': 'Your subscription was cancelled. Please reactivate to continue generating articles.',
+        'past_due': 'Your subscription payment is past due. Please update your payment method to continue.',
+        'incomplete': 'Please complete your subscription setup to start generating articles.'
+      };
+
+      return {
+        allowed: false,
+        currentUsage: 0,
+        limit: userPlan.posts_allowed || 0,
+        remaining: 0,
+        tier: userPlan.tier,
+        error: 'INACTIVE_PLAN',
+        message: statusMessages[userPlan.status] || 'Your subscription is inactive. Please contact support.'
+      };
+    }
+
+    // Valid tiers: starter (12 articles), pro (30 articles), scale (90 articles)
+    const validTiers = ['starter', 'pro', 'scale'];
+    if (!validTiers.includes(userPlan.tier)) {
+      return {
+        allowed: false,
+        currentUsage: 0,
+        limit: 0,
+        remaining: 0,
+        tier: userPlan.tier,
+        error: 'INVALID_TIER',
+        message: 'Invalid subscription tier. Please contact support.'
+      };
     }
 
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -443,10 +516,26 @@ async function checkQuota(supabase: any, userToken: string, siteId?: number) {
     const allowed = limit === -1 || currentUsage < limit;
     const remaining = limit === -1 ? Infinity : Math.max(0, limit - currentUsage);
 
-    return { allowed, currentUsage, limit, remaining, tier: userPlan.tier };
+    return {
+      allowed,
+      currentUsage,
+      limit,
+      remaining,
+      tier: userPlan.tier,
+      error: allowed ? null : 'QUOTA_EXCEEDED',
+      message: allowed ? null : `You have reached your monthly limit of ${limit} articles. Current usage: ${currentUsage}. Upgrade to a higher tier for more articles.`
+    };
   } catch (error) {
     console.error('Error checking quota:', error);
-    return { allowed: false, currentUsage: 0, limit: 0, remaining: 0, tier: 'starter' };
+    return {
+      allowed: false,
+      currentUsage: 0,
+      limit: 0,
+      remaining: 0,
+      tier: null,
+      error: 'SYSTEM_ERROR',
+      message: 'Unable to verify subscription. Please try again or contact support.'
+    };
   }
 }
 
