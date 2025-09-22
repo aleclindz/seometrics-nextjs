@@ -21,7 +21,15 @@ export async function POST(request: NextRequest) {
     console.log(`[BULK IDEAS] Generating ${count} article ideas for ${period} for domain: ${domain}`);
 
     // Call autonomous topic selection with the specified count
-    const topicResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/agent/autonomous-topic-selection`, {
+    // Always prefer same-origin to avoid misconfigured external base URLs
+    const baseUrl = (() => {
+      try {
+        return new URL(request.url).origin;
+      } catch {
+        return process.env.NEXT_PUBLIC_APP_URL || process.env.SITE_URL || process.env.APP_URL || 'http://localhost:3000';
+      }
+    })();
+    const topicResponse = await fetch(`${baseUrl}/api/agent/autonomous-topic-selection`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

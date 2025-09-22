@@ -108,7 +108,10 @@ export async function POST(request: NextRequest) {
 
             // Generate new topics to fill the gap
             try {
-              const topicResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/content/bulk-article-ideas`, {
+              const cronBase = (() => {
+                try { return new URL(request.url).origin; } catch { return process.env.NEXT_PUBLIC_APP_URL || process.env.SITE_URL || process.env.APP_URL || 'http://localhost:3000'; }
+              })();
+              const topicResponse = await fetch(`${cronBase}/api/content/bulk-article-ideas`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
