@@ -19,15 +19,17 @@ interface ArticleQueueItem {
   authorityLevel: 'foundation' | 'intermediate' | 'advanced';
   estimatedTrafficPotential: number;
   targetQueries: string[];
+  topicCluster?: string;
 }
 
 interface Props {
   userToken: string;
   websiteToken: string;
   domain: string;
+  onTopicClusterClick?: (clusterName: string) => void;
 }
 
-export default function ArticleQueueManager({ userToken, websiteToken, domain }: Props) {
+export default function ArticleQueueManager({ userToken, websiteToken, domain, onTopicClusterClick }: Props) {
   const [queue, setQueue] = useState<ArticleQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -314,6 +316,19 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain }:
                             {item.authorityLevel}
                           </span>
                         </div>
+
+                        {/* Topic Cluster */}
+                        {item.topicCluster && (
+                          <div className="mt-2">
+                            <button
+                              onClick={() => onTopicClusterClick?.(item.topicCluster!)}
+                              className="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                            >
+                              <Target className="w-3 h-3 mr-1" />
+                              {item.topicCluster}
+                            </button>
+                          </div>
+                        )}
 
                         {item.targetKeywords && item.targetKeywords.length > 0 && (
                           <div className="mt-2">

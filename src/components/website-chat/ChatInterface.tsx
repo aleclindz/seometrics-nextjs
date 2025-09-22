@@ -339,6 +339,27 @@ What would you like to work on first?`,
     };
   }, []);
 
+  // Listen for messages from other components
+  useEffect(() => {
+    const handleExternalMessage = (event: any) => {
+      const { message, autoSend } = event.detail;
+      if (message) {
+        setInput(message);
+        if (autoSend) {
+          // Small delay to allow state to update
+          setTimeout(() => {
+            sendMessage();
+          }, 100);
+        }
+      }
+    };
+
+    window.addEventListener('seoagent:send-message', handleExternalMessage);
+    return () => {
+      window.removeEventListener('seoagent:send-message', handleExternalMessage);
+    };
+  }, [sendMessage]);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();

@@ -9,7 +9,7 @@ import ChatInterface from '@/components/website-chat/ChatInterface';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import ContentScheduleConfig from '@/components/ContentScheduleConfig';
 import ArticleQueueManager from '@/components/ArticleQueueManager';
-import { ChevronDown, Send, Loader2, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Send, Loader2, RefreshCw, TrendingUp, TrendingDown, Target, Tag, DollarSign, Wrench, Users, FileText, BookOpen, Search, Globe, Zap, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 
 export default function WebsitePage() {
@@ -127,6 +127,21 @@ export default function WebsitePage() {
     } catch {}
   };
   const [clusterExpanded, setClusterExpanded] = useState<Record<string, boolean>>({});
+
+  // Function to switch to strategy tab and expand specific cluster
+  const switchToStrategyAndExpandCluster = (clusterName: string) => {
+    setActiveTab('strategy');
+    setClusterExpanded(prev => ({ ...prev, [clusterName]: true }));
+  };
+
+  // Function to send message to chat interface
+  const sendMessageToChat = (message: string) => {
+    // Dispatch custom event that ChatInterface can listen to
+    const chatEvent = new CustomEvent('seoagent:send-message', {
+      detail: { message, autoSend: true }
+    });
+    window.dispatchEvent(chatEvent);
+  };
 
   // Fetch performance data
   const fetchPerformanceData = async () => {
@@ -1138,6 +1153,7 @@ export default function WebsitePage() {
                           userToken={user?.token || ''}
                           websiteToken={userWebsites.find(w => w.url === domain || w.url.includes(domain))?.website_token || ''}
                           domain={domain}
+                          onTopicClusterClick={switchToStrategyAndExpandCluster}
                         />
                       </div>
                       </div>
@@ -1146,13 +1162,17 @@ export default function WebsitePage() {
               )}
 
               {activeTab === 'strategy' && (
-                <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">Topic Clusters</h2>
+                <section className="space-y-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">Topic Clusters</h2>
+                      <p className="text-gray-600 text-sm mt-1">Strategic keyword groupings for your content strategy</p>
+                    </div>
                     <button
                       onClick={fetchStrategyData}
                       disabled={strategyData.isLoading}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 text-sm bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50 shadow-sm"
                     >
                       {strategyData.isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -1164,55 +1184,163 @@ export default function WebsitePage() {
                   </div>
 
                   {strategyData.isLoading ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      {[1, 2].map((i) => (
-                        <div key={i} className="bg-white border rounded-lg p-4">
-                          <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
-                          <div className="h-28 rounded-lg bg-gray-100 mb-2 animate-pulse"></div>
-                          <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[1, 2].map((i) => (
+                          <div key={i} className="bg-white border rounded-lg p-4">
+                            <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                          </div>
+                        ))}
+                      </div>
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="bg-white border rounded-lg p-6">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+                            <div className="flex-1">
+                              <div className="h-5 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                              <div className="h-3 bg-gray-200 rounded w-2/3 animate-pulse"></div>
+                            </div>
+                          </div>
+                          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
                         </div>
                       ))}
                     </div>
                   ) : !strategyData.hasData ? (
-                    <div className="bg-white border rounded-lg p-6 text-center">
-                      <div className="text-gray-600 mb-2">SEO Strategy Insights</div>
+                    <div className="bg-white border rounded-lg p-8 text-center">
+                      <div className="text-gray-600 mb-2 text-lg">SEO Strategy Insights</div>
                       <div className="text-sm text-gray-500">{strategyData.message}</div>
                     </div>
                   ) : (
-                    <div className="bg-white border rounded-lg p-0">
-                      <div className="px-4 py-3 border-b text-sm font-semibold">Keyword Strategy</div>
-                      <div className="max-h-[420px] overflow-y-auto">
+                    <div className="space-y-6">
+                      {/* Stats Overview */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                              <Target className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-2xl font-semibold">{strategyData.topicClusters.length}</p>
+                              <p className="text-sm text-gray-600">Topic Clusters</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-green-100 rounded-lg">
+                              <Tag className="w-5 h-5 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="text-2xl font-semibold">
+                                {strategyData.topicClusters.reduce((total: number, cluster: any) =>
+                                  total + (cluster.keywords?.length || 0), 0
+                                )}
+                              </p>
+                              <p className="text-sm text-gray-600">Total Keywords</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Topic Clusters */}
+                      <div className="space-y-4">
                         {strategyData.topicClusters.length === 0 ? (
-                          <div className="p-4 text-sm text-gray-500">No clusters yet. Add keywords to build your strategy.</div>
+                          <div className="bg-white border rounded-lg p-8 text-center">
+                            <div className="text-gray-600 mb-2">No clusters yet</div>
+                            <div className="text-sm text-gray-500 mb-4">Let me help you create a keyword strategy tailored to your business.</div>
+                            <button
+                              onClick={() => sendMessageToChat("Help me come up with a keyword strategy. What do you need to know about my business to help with that? Where do I start?")}
+                              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                            >
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Help me generate a topic cluster and keyword strategy
+                            </button>
+                          </div>
                         ) : (
                           strategyData.topicClusters
                             .sort((a: any, b: any) => (b.keywords?.length || 0) - (a.keywords?.length || 0))
-                            .map((cluster: any) => {
+                            .map((cluster: any, index: number) => {
                               const cid = cluster.name || 'uncategorized';
                               const expanded = !!clusterExpanded[cid];
                               const toggle = () => setClusterExpanded(prev => ({ ...prev, [cid]: !expanded }));
+
+                              // Get color and icon based on index and cluster name
+                              const getClusterTheme = (name: string, idx: number) => {
+                                const themes = [
+                                  { icon: Target, color: 'bg-blue-50 border-blue-200 text-blue-700', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
+                                  { icon: TrendingUp, color: 'bg-green-50 border-green-200 text-green-700', iconBg: 'bg-green-100', iconColor: 'text-green-600' },
+                                  { icon: DollarSign, color: 'bg-amber-50 border-amber-200 text-amber-700', iconBg: 'bg-amber-100', iconColor: 'text-amber-600' },
+                                  { icon: Wrench, color: 'bg-purple-50 border-purple-200 text-purple-700', iconBg: 'bg-purple-100', iconColor: 'text-purple-600' },
+                                  { icon: Users, color: 'bg-rose-50 border-rose-200 text-rose-700', iconBg: 'bg-rose-100', iconColor: 'text-rose-600' },
+                                  { icon: FileText, color: 'bg-gray-50 border-gray-200 text-gray-700', iconBg: 'bg-gray-100', iconColor: 'text-gray-600' },
+                                  { icon: BookOpen, color: 'bg-indigo-50 border-indigo-200 text-indigo-700', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600' },
+                                  { icon: Search, color: 'bg-cyan-50 border-cyan-200 text-cyan-700', iconBg: 'bg-cyan-100', iconColor: 'text-cyan-600' },
+                                  { icon: Globe, color: 'bg-teal-50 border-teal-200 text-teal-700', iconBg: 'bg-teal-100', iconColor: 'text-teal-600' },
+                                  { icon: Zap, color: 'bg-orange-50 border-orange-200 text-orange-700', iconBg: 'bg-orange-100', iconColor: 'text-orange-600' }
+                                ];
+                                return themes[idx % themes.length];
+                              };
+
+                              const theme = getClusterTheme(cluster.name, index);
+                              const IconComponent = theme.icon;
+
                               return (
-                                <div key={cid} className="border-b last:border-b-0">
-                                  <button onClick={toggle} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                                    <div className="flex items-center gap-2 text-sm">
-                                      <span className="font-medium text-gray-900">{cluster.name || 'uncategorized'}</span>
-                                      <span className="text-xs text-gray-500">{cluster.keywords?.length || 0} keywords</span>
-                                    </div>
-                                    <span className="text-xs text-gray-400">{expanded ? 'Hide' : 'Show'}</span>
-                                  </button>
-                                  {expanded && (
-                                    <div className="px-4 pb-3">
-                                      {(cluster.keywords || []).length === 0 ? (
-                                        <div className="text-xs text-gray-500">No keywords in this cluster</div>
-                                      ) : (
-                                        <div className="grid grid-cols-2 gap-2">
-                                          {cluster.keywords.map((k: any, idx: number) => (
-                                            <div key={idx} className="text-xs text-gray-700 truncate">
-                                              • {k.keyword}
-                                            </div>
-                                          ))}
+                                <div key={cid} className={`bg-white border ${theme.color} rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md`}>
+                                  {/* Cluster Header */}
+                                  <button
+                                    onClick={toggle}
+                                    className="w-full p-6 flex items-center justify-between hover:bg-gray-50/50 transition-colors text-left"
+                                  >
+                                    <div className="flex items-center gap-4 flex-1">
+                                      <div className={`p-3 rounded-lg ${theme.iconBg}`}>
+                                        <IconComponent className={`w-5 h-5 ${theme.iconColor}`} />
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                          <h3 className="font-semibold text-gray-900">{cluster.name || 'Uncategorized'}</h3>
+                                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                                            {cluster.keywords?.length || 0} keyword{(cluster.keywords?.length || 0) !== 1 ? 's' : ''}
+                                          </span>
                                         </div>
+                                        <p className="text-sm text-gray-600">
+                                          {cluster.description || 'Strategic keyword cluster for enhanced content targeting and SEO optimization.'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-500">
+                                        {expanded ? 'Hide' : 'Show'}
+                                      </span>
+                                      {expanded ? (
+                                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                                      ) : (
+                                        <ChevronRight className="w-4 h-4 text-gray-500" />
                                       )}
+                                    </div>
+                                  </button>
+
+                                  {/* Keywords List */}
+                                  {expanded && (
+                                    <div className="px-6 pb-6 pt-0">
+                                      <div className="border-t pt-4">
+                                        <h4 className="text-sm font-medium text-gray-700 mb-3">Keywords:</h4>
+                                        {(cluster.keywords || []).length === 0 ? (
+                                          <div className="text-sm text-gray-500">No keywords in this cluster</div>
+                                        ) : (
+                                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                                            {cluster.keywords.map((k: any, idx: number) => (
+                                              <div
+                                                key={idx}
+                                                className="flex items-center gap-2 p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
+                                              >
+                                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
+                                                <span className="text-sm text-gray-700 truncate">{k.keyword || k}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
