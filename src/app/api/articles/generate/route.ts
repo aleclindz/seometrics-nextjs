@@ -471,7 +471,7 @@ async function checkQuota(supabase: any, userToken: string, siteId?: number) {
 
     // Must have active subscription (not trial, cancelled, or past_due)
     if (userPlan.status !== 'active') {
-      const statusMessages = {
+      const statusMessages: Record<string, string> = {
         'trial': 'Your trial has ended. Please upgrade to continue generating articles.',
         'cancelled': 'Your subscription was cancelled. Please reactivate to continue generating articles.',
         'past_due': 'Your subscription payment is past due. Please update your payment method to continue.',
