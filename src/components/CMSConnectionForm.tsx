@@ -35,9 +35,10 @@ interface CMSConnectionFormProps {
   onCancel: () => void;
   connection?: any; // For editing existing connections
   preselectedWebsiteId?: string; // For modal usage
+  initialCmsType?: 'wordpress' | 'strapi' | 'wix';
 }
 
-export default function CMSConnectionForm({ onSuccess, onCancel, connection, preselectedWebsiteId }: CMSConnectionFormProps) {
+export default function CMSConnectionForm({ onSuccess, onCancel, connection, preselectedWebsiteId, initialCmsType }: CMSConnectionFormProps) {
   const { user } = useAuth();
   const [websites, setWebsites] = useState<Website[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,7 +52,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
   const [formData, setFormData] = useState({
     connection_name: connection?.connection_name || '',
     website_id: connection?.website_id || preselectedWebsiteId || '',
-    cms_type: connection?.cms_type || 'wordpress',
+    cms_type: connection?.cms_type || initialCmsType || 'wordpress',
     base_url: connection?.base_url || '',
     api_token: connection?.api_token || '',
     content_type: connection?.content_type || ''
@@ -148,33 +149,30 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       setTestingToken(true);
       setError(null);
 
-      const cleanUrl = formData.base_url.replace(/\/$/, '');
-      
-      // Test the token with content-type-builder endpoint
-      const response = await fetch(`${cleanUrl}/api/content-type-builder/content-types`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${formData.api_token}`,
-          'Content-Type': 'application/json',
-        },
+      // Use centralized API to test connections for all CMS types (Strapi, WordPress, etc.)
+      const resp = await fetch('/api/cms/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cms_type: formData.cms_type,
+          base_url: formData.base_url,
+          api_token: formData.api_token,
+          userToken: user?.token,
+          content_type: formData.content_type || (formData.cms_type === 'wordpress' ? 'posts' : undefined)
+        })
       });
 
-      if (response.ok) {
+      const data = await resp.json();
+      if (resp.ok && data.success) {
         setTokenValid(true);
         setError(null);
-      } else if (response.status === 401) {
-        setTokenValid(false);
-        setError('Invalid API token. Please check your token and try again.');
-      } else if (response.status === 403) {
-        setTokenValid(false);
-        setError('API token lacks permissions. Please create a Custom token with Content-Type-Builder.read permission.');
       } else {
         setTokenValid(false);
-        setError(`Connection failed: ${response.status}`);
+        setError(data.error || 'Connection test failed');
       }
     } catch (err) {
       setTokenValid(false);
-      setError('Could not connect to Strapi instance. Please check your base URL.');
+      setError('Could not connect to CMS. Please check your details.');
     } finally {
       setTestingToken(false);
     }
@@ -431,7 +429,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
           <button
             type="button"
             onClick={discoverContentTypes}
-            disabled={!formData.base_url || !formData.api_token || discovering || tokenValid !== true}
+            disabled={!formData.base_url || !formData.api_token || discovering || (formData.cms_type !== 'wordpress' && tokenValid !== true)}
             className="flex items-center px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
           >
             {discovering ? (
@@ -644,7 +642,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
         <h4 className="font-medium text-gray-900 dark:text-white mb-3">Connection Summary</h4>
         <div className="space-y-2 text-sm">
-          <div><span className="font-medium">CMS Type:</span> <span className="text-gray-600 dark:text-gray-400">Strapi</span></div>
+          <div><span className="font-medium">CMS Type:</span> <span className="text-gray-600 dark:text-gray-400">{formData.cms_type === 'wordpress' ? 'WordPress' : formData.cms_type === 'wix' ? 'Wix' : 'Strapi'}</span></div>
           <div><span className="font-medium">Base URL:</span> <span className="text-gray-600 dark:text-gray-400">{formData.base_url}</span></div>
           {preselectedWebsiteId && (
             <div><span className="font-medium">Website:</span> <span className="text-gray-600 dark:text-gray-400">

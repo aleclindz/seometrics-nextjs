@@ -129,15 +129,16 @@ Please identify and explain:
 
 Be specific and reference actual data from the inspections.`;
 
+  // Log prompt details
+  try {
+    console.log('[AGENT TEST][LLM] model=gpt-4o-mini', { systemPreview: systemPrompt.slice(0, 300), userPreview: prompt.slice(0, 200) });
+  } catch {}
+
   const completion = await openai.chat.completions.create({
-    // Log prompt details
-    try {
-      console.log('[AGENT TEST][LLM] model=gpt-4o-mini', { systemPreview: systemPrompt.slice(0, 300), userPreview: prompt.slice(0, 200) });
-    } catch {}
-    model: "gpt-4o-mini",
+    model: 'gpt-4o-mini',
     messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: prompt }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
     ],
     temperature: 0.1,
   });

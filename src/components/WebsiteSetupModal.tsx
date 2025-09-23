@@ -81,6 +81,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [cmsConnections, setCmsConnections] = useState<CMSConnection[]>([]);
   const [cmsLoading, setCmsLoading] = useState(false);
   const [cmsError, setCmsError] = useState<string | null>(null);
+  const [selectedCmsType, setSelectedCmsType] = useState<'wordpress'|'strapi'|'wix'|null>(null);
 
   // Host Connection State
   const [hostConnections, setHostConnections] = useState<HostConnection[]>([]);
@@ -1023,6 +1024,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   onSuccess={handleCMSSuccess}
                   onCancel={() => setShowCMSForm(false)}
                   preselectedWebsiteId={website.id}
+                  initialCmsType={selectedCmsType as any}
                 />
               ) : (
                 <div>
@@ -1036,8 +1038,8 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {[
                       { type: 'strapi', name: 'Strapi', icon: '🚀', available: true },
-                      { type: 'wix', name: 'Wix', icon: '🌟', available: true },
-                      { type: 'wordpress', name: 'WordPress', icon: '📝', available: false },
+                      { type: 'wordpress', name: 'WordPress', icon: '📝', available: true },
+                      { type: 'wix', name: 'Wix', icon: '🌟', available: false },
                       { type: 'webflow', name: 'Webflow', icon: '🌊', available: false },
                       { type: 'shopify', name: 'Shopify', icon: '🛒', available: false },
                     ].map((cms) => (
@@ -1047,7 +1049,12 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                           <h4 className="font-medium text-gray-900 dark:text-gray-100">{cms.name}</h4>
                         </div>
                         <button
-                          onClick={() => cms.available && setShowCMSForm(true)}
+                          onClick={() => {
+                            if (cms.available) {
+                              setSelectedCmsType(cms.type as any);
+                              setShowCMSForm(true);
+                            }
+                          }}
                           disabled={!cms.available}
                           className={`w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md ${
                             cms.available

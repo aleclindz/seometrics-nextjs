@@ -1,6 +1,8 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Header from '@/components/Header';
@@ -688,7 +690,10 @@ export default function WebsitePage() {
         {/* Top Bar */}
         <header className="h-14 border-b bg-white flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <div className="font-semibold text-gray-900">SEOAgent</div>
+            <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-gray-900 hover:text-blue-600">
+              <ArrowLeft className="h-4 w-4" />
+              SEOAgent
+            </Link>
             <div className="mx-3 h-5 w-px bg-gray-200" />
             {/* Site Picker */}
             <div className="relative" ref={dropdownRef}>
