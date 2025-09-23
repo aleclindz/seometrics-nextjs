@@ -227,7 +227,10 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
 
   if (!process.env.OPENAI_API_KEY) {
     // Fallback: create simple topics from type/description keywords
-    const base = (desc || type || 'content strategy').split(/[,.;\-\n]+/).map(s => s.trim()).filter(Boolean);
+    const base = (desc || type || 'content strategy')
+      .split(/[,.;\-\n]+/)
+      .map((s: string) => s.trim())
+      .filter((s: string) => s.length > 0);
     const seeds = (base.length ? base : ['content ideas', 'best practices', 'getting started']).slice(0, 5);
     const formats = ['guide','how-to','listicle','faq','comparison'];
     return Array.from({ length: count }).map((_, i) => {
