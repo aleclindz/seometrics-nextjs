@@ -55,7 +55,9 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
     cms_type: connection?.cms_type || initialCmsType || 'wordpress',
     base_url: connection?.base_url || '',
     api_token: connection?.api_token || '',
-    content_type: connection?.content_type || ''
+    content_type: connection?.content_type || '',
+    wp_username: '',
+    wp_app_password: ''
   });
 
   useEffect(() => {
@@ -140,14 +142,34 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
   };
 
   const testToken = async () => {
-    if (!formData.base_url || !formData.api_token) {
-      setError('Please enter both base URL and API token');
+    if (!formData.base_url) {
+      setError('Please enter your site URL');
+      return;
+    }
+    if (formData.cms_type === 'wordpress') {
+      if (!formData.api_token && (!formData.wp_username || !formData.wp_app_password)) {
+        setError('Enter your WordPress username and application password');
+        return;
+      }
+    } else if (!formData.api_token) {
+      setError('Please enter your API token');
       return;
     }
 
     try {
       setTestingToken(true);
       setError(null);
+
+      // Build credentials for WordPress if using separate fields
+      let apiTokenToSend = formData.api_token;
+      let wpUsername = formData.wp_username?.trim();
+      let wpPassword = formData.wp_app_password?.trim();
+      if (formData.cms_type === 'wordpress') {
+        if (wpUsername && wpPassword) {
+          const compactPass = wpPassword.replace(/\s+/g, '');
+          apiTokenToSend = `${wpUsername}:${compactPass}`;
+        }
+      }
 
       // Use centralized API to test connections for all CMS types (Strapi, WordPress, etc.)
       const resp = await fetch('/api/cms/test-connection', {
@@ -156,7 +178,9 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         body: JSON.stringify({
           cms_type: formData.cms_type,
           base_url: formData.base_url,
-          api_token: formData.api_token,
+          api_token: apiTokenToSend,
+          wp_username: formData.cms_type === 'wordpress' ? wpUsername : undefined,
+          wp_app_password: formData.cms_type === 'wordpress' ? wpPassword : undefined,
           userToken: user?.token,
           content_type: formData.content_type || (formData.cms_type === 'wordpress' ? 'posts' : undefined)
         })
@@ -180,15 +204,25 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
 
   const discoverContentTypes = async () => {
     if (!formData.base_url || !formData.api_token) {
-      setError('Please enter both base URL and API token');
-      return;
+      if (formData.cms_type === 'wordpress') {
+        // Allow empty api_token if username/password provided
+        if (!formData.wp_username || !formData.wp_app_password) {
+          setError('Enter your WordPress username and application password');
+          return;
+        }
+      } else {
+        setError('Please enter both base URL and API token');
+        return;
+      }
     }
 
     // WordPress doesn't need content type discovery - skip to final step
     if (formData.cms_type === 'wordpress') {
+      const compactPass = (formData.wp_app_password || '').replace(/\s+/g, '');
       setFormData(prev => ({
         ...prev,
-        content_type: 'posts', // WordPress uses posts by default
+        api_token: (prev.wp_username && compactPass) ? `${prev.wp_username}:${compactPass}` : prev.api_token,
+        content_type: 'posts',
         connection_name: prev.connection_name || `WordPress - ${prev.base_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
       }));
       setCurrentStep(3);
@@ -248,8 +282,8 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         setError('Please fill in all required fields');
         return;
       }
-      const user = formData.wp_username?.trim();
-      const pass = formData.wp_app_password?.trim();
+      const user = (formData as any).wp_username?.trim();
+      const pass = (formData as any).wp_app_password?.trim();
       if (!(apiTokenToSave || (user && pass))) {
         setError('Please provide your WordPress username and application password');
         return;
@@ -395,39 +429,80 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
           )}
         </div>
 
-        <div>
-          <label htmlFor="api_token" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {formData.cms_type === 'wordpress' ? 'Application Password *' : 'API Token *'}
-          </label>
-          <input
-            id="api_token"
-            type="password"
-            name="api_token"
-            value={formData.api_token}
-            onChange={handleInputChange}
-            placeholder={formData.cms_type === 'wordpress'
-              ? "username:application-password"
-              : formData.cms_type === 'wix'
-              ? "Your Wix API Key"
-              : "Your Strapi API token"
-            }
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            required
-          />
-          {formData.cms_type === 'wordpress' && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              <p>Format: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">username:your-app-password</code></p>
-              <p className="mt-1">Create an Application Password in WordPress Admin → Users → Profile → Application Passwords</p>
+        {formData.cms_type === 'wordpress' ? (
+          <>
+            <div>
+              <label htmlFor="wp_username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">WordPress Username *</label>
+              <input
+                id="wp_username"
+                type="text"
+                name="wp_username"
+                value={(formData as any).wp_username}
+                onChange={handleInputChange}
+                placeholder="your-username (no @)"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                required
+              />
             </div>
-          )}
-        </div>
+            <div>
+              <label htmlFor="wp_app_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Application Password *</label>
+              <input
+                id="wp_app_password"
+                type="password"
+                name="wp_app_password"
+                value={(formData as any).wp_app_password}
+                onChange={handleInputChange}
+                placeholder="xxxx xxxx xxxx xxxx"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                required
+              />
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p>
+                  Generate an application password in WordPress: 
+                  <a href="https://wordpress.com/me/security/two-step" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline ml-1">Security → Two-Step</a>
+                </p>
+                <p className="mt-1">Paste it here (spaces are ok).</p>
+              </div>
+              <details className="mt-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+                <summary className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200">Show me how</summary>
+                <div className="mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-2">
+                  <p>1) Use your primary site URL (mapped domain). For WordPress.com, ensure the site is public.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Tip: Your WordPress.com admin may show a URL like <code className="px-1 rounded bg-gray-100 dark:bg-gray-800">*.wordpress.com</code>, but if you have a mapped domain (e.g., <code className="px-1 rounded bg-gray-100 dark:bg-gray-800">southfloridaimports.com</code>), use the mapped domain as your Site URL and for REST checks.</p>
+                  <p>
+                    2) Check your REST API: 
+                    <button type="button" onClick={() => {
+                      const url = (formData.base_url || '').replace(/\/$/, '') + '/wp-json/wp/v2';
+                      if (formData.base_url) window.open(url, '_blank');
+                    }} className="ml-1 underline text-violet-700">Open /wp-json/wp/v2</button>
+                  </p>
+                  <p>3) Create an application password: WordPress.com → Security → Two‑Step → Application Passwords.</p>
+                  <p>4) Enter your username (no @) and paste the app password. Click “Test Connection”.</p>
+                </div>
+              </details>
+            </div>
+          </>
+        ) : (
+          <div>
+            <label htmlFor="api_token" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Token *</label>
+            <input
+              id="api_token"
+              type="password"
+              name="api_token"
+              value={formData.api_token}
+              onChange={handleInputChange}
+              placeholder={formData.cms_type === 'wix' ? 'Your Wix API Key' : 'Your Strapi API token'}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              required
+            />
+          </div>
+        )}
 
         {/* Test buttons */}
         <div className="flex gap-3 mt-4">
           <button
             type="button"
             onClick={testToken}
-            disabled={!formData.base_url || !formData.api_token || testingToken}
+            disabled={!formData.base_url || (formData.cms_type === 'wordpress' ? (!((formData as any).wp_username && (formData as any).wp_app_password) && !formData.api_token) : !formData.api_token) || testingToken}
             className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
           >
             {testingToken ? (
