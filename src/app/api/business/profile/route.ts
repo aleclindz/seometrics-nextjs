@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { scrapeUrl } from '@/services/crawl/firecrawl-client';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,7 +47,7 @@ async function fetchWebsiteSnippets(domain: string): Promise<string> {
     } catch {}
     // Fallback to direct fetch
     try {
-      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
       if (!resp.ok) return '';
       const html = await resp.text();
       return stripHtml(html).slice(0, 60_000);
@@ -55,13 +56,19 @@ async function fetchWebsiteSnippets(domain: string): Promise<string> {
     }
   }
 
-  // Homepage
-  combined += await tryScrape(homepage);
-  // Try a likely about page for better business signals
-  for (const url of aboutCandidates) {
-    if (combined.length > 80_000) break;
-    const txt = await tryScrape(url);
-    if (txt) combined += `\n\n---\n\n${txt}`;
+  // If Firecrawl is available, scrape only the homepage to keep within runtime budget
+  if (useFirecrawl) {
+    combined += await tryScrape(homepage);
+    return combined.slice(0, 120_000);
+  }
+
+  // Otherwise, fetch homepage + one likely about page concurrently with tight timeouts
+  const quickCandidates = [homepage, aboutCandidates[0]];
+  const results = await Promise.allSettled(quickCandidates.map(u => tryScrape(u)));
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) {
+      if (combined) combined += `\n\n---\n\n${r.value}`; else combined += r.value;
+    }
   }
   return combined.slice(0, 120_000);
 }
@@ -106,7 +113,7 @@ ${htmlSnippet}
       temperature: 0.2,
       max_tokens: 500
     }),
-    signal: AbortSignal.timeout(15000)
+    signal: AbortSignal.timeout(12000)
   });
   if (!resp.ok) {
     return {

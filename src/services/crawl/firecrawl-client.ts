@@ -45,7 +45,9 @@ async function firecrawlFetch(path: string, init?: RequestInit) {
       ...(init?.headers || {})
     },
     // Keep serverless timeouts in mind
-    cache: 'no-store'
+    cache: 'no-store',
+    // Add a client-side timeout to avoid hanging within the route's maxDuration
+    signal: (init as any)?.signal ?? AbortSignal.timeout(10000)
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -105,4 +107,3 @@ export async function scrapeUrl(url: string): Promise<CrawlResultPage> {
     metadata: content.metadata || content.meta || {}
   };
 }
-
