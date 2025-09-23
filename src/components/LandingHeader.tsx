@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/auth';
 
 export default function LandingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
@@ -63,18 +65,37 @@ export default function LandingHeader() {
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link
-              href="/login"
-              className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/login?mode=signup"
-              className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              Get Started
-            </Link>
+            {user?.token ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors"
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/account"
+                  className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Account
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/login?mode=signup"
+                  className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -128,18 +149,27 @@ export default function LandingHeader() {
                 Contact Us
               </a>
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Link
-                  href="/login"
-                  className="block text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 mb-2 transition-colors"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/login?mode=signup"
-                  className="block bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium text-center transition-colors"
-                >
-                  Get Started
-                </Link>
+                {user?.token ? (
+                  <div className="flex items-center gap-3">
+                    <Link href="/dashboard" className="flex-1 text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">Dashboard</Link>
+                    <Link href="/account" className="flex-1 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium text-center transition-colors">Account</Link>
+                  </div>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      className="block text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 mb-2 transition-colors"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/login?mode=signup"
+                      className="block bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium text-center transition-colors"
+                    >
+                      Get Started
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </div>

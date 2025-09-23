@@ -74,13 +74,24 @@ function HeaderV2() {
           </a>
         </nav>
         <div className="flex items-center gap-3">
-          <a href="/login" className="hidden sm:inline-flex text-slate-700 hover:text-slate-900">Log in</a>
-          <button
-            onClick={startTrial}
-            className="inline-flex items-center gap-1 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:opacity-90"
-          >
-            Start trial <ArrowRight size={16} />
-          </button>
+          {user?.token ? (
+            <>
+              <Link href="/dashboard" className="hidden sm:inline-flex text-slate-700 hover:text-slate-900">Dashboard</Link>
+              <Link href="/account" className="inline-flex items-center gap-1 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-slate-50">
+                Account
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="hidden sm:inline-flex text-slate-700 hover:text-slate-900">Log in</Link>
+              <button
+                onClick={startTrial}
+                className="inline-flex items-center gap-1 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:opacity-90"
+              >
+                Start trial <ArrowRight size={16} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>
