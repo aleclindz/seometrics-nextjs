@@ -205,7 +205,7 @@ function synthesizeOpportunitiesFromStrategy(strategyKeywords: any[], targetCoun
   const slice = unique.slice(0, sampleSize);
 
   const now = Date.now();
-  return slice.map((kw, idx) => ({
+  return slice.map((kw, idx): QueryOpportunity => ({
     query: kw,
     clicks: 0,
     impressions: 100 + (idx % 50),
@@ -214,6 +214,7 @@ function synthesizeOpportunitiesFromStrategy(strategyKeywords: any[], targetCoun
     opportunityScore: 60 + ((now + idx) % 40) / 2, // 60-80 range
     opportunityType: 'content_gap',
     reasoning: 'Synthesized from keyword strategy (GSC disabled)',
+    suggestedAction: 'Create a new article targeting this keyword cluster',
     estimatedTrafficGain: 0
   }));
 }
