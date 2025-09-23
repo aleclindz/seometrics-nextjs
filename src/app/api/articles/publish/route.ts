@@ -199,6 +199,19 @@ export async function POST(request: NextRequest) {
           }
         }
           
+      } else if (effectiveCms?.cms_type === 'wordpress_com') {
+        // Publish to WordPress.com via OAuth token
+        const siteIdentifier = (() => { try { return new URL(effectiveCms.base_url).host; } catch { return effectiveCms.base_url; } })();
+        const wpcomResult = await publishToWordPressCom({
+          accessToken: effectiveCms.api_token,
+          site: siteIdentifier,
+          title: article.meta_title || article.title,
+          content: article.article_content,
+          slug: article.slug,
+          publishDraft
+        });
+        cmsArticleId = wpcomResult.cmsId;
+
       } else if (effectiveCms?.cms_type === 'strapi') {
         // Legacy Strapi support
         const strapiResult = await publishToStrapi({
@@ -326,6 +339,45 @@ export async function POST(request: NextRequest) {
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
+}
+
+async function publishToWordPressCom({
+  accessToken,
+  site,
+  title,
+  content,
+  slug,
+  publishDraft
+}: {
+  accessToken: string;
+  site: string; // site domain or ID
+  title: string;
+  content: string;
+  slug?: string;
+  publishDraft: boolean;
+}): Promise<{ cmsId: string }> {
+  const endpoint = `https://public-api.wordpress.com/wp/v2/sites/${site}/posts`;
+  const payload: any = {
+    title,
+    content,
+    status: publishDraft ? 'draft' : 'publish'
+  };
+  if (slug) payload.slug = slug;
+
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`WordPress.com publish failed (${resp.status}): ${text}`);
+  }
+  const data = await resp.json();
+  return { cmsId: String(data.id) };
 }
 
 async function publishToStrapi({

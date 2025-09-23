@@ -1008,19 +1008,6 @@ async function testWordPressConnection(siteUrl: string, applicationPassword: str
           details: { status: 404, error: 'REST API not found', tried: wpEndpoints }
         };
       }
-      if (apiResponse.status === 401) {
-        return {
-          success: false,
-          message: 'Authentication failed. Please check your username and application password.',
-          details: { status: 401, error: 'Unauthorized' }
-        };
-      } else if (apiResponse.status === 404) {
-        return {
-          success: false,
-          message: 'WordPress REST API not found. Try using your *.wordpress.com site URL as Site URL, or ensure your primary domain exposes /wp-json/. Also make sure the site is public.',
-          details: { status: 404, error: 'REST API not found', tried: wpEndpoints }
-        };
-      }
 
       const errorText = apiResponse ? await apiResponse.text() : 'No response';
       return {

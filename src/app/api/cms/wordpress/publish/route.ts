@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('id', connectionId)
       .eq('user_token', userToken)
-      .eq('cms_type', 'wordpress')
       .single();
 
     if (connectionError || !connection) {
@@ -55,18 +54,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse application password - should be in format "username:password"
-    const parts = connection.api_token.split(':');
-    if (parts.length !== 2) {
-      return NextResponse.json(
-        { error: 'Invalid application password format in connection' },
-        { status: 400 }
-      );
-    }
-
-    const [username, password] = parts;
-    const auth = btoa(`${username}:${password}`);
+    const cmsType: string = connection.cms_type;
     const siteUrl = connection.base_url.replace(/\/$/, '');
+    const isWpCom = cmsType === 'wordpress_com';
+    let authBasic = '';
+    let wpcomAccessToken = '';
+    if (isWpCom) {
+      wpcomAccessToken = connection.api_token;
+      if (!wpcomAccessToken) {
+        return NextResponse.json({ error: 'Missing WordPress.com access token' }, { status: 400 });
+      }
+    } else {
+      // Self-hosted WordPress using Application Passwords
+      const parts = String(connection.api_token || '').split(':');
+      if (parts.length !== 2) {
+        return NextResponse.json(
+          { error: 'Invalid application password format in connection' },
+          { status: 400 }
+        );
+      }
+      const [username, password] = parts;
+      authBasic = btoa(`${username}:${password}`);
+    }
 
     // Prepare the WordPress post data
     const postData: any = {
@@ -82,19 +91,19 @@ export async function POST(request: NextRequest) {
       postData.date = new Date(publishedAt).toISOString();
     }
 
-    // Handle categories
-    if (categories.length > 0) {
-      const categoryIds = await getOrCreateCategories(siteUrl, auth, categories);
-      if (categoryIds.length > 0) {
-        postData.categories = categoryIds;
+    // Handle categories/tags for self-hosted only (WP.com requires site-specific taxonomy handling; skip initial)
+    if (!isWpCom) {
+      if (categories.length > 0) {
+        const categoryIds = await getOrCreateCategories(siteUrl, authBasic, categories);
+        if (categoryIds.length > 0) {
+          postData.categories = categoryIds;
+        }
       }
-    }
-
-    // Handle tags
-    if (tags.length > 0) {
-      const tagIds = await getOrCreateTags(siteUrl, auth, tags);
-      if (tagIds.length > 0) {
-        postData.tags = tagIds;
+      if (tags.length > 0) {
+        const tagIds = await getOrCreateTags(siteUrl, authBasic, tags);
+        if (tagIds.length > 0) {
+          postData.tags = tagIds;
+        }
       }
     }
 
@@ -109,15 +118,29 @@ export async function POST(request: NextRequest) {
 
     console.log('[WORDPRESS PUBLISH] Creating WordPress post...');
 
-    // Create the post
-    const response = await fetch(`${siteUrl}/wp-json/wp/v2/posts`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(postData)
-    });
+    let response: Response;
+    if (isWpCom) {
+      // Use WordPress.com REST API v2
+      let siteIdentifier = '';
+      try { siteIdentifier = new URL(siteUrl).host; } catch { siteIdentifier = siteUrl; }
+      response = await fetch(`https://public-api.wordpress.com/wp/v2/sites/${siteIdentifier}/posts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${wpcomAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(postData)
+      });
+    } else {
+      response = await fetch(`${siteUrl}/wp-json/wp/v2/posts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${authBasic}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postData)
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -135,10 +158,10 @@ export async function POST(request: NextRequest) {
     const createdPost = await response.json();
     console.log('[WORDPRESS PUBLISH] Post created successfully:', createdPost.id);
 
-    // Handle featured image if provided
-    if (featuredImage && createdPost.id) {
+    // Handle featured image if provided (self-hosted path only for now)
+    if (!isWpCom && featuredImage && createdPost.id) {
       try {
-        await setFeaturedImage(siteUrl, auth, createdPost.id, featuredImage);
+        await setFeaturedImage(siteUrl, authBasic, createdPost.id, featuredImage);
       } catch (imageError) {
         console.warn('[WORDPRESS PUBLISH] Failed to set featured image:', imageError);
         // Don't fail the entire operation for image issues
@@ -155,7 +178,7 @@ export async function POST(request: NextRequest) {
       url: createdPost.link,
       publishedAt: createdPost.status === 'publish' ? new Date(createdPost.date) : null,
       excerpt: createdPost.excerpt.rendered ? stripHtml(createdPost.excerpt.rendered) : '',
-      author: createdPost.author || username,
+      author: createdPost.author,
       categories: categories,
       tags: tags,
       featuredImage: featuredImage,
