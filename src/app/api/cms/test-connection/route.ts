@@ -15,7 +15,9 @@ export async function POST(request: NextRequest) {
       api_token,
       content_type,
       connection_id,
-      userToken
+      userToken,
+      wp_username,
+      wp_app_password
     } = body;
 
     let actualApiToken = api_token;
@@ -43,6 +45,12 @@ export async function POST(request: NextRequest) {
       if (!cms_type) cms_type = connection.cms_type;
       if (!base_url) base_url = connection.base_url;
       if (!content_type) content_type = connection.content_type;
+    }
+
+    // For WordPress, accept separate username/app password if provided
+    if (cms_type === 'wordpress' && (!actualApiToken && wp_username && wp_app_password)) {
+      const compactPass = String(wp_app_password).trim().replace(/\s+/g, '');
+      actualApiToken = `${String(wp_username).trim()}:${compactPass}`;
     }
 
     if (!cms_type || !base_url || !actualApiToken) {
@@ -960,7 +968,7 @@ async function testWordPressConnection(siteUrl: string, applicationPassword: str
       } else if (apiResponse.status === 404) {
         return {
           success: false,
-          message: 'WordPress REST API not found. Please ensure WordPress is installed and REST API is enabled.',
+          message: 'WordPress REST API not found. Verify your site URL (use the primary domain) and that /wp-json/wp/v2 is accessible. For WordPress.com sites, ensure the site is public.',
           details: { status: 404, error: 'REST API not found' }
         };
       }

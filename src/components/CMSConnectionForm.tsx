@@ -241,9 +241,27 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.connection_name || !formData.website_id || !formData.base_url || !formData.api_token) {
-      setError('Please fill in all required fields');
-      return;
+    // Prepare API token for WordPress if using separate fields
+    let apiTokenToSave = formData.api_token;
+    if (formData.cms_type === 'wordpress') {
+      if (!formData.connection_name || !formData.website_id || !formData.base_url) {
+        setError('Please fill in all required fields');
+        return;
+      }
+      const user = formData.wp_username?.trim();
+      const pass = formData.wp_app_password?.trim();
+      if (!(apiTokenToSave || (user && pass))) {
+        setError('Please provide your WordPress username and application password');
+        return;
+      }
+      if (user && pass) {
+        apiTokenToSave = `${user}:${pass.replace(/\s+/g, '')}`;
+      }
+    } else {
+      if (!formData.connection_name || !formData.website_id || !formData.base_url || !formData.api_token) {
+        setError('Please fill in all required fields');
+        return;
+      }
     }
 
     try {
@@ -260,6 +278,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         },
         body: JSON.stringify({
           ...formData,
+          api_token: apiTokenToSave,
           userToken: user?.token,
         }),
       });
