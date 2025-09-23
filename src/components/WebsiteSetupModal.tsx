@@ -28,7 +28,7 @@ interface WebsiteSetupModalProps {
   }) => void;
 }
 
-type SetupTab = 'gsc' | 'cms' | 'smartjs' | 'host';
+type SetupTab = 'gsc' | 'business' | 'cms' | 'smartjs' | 'host';
 
 interface GSCConnectionStatus {
   connected: boolean;
@@ -92,15 +92,29 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [smartjsLoading, setSmartjsLoading] = useState(false);
   const [smartjsDetected, setSmartjsDetected] = useState(website.smartjsStatus === 'active');
 
+  // Business Info State
+  const [businessLoading, setBusinessLoading] = useState(false);
+  const [businessSaving, setBusinessSaving] = useState(false);
+  const [bizDetecting, setBizDetecting] = useState(false);
+  const [businessType, setBusinessType] = useState<string>('unknown');
+  const [businessDescription, setBusinessDescription] = useState<string>('');
+  const [businessEditMode, setBusinessEditMode] = useState(false);
+  const [preEditType, setPreEditType] = useState<string>('unknown');
+  const [preEditDesc, setPreEditDesc] = useState<string>('');
+  const [businessSavedAt, setBusinessSavedAt] = useState<number | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       // Only generate install code and set initial tab when modal opens
       // Don't automatically check statuses - user can manually refresh
       generateSmartJSCode();
+      loadBusinessInfo();
       
       // Set initial tab based on what needs setup
       if (website.gscStatus !== 'connected') {
         setActiveTab('gsc');
+      } else if (!businessDescription) {
+        setActiveTab('business');
       } else if (website.smartjsStatus !== 'active') {
         setActiveTab('smartjs');
       } else if (website.cmsStatus !== 'connected') {
@@ -292,6 +306,76 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       // You might want to show a toast notification here
     } catch (error) {
       console.error('Failed to copy code:', error);
+    }
+  };
+
+  // Business Info functions
+  const loadBusinessInfo = async () => {
+    if (!user?.token) return;
+    try {
+      setBusinessLoading(true);
+      const resp = await fetch(`/api/business/profile?userToken=${user.token}&domain=${encodeURIComponent(website.url)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.success && data.profile) {
+          setBusinessType(data.profile.type || 'unknown');
+          setBusinessDescription(data.profile.description || '');
+        }
+      }
+    } catch (e) {
+      // silent
+    } finally {
+      setBusinessLoading(false);
+    }
+  };
+
+  const saveBusinessInfo = async (t: string, d: string) => {
+    if (!user?.token) return;
+    try {
+      setBusinessSaving(true);
+      const resp = await fetch('/api/business/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userToken: user.token, domain: website.url, type: t, description: d })
+      });
+      if (resp.ok) {
+        setBusinessSavedAt(Date.now());
+      }
+    } catch (e) {
+      // silent
+    } finally {
+      setBusinessSaving(false);
+    }
+  };
+
+  // Debounced autosave on edits
+  useEffect(() => {
+    if (!businessEditMode) return;
+    const handle = setTimeout(() => {
+      void saveBusinessInfo(businessType, businessDescription);
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [businessType, businessDescription, businessEditMode]);
+
+  const detectBusinessInfo = async () => {
+    if (!user?.token) return;
+    try {
+      setBizDetecting(true);
+      const resp = await fetch('/api/business/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userToken: user.token, domain: website.url, force: true })
+      });
+      const data = await resp.json();
+      if (resp.ok && data?.success && data.profile) {
+        setBusinessType(data.profile.type || 'unknown');
+        setBusinessDescription(data.profile.description || '');
+        setBusinessSavedAt(Date.now());
+      }
+    } catch (e) {
+      // silent
+    } finally {
+      setBizDetecting(false);
     }
   };
 
@@ -549,6 +633,16 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
               )}
             </button>
             <button
+              onClick={() => setActiveTab('business')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2 ${
+                activeTab === 'business'
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              <span>Business Info</span>
+            </button>
+            <button
               onClick={() => setActiveTab('smartjs')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2 ${
                 activeTab === 'smartjs'
@@ -682,6 +776,107 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                     </button>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Business Info Tab */}
+          {activeTab === 'business' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Business Information</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  This information will help SEOAgent write content relevant for your website.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={detectBusinessInfo}
+                  disabled={bizDetecting}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {bizDetecting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Detecting...
+                    </>
+                  ) : (
+                    'Detect Business Info'
+                  )}
+                </button>
+
+                {!businessEditMode ? (
+                  <button
+                    onClick={() => {
+                      setPreEditType(businessType);
+                      setPreEditDesc(businessDescription);
+                      setBusinessEditMode(true);
+                    }}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Edit
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        await saveBusinessInfo(businessType, businessDescription);
+                        setBusinessEditMode(false);
+                      }}
+                      disabled={businessSaving}
+                      className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {businessSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setBusinessType(preEditType);
+                        setBusinessDescription(preEditDesc);
+                        setBusinessEditMode(false);
+                      }}
+                      className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {businessSavedAt && (
+                  <span className="text-xs text-gray-500">Saved</span>
+                )}
+              </div>
+
+              {/* Form */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Business Type</label>
+                  <select
+                    disabled={!businessEditMode}
+                    value={businessType}
+                    onChange={(e) => setBusinessType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:bg-gray-100"
+                  >
+                    {['product','saas','service','content','marketplace','tool','app','nonprofit','community','unknown'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Business Description</label>
+                  <textarea
+                    disabled={!businessEditMode}
+                    value={businessDescription}
+                    onChange={(e) => setBusinessDescription(e.target.value)}
+                    rows={5}
+                    placeholder="Describe what your business does, who it's for, and what makes it unique."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:bg-gray-100"
+                  />
+                </div>
+              </div>
+
+              {businessLoading && (
+                <div className="text-sm text-gray-500">Loading business info...</div>
               )}
             </div>
           )}

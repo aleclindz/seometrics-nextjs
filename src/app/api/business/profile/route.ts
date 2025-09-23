@@ -168,3 +168,40 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Fetch current business profile without running detection
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const userToken = searchParams.get('userToken');
+    const domain = searchParams.get('domain');
+    if (!userToken || !domain) {
+      return NextResponse.json({ success: false, error: 'userToken and domain are required' }, { status: 400 });
+    }
+
+    const clean = normalizeDomain(domain);
+    const variants = [clean, `https://${clean}`, `sc-domain:${clean}`];
+
+    const { data: website, error } = await supabase
+      .from('websites')
+      .select('business_type, business_info')
+      .eq('user_token', userToken)
+      .or(variants.map(v => `domain.eq.${v}`).join(','))
+      .maybeSingle();
+
+    if (error || !website) {
+      return NextResponse.json({ success: false, error: 'Website not found' }, { status: 404 });
+    }
+    let info: any = {};
+    try { info = website.business_info ? JSON.parse(website.business_info) : {}; } catch {}
+
+    return NextResponse.json({
+      success: true,
+      profile: {
+        type: website.business_type || 'unknown',
+        description: info.description || ''
+      }
+    });
+  } catch (e) {
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  }
+}
