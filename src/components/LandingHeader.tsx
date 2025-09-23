@@ -25,16 +25,23 @@ export default function LandingHeader() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex space-x-8 items-center">
             <a href="#features" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
               Features
             </a>
-            <Link href="/vercel" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
-              Vercel
-            </Link>
-            <Link href="/strapi" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
-              Strapi
-            </Link>
+            <div className="relative group">
+              <span className="text-gray-600 group-hover:text-violet-600 dark:text-gray-300 dark:group-hover:text-violet-400 transition-colors cursor-pointer">
+                Integrations
+              </span>
+              <div className="absolute left-0 mt-2 hidden group-hover:block">
+                <div className="w-56 rounded-lg border border-slate-200 bg-white shadow-lg p-2">
+                  <Link href="/wordpress" className="block px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700">WordPress</Link>
+                  <Link href="/strapi" className="block px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700">Strapi</Link>
+                  <Link href="/shopify" className="block px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700">Shopify</Link>
+                  <Link href="/vercel" className="block px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700">Vercel</Link>
+                </div>
+              </div>
+            </div>
             <a href="#social-proof" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
               Testimonials
             </a>
@@ -94,12 +101,15 @@ export default function LandingHeader() {
               <a href="#features" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
                 Features
               </a>
-              <Link href="/vercel" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
-                Vercel
-              </Link>
-              <Link href="/strapi" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
-                Strapi
-              </Link>
+              <div className="pt-2">
+                <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">Integrations</div>
+                <div className="flex flex-col space-y-2">
+                  <Link href="/wordpress" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">WordPress</Link>
+                  <Link href="/strapi" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">Strapi</Link>
+                  <Link href="/shopify" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">Shopify</Link>
+                  <Link href="/vercel" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">Vercel</Link>
+                </div>
+              </div>
               <a href="#social-proof" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
                 Testimonials
               </a>

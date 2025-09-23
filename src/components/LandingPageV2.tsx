@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth';
 import { Rocket, ArrowRight, Bot, Zap, Search, Lightbulb, Sparkles, Send } from 'lucide-react';
+import PricingSection from '@/components/PricingSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -21,7 +22,7 @@ export default function LandingPageV2() {
         <IntegrationsV2 />
         <AudienceV2 />
         <HowItWorksV2 />
-        <PricingTeaserV2 />
+        <PricingSection />
         <FAQV2 />
         <FinalCTAV2 />
       </main>
@@ -49,6 +50,17 @@ function HeaderV2() {
           <Image src="/assets/SEOAgent_logo.png" alt="SEOAgent" width={140} height={36} />
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
+          <div className="relative group">
+            <span className="hover:text-slate-900 transition-colors cursor-pointer">Integrations</span>
+            <div className="absolute left-0 mt-2 hidden group-hover:block">
+              <div className="w-56 rounded-lg border border-slate-200 bg-white shadow-lg p-2">
+                <Link href="/wordpress" className="block px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700">WordPress</Link>
+                <Link href="/strapi" className="block px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700">Strapi</Link>
+                <Link href="/shopify" className="block px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700">Shopify</Link>
+                <Link href="/vercel" className="block px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700">Vercel</Link>
+              </div>
+            </div>
+          </div>
           <a href="#how" className="hover:text-slate-900 transition-colors">How it works</a>
           <a href="#pricing" className="hover:text-slate-900 transition-colors">Pricing</a>
           <a href="#faq" className="hover:text-slate-900 transition-colors">FAQ</a>
@@ -62,7 +74,7 @@ function HeaderV2() {
           </a>
         </nav>
         <div className="flex items-center gap-3">
-          <Link href="/login" className="hidden sm:inline-flex text-slate-700 hover:text-slate-900">Log in</Link>
+          <a href="/login" className="hidden sm:inline-flex text-slate-700 hover:text-slate-900">Log in</a>
           <button
             onClick={startTrial}
             className="inline-flex items-center gap-1 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:opacity-90"
@@ -400,26 +412,40 @@ function HowItWorksV2() {
   );
 }
 
-function PricingTeaserV2() {
-  return (
-    <section className="bg-white py-16" id="pricing">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl font-semibold">Plans for every stage</h2>
-        <p className="text-slate-600 mt-2">Start with a $1, 7‑day trial. Cancel anytime.</p>
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <a href="/pricing" className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-lg font-semibold shadow">View Pricing</a>
-          <a href="/login?mode=signup" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 px-5 py-3 rounded-lg font-semibold hover:bg-slate-50">Start Trial</a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function FAQV2() {
   const faqs = [
-    { q: 'How safe are auto‑fixes?', a: 'Everything is logged. You can require approval or enable instant rollback. We never make changes that could break your site.' },
-    { q: 'Does this replace my SEO agency?', a: 'No. It automates technical/on‑page work so humans focus on strategy and content quality.' },
-    { q: 'Does it work with WordPress/Webflow/Shopify?', a: 'Yes—via snippet or plugins. Server‑side integrations coming.' },
+    {
+      q: 'What is an AI SEO agent?',
+      a: 'SEOAgent is an autonomous SEO system that manages technical SEO (sitemaps, robots, canonicals, schema), publishes optimized content on a schedule, and measures results using Google Search Console.'
+    },
+    {
+      q: 'How does SEOAgent automate technical SEO?',
+      a: 'It continuously audits your site, fixes metadata issues, updates sitemaps and robots.txt, maintains schema markup, and builds internal links—reducing manual SEO tickets and engineering overhead.'
+    },
+    {
+      q: 'Does SEOAgent work with WordPress, Strapi, Shopify, and Vercel?',
+      a: 'Yes. We support WordPress, Strapi (headless), Shopify blogs, and sites deployed on Vercel. Connect once and SEOAgent handles publishing and technical SEO automatically.'
+    },
+    {
+      q: 'Will this replace my SEO agency?',
+      a: 'No. SEOAgent automates repetitive technical and on‑page tasks so your team or agency can focus on strategy, brand, and high‑impact content.'
+    },
+    {
+      q: 'Is it safe to let an agent change my site?',
+      a: 'Yes. All changes are logged with optional approval flows and instant rollback. You can start in review mode and enable auto‑apply when comfortable.'
+    },
+    {
+      q: 'How fast will I see results?',
+      a: 'Most sites see improved crawl coverage and indexing within weeks, followed by compounding traffic growth as content is published and internal links build authority.'
+    },
+    {
+      q: 'Do I need Google Search Console connected?',
+      a: 'We recommend connecting GSC so the agent can track impressions, clicks, and coverage. It helps the agent prioritize fixes and validate impact.'
+    },
+    {
+      q: 'What’s included in the paid plans?',
+      a: 'All plans include automated technical SEO and AI content publishing. Higher tiers increase article volume, site count, analytics depth, and support levels.'
+    }
   ];
   return (
     <section className="bg-gradient-to-b from-white to-slate-50/50 py-16" id="faq">
