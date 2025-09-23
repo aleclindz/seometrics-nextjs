@@ -475,8 +475,19 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
                       if (formData.base_url) window.open(url, '_blank');
                     }} className="ml-1 underline text-violet-700">Open /wp-json/wp/v2</button>
                   </p>
+                  <p>
+                    WordPress.com specific: If your Site URL is a <code className="px-1 rounded bg-gray-100 dark:bg-gray-800">*.wordpress.com</code> address, the public API is at:
+                    <button type="button" onClick={() => {
+                      try {
+                        const host = new URL(formData.base_url || '').host;
+                        window.open(`https://public-api.wordpress.com/wp/v2/sites/${host}`, '_blank');
+                      } catch {}
+                    }} className="ml-1 underline text-violet-700">public-api.wordpress.com/wp/v2/sites/&lt;your-site&gt;</button>
+                    . Posting to WordPress.com requires OAuth (not Application Passwords).
+                  </p>
                   <p>3) Create an application password: WordPress.com → Security → Two‑Step → Application Passwords.</p>
                   <p>4) Enter your username (no @) and paste the app password. Click “Test Connection”.</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">Note: SEOAgent currently supports self‑hosted WordPress for direct publishing via Application Passwords. For WordPress.com publishing, contact support to enable OAuth‑based integration.</p>
                 </div>
               </details>
             </div>

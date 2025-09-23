@@ -947,18 +947,67 @@ async function testWordPressConnection(siteUrl: string, applicationPassword: str
     const [username, password] = parts;
     const auth = btoa(`${username}:${password}`);
     const cleanUrl = siteUrl.replace(/\/$/, '');
+    let host = '';
+    try { host = new URL(cleanUrl).host; } catch {}
 
-    // Test 1: Basic WordPress REST API connectivity
+    // Special handling for WordPress.com hosted sites
+    if (host.endsWith('.wordpress.com')) {
+      try {
+        const wpcomUrl = `https://public-api.wordpress.com/wp/v2/sites/${host}`;
+        const wpcomResp = await fetch(wpcomUrl, { method: 'GET' });
+        if (wpcomResp.ok) {
+          return {
+            success: false,
+            message: 'Detected a WordPress.com-hosted site. Connectivity is OK, but publishing requires WordPress.com OAuth, which is not enabled yet. Use a self-hosted WordPress with Application Passwords, or contact support to enable WordPress.com publishing.',
+            details: { wordpressCom: true, site: host, checkUrl: wpcomUrl }
+          };
+        }
+      } catch {}
+      // Even if the public API check fails, guide the user about WordPress.com hosting
+      return {
+        success: false,
+        message: 'This site appears to be on WordPress.com. Publishing via Application Passwords is not supported here. Use a self-hosted WordPress site or contact support to enable WordPress.com integration.',
+        details: { wordpressCom: true, site: host }
+      };
+    }
+
+    // Test 1: Basic WordPress REST API connectivity (try variants)
     console.log('[WORDPRESS TEST] Testing basic connectivity...');
-    const apiResponse = await fetch(`${cleanUrl}/wp-json/wp/v2/`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const wpEndpoints = [
+      `${cleanUrl}/wp-json/wp/v2/`,
+      `${cleanUrl}/wp-json/wp/v2`,
+      `${cleanUrl}/wp-json/`
+    ];
+    let apiResponse: Response | null = null;
+    for (const url of wpEndpoints) {
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (res.ok) { apiResponse = res; break; }
+        apiResponse = res; // keep last response
+      } catch {}
+    }
 
-    if (!apiResponse.ok) {
+    if (!apiResponse || !apiResponse.ok) {
+      const status = apiResponse?.status || 0;
+      if (status === 401) {
+        return {
+          success: false,
+          message: 'Authentication failed. Please check your username and application password.',
+          details: { status: 401, error: 'Unauthorized' }
+        };
+      } else if (status === 404) {
+        return {
+          success: false,
+          message: 'WordPress REST API not found. Try using your *.wordpress.com site URL as Site URL, or ensure your primary domain exposes /wp-json/. Also make sure the site is public.',
+          details: { status: 404, error: 'REST API not found', tried: wpEndpoints }
+        };
+      }
       if (apiResponse.status === 401) {
         return {
           success: false,
@@ -968,16 +1017,16 @@ async function testWordPressConnection(siteUrl: string, applicationPassword: str
       } else if (apiResponse.status === 404) {
         return {
           success: false,
-          message: 'WordPress REST API not found. Verify your site URL (use the primary domain) and that /wp-json/wp/v2 is accessible. For WordPress.com sites, ensure the site is public.',
-          details: { status: 404, error: 'REST API not found' }
+          message: 'WordPress REST API not found. Try using your *.wordpress.com site URL as Site URL, or ensure your primary domain exposes /wp-json/. Also make sure the site is public.',
+          details: { status: 404, error: 'REST API not found', tried: wpEndpoints }
         };
       }
 
-      const errorText = await apiResponse.text();
+      const errorText = apiResponse ? await apiResponse.text() : 'No response';
       return {
         success: false,
-        message: `WordPress connection failed with status ${apiResponse.status}`,
-        details: { status: apiResponse.status, error: errorText }
+        message: `WordPress connection failed with status ${status}`,
+        details: { status, error: errorText }
       };
     }
 
