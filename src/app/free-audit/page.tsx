@@ -97,7 +97,8 @@ export default function FreeAuditPage() {
         {/* Status / Progress */}
         {status !== "idle" && status !== "error" && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            <Step label="Start" active={status !== "idle"} done={status !== "idle"} />
+            {/* In this block, status is one of: "starting" | "running" | "analyzing" | "completed" */}
+            <Step label="Start" active={status === "starting"} done={status !== "starting"} />
             <Step label="Crawl" active={status === "running"} done={status === "analyzing" || status === "completed"} />
             <Step label="Analyze" active={status === "analyzing"} done={status === "completed"} />
           </div>

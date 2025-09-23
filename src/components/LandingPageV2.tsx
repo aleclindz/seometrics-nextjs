@@ -4,7 +4,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth';
-import { Rocket, ArrowRight, Bot, Zap, Search, Lightbulb } from 'lucide-react';
+import { Rocket, ArrowRight, Bot, Zap, Search, Lightbulb, Sparkles, Send } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function LandingPageV2() {
   return (
@@ -117,26 +119,11 @@ function HeroV2() {
             </div>
           </div>
           <div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 rounded-lg bg-violet-100 text-violet-700 grid place-items-center">
-                  <Zap size={18} />
-                </div>
-                <div>
-                  <div className="font-semibold">Always‑on technical SEO</div>
-                  <div className="text-sm text-slate-500">Indexing guardrails, meta/schema, internal links</div>
-                </div>
-              </div>
-              <ul className="space-y-2 text-sm text-slate-700">
-                <li className="flex items-center gap-2"><span className="h-2 w-2 bg-green-500 rounded-full" /> Auto‑updates sitemaps & robots.txt</li>
-                <li className="flex items-center gap-2"><span className="h-2 w-2 bg-green-500 rounded-full" /> Fixes titles/descriptions at scale</li>
-                <li className="flex items-center gap-2"><span className="h-2 w-2 bg-green-500 rounded-full" /> Publishes articles on a weekly cadence</li>
-              </ul>
-            </div>
+            <ChatShowcaseV2 />
           </div>
-        </div>
       </div>
-    </section>
+    </div>
+  </section>
   );
 }
 
@@ -169,6 +156,80 @@ function ValuePropsV2() {
         </div>
       </div>
     </section>
+  );
+}
+
+// Lightweight reimplementation of the chat card without Framer Motion
+function ChatShowcaseV2() {
+  const suggestions = [
+    'Help me understand how many people find my business from ChatGPT',
+    'Recommend new keywords for my landing page',
+    'Write and auto‑publish 10 more blog articles this week',
+    'Help me understand the reports from Google Search Console',
+  ];
+  const [active, setActive] = React.useState(0);
+  const [fadeState, setFadeState] = React.useState<'in' | 'out'>('in');
+
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      setFadeState('out');
+      const t = setTimeout(() => {
+        setActive((prev) => (prev + 1) % suggestions.length);
+        setFadeState('in');
+      }, 220);
+      return () => clearTimeout(t);
+    }, 2500);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <Card className="border-slate-200/70 shadow-lg">
+      <CardContent className="p-0">
+        <div className="p-4 sm:p-6">
+          {/* Fake window chrome */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
+            <div className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          </div>
+
+          {/* Chat stream */}
+          <div className="space-y-3">
+            <AssistantBubble>
+              One of the blog articles published last month is getting a lot of traction. Would you like me to write 10 more articles on the same topic?
+            </AssistantBubble>
+          </div>
+
+          {/* Rotating suggestion pill (CSS fade/slide) */}
+          <div className="mt-5 h-10 relative">
+            <div
+              className={`inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 via-indigo-600 to-fuchsia-600 text-white px-3 py-2 text-sm shadow transition-all duration-200 ${
+                fadeState === 'in' ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'
+              }`}
+            >
+              <Sparkles size={14} className="opacity-80" />
+              <span className="whitespace-nowrap">{suggestions[active]}</span>
+            </div>
+          </div>
+
+          {/* Input row (non-functional) */}
+          <div className="mt-5 flex items-center gap-2">
+            <div className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500">Type a message…</div>
+            <Button disabled className="gap-1" variant="outline">
+              <Send size={16} /> Send
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AssistantBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="max-w-[520px] rounded-2xl bg-slate-50 text-slate-800 border border-slate-200 p-3 text-sm shadow-sm">
+      {children}
+    </div>
   );
 }
 
