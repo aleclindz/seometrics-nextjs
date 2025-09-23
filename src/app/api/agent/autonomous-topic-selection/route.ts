@@ -276,7 +276,7 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
   try {
     // Log prompt details
     try {
-      console.log('[AUTONOMOUS TOPIC][LLM] LLM refine topics model=gpt-4o-mini', { topicsCount: topics.length, business: userPayload.business?.type || 'unknown' });
+      console.log('[AUTONOMOUS TOPIC][LLM] LLM refine topics model=gpt-4o-mini', { count, business: user.business?.type || 'unknown' });
     } catch {}
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
