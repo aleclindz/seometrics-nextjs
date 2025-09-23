@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`[SAVE BUSINESS] Saving business info for user ${userToken}`);
+    console.log(`[SAVE BUSINESS] Saving business info for user ${userToken} websiteToken=${websiteToken || '(new/from URL)'} keys=${Object.keys(businessInfo || {}).join(',')}`);
 
     // Validate user exists
     const { data: user, error: userError } = await supabase
@@ -71,9 +71,30 @@ export async function POST(request: NextRequest) {
       websiteId = website.id;
 
       // Update existing website with business information
+      const infoToPersist: any = {
+        name: businessInfo.name || undefined,
+        address: businessInfo.address || undefined,
+        phone: businessInfo.phone || undefined,
+        hours: businessInfo.hours || undefined,
+        serviceArea: businessInfo.serviceArea || undefined,
+        businessCategory: businessInfo.businessCategory || undefined,
+        website: businessInfo.website || undefined,
+        city: businessInfo.city || undefined,
+        state: businessInfo.state || undefined,
+        zipCode: businessInfo.zipCode || undefined,
+        country: businessInfo.country || undefined,
+        priceRange: businessInfo.priceRange || undefined,
+        paymentMethods: businessInfo.paymentMethods || undefined,
+        socialProfiles: businessInfo.socialProfiles || undefined
+      };
+
       const { error: updateError } = await supabase
         .from('websites')
         .update({
+          business_type: (businessInfo.businessType as any) || 'unknown',
+          business_info: JSON.stringify(infoToPersist),
+          business_confirmed: true,
+          business_updated_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('website_token', websiteToken)
@@ -108,6 +129,22 @@ export async function POST(request: NextRequest) {
 
       websiteId = createResult.data!.id;
       console.log(`[SAVE BUSINESS] Created new website ${createResult.data!.website_token} with business info`);
+
+      // Persist initial business info on the newly created website
+      const { error: seedError } = await supabase
+        .from('websites')
+        .update({
+          business_type: (businessInfo.businessType as any) || 'unknown',
+          business_info: JSON.stringify(businessInfo || {}),
+          business_confirmed: !!businessInfo.businessType,
+          business_updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', websiteId);
+
+      if (seedError) {
+        console.warn('[SAVE BUSINESS] Warning: failed to seed business info on new website:', seedError);
+      }
     }
 
     // Trigger schema generation if we have local business info
@@ -119,7 +156,11 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Business information saved successfully',
       businessType: businessInfo.businessType,
-      websiteId: websiteId
+      websiteId: websiteId,
+      profile: {
+        type: (businessInfo.businessType as any) || 'unknown',
+        description: businessInfo.businessCategory || businessInfo.name || ''
+      }
     });
 
   } catch (error) {

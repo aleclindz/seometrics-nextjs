@@ -141,16 +141,7 @@ export async function POST(request: NextRequest) {
           estimated_traffic_potential: idea.estimatedTrafficPotential || 0,
           target_queries: JSON.stringify(idea.targetQueries || []),
           content_brief: idea.contentBrief || '',
-          queue_position: index + 1,
-          // Legacy metadata field for backward compatibility
-          metadata: JSON.stringify({
-            priority: idea.priority,
-            targetKeywords: idea.targetKeywords,
-            articleFormat: idea.articleFormat,
-            authorityLevel: idea.authorityLevel,
-            estimatedTrafficPotential: idea.estimatedTrafficPotential,
-            targetQueries: idea.targetQueries
-          })
+          queue_position: index + 1
         };
       });
 
@@ -260,14 +251,14 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    // Parse metadata and format for UI
+    // Format for UI using explicit columns (no legacy metadata field)
     const formattedQueue = (queueItems || []).map((item: any) => {
-      let metadata = {};
-      try {
-        metadata = JSON.parse(item.metadata || '{}');
-      } catch (e) {
-        console.warn('Failed to parse queue item metadata:', e);
-      }
+      const parseIfString = (v: any) => {
+        if (typeof v === 'string') {
+          try { return JSON.parse(v); } catch { return v; }
+        }
+        return v;
+      };
 
       return {
         id: item.id,
@@ -277,7 +268,12 @@ export async function GET(request: NextRequest) {
         wordCount: item.target_word_count,
         contentStyle: item.content_style,
         createdAt: item.created_at,
-        ...metadata
+        topicCluster: item.topic_cluster || null,
+        authorityLevel: item.authority_level || 'foundation',
+        estimatedTrafficPotential: item.estimated_traffic_potential || 0,
+        targetKeywords: parseIfString(item.target_keywords) || [],
+        articleFormat: parseIfString(item.article_format) || {},
+        targetQueries: parseIfString(item.target_queries) || []
       };
     });
 

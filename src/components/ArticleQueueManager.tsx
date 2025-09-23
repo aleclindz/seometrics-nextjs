@@ -230,29 +230,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
             </p>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => generateBulkIdeas('week', 7, true)}
-              disabled={generating}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {generating ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              <span className="ml-2">Generate Week Ideas</span>
-            </button>
-
-            <button
-              onClick={() => generateBulkIdeas('week', 10, false)}
-              disabled={generating}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Smart Ideas
-            </button>
-          </div>
+          {/* Removed auto-idea generation buttons per request */}
         </div>
       </div>
 

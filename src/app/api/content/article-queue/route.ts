@@ -113,15 +113,8 @@ export async function PUT(request: NextRequest) {
         target_keywords: Array.isArray(item.targetKeywords) ? item.targetKeywords : [],
         target_queries: Array.isArray(item.targetQueries) ? item.targetQueries : [],
         content_brief: item.contentBrief || '',
-        article_format: item.articleFormat ? JSON.stringify(item.articleFormat) : null,
-        authority_level: item.authorityLevel || 'foundation',
-        metadata: JSON.stringify({
-          priority: item.priority,
-          targetKeywords: item.targetKeywords,
-          targetQueries: item.targetQueries,
-          articleFormat: item.articleFormat,
-          authorityLevel: item.authorityLevel
-        })
+        article_format: item.articleFormat || null,
+        authority_level: item.authorityLevel || 'foundation'
       };
 
       const { data: inserted, error: insertError } = await supabase
@@ -170,26 +163,12 @@ export async function PUT(request: NextRequest) {
     if (updates.target_word_count) allowedUpdates.target_word_count = updates.target_word_count;
     if (updates.content_style) allowedUpdates.content_style = updates.content_style;
     if (updates.status) allowedUpdates.status = updates.status;
-
-    // Handle metadata updates
-    if (updates.metadata || updates.targetKeywords || updates.articleFormat) {
-      let existingMetadata = {};
-      try {
-        existingMetadata = JSON.parse(existingItem.metadata || '{}');
-      } catch (e) {
-        console.warn('Failed to parse existing metadata');
-      }
-
-      const newMetadata = {
-        ...existingMetadata,
-        ...(updates.metadata || {}),
-        ...(updates.targetKeywords && { targetKeywords: updates.targetKeywords }),
-        ...(updates.articleFormat && { articleFormat: updates.articleFormat }),
-        ...(updates.priority && { priority: updates.priority })
-      };
-
-      allowedUpdates.metadata = JSON.stringify(newMetadata);
-    }
+    if (typeof updates.priority !== 'undefined') allowedUpdates.priority = updates.priority;
+    if (typeof updates.estimated_traffic_potential !== 'undefined') allowedUpdates.estimated_traffic_potential = updates.estimated_traffic_potential;
+    if (updates.authority_level) allowedUpdates.authority_level = updates.authority_level;
+    if (updates.target_keywords) allowedUpdates.target_keywords = updates.target_keywords;
+    if (updates.target_queries) allowedUpdates.target_queries = updates.target_queries;
+    if (updates.article_format) allowedUpdates.article_format = updates.article_format;
 
     allowedUpdates.updated_at = new Date().toISOString();
 
@@ -342,12 +321,12 @@ export async function POST(request: NextRequest) {
 
 // Helper function to format queue items for UI
 function formatQueueItem(item: any) {
-  let metadata = {};
-  try {
-    metadata = JSON.parse(item.metadata || '{}');
-  } catch (e) {
-    console.warn('Failed to parse queue item metadata');
-  }
+  const parseIfString = (v: any) => {
+    if (typeof v === 'string') {
+      try { return JSON.parse(v); } catch { return v; }
+    }
+    return v;
+  };
 
   return {
     id: item.id,
@@ -359,6 +338,12 @@ function formatQueueItem(item: any) {
     createdAt: item.created_at,
     updatedAt: item.updated_at,
     websiteToken: item.website_token,
-    ...metadata // Includes priority, targetKeywords, articleFormat, etc.
+    priority: item.priority,
+    authorityLevel: item.authority_level || 'foundation',
+    estimatedTrafficPotential: item.estimated_traffic_potential || 0,
+    targetKeywords: parseIfString(item.target_keywords) || [],
+    targetQueries: parseIfString(item.target_queries) || [],
+    articleFormat: parseIfString(item.article_format) || {},
+    topicCluster: item.topic_cluster || null
   };
 }

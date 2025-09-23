@@ -172,7 +172,26 @@ export async function POST(request: NextRequest) {
 
     // Fetch content (homepage + likely about page) and profile via LLM
     const snippet = await fetchWebsiteSnippets(clean);
-    const profile = await profileBusinessLLM(clean, snippet);
+    console.log(`[BUSINESS PROFILE] Domain=${clean} snippetLength=${snippet?.length || 0} openaiConfigured=${!!process.env.OPENAI_API_KEY}`);
+    let profile = await profileBusinessLLM(clean, snippet);
+
+    // Heuristic fallback: if OpenAI not configured or empty description, synthesize a basic description from snippet
+    if ((profile.type === 'unknown' && (!profile.description || profile.description.length < 4)) || !process.env.OPENAI_API_KEY) {
+      const text = String(snippet || '').trim();
+      if (text) {
+        const short = text.slice(0, 180).replace(/\s+/g, ' ').trim();
+        // Very basic type heuristic
+        const lower = text.toLowerCase();
+        let inferred: any = 'online';
+        if (/(agency|consult|services|service)/.test(lower)) inferred = 'service';
+        else if (/(blog|news|guide|article)/.test(lower)) inferred = 'content';
+        profile = {
+          ...profile,
+          type: profile.type !== 'unknown' ? profile.type : inferred,
+          description: short || profile.description || ''
+        };
+      }
+    }
 
     const businessInfoObj = {
       description: profile.description,
@@ -192,6 +211,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString()
     };
 
+    console.log('[BUSINESS PROFILE] Persisting business profile to DB:', { type: updates.business_type, hasInfo: !!updates.business_info });
     const { error: updateError } = await supabase
       .from('websites')
       .update(updates)
