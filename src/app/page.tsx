@@ -1,7 +1,5 @@
-import LandingPage from '@/components/LandingPage';
+import LandingPageV2 from '@/components/LandingPageV2';
 
 export default function Home() {
-  // Always render the landing page for SSR
-  // Auth redirect logic will be handled client-side in LandingPage
-  return <LandingPage />;
+  return <LandingPageV2 />;
 }

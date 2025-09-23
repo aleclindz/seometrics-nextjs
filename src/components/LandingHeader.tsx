@@ -44,6 +44,14 @@ export default function LandingHeader() {
             <a href="#pricing" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
               Pricing
             </a>
+            <a
+              href="https://calendly.com/alec-aleclindz/30min"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors"
+            >
+              Contact Us
+            </a>
           </nav>
 
           {/* Desktop Auth Buttons */}
@@ -100,6 +108,14 @@ export default function LandingHeader() {
               </a>
               <a href="#pricing" className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors">
                 Pricing
+              </a>
+              <a
+                href="https://calendly.com/alec-aleclindz/30min"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 transition-colors"
+              >
+                Contact Us
               </a>
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <Link

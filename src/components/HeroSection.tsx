@@ -44,26 +44,43 @@ export default function HeroSection() {
               Set it and forget it: auto-audits, instant on-page fixes, and indexation guardrails—so your content actually ranks.
             </p>
 
-            {/* Domain Input Form */}
-            <form onSubmit={handleAuditStart} className="mb-6">
-              <div className="flex flex-col sm:flex-row gap-3 max-w-md flex-mobile-stack">
-                <input
-                  type="text"
-                  placeholder="yourdomain.com"
-                  value={domain}
-                  onChange={(e) => setDomain(e.target.value)}
-                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-transparent min-h-[44px] text-mobile-base"
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !domain.trim()}
-                  className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl whitespace-nowrap min-h-[44px] touch-target"
+            {/* Primary CTAs */}
+            <div className="space-y-4 mb-6">
+              {/* Start Trial + Free Audit buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 max-w-md">
+                <a
+                  href="/login?mode=signup"
+                  className="inline-flex items-center justify-center bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl min-h-[44px]"
                 >
-                  {isLoading ? 'Starting...' : 'Run a free audit'}
-                </button>
+                  Start Trial
+                </a>
+                <a
+                  href="/free-audit"
+                  className="inline-flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 min-h-[44px]"
+                >
+                  Free Audit
+                </a>
               </div>
-            </form>
+              {/* Optional: Domain input for direct audit with prefill */}
+              <form onSubmit={handleAuditStart}>
+                <div className="flex flex-col sm:flex-row gap-3 max-w-md flex-mobile-stack">
+                  <input
+                    type="text"
+                    placeholder="yourdomain.com"
+                    value={domain}
+                    onChange={(e) => setDomain(e.target.value)}
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-transparent min-h-[44px] text-mobile-base"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading || !domain.trim()}
+                    className="bg-white border border-gray-300 hover:border-violet-300 text-gray-900 px-6 py-3 rounded-lg font-semibold transition-all duration-200 min-h-[44px]"
+                  >
+                    {isLoading ? 'Starting…' : 'Audit with domain'}
+                  </button>
+                </div>
+              </form>
+            </div>
 
             {/* Secondary CTA */}
             <div className="flex flex-col sm:flex-row gap-4 items-start mb-8">
@@ -76,6 +93,17 @@ export default function HeroSection() {
                 </svg>
                 <span className="text-mobile-base">Watch 60-sec demo</span>
               </button>
+              <a
+                href="https://calendly.com/alec-aleclindz/30min"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center text-gray-600 hover:text-violet-600 dark:text-gray-300 dark:hover:text-violet-400 font-medium transition-colors touch-target min-h-[44px] py-2 px-3"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M3 11h18M5 19h14a2 2 0 002-2v-6H3v6a2 2 0 002 2z" />
+                </svg>
+                <span className="text-mobile-base">Contact Us</span>
+              </a>
             </div>
 
             {/* Micro-trust */}
