@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/auth';
 import { Rocket, ArrowRight, Bot, Zap, Search, Lightbulb } from 'lucide-react';
 
 export default function LandingPageV2() {
@@ -10,7 +12,15 @@ export default function LandingPageV2() {
       <HeaderV2 />
       <main>
         <HeroV2 />
+        <SocialProofV2 />
         <ValuePropsV2 />
+        <ResultsV2 />
+        <IntegrationsV2 />
+        <AudienceV2 />
+        <HowItWorksV2 />
+        <PricingTeaserV2 />
+        <FAQV2 />
+        <FinalCTAV2 />
       </main>
       <FooterV2 />
     </div>
@@ -18,6 +28,17 @@ export default function LandingPageV2() {
 }
 
 function HeaderV2() {
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const startTrial = () => {
+    // If already authenticated, send to pricing to enable trial/checkout
+    if (user?.token) {
+      router.push('/pricing');
+    } else {
+      router.push('/login?mode=signup');
+    }
+  };
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-slate-100">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -39,12 +60,12 @@ function HeaderV2() {
         </nav>
         <div className="flex items-center gap-3">
           <Link href="/login" className="hidden sm:inline-flex text-slate-700 hover:text-slate-900">Log in</Link>
-          <Link
-            href="/login?mode=signup"
+          <button
+            onClick={startTrial}
             className="inline-flex items-center gap-1 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:opacity-90"
           >
             Start trial <ArrowRight size={16} />
-          </Link>
+          </button>
         </div>
       </div>
     </header>
@@ -52,8 +73,13 @@ function HeaderV2() {
 }
 
 function HeroV2() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const handleStartTrial = () => {
+    if (user?.token) router.push('/pricing'); else router.push('/login?mode=signup');
+  };
   return (
-    <section className="relative overflow-hidden">
+    <section className="relative overflow-hidden" id="hero">
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-50 to-white" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-14 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
@@ -68,12 +94,12 @@ function HeroV2() {
               SEOAgent plugs into your site, handles the technical SEO that makes you visible to search & answer engines, and automates high‑quality publishing—so your reach grows every day.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                href="/login?mode=signup"
+              <button
+                onClick={handleStartTrial}
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white border-0 px-5 py-3 rounded-lg font-semibold shadow hover:opacity-90"
               >
                 <Rocket size={18} /> Start trial
-              </Link>
+              </button>
               <Link
                 href="/free-audit"
                 className="inline-flex items-center gap-2 border border-indigo-300 text-indigo-700 px-5 py-3 rounded-lg font-semibold hover:bg-indigo-50"
@@ -116,7 +142,7 @@ function HeroV2() {
 
 function ValuePropsV2() {
   return (
-    <section className="bg-gradient-to-b from-slate-50/50 to-white py-16">
+    <section className="bg-gradient-to-b from-slate-50/50 to-white py-16" id="value">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
@@ -140,6 +166,226 @@ function ValuePropsV2() {
             <h3 className="text-xl font-semibold mb-2">SEO Strategy you can understand</h3>
             <p className="text-slate-600 max-w-sm mx-auto">Clear explanations and prioritized next steps in plain English.</p>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SocialProofV2() {
+  const stats = [
+    '500% traffic growth',
+    '87% faster indexing',
+    '42% more ChatGPT mentions',
+    '10x organic leads',
+    '3x better rankings',
+    '91% less maintenance',
+  ];
+  return (
+    <section className="bg-white border-y border-slate-100" id="proof">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 text-center">
+        <p className="text-xs uppercase tracking-widest text-slate-500 mb-5">Teams growing with SEOAgent</p>
+        <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 max-w-5xl mx-auto">
+          {stats.map((s) => (
+            <div key={s} className="text-sm font-medium text-slate-700">{s}</div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ResultsV2() {
+  return (
+    <section className="bg-white py-16" id="results">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">Traffic outcomes, not checklists</h2>
+          <p className="mt-3 text-slate-600 max-w-3xl mx-auto">Faster discovery, clearer insights, and consistent publishing—grow without becoming an SEO expert.</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <Stat label="Indexing" value="+27%" up />
+              <Stat label="Clicks" value="+41%" up />
+              <Stat label="Avg. Pos." value="3.2" />
+            </div>
+            <div className="w-full lg:w-auto">
+              <MiniSparklineV2 />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Stat({ label, value, up }: { label: string; value: string; up?: boolean }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+      <span className="text-slate-500">{label}</span>
+      <span className="font-semibold text-slate-900">{value}</span>
+      {up !== undefined && <span className={up ? 'text-emerald-600' : 'text-rose-600'}>{up ? '↑' : '↓'}</span>}
+    </div>
+  );
+}
+
+function MiniSparklineV2() {
+  return (
+    <div className="h-16 w-[220px] rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+      <svg viewBox="0 0 200 60" width="100%" height="100%" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="g2" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#38bdf8" />
+            <stop offset="50%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#e879f9" />
+          </linearGradient>
+        </defs>
+        <polyline fill="none" stroke="url(#g2)" strokeWidth="3" points="0,45 20,40 40,42 60,30 80,34 100,22 120,28 140,18 160,24 180,16 200,20" />
+        <polyline fill="url(#g2)" opacity="0.12" points="0,60 0,45 20,40 40,42 60,30 80,34 100,22 120,28 140,18 160,24 180,16 200,20 200,60" />
+      </svg>
+    </div>
+  );
+}
+
+function IntegrationsV2() {
+  const cmsList = [
+    { name: 'Strapi', desc: 'Auto-publish drafts or scheduled releases', key: 'strapi' },
+    { name: 'WordPress', desc: 'Posts & pages with featured images and meta', key: 'wordpress' },
+    { name: 'Shopify', desc: 'Blog posts and product SEO updates', key: 'shopify' },
+  ];
+  const hosts = [
+    { name: 'Vercel', key: 'vercel' },
+    { name: 'Netlify', key: 'netlify' },
+  ];
+  return (
+    <section className="bg-gradient-to-b from-white to-slate-50/30 py-16" id="integrations">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-semibold">Works with your stack</h2>
+          <p className="text-slate-600 mt-2">CMS & hosting integrations out of the box.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          {cmsList.map((c) => (
+            <div key={c.key} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="text-lg font-semibold mb-1">{c.name}</div>
+              <div className="text-sm text-slate-600">{c.desc}</div>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap justify-center gap-3">
+          {hosts.map((h) => (
+            <div key={h.key} className="h-12 w-24 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center">
+              <span className="text-xs font-medium text-slate-600">{h.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AudienceV2() {
+  const cards = [
+    { title: 'Software & SaaS', body: 'Turn docs, changelogs, and features into clusters that capture demand.' },
+    { title: 'Local & small business', body: 'Fix schema/NAP, publish service pages, and rank for “near me” searches.' },
+    { title: 'E‑commerce', body: 'Fill content gaps, optimize collections, and auto‑link related items.' },
+  ];
+  return (
+    <section className="bg-white py-16" id="who">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-semibold">Built for software, small business, and e‑commerce</h2>
+          <p className="text-slate-600 mt-2 max-w-3xl mx-auto">The agent adapts to your model—product‑led growth, service‑led leads, or storefronts—and executes a strategy that fits.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {cards.map((c) => (
+            <div key={c.title} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-lg font-semibold mb-2">{c.title}</div>
+              <div className="text-slate-600 text-sm">{c.body}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HowItWorksV2() {
+  const steps = [
+    { title: 'Connect & verify', body: 'SEOAgent.js + GSC so the agent can act and measure.' },
+    { title: 'Plan your topics', body: 'Pick clusters and let the agent propose briefs and cadence.' },
+    { title: 'Publish & monitor', body: 'Agent drafts, publishes, and keeps pages healthy.' },
+  ];
+  return (
+    <section className="bg-gradient-to-b from-slate-50/50 to-white py-16" id="how">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-semibold">How it works</h2>
+          <p className="text-slate-600 mt-2">Three steps to autonomous SEO.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {steps.map((s, i) => (
+            <div key={s.title} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="h-8 w-8 rounded-full bg-violet-100 text-violet-700 grid place-items-center font-semibold mb-4">{i + 1}</div>
+              <div className="text-lg font-semibold mb-2">{s.title}</div>
+              <div className="text-slate-600 text-sm">{s.body}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PricingTeaserV2() {
+  return (
+    <section className="bg-white py-16" id="pricing">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
+        <h2 className="text-3xl font-semibold">Plans for every stage</h2>
+        <p className="text-slate-600 mt-2">Start with a $1, 7‑day trial. Cancel anytime.</p>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <a href="/pricing" className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-lg font-semibold shadow">View Pricing</a>
+          <a href="/login?mode=signup" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 px-5 py-3 rounded-lg font-semibold hover:bg-slate-50">Start Trial</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FAQV2() {
+  const faqs = [
+    { q: 'How safe are auto‑fixes?', a: 'Everything is logged. You can require approval or enable instant rollback. We never make changes that could break your site.' },
+    { q: 'Does this replace my SEO agency?', a: 'No. It automates technical/on‑page work so humans focus on strategy and content quality.' },
+    { q: 'Does it work with WordPress/Webflow/Shopify?', a: 'Yes—via snippet or plugins. Server‑side integrations coming.' },
+  ];
+  return (
+    <section className="bg-gradient-to-b from-white to-slate-50/50 py-16" id="faq">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-semibold text-center mb-8">FAQ</h2>
+        <div className="space-y-4">
+          {faqs.map((f) => (
+            <details key={f.q} className="rounded-lg border border-slate-200 bg-white p-4">
+              <summary className="cursor-pointer font-medium text-slate-900">{f.q}</summary>
+              <p className="mt-2 text-slate-600 text-sm">{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCTAV2() {
+  return (
+    <section className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 py-12 text-center">
+      <div className="mx-auto max-w-6xl px-4">
+        <h3 className="text-2xl font-semibold text-white">Ready to grow with an AI SEO agent?</h3>
+        <p className="text-violet-100 mt-2">Start a $1 trial, get a free audit, or talk to us.</p>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <a href="/login?mode=signup" className="inline-flex items-center gap-2 bg-white text-violet-700 px-5 py-3 rounded-lg font-semibold shadow hover:bg-violet-50">Start Trial</a>
+          <a href="/free-audit" className="inline-flex items-center gap-2 bg-white/10 border border-white/30 text-white px-5 py-3 rounded-lg font-semibold hover:bg-white/20">Free Audit</a>
+          <a href="https://calendly.com/alec-aleclindz/30min" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-white/10 border border-white/30 text-white px-5 py-3 rounded-lg font-semibold hover:bg-white/20">Contact Us</a>
         </div>
       </div>
     </section>
