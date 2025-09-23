@@ -32,7 +32,7 @@ function LoginForm() {
 
   // Redirect if already logged in
   if (user) {
-    router.push('/')
+    router.push('/dashboard')
     return null
   }
 
@@ -91,7 +91,7 @@ function LoginForm() {
       if (error) {
         setError(error.message)
       } else {
-        router.push('/')
+        router.push('/dashboard')
       }
     }
     

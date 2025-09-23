@@ -214,6 +214,11 @@ Example: "Welcome back! Here's what I've accomplished for ${domainName} this wee
 Next Steps format: Only include if specific steps are provided in the data above.`;
 
   try {
+    // Log prompt details
+    try {
+      console.log('[ACTIVITY SUMMARY][LLM] model=gpt-4o-mini', { systemPreview: 'friendly summary system prompt', userPreview: prompt.slice(0, 300) });
+    } catch {}
+
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -229,6 +234,11 @@ Next Steps format: Only include if specific steps are provided in the data above
       max_tokens: 300,
       temperature: 0.7,
     });
+
+    try {
+      const usage: any = (response as any).usage || {};
+      console.log('[ACTIVITY SUMMARY][LLM] finish_reason=', response.choices?.[0]?.finish_reason || 'n/a', 'usage=', usage);
+    } catch {}
 
     const summary = response.choices[0]?.message?.content;
     if (!summary) {

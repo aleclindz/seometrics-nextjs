@@ -31,6 +31,22 @@ function stripHtml(html: string): string {
   }
 }
 
+function stripMarkdown(text: string): string {
+  try {
+    return String(text || '')
+      // Remove images ![alt](url)
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      // Replace links [text](url) -> text
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+      // Remove remaining markdown tokens
+      .replace(/[*_`>#~]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } catch {
+    return text || '';
+  }
+}
+
 async function fetchWebsiteSnippets(domain: string): Promise<string> {
   const homepage = `https://${domain}`;
   const aboutCandidates = [`https://${domain}/about`, `https://${domain}/about-us`, `https://${domain}/company`, `https://${domain}/contact`];
@@ -98,6 +114,10 @@ Homepage snippet (truncated):\n\n\`\`\`
 ${htmlSnippet}
 \`\`\``;
 
+  console.log('[BUSINESS PROFILE][LLM] model=gpt-4o-mini');
+  console.log('[BUSINESS PROFILE][LLM] System prompt (first 500):\n', system.slice(0, 500));
+  console.log('[BUSINESS PROFILE][LLM] User prompt (first 1000):\n', user.slice(0, 1000));
+
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -122,15 +142,16 @@ ${htmlSnippet}
   }
   const data = await resp.json();
   const content = data.choices?.[0]?.message?.content || '{}';
+  console.log('[BUSINESS PROFILE][LLM] Raw model content (first 600):\n', String(content).slice(0, 600));
   try {
     const parsed = JSON.parse(content);
     return {
       type: parsed.type || 'unknown',
-      description: parsed.description || '',
-      audience: Array.isArray(parsed.audience) ? parsed.audience : [],
-      valueProps: Array.isArray(parsed.valueProps) ? parsed.valueProps : [],
-      productsServices: Array.isArray(parsed.productsServices) ? parsed.productsServices : [],
-      niche: parsed.niche || '',
+      description: stripMarkdown(parsed.description || ''),
+      audience: Array.isArray(parsed.audience) ? parsed.audience.map((t: any) => stripMarkdown(String(t))) : [],
+      valueProps: Array.isArray(parsed.valueProps) ? parsed.valueProps.map((t: any) => stripMarkdown(String(t))) : [],
+      productsServices: Array.isArray(parsed.productsServices) ? parsed.productsServices.map((t: any) => stripMarkdown(String(t))) : [],
+      niche: stripMarkdown(parsed.niche || ''),
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
       signals: Array.isArray(parsed.signals) ? parsed.signals : []
     };
@@ -194,11 +215,11 @@ export async function POST(request: NextRequest) {
     }
 
     const businessInfoObj = {
-      description: profile.description,
-      audience: profile.audience,
-      valueProps: profile.valueProps,
-      productsServices: profile.productsServices,
-      niche: profile.niche
+      description: stripMarkdown(profile.description),
+      audience: (profile.audience || []).map((t: any) => stripMarkdown(String(t))),
+      valueProps: (profile.valueProps || []).map((t: any) => stripMarkdown(String(t))),
+      productsServices: (profile.productsServices || []).map((t: any) => stripMarkdown(String(t))),
+      niche: stripMarkdown(profile.niche)
     };
 
     const updates: any = {

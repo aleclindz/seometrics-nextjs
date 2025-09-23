@@ -35,6 +35,11 @@ Provide a clear, actionable fix that the user can copy and give to their develop
 
 Keep it concise, technical but understandable, and focused on actionable steps.`;
 
+    // Log prompt details
+    try {
+      console.log('[AI FIX][LLM] model=gpt-4o-mini', { systemPreview: getPromptManager().getPrompt('technical-seo', 'TECHNICAL_SEO_FIX_EXPERT').slice(0, 300), userPreview: prompt.slice(0, 300) });
+    } catch {}
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -50,6 +55,11 @@ Keep it concise, technical but understandable, and focused on actionable steps.`
       max_tokens: 500,
       temperature: 0.3,
     });
+
+    try {
+      const usage: any = (completion as any).usage || {};
+      console.log('[AI FIX][LLM] finish_reason=', completion.choices?.[0]?.finish_reason || 'n/a', 'usage=', usage);
+    } catch {}
 
     const suggestion = completion.choices[0]?.message?.content || 'Unable to generate suggestion';
 

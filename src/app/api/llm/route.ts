@@ -114,6 +114,12 @@ export async function POST(request: NextRequest) {
       const expectedTool = guard === 1 ? predictLikelyTool(userMessage, filteredSchemas) : undefined;
       const model = pickModel(expectedTool);
 
+      // Log prompt details for observability
+      try {
+        const preview = messages.map((m) => ({ role: m.role, content: String(m.content).slice(0, 300) })).slice(-4);
+        console.log(`[LLM][chat] model=${model} steps=${guard}/${MAX_TOOL_STEPS} messages=${messages.length} preview=`, preview);
+      } catch {}
+
       const response = await openai.chat.completions.create({
         model,
         messages,
@@ -125,6 +131,11 @@ export async function POST(request: NextRequest) {
         temperature: 0.3, // Lower for tool accuracy
         max_tokens: 1200
       });
+
+      try {
+        const usage: any = (response as any).usage || {};
+        console.log(`[LLM][chat] completion finish_reason=${response.choices?.[0]?.finish_reason || 'n/a'} usage=`, usage);
+      } catch {}
 
       const choice = response.choices[0];
       const messageContent = choice.message;

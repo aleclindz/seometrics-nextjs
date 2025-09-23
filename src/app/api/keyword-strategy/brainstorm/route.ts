@@ -185,21 +185,28 @@ Format as a JSON array of objects with this structure:
 Return only the JSON array, no other text.`;
 
     // Generate keywords using a faster model with smaller token budget
+    try {
+      console.log('[KEYWORD BRAINSTORM][LLM] model=gpt-4o-mini', { userPreview: prompt.slice(0, 300) });
+    } catch {}
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: 'gpt-4o-mini',
       messages: [
         {
-          role: "system",
-          content: "You are an SEO keyword research expert. Generate strategic long-tail keywords that will help websites rank for valuable search traffic."
+          role: 'system',
+          content: 'You are an SEO keyword research expert. Generate strategic long-tail keywords that will help websites rank for valuable search traffic.'
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt
         }
       ],
       temperature: 0.6,
       max_tokens: 900
     });
+    try {
+      const usage: any = (completion as any).usage || {};
+      console.log('[KEYWORD BRAINSTORM][LLM] finish_reason=', completion.choices?.[0]?.finish_reason || 'n/a', 'usage=', usage);
+    } catch {}
 
     let response = completion.choices[0]?.message?.content;
     if (!response) {

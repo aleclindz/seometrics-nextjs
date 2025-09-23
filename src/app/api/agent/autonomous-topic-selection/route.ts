@@ -274,6 +274,10 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
   } as any;
 
   try {
+    // Log prompt details
+    try {
+      console.log('[AUTONOMOUS TOPIC][LLM] LLM refine topics model=gpt-4o-mini', { topicsCount: topics.length, business: userPayload.business?.type || 'unknown' });
+    } catch {}
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
@@ -368,6 +372,10 @@ Constraints: direct, active voice; avoid fluff; keep it on-niche for the busines
 Return JSON array of objects: { index, title, contentBrief }.
 BUSINESS:\n${JSON.stringify(userPayload.business)}\n\nTOPICS:\n${JSON.stringify(userPayload.topics)}`;
 
+  // Log prompt details for enhancement call
+  try {
+    console.log('[AUTONOMOUS TOPIC][LLM] Enhancing topics model=gpt-4o-mini', { topicsCount: topics.length, domain: ctx.domain });
+  } catch {}
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {

@@ -250,6 +250,14 @@ RESPONSE FORMAT: Return ONLY valid JSON (no markdown backticks):
 `.trim();
 
     try {
+      // Log prompt details
+      try {
+        const systemPrompt = getPromptManager().getPrompt('content', 'ENHANCED_SEO_CONTENT_WRITER', { articleType: params.articleType });
+        console.log('[ENHANCED GENERATOR][LLM] model=gpt-4o-mini', {
+          systemPreview: String(systemPrompt).slice(0, 300),
+          userPreview: prompt.slice(0, 300)
+        });
+      } catch {}
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -280,6 +288,9 @@ RESPONSE FORMAT: Return ONLY valid JSON (no markdown backticks):
       }
 
       const data = await response.json();
+      try {
+        console.log('[ENHANCED GENERATOR][LLM] received choices=', Array.isArray(data?.choices) ? data.choices.length : 0, 'usage=', data?.usage || {});
+      } catch {}
       const aiResponse = data.choices?.[0]?.message?.content || '';
       
       try {

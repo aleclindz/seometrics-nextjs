@@ -18,6 +18,9 @@ export async function POST(request: NextRequest) {
 
     const keywordsList = keywords.join(', ');
 
+    try {
+      console.log('[CLUSTER DESC][LLM] model=gpt-4o-mini', { cluster: clusterName, kwCount: keywords.length, userPreview: keywordsList.slice(0, 200) });
+    } catch {}
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -33,6 +36,11 @@ export async function POST(request: NextRequest) {
       max_tokens: 150,
       temperature: 0.7,
     });
+
+    try {
+      const usage: any = (completion as any).usage || {};
+      console.log('[CLUSTER DESC][LLM] finish_reason=', completion.choices?.[0]?.finish_reason || 'n/a', 'usage=', usage);
+    } catch {}
 
     const description = completion.choices[0]?.message?.content?.trim();
 

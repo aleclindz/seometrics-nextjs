@@ -90,6 +90,7 @@ Please provide a structured analysis in this JSON format:
 
 Focus on insights that would help develop a differentiated keyword and content strategy.`;
 
+        try { console.log('[COMP RESEARCH][LLM] model=gpt-4o (competitor analysis)', { competitor: competitorUrl }); } catch {}
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o',
           messages: [
@@ -191,6 +192,7 @@ Provide strategic insights in this JSON format:
   "positioning_advice": "How to position uniquely vs competitors"
 }`;
 
+    try { console.log('[COMP RESEARCH][LLM] model=gpt-4o (insights synthesis)'); } catch {}
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [

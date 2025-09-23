@@ -109,6 +109,7 @@ Focus on:
 4. Balance between search volume potential and ranking difficulty
 5. Keywords that align with the user's business model and goals`;
 
+    try { console.log('[KEYWORDS BRAINSTORM][LLM] model=gpt-4o', { userPreview: keywordPrompt.slice(0, 300) }); } catch {}
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [

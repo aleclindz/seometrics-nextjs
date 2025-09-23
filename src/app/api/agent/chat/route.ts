@@ -214,6 +214,12 @@ export async function POST(request: NextRequest) {
     const MAX_TOOL_STEPS = 3; // Reduced for chat responsiveness
 
     while (guard++ < MAX_TOOL_STEPS) {
+      // Log prompt details
+      try {
+        const preview = messages.map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 300) })).slice(-4);
+        console.log(`[AGENT CHAT][LLM] step=${guard}/${MAX_TOOL_STEPS} model=gpt-4o-mini messages=${messages.length} preview=`, preview);
+      } catch {}
+
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini', // Use mini for faster chat responses
         messages,
@@ -225,6 +231,11 @@ export async function POST(request: NextRequest) {
         temperature: 0.4,
         max_tokens: 800
       });
+
+      try {
+        const usage: any = (response as any).usage || {};
+        console.log('[AGENT CHAT][LLM] finish_reason=', response.choices?.[0]?.finish_reason || 'n/a', 'usage=', usage);
+      } catch {}
 
       const choice = response.choices[0];
       const messageContent = choice.message;

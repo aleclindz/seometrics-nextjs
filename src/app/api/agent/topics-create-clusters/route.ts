@@ -104,6 +104,7 @@ Guidelines:
 5. Balance informational, commercial, and transactional intent across clusters
 6. Consider content calendar planning with realistic article counts`;
 
+    try { console.log('[TOPIC CLUSTERS][LLM] model=gpt-4o (clustering)', { keywords: allKeywords.length, clusters: cluster_count }); } catch {}
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -239,6 +240,7 @@ Guidelines:
 4. Balance search intents across the calendar
 5. Consider seasonal relevance if applicable`;
 
+    try { console.log('[TOPIC CLUSTERS][LLM] model=gpt-4o-mini (calendar)'); } catch {}
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [

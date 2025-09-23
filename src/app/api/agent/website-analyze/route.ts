@@ -83,6 +83,9 @@ Please provide a structured analysis in this JSON format:
 
 Focus on extracting concrete, actionable information for SEO strategy development.`;
 
+    try {
+      console.log('[WEBSITE ANALYZE][LLM] model=gpt-4o', { userPreview: analysisPrompt.slice(0, 300) });
+    } catch {}
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -95,6 +98,11 @@ Focus on extracting concrete, actionable information for SEO strategy developmen
       temperature: 0.3,
       max_tokens: 1500
     });
+
+    try {
+      const usage: any = (completion as any).usage || {};
+      console.log('[WEBSITE ANALYZE][LLM] finish_reason=', completion.choices?.[0]?.finish_reason || 'n/a', 'usage=', usage);
+    } catch {}
 
     let analysis;
     try {

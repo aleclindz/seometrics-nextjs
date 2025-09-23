@@ -134,6 +134,7 @@ Focus on:
 5. Emerging trends competitors haven't adopted yet
 6. Content that leverages your unique business advantages`;
 
+    try { console.log('[CONTENT GAP][LLM] model=gpt-4o (gap analysis)', { site: user_website_analysis.site_url }); } catch {}
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [

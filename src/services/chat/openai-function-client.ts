@@ -849,6 +849,14 @@ export class OpenAIFunctionClient {
       const systemPrompt = await this.buildSystemPrompt(context);
       
       // Use the new Responses API with tools (function calling)
+      // Log prompt details for observability
+      try {
+        const preview = ([{ role: 'system', content: systemPrompt }, ...context.history, { role: 'user', content: message }])
+          .map((m) => ({ role: (m as any).role, content: String((m as any).content).slice(0, 300) }))
+          .slice(-4);
+        console.log('[OPENAI FUNC CLIENT][LLM] model=gpt-4 messages=', preview);
+      } catch {}
+
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
@@ -919,6 +927,18 @@ export class OpenAIFunctionClient {
           }
           
           // Generate a follow-up response with the function result
+          // Log follow-up prompt details
+          try {
+            const preview = [{ role: 'system', content: systemPrompt },
+              ...context.history,
+              { role: 'user', content: message },
+              { role: 'assistant', content: messageContent.content || '' },
+              { role: 'tool', content: JSON.stringify(result).slice(0, 300) }]
+              .map((m) => ({ role: (m as any).role, content: String((m as any).content).slice(0, 300) }))
+              .slice(-4);
+            console.log('[OPENAI FUNC CLIENT][LLM] follow-up model=gpt-4 messages=', preview);
+          } catch {}
+
           const followUpResponse = await this.openai.chat.completions.create({
             model: 'gpt-4',
             messages: [
