@@ -51,7 +51,7 @@ const SUBSCRIPTION_TIERS = {
 
 export async function POST(request: NextRequest) {
   try {
-    const { tier, userToken, email } = await request.json();
+    const { tier, userToken, email, trial } = await request.json();
 
     // Validate required fields
     if (!tier || !userToken || !email) {
@@ -107,16 +107,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe checkout session
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
+        price: selectedTier.priceId,
+        quantity: 1,
+      },
+    ];
+
+    // Optional: add a $1 trial fee as a one-time item
+    if (trial === true && process.env.STRIPE_TRIAL_PRICE_ID) {
+      lineItems.push({ price: process.env.STRIPE_TRIAL_PRICE_ID, quantity: 1 });
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       mode: 'subscription',
-      line_items: [
-        {
-          price: selectedTier.priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       success_url: `${getBaseUrl()}/account?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${getBaseUrl()}/account?canceled=true`,
       metadata: {
@@ -130,6 +137,7 @@ export async function POST(request: NextRequest) {
           userToken: userToken,
           tier: tier,
         },
+        trial_period_days: trial === true ? 7 : undefined,
       },
     });
 

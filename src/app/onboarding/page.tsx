@@ -78,9 +78,9 @@ function OnboardingContent() {
       if (result.proOffer) {
         setProOfferDetails(result.proOffer)
       } else {
-        // No Pro offer, redirect to dashboard after a short delay
+        // No Pro offer, redirect to pricing after a short delay
         setTimeout(() => {
-          router.push('/')
+          router.push('/pricing')
         }, 3000)
       }
 
@@ -93,7 +93,7 @@ function OnboardingContent() {
   }
 
   const handleSkipSurvey = () => {
-    router.push('/')
+    router.push('/pricing')
   }
 
   const handleBookCall = () => {
@@ -107,7 +107,7 @@ function OnboardingContent() {
   }
 
   const handleContinueToDashboard = () => {
-    router.push('/')
+    router.push('/pricing')
   }
 
   if (!user) {
