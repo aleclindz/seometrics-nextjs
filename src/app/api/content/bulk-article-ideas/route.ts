@@ -44,10 +44,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (!topicResponse.ok) {
+      console.error('[BULK IDEAS] Topic generation HTTP error:', topicResponse.status, topicResponse.statusText);
       throw new Error(`Topic generation failed: ${topicResponse.status}`);
     }
 
     const topicData = await topicResponse.json();
+    const selectedCount = (topicData?.selectedTopics || []).length;
+    console.log('[BULK IDEAS] Topic selection result:', {
+      success: topicData?.success,
+      selectedCount,
+      sampleTitles: (topicData?.selectedTopics || []).map((t: any) => t.title).slice(0, 5)
+    });
 
     if (!topicData.success) {
       return NextResponse.json({
@@ -56,7 +63,35 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const articleIdeas = topicData.selectedTopics || [];
+    let articleIdeas = topicData.selectedTopics || [];
+    if (articleIdeas.length === 0) {
+      console.warn('[BULK IDEAS] No topics returned. Using fallback suggestions.');
+      const cleanDomain = String(domain).replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const seeds = [
+        'getting started', 'best practices', 'common mistakes', 'how to choose', 'advanced tips',
+      ];
+      const formats = ['guide','how-to','listicle','faq','comparison'];
+      articleIdeas = Array.from({ length: count }).map((_, i) => {
+        const topic = `${cleanDomain.split('.')[0]} ${seeds[i % seeds.length]}`.trim();
+        const format = formats[i % formats.length];
+        return {
+          priority: i + 1,
+          title: format === 'how-to' ? `How to ${topic}` : format === 'listicle' ? `10 ${topic} Tips` : `The Complete Guide to ${topic}`,
+          mainTopic: topic,
+          targetQueries: [topic, `${topic} tips`, `${topic} guide`],
+          targetKeywords: [topic],
+          articleFormat: { type: format, template: '', wordCountRange: [1500, 2500] as [number, number] },
+          authorityLevel: 'foundation' as const,
+          estimatedTrafficPotential: 120,
+          contentBrief: `Create an article about ${topic}. Include actionable examples tailored to the website audience (${cleanDomain}).`,
+          recommendedLength: 2000,
+          urgency: i < 3 ? 'high' : 'medium',
+          reasoning: 'Local fallback in bulk ideas route',
+          scheduledFor: null,
+          status: 'draft' as const
+        };
+      });
+    }
 
     // If addToQueue is true, add these to the content generation queue
     if (addToQueue && articleIdeas.length > 0) {
@@ -127,7 +162,7 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       articleIdeas: articleIdeasWithDates,
       period,
@@ -147,7 +182,10 @@ export async function POST(request: NextRequest) {
         }, {}),
         estimatedTotalTraffic: articleIdeas.reduce((sum: number, idea: any) => sum + (idea.estimatedTrafficPotential || 0), 0)
       }
-    });
+    };
+
+    console.log('[BULK IDEAS] Response summary:', responsePayload.summary);
+    return NextResponse.json(responsePayload);
 
   } catch (error) {
     console.error('[BULK IDEAS] Error generating bulk article ideas:', error);

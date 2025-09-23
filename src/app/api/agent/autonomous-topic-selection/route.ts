@@ -66,22 +66,56 @@ export async function POST(request: NextRequest) {
 
     console.log('[AUTONOMOUS TOPIC] Starting analysis for:', { domain, analysisType, generateCount });
 
-    // Step 1: Fetch GSC Data for Analysis
-    const gscData = await fetchGSCDataForAnalysis(userToken, domain);
+    // Feature flag: optionally use GSC data (default: disabled per product direction)
+    const USE_GSC_FOR_TOPICS = process.env.USE_GSC_FOR_TOPICS === 'true';
+    if (!USE_GSC_FOR_TOPICS) {
+      console.log('[AUTONOMOUS TOPIC] GSC usage disabled (USE_GSC_FOR_TOPICS != "true"). Proceeding without GSC.');
+    }
+
+    // Step 1: Fetch GSC Data for Analysis (if enabled)
+    const gscData = USE_GSC_FOR_TOPICS
+      ? await fetchGSCDataForAnalysis(userToken, domain)
+      : { success: false, queries: [], context: { domain } } as any;
 
     // Step 1.5: Fetch Keyword Strategy and Topic Clusters for Authority Building
     const strategyData = await fetchKeywordStrategy(userToken, domain);
+    console.log('[AUTONOMOUS TOPIC] Strategy data availability:', {
+      clusters: (strategyData?.clusters || []).length || 0,
+      keywords: (strategyData?.keywords || []).length || 0
+    });
 
+    // If neither source available, fall back to business-driven topic generation
     if (!gscData.success && !strategyData.success) {
+      console.log('[AUTONOMOUS TOPIC] No GSC or keyword strategy data. Falling back to business profile.');
+      const business = await fetchBusinessContext(userToken, domain);
+      const bizTopics = await generateTopicsFromBusiness(business, { domain, count: generateCount });
+      console.log('[AUTONOMOUS TOPIC] Fallback topics generated:', bizTopics.map(t => t.title).slice(0, 5));
       return NextResponse.json({
-        success: false,
-        error: gscData.error || 'Failed to fetch data sources',
-        fallback: await generateFallbackTopics(domain, userToken, generateCount)
+        success: true,
+        analysis: { domain, queriesAnalyzed: 0 },
+        selectedTopics: bizTopics,
+        opportunities: [],
+        clusters: [],
+        recommendations: {
+          immediate: bizTopics.slice(0, 1),
+          thisWeek: bizTopics.slice(0, Math.min(3, bizTopics.length)),
+          nextWeek: bizTopics.slice(Math.min(3, bizTopics.length), Math.min(6, bizTopics.length))
+        }
       });
     }
 
     // Step 2: Identify Query Opportunities (Investor Approach)
-    const opportunities = await identifyQueryOpportunities(gscData.queries || []);
+    // Build opportunities from available sources (prefer strategy when GSC is absent)
+    let opportunities = [] as QueryOpportunity[];
+    if (gscData.success && Array.isArray(gscData.queries) && gscData.queries.length > 0) {
+      opportunities = await identifyQueryOpportunities(gscData.queries || []);
+      console.log('[AUTONOMOUS TOPIC] Built opportunities from GSC:', opportunities.length);
+    } else {
+      // Synthesize opportunities from strategy keywords (content-gap style)
+      const synth = synthesizeOpportunitiesFromStrategy(strategyData.keywords || [], generateCount);
+      opportunities = synth;
+      console.log('[AUTONOMOUS TOPIC] Synthesized opportunities from strategy keywords:', opportunities.length);
+    }
 
     // Step 3: Cluster Related Topics with Authority Building
     const topicClusters = await clusterTopicOpportunitiesWithStrategy(
@@ -123,10 +157,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[AUTONOMOUS TOPIC] Analysis complete:', {
+      source: gscData.success ? 'gsc+strategy' : 'strategy-only',
       queriesAnalyzed: (gscData.queries || []).length,
       opportunitiesFound: opportunities.length,
       clustersCreated: topicClusters.length,
-      topicsSelected: selectedTopics.length
+      topicsSelected: selectedTopics.length,
+      sampleTitles: contentBriefs.map(t => t.title).slice(0, 5)
     });
 
     return NextResponse.json({
@@ -153,6 +189,126 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Failed to analyze topics' },
       { status: 500 }
     );
+  }
+}
+
+// Create synthetic "content gap" opportunities from keyword strategy when GSC is not used/available
+function synthesizeOpportunitiesFromStrategy(strategyKeywords: any[], targetCount: number): QueryOpportunity[] {
+  const seen = new Set<string>();
+  const unique = (strategyKeywords || [])
+    .map((k: any) => String(k.keyword || '').trim())
+    .filter(Boolean)
+    .filter(kw => (seen.has(kw) ? false : (seen.add(kw), true)));
+
+  // Take a generous slice to provide clustering room
+  const sampleSize = Math.max(targetCount * 20, 100);
+  const slice = unique.slice(0, sampleSize);
+
+  const now = Date.now();
+  return slice.map((kw, idx) => ({
+    query: kw,
+    clicks: 0,
+    impressions: 100 + (idx % 50),
+    ctr: 0,
+    position: 22,
+    opportunityScore: 60 + ((now + idx) % 40) / 2, // 60-80 range
+    opportunityType: 'content_gap',
+    reasoning: 'Synthesized from keyword strategy (GSC disabled)',
+    estimatedTrafficGain: 0
+  }));
+}
+
+// Generate topics directly from business profile (LLM-driven; falls back if no API key)
+async function generateTopicsFromBusiness(business: any, opts: { domain: string; count: number }) {
+  const count = Math.max(1, Math.min(50, opts.count || 5));
+  const type = business?.type || 'unknown';
+  const desc = business?.description || '';
+
+  if (!process.env.OPENAI_API_KEY) {
+    // Fallback: create simple topics from type/description keywords
+    const base = (desc || type || 'content strategy').split(/[,.;\-\n]+/).map(s => s.trim()).filter(Boolean);
+    const seeds = (base.length ? base : ['content ideas', 'best practices', 'getting started']).slice(0, 5);
+    const formats = ['guide','how-to','listicle','faq','comparison'];
+    return Array.from({ length: count }).map((_, i) => {
+      const topic = seeds[i % seeds.length] || 'content ideas';
+      const format = formats[i % formats.length];
+      const title = format === 'how-to' ? `How to ${topic}` : format === 'listicle' ? `10 Tips for ${topic}` : `The Complete Guide to ${topic}`;
+      return {
+        priority: i + 1,
+        title,
+        mainTopic: topic,
+        targetQueries: [topic, `${topic} tips`, `${topic} guide`],
+        targetKeywords: [topic],
+        articleFormat: { type: format, template: '', wordCountRange: [1500, 2500] as [number, number] },
+        authorityLevel: 'foundation' as const,
+        estimatedTrafficPotential: 120,
+        contentBrief: `Create an article about ${topic} tailored to the business: ${desc}`,
+        recommendedLength: 2000,
+        urgency: i < 3 ? 'high' : 'medium',
+        reasoning: 'Generated from business profile',
+        scheduledFor: null,
+        status: 'draft' as const
+      };
+    });
+  }
+
+  // LLM proposal
+  const system = 'You are an expert content strategist. Propose practical, high-ROI blog topics for the business. Return strict JSON array.';
+  const user = {
+    instruction: 'Generate distinct, high-value article topics with titles and briefs. Variety of formats; mix authority levels.',
+    business: { type, description: desc, domain: opts.domain },
+    count,
+    output_shape: {
+      title: 'string',
+      mainTopic: 'string',
+      contentBrief: 'string',
+      articleFormat: { type: 'listicle|how-to|guide|faq|comparison|update|case-study|beginner-guide', wordCountRange: [1200, 2500] },
+      authorityLevel: 'foundation|intermediate|advanced',
+      targetKeywords: ['string'],
+      targetQueries: ['string']
+    }
+  } as any;
+
+  try {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: JSON.stringify(user) }
+        ],
+        temperature: 0.4,
+        max_tokens: 1200
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!resp.ok) throw new Error(`LLM HTTP ${resp.status}`);
+    const data = await resp.json();
+    const content = data.choices?.[0]?.message?.content || '[]';
+    let arr: any[] = [];
+    try { arr = JSON.parse(content); } catch {}
+    if (!Array.isArray(arr) || arr.length === 0) throw new Error('LLM returned empty');
+    return arr.slice(0, count).map((o: any, i: number) => ({
+      priority: i + 1,
+      title: o.title || o.mainTopic || 'Proposed Article',
+      mainTopic: o.mainTopic || o.title || 'topic',
+      targetQueries: Array.isArray(o.targetQueries) ? o.targetQueries.slice(0, 5) : [],
+      targetKeywords: Array.isArray(o.targetKeywords) ? o.targetKeywords.slice(0, 5) : [],
+      articleFormat: o.articleFormat || { type: 'guide', template: '', wordCountRange: [1500, 2500] },
+      authorityLevel: (o.authorityLevel || 'foundation') as 'foundation' | 'intermediate' | 'advanced',
+      estimatedTrafficPotential: 150,
+      contentBrief: o.contentBrief || `Write about ${o.mainTopic || o.title}`,
+      recommendedLength: Array.isArray(o.articleFormat?.wordCountRange) ? (o.articleFormat.wordCountRange[1] || 2000) : 2000,
+      urgency: i < 3 ? 'high' : 'medium',
+      reasoning: 'Generated from business profile (LLM)',
+      scheduledFor: null,
+      status: 'draft' as const
+    }));
+  } catch (e) {
+    console.log('[AUTONOMOUS TOPIC] LLM business-topic generation failed, using simple fallback:', (e as Error)?.message);
+    return generateFallbackTopics(opts.domain, '', count);
   }
 }
 
@@ -270,7 +426,7 @@ async function fetchKeywordStrategy(userToken: string, domain: string) {
     }
 
     if (!viewRows || viewRows.length === 0) {
-      console.log('[AUTONOMOUS TOPIC] No keyword strategy found, using GSC data only');
+      console.log('[AUTONOMOUS TOPIC] No keyword strategy found');
       return { success: false, error: 'No keyword strategy found' };
     }
 
