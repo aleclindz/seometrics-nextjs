@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Ensure this route is always executed dynamically on the server and under Node.js runtime
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { createClient } from '@supabase/supabase-js';
 import { syncYesterdayGSCData } from '@/services/gsc/gsc-search-analytics-sync';
 

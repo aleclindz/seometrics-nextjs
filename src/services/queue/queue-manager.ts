@@ -3,10 +3,16 @@ import { EnhancedArticleGenerator, EnhancedArticleRequest } from '../content/enh
 import IORedis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 
-// Redis connection configuration
-const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null, // Required for BullMQ
-});
+// Lazily create a single Redis connection to avoid burning Upstash credits on cold starts
+let redisConnection: IORedis | null = null;
+function getRedisConnection(): IORedis {
+  if (!redisConnection) {
+    redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      maxRetriesPerRequest: null, // Required for BullMQ
+    });
+  }
+  return redisConnection;
+}
 
 // Supabase client for database operations
 const supabase = createClient(
@@ -58,40 +64,36 @@ export class AgentQueueManager {
   private workersStarted = false;
 
   constructor() {
-    this.initializeQueues();
+    // Do not eagerly initialize queues/connections in serverless to reduce Redis commands
   }
 
-  private initializeQueues() {
-    // Initialize all queues
-    Object.values(QUEUE_NAMES).forEach(queueName => {
-      const queue = new Queue(queueName, {
-        connection: redisConnection,
+  // Lazily create queues as needed
+  private getOrCreateQueue(queueName: string): Queue {
+    let queue = this.queues.get(queueName);
+    if (!queue) {
+      queue = new Queue(queueName, {
+        connection: getRedisConnection(),
         defaultJobOptions: {
-          removeOnComplete: 100, // Keep last 100 completed jobs
-          removeOnFail: 50,      // Keep last 50 failed jobs
+          removeOnComplete: 100,
+          removeOnFail: 50,
           attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 2000,
-          },
+          backoff: { type: 'exponential', delay: 2000 },
         },
       });
-
-      const events = new QueueEvents(queueName, {
-        connection: redisConnection,
-        // Reduce Redis command usage on Upstash by blocking longer between polls
-        // Default is ~5s; set to 60s to cut commands ~12x for idle queues
-        blockingTimeout: 300000,
-      } as any);
-
       this.queues.set(queueName, queue);
-      this.events.set(queueName, events);
 
-      // Set up event listeners for logging
-      this.setupEventListeners(queueName, events);
-    });
-
-    // Workers are started explicitly via startWorkers()
+      // Only attach QueueEvents in long-lived worker processes to avoid extra Redis polling
+      if (process.env.ENABLE_QUEUE_EVENTS === 'true') {
+        const events = new QueueEvents(queueName, {
+          connection: getRedisConnection(),
+          // Reduce Redis command usage on Upstash by blocking longer between polls
+          blockingTimeout: 300000,
+        } as any);
+        this.events.set(queueName, events);
+        this.setupEventListeners(queueName, events);
+      }
+    }
+    return queue;
   }
 
   private setupEventListeners(queueName: string, events: QueueEvents) {
@@ -116,7 +118,7 @@ export class AgentQueueManager {
         return await this.processAgentAction(job);
       },
       {
-        connection: redisConnection,
+        connection: getRedisConnection(),
         concurrency: 5, // Process up to 5 jobs concurrently
       }
     );
@@ -128,7 +130,7 @@ export class AgentQueueManager {
         return await this.processContentGeneration(job);
       },
       {
-        connection: redisConnection,
+        connection: getRedisConnection(),
         concurrency: 3,
       }
     );
@@ -140,7 +142,7 @@ export class AgentQueueManager {
         return await this.processTechnicalSEO(job);
       },
       {
-        connection: redisConnection,
+        connection: getRedisConnection(),
         concurrency: 5,
       }
     );
@@ -152,7 +154,7 @@ export class AgentQueueManager {
         return await this.processCMSPublishing(job);
       },
       {
-        connection: redisConnection,
+        connection: getRedisConnection(),
         concurrency: 2,
       }
     );
@@ -164,7 +166,7 @@ export class AgentQueueManager {
         return await this.processVerification(job);
       },
       {
-        connection: redisConnection,
+        connection: getRedisConnection(),
         concurrency: 10,
       }
     );
@@ -223,10 +225,7 @@ export class AgentQueueManager {
     else if (actionType.includes('cms') || actionType.includes('publish')) queueName = QUEUE_NAMES.CMS_PUBLISHING;
     else if (actionType.includes('verify')) queueName = QUEUE_NAMES.VERIFICATION;
 
-    const queue = this.queues.get(queueName);
-    if (!queue) {
-      throw new Error(`Queue ${queueName} not initialized`);
-    }
+    const queue = this.getOrCreateQueue(queueName);
 
     const jobData: AgentJobData = {
       actionId,
@@ -250,6 +249,15 @@ export class AgentQueueManager {
 
     // Update action status
     await this.updateActionStatus(actionId, 'queued');
+
+    // In serverless (e.g., Vercel), proactively close the queue connection to save Upstash commands
+    const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+    if (isServerless && !this.workersStarted) {
+      try {
+        await queue.close();
+      } catch {}
+      this.queues.delete(queueName);
+    }
 
     return job.id as string;
   }
@@ -624,8 +632,7 @@ export class AgentQueueManager {
 
   // Utility methods for queue management
   async getQueueStats(queueName: string) {
-    const queue = this.queues.get(queueName);
-    if (!queue) throw new Error(`Queue ${queueName} not found`);
+    const queue = this.getOrCreateQueue(queueName);
 
     const [waiting, active, completed, failed, delayed] = await Promise.all([
       queue.getWaiting(),
@@ -682,7 +689,10 @@ export class AgentQueueManager {
     );
 
     // Close Redis connection
-    await redisConnection.quit();
+    if (redisConnection) {
+      await redisConnection.quit();
+      redisConnection = null;
+    }
     
     console.log('[QUEUE MANAGER] Shutdown complete');
   }
@@ -691,13 +701,15 @@ export class AgentQueueManager {
 // Singleton instance
 export const queueManager = new AgentQueueManager();
 
-// Graceful shutdown handling
-process.on('SIGINT', async () => {
-  await queueManager.shutdown();
-  process.exit(0);
-});
+// Only attach shutdown handlers in explicit worker environments
+if (process.env.START_QUEUE_WORKERS === 'true') {
+  process.on('SIGINT', async () => {
+    await queueManager.shutdown();
+    process.exit(0);
+  });
 
-process.on('SIGTERM', async () => {
-  await queueManager.shutdown();
-  process.exit(0);
-});
+  process.on('SIGTERM', async () => {
+    await queueManager.shutdown();
+    process.exit(0);
+  });
+}

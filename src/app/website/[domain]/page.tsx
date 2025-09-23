@@ -734,6 +734,21 @@ export default function WebsitePage() {
             >
               Setup ({setupStatus.progress}%)
             </button>
+
+            {/* Detect Business Info */}
+            <button
+              onClick={detectBusiness}
+              disabled={bizLoading}
+              className="ml-2 flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
+              title="Auto-detect business type and description"
+            >
+              {bizLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4" />
+              )}
+              Detect Business Info
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-gray-200" />
