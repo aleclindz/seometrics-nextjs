@@ -132,7 +132,6 @@ export default function WebsitePage() {
   });
   const [hasCmsConnection, setHasCmsConnection] = useState<boolean>(false);
   const [publishingId, setPublishingId] = useState<number | null>(null);
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error' }>(() => ({ visible: false, message: '', type: 'success' }));
 
   // Draft preview modal state
   const [previewOpen, setPreviewOpen] = useState(false);
