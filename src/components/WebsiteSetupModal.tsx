@@ -104,25 +104,20 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [businessSavedAt, setBusinessSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      // Only generate install code and set initial tab when modal opens
-      // Don't automatically check statuses - user can manually refresh
-      generateSmartJSCode();
-      loadBusinessInfo();
-      
-      // Set initial tab based on what needs setup
-      if (website.gscStatus !== 'connected') {
-        setActiveTab('gsc');
-      } else if (!businessDescription) {
-        setActiveTab('business');
-      } else if (website.smartjsStatus !== 'active') {
-        setActiveTab('smartjs');
-      } else if (website.cmsStatus !== 'connected') {
-        setActiveTab('cms');
-      } else if (website.hostStatus !== 'connected') {
-        setActiveTab('host');
-      }
-    }
+    if (!isOpen) return;
+    // Initialize when modal opens
+    generateSmartJSCode();
+    loadBusinessInfo();
+
+    // Prime section states from parent-provided status so UI matches header checks
+    setGscStatus({ connected: website.gscStatus === 'connected' });
+    setSmartjsDetected(website.smartjsStatus === 'active');
+    // Fetch connection details where applicable
+    void fetchCMSConnections();
+    void fetchHostConnections();
+
+    // Prefer showing Business Info first
+    setActiveTab('business');
   }, [isOpen, website]);
 
 
@@ -618,6 +613,16 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8">
             <button
+              onClick={() => setActiveTab('business')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2 ${
+                activeTab === 'business'
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              <span>Business Info</span>
+            </button>
+            <button
               onClick={() => setActiveTab('gsc')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2 ${
                 activeTab === 'gsc'
@@ -631,16 +636,6 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               )}
-            </button>
-            <button
-              onClick={() => setActiveTab('business')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2 ${
-                activeTab === 'business'
-                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
-              <span>Business Info</span>
             </button>
             <button
               onClick={() => setActiveTab('smartjs')}
@@ -1007,6 +1002,22 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                     </div>
                   ))}
                 </div>
+              ) : website.cmsStatus === 'connected' && !showCMSForm ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">CMS Connected</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Your CMS connection is active. Click refresh to load connection details.</p>
+                  <button
+                    onClick={fetchCMSConnections}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Refresh Connections
+                  </button>
+                </div>
               ) : showCMSForm ? (
                 <CMSConnectionForm
                   onSuccess={handleCMSSuccess}
@@ -1145,6 +1156,22 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                       ))}
                     </>
                   )}
+                </div>
+              ) : website.hostStatus === 'connected' ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Hosting Connected</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Your hosting connection is active. Click refresh to load connection details.</p>
+                  <button
+                    onClick={fetchHostConnections}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Refresh Connections
+                  </button>
                 </div>
               ) : (
                 <div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { scrapeUrl } from '@/services/crawl/firecrawl-client';
 
 export const runtime = 'nodejs';
 
@@ -16,22 +17,53 @@ function normalizeDomain(raw: string): string {
     .replace(/\/$/, '');
 }
 
-async function fetchHomepageHTML(domain: string): Promise<{ url: string; html: string }> {
-  const candidates = [
-    `https://${domain}`,
-    `http://${domain}`,
-  ];
-  for (const url of candidates) {
+function stripHtml(html: string): string {
+  try {
+    return html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } catch {
+    return html || '';
+  }
+}
+
+async function fetchWebsiteSnippets(domain: string): Promise<string> {
+  const homepage = `https://${domain}`;
+  const aboutCandidates = [`https://${domain}/about`, `https://${domain}/about-us`, `https://${domain}/company`, `https://${domain}/contact`];
+  let combined = '';
+  const useFirecrawl = !!process.env.FIRECRAWL_API_KEY;
+
+  async function tryScrape(url: string): Promise<string> {
+    try {
+      if (useFirecrawl) {
+        const page = await scrapeUrl(url);
+        const content = page.markdown || page.html || '';
+        return (page.markdown ? page.markdown : stripHtml(String(content))).slice(0, 60_000);
+      }
+    } catch {}
+    // Fallback to direct fetch
     try {
       const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) continue;
+      if (!resp.ok) return '';
       const html = await resp.text();
-      return { url, html: html.slice(0, 120_000) };
+      return stripHtml(html).slice(0, 60_000);
     } catch {
-      // try next
+      return '';
     }
   }
-  return { url: `https://${domain}`, html: '' };
+
+  // Homepage
+  combined += await tryScrape(homepage);
+  // Try a likely about page for better business signals
+  for (const url of aboutCandidates) {
+    if (combined.length > 80_000) break;
+    const txt = await tryScrape(url);
+    if (txt) combined += `\n\n---\n\n${txt}`;
+  }
+  return combined.slice(0, 120_000);
 }
 
 async function profileBusinessLLM(domain: string, htmlSnippet: string) {
@@ -131,9 +163,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Business info already present', websiteId: website.id });
     }
 
-    // Fetch homepage and profile via LLM
-    const { html } = await fetchHomepageHTML(clean);
-    const profile = await profileBusinessLLM(clean, html);
+    // Fetch content (homepage + likely about page) and profile via LLM
+    const snippet = await fetchWebsiteSnippets(clean);
+    const profile = await profileBusinessLLM(clean, snippet);
 
     const businessInfoObj = {
       description: profile.description,
