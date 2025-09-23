@@ -69,7 +69,77 @@ export async function GET(request: NextRequest) {
 // PUT: Update article queue item
 export async function PUT(request: NextRequest) {
   try {
-    const { id, updates, userToken } = await request.json();
+    const body = await request.json();
+    const { id, updates, userToken, action } = body;
+
+    // Support adding new queue items directly from chat
+    if (action === 'add') {
+      const { websiteToken, item } = body as any;
+      if (!userToken || !websiteToken || !item) {
+        return NextResponse.json(
+          { success: false, error: 'userToken, websiteToken and item are required' },
+          { status: 400 }
+        );
+      }
+
+      // Verify website ownership
+      const { data: website, error: websiteError } = await supabase
+        .from('websites')
+        .select('website_token')
+        .eq('user_token', userToken)
+        .eq('website_token', websiteToken)
+        .maybeSingle();
+
+      if (websiteError || !website) {
+        return NextResponse.json(
+          { success: false, error: 'Website not found or access denied' },
+          { status: 404 }
+        );
+      }
+
+      // Map incoming item to DB row
+      const now = new Date();
+      const scheduledFor = item.scheduledFor ? new Date(item.scheduledFor) : new Date(now.getTime() + 24*60*60*1000);
+      const row: any = {
+        user_token: userToken,
+        website_token: websiteToken,
+        topic: item.topic || item.title,
+        scheduled_for: scheduledFor.toISOString(),
+        target_word_count: item.wordCount || item.recommendedLength || 1500,
+        content_style: item.contentStyle || 'professional',
+        status: item.status || 'draft',
+        priority: item.priority || 1,
+        estimated_traffic_potential: item.estimatedTrafficPotential || 0,
+        target_keywords: Array.isArray(item.targetKeywords) ? item.targetKeywords : [],
+        target_queries: Array.isArray(item.targetQueries) ? item.targetQueries : [],
+        content_brief: item.contentBrief || '',
+        article_format: item.articleFormat ? JSON.stringify(item.articleFormat) : null,
+        authority_level: item.authorityLevel || 'foundation',
+        metadata: JSON.stringify({
+          priority: item.priority,
+          targetKeywords: item.targetKeywords,
+          targetQueries: item.targetQueries,
+          articleFormat: item.articleFormat,
+          authorityLevel: item.authorityLevel
+        })
+      };
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('content_generation_queue')
+        .insert(row)
+        .select('*')
+        .single();
+
+      if (insertError) {
+        console.error('[ARTICLE QUEUE] Add error:', insertError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to add to queue' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, item: formatQueueItem(inserted) });
+    }
 
     if (!id || !userToken) {
       return NextResponse.json(

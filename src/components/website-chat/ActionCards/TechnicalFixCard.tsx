@@ -113,7 +113,7 @@ export default function TechnicalFixCard({
               key={index}
               variant="outline"
               size="sm"
-              className="h-8 text-xs"
+              className="h-8 text-xs bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               onClick={() => {
                 if (typeof window !== 'undefined') {
                   window.open(link.url, '_blank');

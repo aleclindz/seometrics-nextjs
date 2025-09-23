@@ -40,6 +40,23 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
     fetchQueue();
   }, [userToken, websiteToken]);
 
+  useEffect(() => {
+    const handler = (e: any) => {
+      // Optional: filter by websiteToken if provided
+      if (!e?.detail?.websiteToken || e.detail.websiteToken === websiteToken) {
+        fetchQueue();
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('seoagent:queue-updated', handler as any);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('seoagent:queue-updated', handler as any);
+      }
+    };
+  }, [websiteToken]);
+
   const fetchQueue = async () => {
     try {
       const response = await fetch(`/api/content/article-queue?userToken=${encodeURIComponent(userToken)}&websiteToken=${encodeURIComponent(websiteToken)}&limit=20`);

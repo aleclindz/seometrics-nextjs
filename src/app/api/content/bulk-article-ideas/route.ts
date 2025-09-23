@@ -20,6 +20,27 @@ export async function POST(request: NextRequest) {
 
     console.log(`[BULK IDEAS] Generating ${count} article ideas for ${period} for domain: ${domain}`);
 
+    // Resolve website token and auto-queue policy from automation settings
+    let effectiveWebsiteToken: string | undefined = websiteToken;
+    let autoQueueEnabled = false;
+    try {
+      const clean = String(domain).replace(/^sc-domain:/i, '').replace(/^https?:\/\//i, '').replace(/\/$/, '');
+      const { data: site } = await supabase
+        .from('websites')
+        .select('website_token, enable_automated_content, domain')
+        .eq('user_token', userToken)
+        .or([`domain.eq.${clean}`, `domain.eq.https://${clean}`, `domain.eq.sc-domain:${clean}`].join(','))
+        .maybeSingle();
+      if (site) {
+        effectiveWebsiteToken = effectiveWebsiteToken || site.website_token;
+        autoQueueEnabled = !!site.enable_automated_content;
+      }
+    } catch (e) {
+      console.log('[BULK IDEAS] Website lookup failed; proceeding without auto-queue policy');
+    }
+
+    const shouldQueue = addToQueue || autoQueueEnabled;
+
     // Call autonomous topic selection with the specified count
     // Always prefer same-origin to avoid misconfigured external base URLs
     const baseUrl = (() => {
@@ -36,7 +57,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         userToken,
-        websiteToken,
+        websiteToken: effectiveWebsiteToken,
         domain,
         analysisType: 'comprehensive',
         generateCount: count
@@ -94,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
 
     // If addToQueue is true, add these to the content generation queue
-    if (addToQueue && articleIdeas.length > 0) {
+    if (shouldQueue && articleIdeas.length > 0) {
       const now = new Date();
       const queueItems = articleIdeas.map((idea: any, index: number) => {
         // Spread articles over the specified period
@@ -103,7 +124,7 @@ export async function POST(request: NextRequest) {
 
         return {
           user_token: userToken,
-          website_token: websiteToken,
+          website_token: effectiveWebsiteToken,
           scheduled_for: scheduledTime.toISOString(),
           topic: idea.title,
           target_word_count: idea.recommendedLength,
@@ -167,7 +188,7 @@ export async function POST(request: NextRequest) {
       articleIdeas: articleIdeasWithDates,
       period,
       count,
-      addedToQueue: addToQueue,
+      addedToQueue: shouldQueue,
       summary: {
         totalIdeas: articleIdeas.length,
         formatBreakdown: articleIdeas.reduce((acc: any, idea: any) => {

@@ -53,6 +53,10 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
   const [brainstormModalOpen, setBrainstormModalOpen] = useState(false);
   const [brainstormIdeas, setBrainstormIdeas] = useState<any[]>([]);
   const [selectedIdeas, setSelectedIdeas] = useState<Record<number, boolean>>({});
+  // Article ideas modal
+  const [ideasModalOpen, setIdeasModalOpen] = useState(false);
+  const [articleIdeas, setArticleIdeas] = useState<any[]>([]);
+  const [selectedArticleIdeas, setSelectedArticleIdeas] = useState<Record<number, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollUntilRef = useRef<number>(0);
@@ -537,7 +541,18 @@ What would you like to work on first?`,
                       (message.functionCall?.result?.data?.generated_keywords as any[]) ||
                       (message.functionCall?.result?.generated_keywords as any[]) ||
                       []
-                    )}>View details</button>
+                  )}>View details</button>
+                </div>
+                ) : (message.functionCall?.result?.success && message.functionCall?.name?.includes('CONTENT_generate_bulk_ideas')) ? (
+                  <div className="text-sm text-gray-600">
+                    Generated article ideas. <button className="underline" onClick={() => {
+                      const ideas = (message.functionCall?.result?.articleIdeas as any[]) || [];
+                      const initial: Record<number, boolean> = {};
+                      ideas.forEach((_, idx) => { initial[idx] = true; });
+                      setArticleIdeas(ideas);
+                      setSelectedArticleIdeas(initial);
+                      setIdeasModalOpen(true);
+                    }}>Review ideas</button>
                   </div>
                 ) : (
                   // For other functions, avoid dumping raw JSON by default
@@ -685,7 +700,108 @@ What would you like to work on first?`,
           ),
           document.body
         )}
+
+        {/* Article Ideas Modal */}
+        {ideasModalOpen && typeof document !== 'undefined' && createPortal(
+          (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b">
+                  <div className="font-semibold">Article Ideas</div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setIdeasModalOpen(false)} className="text-sm px-2 py-1 border rounded hover:bg-gray-50">✕</button>
+                  </div>
+                </div>
+                <div className="p-4 overflow-y-auto max-h-[70vh]">
+                  {articleIdeas.length === 0 ? (
+                    <div className="text-sm text-gray-500">No ideas to display.</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {articleIdeas.map((idea: any, idx: number) => (
+                        <label key={idx} className="flex items-start gap-3 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={!!selectedArticleIdeas[idx]}
+                            onChange={(e) => setSelectedArticleIdeas(prev => ({ ...prev, [idx]: e.target.checked }))}
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{idea.title}</div>
+                            <div className="text-xs text-gray-600 flex gap-2 flex-wrap">
+                              <span>Format: {idea.articleFormat?.type}</span>
+                              <span>Words: {idea.recommendedLength}</span>
+                              <span>Authority: {idea.authorityLevel}</span>
+                              <span>ETA: {new Date(idea.suggestedPublishDate).toLocaleDateString()}</span>
+                            </div>
+                            {idea.contentBrief && (
+                              <div className="text-xs text-gray-500 mt-1">{idea.contentBrief}</div>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+                  <button onClick={() => setIdeasModalOpen(false)} className="text-sm px-3 py-2 border rounded hover:bg-gray-50">Cancel</button>
+                  <button
+                    onClick={async () => {
+                      const toQueue = articleIdeas
+                        .map((idea, idx) => ({ idea, idx }))
+                        .filter(({ idx }) => selectedArticleIdeas[idx])
+                        .map(({ idea }) => idea);
+                      if (!toQueue.length || !websiteToken || !userToken) {
+                        setIdeasModalOpen(false);
+                        return;
+                      }
+                      try {
+                        for (const idea of toQueue) {
+                          await fetch('/api/content/article-queue', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              action: 'add',
+                              userToken,
+                              websiteToken,
+                              item: {
+                                topic: idea.title,
+                                scheduledFor: idea.suggestedPublishDate,
+                                targetKeywords: idea.targetKeywords,
+                                targetQueries: idea.targetQueries,
+                                articleFormat: idea.articleFormat,
+                                authorityLevel: idea.authorityLevel,
+                                wordCount: idea.recommendedLength,
+                                contentBrief: idea.contentBrief,
+                                priority: idea.priority,
+                                estimatedTrafficPotential: idea.estimatedTrafficPotential,
+                                status: 'draft'
+                              }
+                            })
+                          });
+                        }
+                        setIdeasModalOpen(false);
+                        // Fire an event so Content tab can refresh if listening
+                        window.dispatchEvent(new CustomEvent('seoagent:queue-updated', { detail: { websiteToken } }));
+                      } catch (e) {
+                        console.error('Failed to queue ideas:', e);
+                        setIdeasModalOpen(false);
+                      }
+                    }}
+                    className="text-sm px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Queue selected
+                  </button>
+                </div>
+              </div>
+            </div>
+          ),
+          document.body
+        )}
       </CardContent>
     </Card>
   );
 }
+
+// Article Ideas Modal (Portal)
+// Placed after default export to keep file readable
+// Rendered conditionally where needed

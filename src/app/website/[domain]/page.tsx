@@ -1257,111 +1257,12 @@ export default function WebsitePage() {
                       </h3>
                     </div>
                     <div className="p-6">
-                      {contentData.isLoading ? (
-                        <div className="space-y-4">
-                          {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-16 bg-gray-100 rounded animate-pulse"></div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {/* Tab Headers */}
-                          <div className="border-b border-gray-200">
-                            <nav className="-mb-px flex space-x-8">
-                              <button className="py-2 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600">
-                                Upcoming Articles
-                              </button>
-                              <button className="py-2 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                                Published Articles
-                              </button>
-                            </nav>
-                          </div>
-
-                          {/* Upcoming Articles Table */}
-                          <div className="overflow-hidden border border-gray-200 rounded-lg">
-                            <table className="min-w-full divide-y divide-gray-200">
-                              <thead className="bg-gray-50">
-                                <tr>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">#</th>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled Date</th>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topic Cluster</th>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody className="bg-white divide-y divide-gray-200">
-                                {contentData.articles?.scheduled?.length > 0 || contentData.articles?.drafts?.length > 0 ? (
-                                  [...(contentData.articles.scheduled || []), ...(contentData.articles.drafts || [])]
-                                    .slice(0, 10)
-                                    .map((article: any, index: number) => (
-                                      <tr key={article.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                          {index + 1}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                          <div className="font-medium text-gray-900">{article.title}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                          <div className="flex items-center gap-2">
-                                            <Clock className="w-4 h-4 text-gray-400" />
-                                            {article.scheduled_for ? new Date(article.scheduled_for).toLocaleDateString() :
-                                             article.updated_at ? new Date(article.updated_at).toLocaleDateString() : 'Not scheduled'}
-                                          </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                          {article.topicCluster ? (
-                                            <button
-                                              onClick={() => switchToStrategyAndExpandCluster(article.topicCluster)}
-                                              className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full border border-gray-300 hover:bg-gray-200 transition-colors cursor-pointer"
-                                            >
-                                              {article.topicCluster}
-                                            </button>
-                                          ) : (
-                                            <span className="text-xs text-gray-400">No cluster</span>
-                                          )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                          <div className="flex items-center gap-2">
-                                            <button
-                                              onClick={() => openDraftPreview(article.id)}
-                                              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs hover:bg-gray-50"
-                                            >
-                                              <Eye className="w-3 h-3" />
-                                            </button>
-                                            <button className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs hover:bg-gray-50">
-                                              <Edit className="w-3 h-3" />
-                                            </button>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center">
-                                      <div className="text-gray-500">
-                                        <FileText className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                                        <h3 className="text-sm font-medium text-gray-900">No articles scheduled</h3>
-                                        <p className="text-sm text-gray-500 mt-1">Generate your first batch of AI-powered article ideas.</p>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {/* Quick Actions */}
-                          <div className="flex justify-center pt-4">
-                            <button
-                              onClick={() => sendMessageToChat("Help me generate content ideas for my website. What topics would work best for my audience?")}
-                              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                            >
-                              <Sparkles className="w-4 h-4 mr-2" />
-                              Generate Content Ideas
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <ArticleQueueManager
+                        userToken={user?.token || ''}
+                        websiteToken={currentWebsite?.website_token || automation.websites[0]?.website_token || ''}
+                        domain={domain}
+                        onTopicClusterClick={switchToStrategyAndExpandCluster}
+                      />
                     </div>
                   </div>
                 </section>
