@@ -51,18 +51,24 @@ export default function VercelIntegrationPage() {
     setInstalling(true);
     try {
       const selectedProjectData = integrationData.projects.find(p => p.id === selectedProject);
+      const urlParams = new URLSearchParams(window.location.search);
+      const passedDomain = urlParams.get('domain') || undefined;
+      const passedWebsiteId = urlParams.get('websiteId') || undefined;
       
       const response = await fetch('/api/hosting/vercel/oauth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userToken: new URLSearchParams(window.location.search).get('userToken'),
+          userToken: urlParams.get('userToken'),
           accessToken: integrationData.accessToken,
           teamId: integrationData.teamId,
           projectId: selectedProject,
           projectName: selectedProjectData?.name,
           deploymentMethod: 'redirects',
-          autoDeployment: false
+          autoDeployment: false,
+          // Forward optional context for precise hosting_status update
+          domain: passedDomain,
+          websiteId: passedWebsiteId
         })
       });
 

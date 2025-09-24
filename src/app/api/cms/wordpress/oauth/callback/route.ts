@@ -89,10 +89,31 @@ export async function GET(request: NextRequest) {
         const sitesData = await sitesResp.json();
         const sites: any[] = sitesData?.sites || [];
         console.log('[WPCOM CALLBACK] Sites fetched', { count: sites.length });
-        const normalize = (d: string) => d.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+
+        const normalize = (d: any) => typeof d === 'string'
+          ? d.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '')
+          : '';
+
         const desired = domain ? normalize(domain) : '';
-        const found = sites.find((s: any) => normalize(s.URL) === desired || normalize(s.domain) === desired) || sites[0];
-        if (found) { siteId = Number(found.ID); siteUrl = found.URL; }
+
+        let found: any = null;
+        if (desired) {
+          for (const s of sites) {
+            const urlNorm = normalize(s?.URL);
+            const domainNorm = normalize(s?.domain);
+            if (urlNorm === desired || domainNorm === desired) { found = s; break; }
+          }
+        }
+        if (!found && sites.length > 0) {
+          found = sites[0];
+        }
+
+        if (found) {
+          siteId = Number(found?.ID) || null;
+          // Prefer URL; fall back to domain if present
+          const urlStr = typeof found?.URL === 'string' ? found.URL : (typeof found?.domain === 'string' ? `https://${found.domain}` : null);
+          siteUrl = urlStr;
+        }
         console.log('[WPCOM CALLBACK] Site match', { matched: Boolean(found), siteId, siteUrl });
       } else {
         const text = await sitesResp.text().catch(() => '');

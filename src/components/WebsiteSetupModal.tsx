@@ -385,8 +385,9 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       setHostLoading(true);
       setHostError(null);
       
-      // Initiate Vercel OAuth flow
-      const response = await fetch(`/api/hosting/vercel/oauth?userToken=${user.token}`);
+      // Initiate Vercel OAuth flow (include website context for precise status update)
+      const params = new URLSearchParams({ userToken: user.token, domain: website.url, websiteId: String(website.id) });
+      const response = await fetch(`/api/hosting/vercel/oauth?${params.toString()}`);
       const data = await response.json();
       
       if (response.ok && data.oauthUrl) {

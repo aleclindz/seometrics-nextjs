@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { DomainQueryService } from '@/lib/database/DomainQueryService';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,6 +22,8 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const userToken = searchParams.get('userToken');
+    const domain = searchParams.get('domain') || undefined;
+    const websiteId = searchParams.get('websiteId') || undefined;
 
 
     // Step 2: Handle OAuth callback
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Step 1: Initiate OAuth flow
     // If no userToken, this is likely from Vercel marketplace - initiate anonymous flow
-    return initiateOAuthFlow(userToken || undefined);
+    return initiateOAuthFlow(userToken || undefined, { domain, websiteId });
 
   } catch (error) {
     console.error('[VERCEL OAUTH] Error:', error);
@@ -44,12 +47,16 @@ export async function GET(request: NextRequest) {
 /**
  * Initiate Vercel OAuth flow
  */
-async function initiateOAuthFlow(userToken?: string): Promise<NextResponse> {
+async function initiateOAuthFlow(userToken?: string, opts?: { domain?: string; websiteId?: string }): Promise<NextResponse> {
   try {
-    // Generate state for OAuth flow
-    const state = userToken 
-      ? `${userToken}_${Date.now()}_${Math.random().toString(36).substring(7)}`
-      : `anonymous_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    // Generate state for OAuth flow (embed optional context)
+    const rawState = {
+      userToken: userToken || 'anonymous',
+      domain: opts?.domain || null,
+      websiteId: opts?.websiteId || null,
+      nonce: `${Date.now()}_${Math.random().toString(36).substring(7)}`
+    };
+    const state = Buffer.from(JSON.stringify(rawState)).toString('base64url');
     
     // Store OAuth state in database for security
     const { error } = await supabase
@@ -280,10 +287,19 @@ async function handleOAuthCallback(code: string, state: string): Promise<NextRes
       .delete()
       .eq('state', state);
 
+    // Try to decode state to extract optional domain and websiteId
+    let decoded: any = null;
+    try {
+      decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
+    } catch {}
+
+    const stateDomain = decoded?.domain || undefined;
+    const stateWebsiteId = decoded?.websiteId || undefined;
+
     // Existing user flow - redirect to integration installation page
     const baseUrlForRedirect = new URL(process.env.VERCEL_OAUTH_REDIRECT_URI!).origin;
     const userToken = oauthState.user_token;
-    const installUrl = `${baseUrlForRedirect}/vercel-integration?data=${encodeURIComponent(JSON.stringify(integrationData))}&userToken=${encodeURIComponent(userToken)}`;
+    const installUrl = `${baseUrlForRedirect}/vercel-integration?data=${encodeURIComponent(JSON.stringify(integrationData))}&userToken=${encodeURIComponent(userToken)}${stateDomain ? `&domain=${encodeURIComponent(stateDomain)}` : ''}${stateWebsiteId ? `&websiteId=${encodeURIComponent(stateWebsiteId)}` : ''}`;
 
     return NextResponse.redirect(installUrl);
 
@@ -309,7 +325,10 @@ export async function POST(request: NextRequest) {
       projectId,
       projectName,
       deploymentMethod = 'redirects',
-      autoDeployment = false
+      autoDeployment = false,
+      // Optional hints to map this integration to a specific website
+      domain,
+      websiteId
     } = await request.json();
 
     if (!userToken || !accessToken || !projectId) {
@@ -363,21 +382,122 @@ export async function POST(request: NextRequest) {
 
     // Update hosting_status in websites table to reflect connected status
     try {
-      const { data: websiteUpdate, error: websiteError } = await supabase
-        .from('websites')
-        .update({
-          hosting_status: 'connected',
-          last_status_check: new Date().toISOString()
-        })
-        .eq('user_token', userToken)
-        .select()
-        .single();
+      const timestamp = new Date().toISOString();
 
-      if (websiteError) {
-        console.error('[VERCEL OAUTH] Warning: Could not update website hosting_status:', websiteError);
-        // Don't fail the integration creation, just log the warning
-      } else {
-        console.log('[VERCEL OAUTH] Successfully updated website hosting_status to connected');
+      // 1) If websiteId provided, update that specific website row
+      if (websiteId) {
+        const idNum = Number(websiteId);
+        if (!Number.isNaN(idNum) && Number.isFinite(idNum)) {
+          console.log('[VERCEL OAUTH] Updating hosting_status by websiteId', { websiteId: idNum });
+          const { error: byIdErr } = await supabase
+            .from('websites')
+            .update({ hosting_status: 'connected', last_status_check: timestamp })
+            .eq('id', idNum)
+            .eq('user_token', userToken);
+          if (byIdErr) {
+            console.error('[VERCEL OAUTH] Failed to update by websiteId:', byIdErr);
+          } else {
+            console.log('[VERCEL OAUTH] hosting_status updated by websiteId');
+          }
+          // Done
+        } else {
+          console.warn('[VERCEL OAUTH] Non-numeric websiteId provided; falling back to domain mapping');
+          // fall through to domain path
+          if (domain) {
+            console.log('[VERCEL OAUTH] Resolving website by domain', { domain });
+            const result = await DomainQueryService.findWebsiteByDomain(userToken, domain, 'id,domain');
+            if (result.success && result.data?.id) {
+              const { error: byDomainErr } = await supabase
+                .from('websites')
+                .update({ hosting_status: 'connected', last_status_check: timestamp })
+                .eq('id', result.data.id)
+                .eq('user_token', userToken);
+              if (byDomainErr) {
+                console.error('[VERCEL OAUTH] Failed to update by domain:', byDomainErr);
+              } else {
+                console.log('[VERCEL OAUTH] hosting_status updated by domain', { matchedDomain: result.matchedDomain });
+              }
+            } else {
+              console.warn('[VERCEL OAUTH] No website matched provided domain');
+            }
+          }
+        }
+      }
+
+      // 2) Else if domain provided, resolve and update
+      else if (domain) {
+        console.log('[VERCEL OAUTH] Resolving website by domain', { domain });
+        const result = await DomainQueryService.findWebsiteByDomain(userToken, domain, 'id,domain');
+        if (result.success && result.data?.id) {
+          const { error: byDomainErr } = await supabase
+            .from('websites')
+            .update({ hosting_status: 'connected', last_status_check: timestamp })
+            .eq('id', result.data.id)
+            .eq('user_token', userToken);
+          if (byDomainErr) {
+            console.error('[VERCEL OAUTH] Failed to update by domain:', byDomainErr);
+          } else {
+            console.log('[VERCEL OAUTH] hosting_status updated by domain', { matchedDomain: result.matchedDomain });
+          }
+        } else {
+          console.warn('[VERCEL OAUTH] No website matched provided domain');
+        }
+      }
+
+      // 3) Else try to match via Vercel project domains
+      else {
+        console.log('[VERCEL OAUTH] Attempting to map integration to website via Vercel project domains');
+        const teamParam = teamId ? `?teamId=${encodeURIComponent(teamId)}` : '';
+        const projectDetailsResp = await fetch(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}${teamParam}`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        if (!projectDetailsResp.ok) {
+          const text = await projectDetailsResp.text().catch(() => '');
+          console.warn('[VERCEL OAUTH] Could not fetch project details to map domain', { status: projectDetailsResp.status, text });
+        } else {
+          const project = await projectDetailsResp.json();
+          // Try to get domains from project (different API versions may differ)
+          const projectDomains: string[] = Array.from(new Set([
+            ...(project?.link?.alias || []),
+            ...(project?.domains || []),
+            ...(project?.targets?.production?.alias || []),
+            project?.name ? `${project.name}.vercel.app` : null
+          ].filter(Boolean)));
+
+          console.log('[VERCEL OAUTH] Project domains discovered', { count: projectDomains.length });
+
+          if (projectDomains.length > 0) {
+            // Load all websites for this user and try to match
+            const { data: websites, error: sitesErr } = await supabase
+              .from('websites')
+              .select('id, domain')
+              .eq('user_token', userToken);
+            if (sitesErr) {
+              console.error('[VERCEL OAUTH] Failed to load user websites for mapping', sitesErr);
+            } else if (websites && websites.length > 0) {
+              const normalize = (d: string) => String(d).replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/^sc-domain:/i, '').replace(/\/$/, '');
+              const projectSet = new Set(projectDomains.map(normalize));
+              const matches = websites.filter(w => projectSet.has(normalize(w.domain)));
+
+              if (matches.length > 0) {
+                const ids = matches.map(m => m.id);
+                console.log('[VERCEL OAUTH] Matching websites found by domain', { ids, count: ids.length });
+                const { error: bulkErr } = await supabase
+                  .from('websites')
+                  .update({ hosting_status: 'connected', last_status_check: timestamp })
+                  .in('id', ids)
+                  .eq('user_token', userToken);
+                if (bulkErr) {
+                  console.error('[VERCEL OAUTH] Failed bulk update of hosting_status:', bulkErr);
+                } else {
+                  console.log('[VERCEL OAUTH] hosting_status updated for matched websites');
+                }
+              } else {
+                console.warn('[VERCEL OAUTH] No matching website domains found for project');
+              }
+            }
+          }
+        }
       }
     } catch (updateError) {
       console.error('[VERCEL OAUTH] Error updating website hosting_status:', updateError);
