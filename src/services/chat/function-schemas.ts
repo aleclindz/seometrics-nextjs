@@ -1037,6 +1037,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       parameters: {
         type: 'object',
         properties: {
+          site_url: { type: 'string', description: 'Website URL or domain to infer context if analysis is missing' },
           business_analysis: {
             type: 'object',
             description: 'Business analysis data from website crawling'
@@ -1059,12 +1060,13 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
           },
           keyword_count: { type: 'integer', description: 'Total number of keywords to generate', default: 50 }
         },
-        required: ['business_analysis'],
+        required: [],
         additionalProperties: false
       }
     },
     validator: z.object({
-      business_analysis: z.object({}).passthrough(),
+      site_url: z.string().optional(),
+      business_analysis: z.object({}).passthrough().optional(),
       competitor_data: z.object({}).passthrough().optional(),
       target_keywords: z.array(z.string()).optional().default([]),
       focus_areas: z.array(z.string()).optional().default([]),
