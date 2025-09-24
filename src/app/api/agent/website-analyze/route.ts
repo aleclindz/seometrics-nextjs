@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         if (page.markdown && page.markdown.length > 100) {
           pages.push({
             url: page.url,
-            content: page.markdown.substring(0, 3000), // Limit content for API
+            content: page.markdown.substring(0, 2000), // Tighter limit for speed
             title: page.metadata?.title || 'Unknown'
           });
         }
@@ -65,7 +65,7 @@ Pages analyzed: ${pages.length}
 Content:
 ${pages.map(p => `=== ${p.title} (${p.url}) ===\n${p.content}`).join('\n\n')}
 
-Please provide a structured analysis in this JSON format:
+Please provide a structured analysis in this JSON format. Return ONLY raw JSON with no code fences, no backticks, and no extra text:
 {
   "business_model": "Brief description of what the business does",
   "target_audience": ["primary audience", "secondary audience"],
@@ -87,16 +87,16 @@ Focus on extracting concrete, actionable information for SEO strategy developmen
       console.log('[WEBSITE ANALYZE][LLM] model=gpt-4o', { userPreview: analysisPrompt.slice(0, 300) });
     } catch {}
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: 'You are a business analyst specializing in website analysis for SEO strategy. Always return valid JSON.'
+          content: 'You are a business analyst specializing in website analysis for SEO strategy. Always return ONLY valid JSON with no code fences.'
         },
         { role: 'user', content: analysisPrompt }
       ],
-      temperature: 0.3,
-      max_tokens: 1500
+      temperature: 0.2,
+      max_tokens: 900
     });
 
     try {
@@ -106,7 +106,19 @@ Focus on extracting concrete, actionable information for SEO strategy developmen
 
     let analysis;
     try {
-      analysis = JSON.parse(completion.choices[0]?.message?.content || '{}');
+      let content = completion.choices[0]?.message?.content || '{}';
+      // Strip code fences if present
+      content = content.trim();
+      if (content.startsWith('```')) {
+        content = content.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '').trim();
+      }
+      // Extract JSON substring if any extra prose
+      const firstBrace = content.indexOf('{');
+      const lastBrace = content.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        content = content.slice(firstBrace, lastBrace + 1);
+      }
+      analysis = JSON.parse(content);
     } catch (parseError) {
       console.error('[WEBSITE ANALYZE] Failed to parse OpenAI response:', parseError);
       // Fallback analysis
