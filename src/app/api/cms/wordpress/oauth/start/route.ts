@@ -22,6 +22,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'WordPress.com OAuth is not configured (missing WPCOM_CLIENT_ID)' }, { status: 500 });
     }
 
+    // Log the incoming request (avoid leaking secrets)
+    console.log('[WPCOM START] Starting OAuth', {
+      hasClientId: Boolean(clientId),
+      redirectUri,
+      userToken: userToken?.slice(0, 8) + '...'
+    });
+    if (domain || websiteId) {
+      console.log('[WPCOM START] Context', { domain, websiteId });
+    }
+
     const statePayload = { userToken, domain, websiteId };
     const state = Buffer.from(JSON.stringify(statePayload)).toString('base64url');
 
@@ -32,9 +42,11 @@ export async function GET(request: NextRequest) {
     authorizeUrl.searchParams.set('scope', 'global');
     authorizeUrl.searchParams.set('state', state);
 
-    return NextResponse.redirect(authorizeUrl.toString());
+    const redirectTo = authorizeUrl.toString();
+    console.log('[WPCOM START] Redirecting to authorize URL');
+    return NextResponse.redirect(redirectTo);
   } catch (e) {
+    console.error('[WPCOM START] Exception starting OAuth', e);
     return NextResponse.json({ error: 'Failed to start OAuth' }, { status: 500 });
   }
 }
-
