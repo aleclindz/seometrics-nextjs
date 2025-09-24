@@ -295,4 +295,9 @@ export class IntelligentAgentAbility extends BaseAbility {
       return this.error('Failed to analyze content gaps', error);
     }
   }
+
+  // Helper methods
+  private cleanDomain(url: string): string {
+    return url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+  }
 }
