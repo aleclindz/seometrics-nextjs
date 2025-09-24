@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     try { decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8')); } catch {}
     const userToken = decoded.userToken as string | undefined;
     const domain = decoded.domain as string | undefined;
-    const websiteId = decoded.websiteId as string | number | undefined;
+    let websiteId = decoded.websiteId as string | number | undefined;
 
     const clientId = process.env.WPCOM_CLIENT_ID;
     const clientSecret = process.env.WPCOM_CLIENT_SECRET;
@@ -81,28 +81,63 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${getBaseUrl()}/dashboard?wpcom_oauth=success&site=none`);
     }
 
-    // Persist connection if we have a websiteId and siteUrl
-    if (siteUrl && websiteId) {
-      await supabase
-        .from('cms_connections')
-        .insert({
-          user_token: userToken,
-          website_id: typeof websiteId === 'string' ? parseInt(websiteId) : websiteId,
-          connection_name: 'WordPress.com',
-          cms_type: 'wordpress_com',
-          base_url: siteUrl.replace(/\/$/, ''),
-          api_token: accessToken, // TODO: encrypt in production
-          content_type: 'posts',
-          status: 'active'
-        });
-      // Update website cms_status
-      try {
-        await supabase
-          .from('websites')
-          .update({ cms_status: 'connected', last_status_check: new Date().toISOString() })
-          .eq('id', typeof websiteId === 'string' ? parseInt(websiteId) : websiteId)
-          .eq('user_token', userToken);
-      } catch {}
+    // Resolve websiteId if missing or invalid by looking up domain for this user
+    if (siteUrl && userToken) {
+      const parseId = (val: any) => (typeof val === 'string' ? parseInt(val, 10) : val);
+      let numericWebsiteId = parseId(websiteId);
+      if (!numericWebsiteId || Number.isNaN(numericWebsiteId)) {
+        if (domain) {
+          try {
+            const clean = String(domain).replace(/^sc-domain:/i, '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+            const variants = [clean, `https://${clean}`, `sc-domain:${clean}`];
+            const { data: w } = await supabase
+              .from('websites')
+              .select('id')
+              .eq('user_token', userToken)
+              .or(variants.map(v => `domain.eq.${v}`).join(','))
+              .maybeSingle();
+            if (w?.id) numericWebsiteId = w.id;
+          } catch (e) {
+            console.log('[WPCOM CALLBACK] Failed to resolve website by domain');
+          }
+        }
+      }
+
+      if (numericWebsiteId) {
+        // Insert connection with error handling
+        const { error: insertError } = await supabase
+          .from('cms_connections')
+          .insert({
+            user_token: userToken,
+            website_id: numericWebsiteId,
+            connection_name: 'WordPress.com',
+            cms_type: 'wordpress_com',
+            base_url: siteUrl.replace(/\/$/, ''),
+            api_token: accessToken, // TODO: encrypt in production
+            content_type: 'posts',
+            status: 'active'
+          });
+        if (insertError) {
+          console.error('[WPCOM CALLBACK] Failed to insert cms_connections:', insertError);
+          await supabase
+            .from('websites')
+            .update({ cms_status: 'error', last_status_check: new Date().toISOString() })
+            .eq('id', numericWebsiteId)
+            .eq('user_token', userToken);
+        } else {
+          // Update website cms_status connected
+          const { error: updateErr } = await supabase
+            .from('websites')
+            .update({ cms_status: 'connected', last_status_check: new Date().toISOString() })
+            .eq('id', numericWebsiteId)
+            .eq('user_token', userToken);
+          if (updateErr) {
+            console.error('[WPCOM CALLBACK] Failed to update website cms_status:', updateErr);
+          }
+        }
+      } else {
+        console.warn('[WPCOM CALLBACK] Could not resolve website ID to persist connection');
+      }
     }
 
     // Redirect back to website page if we have domain
@@ -116,4 +151,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${getBaseUrl()}/dashboard?wpcom_oauth=error&reason=exception`);
   }
 }
-
