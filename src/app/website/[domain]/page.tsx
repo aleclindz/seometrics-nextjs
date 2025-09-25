@@ -1258,7 +1258,7 @@ export default function WebsitePage() {
                     <div className="px-6 py-4 border-b border-gray-200">
                       <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                         <FileText className="w-5 h-5" />
-                        Content Management
+                        Article Briefs
                       </h3>
                     </div>
                     <div className="p-6">
@@ -1432,11 +1432,58 @@ export default function WebsitePage() {
                                     </div>
                                   </button>
 
-                                  {/* Keywords List */}
+                                  {/* Keywords List with actions */}
                                   {expanded && (
                                     <div className="px-6 pb-6 pt-0">
                                       <div className="border-t pt-4">
-                                        <h4 className="text-sm font-medium text-gray-700 mb-3">Keywords:</h4>
+                                        <div className="flex items-center justify-between mb-3">
+                                          <h4 className="text-sm font-medium text-gray-700">Keywords</h4>
+                                          <div className="flex items-center gap-2">
+                                            {/* Add keyword */}
+                                            <form
+                                              className="flex items-center gap-2"
+                                              onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const input = (e.currentTarget.elements.namedItem('kw') as HTMLInputElement);
+                                                const kw = input.value.trim();
+                                                if (!kw) return;
+                                                try {
+                                                  const payload = {
+                                                    userToken: user?.token,
+                                                    websiteToken: currentWebsite?.website_token,
+                                                    keywords: [{ keyword: kw, keyword_type: 'long_tail', topic_cluster: cluster.name }]
+                                                  };
+                                                  const resp = await fetch('/api/keyword-strategy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                                                  const data = await resp.json();
+                                                  if (resp.ok && data.success) {
+                                                    input.value = '';
+                                                    await fetchStrategyData();
+                                                  }
+                                                } catch (err) { console.error('Add keyword failed:', err); }
+                                              }}
+                                            >
+                                              <input name="kw" placeholder="Add keyword" className="border rounded px-2 py-1 text-sm" />
+                                              <button className="px-2 py-1 text-xs bg-blue-600 text-white rounded">Add</button>
+                                            </form>
+                                            {/* Delete cluster */}
+                                            <button
+                                              className="px-2 py-1 text-xs border border-red-300 text-red-700 rounded hover:bg-red-50"
+                                              onClick={async () => {
+                                                if (!confirm(`Delete the entire \"${cluster.name}\" cluster and its keywords?`)) return;
+                                                try {
+                                                  const params = new URLSearchParams({ userToken: user?.token || '', websiteToken: currentWebsite?.website_token || '', topicCluster: cluster.name });
+                                                  const resp = await fetch(`/api/keyword-strategy?${params.toString()}`, { method: 'DELETE' });
+                                                  const data = await resp.json();
+                                                  if (resp.ok && data.success) {
+                                                    await fetchStrategyData();
+                                                  }
+                                                } catch (err) { console.error('Delete cluster failed:', err); }
+                                              }}
+                                            >
+                                              Delete Cluster
+                                            </button>
+                                          </div>
+                                        </div>
                                         {(cluster.keywords || []).length === 0 ? (
                                           <div className="text-sm text-gray-500">No keywords in this cluster</div>
                                         ) : (
@@ -1444,10 +1491,27 @@ export default function WebsitePage() {
                                             {cluster.keywords.map((k: any, idx: number) => (
                                               <div
                                                 key={idx}
-                                                className="flex items-center gap-2 p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
+                                                className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
                                               >
-                                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
-                                                <span className="text-sm text-gray-700 truncate">{k.keyword || k}</span>
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
+                                                  <span className="text-sm text-gray-700 truncate">{k.keyword || k}</span>
+                                                </div>
+                                                <button
+                                                  className="text-xs text-red-600 hover:text-red-700 flex-shrink-0"
+                                                  onClick={async () => {
+                                                    try {
+                                                      const params = new URLSearchParams({ userToken: user?.token || '', websiteToken: currentWebsite?.website_token || '', keyword: (k.keyword || k) });
+                                                      const resp = await fetch(`/api/keyword-strategy?${params.toString()}`, { method: 'DELETE' });
+                                                      const data = await resp.json();
+                                                      if (resp.ok && data.success) {
+                                                        await fetchStrategyData();
+                                                      }
+                                                    } catch (err) { console.error('Delete keyword failed:', err); }
+                                                  }}
+                                                >
+                                                  Remove
+                                                </button>
                                               </div>
                                             ))}
                                           </div>

@@ -1,349 +1,238 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET: Retrieve article queue with filtering and pagination
+function mapStatus(status: string | null | undefined): 'draft' | 'pending' | 'generating' | 'completed' {
+  const s = (status || '').toLowerCase();
+  if (s === 'generated' || s === 'completed' || s === 'published') return 'completed';
+  if (s === 'generating' || s === 'in_progress') return 'generating';
+  if (s === 'pending' || s === 'queued') return 'pending';
+  return 'draft';
+}
+
+function inferFormatFromTitle(title: string): { type: string; template: string; wordCountRange: [number, number] } {
+  const t = String(title || '').toLowerCase();
+  const isHowTo = t.startsWith('how to') || t.includes('how to');
+  const isFaq = t.includes('faq') || t.includes('questions');
+  const isComparison = t.includes(' vs ') || t.includes('versus') || t.includes('comparison');
+  const isListicle = /(^|\s)(top|best|\d{1,2})\b/.test(t);
+  const type = isHowTo ? 'how_to' : isFaq ? 'faq' : isComparison ? 'comparison' : isListicle ? 'listicle' : 'blog';
+  const range: [number, number] = type === 'listicle' ? [900, 1400] : type === 'faq' ? [700, 1000] : [900, 1300];
+  return { type, template: 'default', wordCountRange: range };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userToken = searchParams.get('userToken');
     const websiteToken = searchParams.get('websiteToken');
-    const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const limit = Math.max(1, Math.min(parseInt(searchParams.get('limit') || '20', 10), 100));
 
-    if (!userToken) {
-      return NextResponse.json(
-        { success: false, error: 'User token is required' },
-        { status: 400 }
-      );
+    if (!userToken || !websiteToken) {
+      return NextResponse.json({ success: false, error: 'userToken and websiteToken are required' }, { status: 400 });
     }
 
-    let query = supabase
-      .from('content_generation_queue')
+    // Resolve website id + token from website token
+    const { data: site, error: siteErr } = await supabase
+      .from('websites')
+      .select('id, website_token')
+      .eq('website_token', websiteToken)
+      .eq('user_token', userToken)
+      .maybeSingle();
+
+    if (siteErr || !site?.id) {
+      return NextResponse.json({ success: true, queue: [] });
+    }
+
+    const { data: rows, error } = await supabase
+      .from('article_queue')
       .select('*')
-      .eq('user_token', userToken);
-
-    if (websiteToken) {
-      query = query.eq('website_token', websiteToken);
-    }
-
-    if (status) {
-      query = query.eq('status', status);
-    } else {
-      // Default: show draft and pending items
-      query = query.in('status', ['draft', 'pending', 'generating']);
-    }
-
-    const { data: queueItems, error } = await query
-      .order('scheduled_for', { ascending: true })
-      .range(offset, offset + limit - 1);
+      .eq('user_token', userToken)
+      .eq('website_id', site.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (error) {
-      throw error;
+      console.error('[ARTICLE QUEUE] Fetch error:', error);
+      return NextResponse.json({ success: false, error: 'Failed to fetch queue' }, { status: 500 });
     }
 
-    // Format for UI
-    const formattedQueue = (queueItems || []).map(formatQueueItem);
+    // Build cluster mapping for this website to derive topicCluster from target_keywords
+    let clusterMap: Record<string, Set<string>> = {};
+    try {
+      if (site?.website_token) {
+        const { data: kw } = await supabase
+          .from('website_keywords')
+          .select('keyword, topic_cluster')
+          .eq('website_token', site.website_token);
+        (kw || []).forEach((row: any) => {
+          const c = row.topic_cluster || 'uncategorized';
+          clusterMap[c] = clusterMap[c] || new Set<string>();
+          if (row.keyword) clusterMap[c].add(String(row.keyword).toLowerCase());
+        });
+      }
+    } catch {}
 
-    return NextResponse.json({
-      success: true,
-      queue: formattedQueue,
-      total: formattedQueue.length,
-      hasMore: formattedQueue.length === limit
+    const queue = (rows || []).map((r: any, idx: number) => {
+      const fmt = inferFormatFromTitle(r.title);
+      // Determine topicCluster: prefer stored column if exists, else overlap with target_keywords
+      let topicCluster: string | null = null;
+      if (typeof r.topic_cluster === 'string' && r.topic_cluster.length > 0) {
+        topicCluster = r.topic_cluster;
+      } else if (Array.isArray(r.target_keywords) && r.target_keywords.length > 0 && Object.keys(clusterMap).length > 0) {
+        const kwSet = new Set((r.target_keywords as string[]).map(s => String(s).toLowerCase()));
+        let best = { name: '', score: 0 };
+        for (const [name, set] of Object.entries(clusterMap)) {
+          let score = 0;
+          kwSet.forEach(k => { if (set.has(k)) score++; });
+          if (score > best.score) best = { name, score };
+        }
+        if (best.score > 0) topicCluster = best.name;
+      }
+      return {
+        id: r.id,
+        title: r.title,
+        scheduledFor: r.scheduled_for || r.created_at,
+        status: mapStatus(r.status),
+        wordCount: r.word_count || 0,
+        contentStyle: 'standard',
+        priority: idx + 1,
+        targetKeywords: Array.isArray(r.target_keywords) ? r.target_keywords : [],
+        articleFormat: fmt,
+        authorityLevel: 'foundation',
+        estimatedTrafficPotential: 0,
+        targetQueries: [],
+        topicCluster
+      };
     });
 
-  } catch (error) {
-    console.error('[ARTICLE QUEUE] Error retrieving queue:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to retrieve article queue' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, queue });
+  } catch (e) {
+    console.error('[ARTICLE QUEUE] Unexpected error:', e);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// PUT: Update article queue item
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id, updates, userToken, action } = body;
+    const { id, updates, userToken } = await request.json();
+    if (!id || !userToken) return NextResponse.json({ success: false, error: 'id and userToken are required' }, { status: 400 });
 
-    // Support adding new queue items directly from chat
-    if (action === 'add') {
-      const { websiteToken, item } = body as any;
-      if (!userToken || !websiteToken || !item) {
-        return NextResponse.json(
-          { success: false, error: 'userToken, websiteToken and item are required' },
-          { status: 400 }
-        );
-      }
+    const patch: any = {};
+    if (updates?.title) patch.title = updates.title;
+    if (updates?.scheduledFor) patch.scheduled_for = updates.scheduledFor;
+    if (updates?.status) patch.status = updates.status;
+    if (typeof updates?.wordCount === 'number') patch.word_count = updates.wordCount;
 
-      // Verify website ownership
-      const { data: website, error: websiteError } = await supabase
-        .from('websites')
-        .select('website_token')
-        .eq('user_token', userToken)
-        .eq('website_token', websiteToken)
-        .maybeSingle();
+    if (Object.keys(patch).length === 0) return NextResponse.json({ success: true });
 
-      if (websiteError || !website) {
-        return NextResponse.json(
-          { success: false, error: 'Website not found or access denied' },
-          { status: 404 }
-        );
-      }
-
-      // Map incoming item to DB row
-      const now = new Date();
-      const scheduledFor = item.scheduledFor ? new Date(item.scheduledFor) : new Date(now.getTime() + 24*60*60*1000);
-      const row: any = {
-        user_token: userToken,
-        website_token: websiteToken,
-        topic: item.topic || item.title,
-        scheduled_for: scheduledFor.toISOString(),
-        target_word_count: item.wordCount || item.recommendedLength || 1500,
-        content_style: item.contentStyle || 'professional',
-        status: item.status || 'draft',
-        priority: item.priority || 1,
-        estimated_traffic_potential: item.estimatedTrafficPotential || 0,
-        target_keywords: Array.isArray(item.targetKeywords) ? item.targetKeywords : [],
-        target_queries: Array.isArray(item.targetQueries) ? item.targetQueries : [],
-        content_brief: item.contentBrief || '',
-        article_format: item.articleFormat || null,
-        authority_level: item.authorityLevel || 'foundation'
-      };
-
-      const { data: inserted, error: insertError } = await supabase
-        .from('content_generation_queue')
-        .insert(row)
-        .select('*')
-        .single();
-
-      if (insertError) {
-        console.error('[ARTICLE QUEUE] Add error:', insertError);
-        return NextResponse.json(
-          { success: false, error: 'Failed to add to queue' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({ success: true, item: formatQueueItem(inserted) });
-    }
-
-    if (!id || !userToken) {
-      return NextResponse.json(
-        { success: false, error: 'ID and user token are required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify ownership
-    const { data: existingItem, error: fetchError } = await supabase
-      .from('content_generation_queue')
-      .select('*')
+    const { error } = await supabase
+      .from('article_queue')
+      .update({ ...patch, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('user_token', userToken)
-      .single();
+      .eq('user_token', userToken);
 
-    if (fetchError || !existingItem) {
-      return NextResponse.json(
-        { success: false, error: 'Article not found or access denied' },
-        { status: 404 }
-      );
+    if (error) {
+      console.error('[ARTICLE QUEUE] Update error:', error);
+      return NextResponse.json({ success: false, error: 'Update failed' }, { status: 500 });
     }
-
-    // Prepare updates
-    const allowedUpdates: any = {};
-    if (updates.topic) allowedUpdates.topic = updates.topic;
-    if (updates.scheduled_for) allowedUpdates.scheduled_for = updates.scheduled_for;
-    if (updates.target_word_count) allowedUpdates.target_word_count = updates.target_word_count;
-    if (updates.content_style) allowedUpdates.content_style = updates.content_style;
-    if (updates.status) allowedUpdates.status = updates.status;
-    if (typeof updates.priority !== 'undefined') allowedUpdates.priority = updates.priority;
-    if (typeof updates.estimated_traffic_potential !== 'undefined') allowedUpdates.estimated_traffic_potential = updates.estimated_traffic_potential;
-    if (updates.authority_level) allowedUpdates.authority_level = updates.authority_level;
-    if (updates.target_keywords) allowedUpdates.target_keywords = updates.target_keywords;
-    if (updates.target_queries) allowedUpdates.target_queries = updates.target_queries;
-    if (updates.article_format) allowedUpdates.article_format = updates.article_format;
-
-    allowedUpdates.updated_at = new Date().toISOString();
-
-    const { data: updatedItem, error: updateError } = await supabase
-      .from('content_generation_queue')
-      .update(allowedUpdates)
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    return NextResponse.json({
-      success: true,
-      item: formatQueueItem(updatedItem)
-    });
-
-  } catch (error) {
-    console.error('[ARTICLE QUEUE] Error updating item:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update article' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error('[ARTICLE QUEUE] PUT error:', e);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// DELETE: Remove article from queue
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const userToken = searchParams.get('userToken');
+    if (!id || !userToken) return NextResponse.json({ success: false, error: 'id and userToken are required' }, { status: 400 });
 
-    if (!id || !userToken) {
-      return NextResponse.json(
-        { success: false, error: 'ID and user token are required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify ownership before deletion
-    const { data: deletedItem, error } = await supabase
-      .from('content_generation_queue')
+    const { error } = await supabase
+      .from('article_queue')
       .delete()
-      .eq('id', parseInt(id))
-      .eq('user_token', userToken)
-      .select('*')
-      .single();
+      .eq('id', Number(id))
+      .eq('user_token', userToken);
 
     if (error) {
-      return NextResponse.json(
-        { success: false, error: 'Article not found or access denied' },
-        { status: 404 }
-      );
+      console.error('[ARTICLE QUEUE] Delete error:', error);
+      return NextResponse.json({ success: false, error: 'Delete failed' }, { status: 500 });
     }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Article removed from queue',
-      deletedItem: formatQueueItem(deletedItem)
-    });
-
-  } catch (error) {
-    console.error('[ARTICLE QUEUE] Error deleting item:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete article' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error('[ARTICLE QUEUE] DELETE error:', e);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST: Reorder queue items
 export async function POST(request: NextRequest) {
   try {
-    const { reorderedItems, userToken } = await request.json();
+    const { userToken, websiteToken, reorderedItems } = await request.json();
+    if (!userToken || !websiteToken) return NextResponse.json({ success: true, items: [] });
 
-    if (!reorderedItems || !Array.isArray(reorderedItems) || !userToken) {
-      return NextResponse.json(
-        { success: false, error: 'Reordered items array and user token are required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify all items belong to the user
-    const itemIds = reorderedItems.map((item: any) => item.id);
-    const { data: existingItems, error: fetchError } = await supabase
-      .from('content_generation_queue')
+    const { data: site } = await supabase
+      .from('websites')
       .select('id')
+      .eq('website_token', websiteToken)
       .eq('user_token', userToken)
-      .in('id', itemIds);
+      .maybeSingle();
+    if (!site?.id) return NextResponse.json({ success: true, items: [] });
 
-    if (fetchError || !existingItems || existingItems.length !== itemIds.length) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid items or access denied' },
-        { status: 403 }
-      );
+    // If reorderedItems provided, attempt to persist using sort_index column when available
+    if (Array.isArray(reorderedItems) && reorderedItems.length > 0) {
+      for (let i = 0; i < reorderedItems.length; i++) {
+        const item = reorderedItems[i];
+        try {
+          await supabase
+            .from('article_queue')
+            .update({ sort_index: i + 1, updated_at: new Date().toISOString() })
+            .eq('id', item.id)
+            .eq('user_token', userToken);
+        } catch (e) {
+          // If column doesn't exist, ignore silently
+        }
+      }
     }
 
-    // Update each item with new scheduled time
-    const now = new Date();
-    const updatePromises = reorderedItems.map((item: any, index: number) => {
-      const newScheduledTime = new Date(now.getTime() + index * 60 * 60 * 1000); // 1 hour apart
-
-      return supabase
-        .from('content_generation_queue')
-        .update({
-          scheduled_for: newScheduledTime.toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', item.id)
-        .eq('user_token', userToken);
-    });
-
-    const results = await Promise.all(updatePromises);
-
-    // Check for any errors
-    const errors = results.filter(result => result.error);
-    if (errors.length > 0) {
-      throw new Error(`Failed to update ${errors.length} items`);
-    }
-
-    // Fetch updated items
-    const { data: updatedItems, error: refetchError } = await supabase
-      .from('content_generation_queue')
+    const { data: rows } = await supabase
+      .from('article_queue')
       .select('*')
       .eq('user_token', userToken)
-      .in('id', itemIds)
-      .order('scheduled_for', { ascending: true });
+      .eq('website_id', site.id)
+      .order('created_at', { ascending: false });
 
-    if (refetchError) {
-      throw refetchError;
+    let items = (rows || []).map((r: any, idx: number) => ({
+      id: r.id,
+      title: r.title,
+      scheduledFor: r.scheduled_for || r.created_at,
+      status: mapStatus(r.status),
+      wordCount: r.word_count || 0,
+      contentStyle: 'standard',
+      priority: typeof r.sort_index === 'number' ? r.sort_index : (idx + 1),
+      targetKeywords: Array.isArray(r.target_keywords) ? r.target_keywords : [],
+      articleFormat: inferFormatFromTitle(r.title),
+      authorityLevel: 'foundation',
+      estimatedTrafficPotential: 0,
+      targetQueries: [],
+      topicCluster: null
+    }));
+
+    // If sort_index present, sort by it
+    if (items.some((it: any) => typeof it.priority === 'number')) {
+      items = items.sort((a: any, b: any) => a.priority - b.priority);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Queue reordered successfully',
-      items: (updatedItems || []).map(formatQueueItem)
-    });
-
-  } catch (error) {
-    console.error('[ARTICLE QUEUE] Error reordering queue:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to reorder queue' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, items });
+  } catch (e) {
+    console.error('[ARTICLE QUEUE] POST (reorder) error:', e);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
-}
-
-// Helper function to format queue items for UI
-function formatQueueItem(item: any) {
-  const parseIfString = (v: any) => {
-    if (typeof v === 'string') {
-      try { return JSON.parse(v); } catch { return v; }
-    }
-    return v;
-  };
-
-  return {
-    id: item.id,
-    title: item.topic,
-    scheduledFor: item.scheduled_for,
-    status: item.status,
-    wordCount: item.target_word_count,
-    contentStyle: item.content_style,
-    createdAt: item.created_at,
-    updatedAt: item.updated_at,
-    websiteToken: item.website_token,
-    priority: item.priority,
-    authorityLevel: item.authority_level || 'foundation',
-    estimatedTrafficPotential: item.estimated_traffic_potential || 0,
-    targetKeywords: parseIfString(item.target_keywords) || [],
-    targetQueries: parseIfString(item.target_queries) || [],
-    articleFormat: parseIfString(item.article_format) || {},
-    topicCluster: item.topic_cluster || null
-  };
 }

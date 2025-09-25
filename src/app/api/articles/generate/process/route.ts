@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
 
     // Compute effective target keywords from cluster if missing
     let effectiveKeywords: string[] = Array.isArray(article.target_keywords) ? article.target_keywords : [];
+    let matchedClusterName: string | null = null;
     if (!effectiveKeywords || effectiveKeywords.length === 0) {
       try {
         const websiteToken = (article as any)?.websites?.website_token;
@@ -118,7 +119,10 @@ export async function POST(request: NextRequest) {
             }
             if (match) {
               effectiveKeywords = Array.from(new Set(match.keywords.map((s: string) => s.toLowerCase()))).slice(0, 6);
+              matchedClusterName = match.name;
               await supabase.from('article_queue').update({ target_keywords: effectiveKeywords }).eq('id', articleId);
+              // Try to persist topic cluster if column exists (ignore errors if not)
+              try { await supabase.from('article_queue').update({ topic_cluster: matchedClusterName }).eq('id', articleId); } catch {}
             }
           }
         }
