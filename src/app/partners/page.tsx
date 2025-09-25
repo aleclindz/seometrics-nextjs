@@ -73,7 +73,7 @@ export default function PartnersPage() {
             <div>
               <h3 className="font-semibold">Use relevant anchor text</h3>
               <p>
-                Aim to use the any of the keywords from your partner's website in the anchor text. This will help them
+                Aim to use the any of the keywords from your partner&apos;s website in the anchor text. This will help them
                 rank for those keywords.
               </p>
             </div>
@@ -88,7 +88,7 @@ export default function PartnersPage() {
             <div>
               <h3 className="font-semibold">Content should be valuable and unique</h3>
               <p>
-                Don't create filler posts just to host links. Each piece should offer real value to your readers (guides,
+                Don&apos;t create filler posts just to host links. Each piece should offer real value to your readers (guides,
                 insights, comparisons, etc.).
               </p>
             </div>
@@ -96,8 +96,8 @@ export default function PartnersPage() {
             <div>
               <h3 className="font-semibold">Reciprocal links should be natural</h3>
               <p>
-                It's okay to link back — just make sure the content and link placement are different. Don't mirror each
-                other's format or structure.
+                It&apos;s okay to link back — just make sure the content and link placement are different. Don&apos;t mirror each
+                other&apos;s format or structure.
               </p>
             </div>
 
