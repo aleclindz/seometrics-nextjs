@@ -820,9 +820,10 @@ async function processOpenAIResponse(
     if (functionCall.name === 'KEYWORDS_brainstorm' || functionCall.name === 'brainstorm_keywords' || functionCall.name === 'KEYWORDS_brainstorm_auto') {
       // Build a Keyword Save action card with cluster summary
       try {
+        const toolRes: any = functionCall.result as any;
         const ideas = (
-          functionCall.result?.data?.generated_keywords ||
-          functionCall.result?.generated_keywords ||
+          toolRes?.data?.generated_keywords ||
+          toolRes?.generated_keywords ||
           []
         ) as any[];
         const clusters: Record<string, number> = {};
