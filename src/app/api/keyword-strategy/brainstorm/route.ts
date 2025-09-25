@@ -23,60 +23,74 @@ function heuristicGenerateKeywords(opts: {
   topicFocus: string;
   generateCount: number;
 }) {
-  const intents = ['informational','commercial','transactional'] as const;
-  const clusters = [
-    'translation benefits',
-    'cost and ROI',
-    'workflows and tools',
-    'use cases',
-    'localization strategy'
-  ];
-  const seeds = (opts.baseKeywords && opts.baseKeywords.length > 0)
-    ? opts.baseKeywords
-    : (opts.topicFocus ? [opts.topicFocus] : ['translation benefits']);
+  const intents = ['informational', 'commercial', 'transactional'] as const;
 
-  // Provide paraphrases to avoid awkward repetitions for common clusters
-  const paraphrases: Record<string, string[]> = {
-    'translation benefits': [
-      'benefits of translating videos',
-      'advantages of translated content',
-      'grow reach with video translation',
-      'audience growth via translation',
-      'translation impact on channel growth'
-    ]
-  };
-  const out: any[] = [];
-  const templates = [
-    'benefits of {seed} for youtube',
-    'how to increase reach with {seed}',
-    'best tools to support {seed}',
-    '{seed} for youtube shorts',
-    'case studies: {seed}',
-    'roi of {seed}',
-    '{seed} vs subtitles',
-    'does {seed} improve watch time',
-    'localize your channel: {seed}',
-    'pricing guide: {seed}'
+  // Infer context from domain/keywords
+  const d = (opts.domain || '').toLowerCase();
+  const seedsFromInput = (opts.baseKeywords || []).map(s => s.toLowerCase());
+  const isProduce = /produce|fruit|vegetable|grocer|lemon|grape/.test(d) || seedsFromInput.some(s => /produce|fruit|lemon|grape/.test(s));
+  const isImports = /import|export|distributor|wholesale|bulk/.test(d) || seedsFromInput.some(s => /import|export|wholesale|bulk|supplier/.test(s));
+  const isFlorida = /florida|miami|tampa|orlando|south florida|ft lauderdale|fort lauderdale|everglades/.test(d) || seedsFromInput.some(s => /florida|miami|south florida|everglades/.test(s));
+
+  const regional = isFlorida ? ['south florida', 'miami', 'port everglades', 'florida'] : [];
+  const industrySeeds = [
+    ...(isProduce ? ['wholesale produce', 'wholesale fruit', 'lemons', 'grapes'] : []),
+    ...(isImports ? ['bulk imports', 'importer', 'distributor', 'supplier'] : []),
   ];
+
+  const defaultSeeds = industrySeeds.length > 0 ? industrySeeds : (opts.topicFocus ? [opts.topicFocus] : ['wholesale', 'supplier', 'importer']);
+  const seeds = Array.from(new Set([...defaultSeeds, ...seedsFromInput]));
+
+  // Generic B2B templates
+  const templates = [
+    'wholesale {seed} supplier {region}',
+    'bulk {seed} importer {region}',
+    '{seed} pallets pricing {region}',
+    '{seed} distributor for restaurants {region}',
+    'fsma compliant {seed} imports {region}',
+    'usda cleared {seed} shipments {region}',
+    '{seed} container logistics {region}',
+    'buy {seed} wholesale {region}',
+    'best {seed} supplier near me {region}',
+    '{seed} seasonal availability {region}'
+  ];
+
+  const clustersByTheme: Record<string, string> = {
+    supplier: 'Suppliers & Procurement',
+    importer: 'Logistics & Compliance',
+    pallets: 'Packaging & Volumes',
+    distributor: 'Foodservice & Retail',
+    fsma: 'Regulatory & Safety',
+    usda: 'Regulatory & Safety',
+    container: 'Logistics & Compliance',
+    pricing: 'Pricing & Terms',
+    availability: 'Seasonality & Sourcing',
+  };
+
+  const out: any[] = [];
   let i = 0;
-  while (out.length < Math.max(5, Math.min(opts.generateCount, 30)) && i < 200) {
-    i++;
-    let seed = seeds[Math.floor(Math.random()*seeds.length)] || 'translation benefits';
-    // Paraphrase the seed if we have known variants
-    const variants = paraphrases[seed.toLowerCase()];
-    if (variants && Math.random() < 0.8) {
-      seed = variants[Math.floor(Math.random()*variants.length)];
-    }
-    const t = templates[Math.floor(Math.random()*templates.length)];
-    let kw = t.replace('{seed}', seed);
-    kw = kw.replace(/\s+/g, ' ').trim();
+  const target = Math.max(5, Math.min(opts.generateCount || 15, 30));
+  while (out.length < target && i++ < 200) {
+    const seed = seeds[Math.floor(Math.random() * seeds.length)] || 'wholesale';
+    const tmpl = templates[Math.floor(Math.random() * templates.length)];
+    const region = regional.length ? regional[Math.floor(Math.random() * regional.length)] : '';
+    const kw = tmpl.replace('{seed}', seed).replace('{region}', region).replace(/\s+/g, ' ').trim();
+
     if (out.some(k => k.keyword.toLowerCase() === kw.toLowerCase())) continue;
+
+    // Pick a cluster based on keywords present
+    const lower = kw.toLowerCase();
+    let cluster = 'B2B Sourcing';
+    for (const [key, val] of Object.entries(clustersByTheme)) {
+      if (lower.includes(key)) { cluster = val; break; }
+    }
+
     out.push({
       keyword: kw,
       search_intent: intents[out.length % intents.length],
       keyword_type: 'long_tail',
-      suggested_topic_cluster: opts.topicFocus || 'translation benefits',
-      rationale: `Relevant to ${opts.domain} audience seeking ${seed} outcomes`
+      suggested_topic_cluster: opts.topicFocus || cluster,
+      rationale: `Relevant to ${opts.domain}${region ? ' in ' + region : ''}`
     });
   }
   return out;
@@ -154,6 +168,13 @@ export async function POST(request: NextRequest) {
     const existingKeywordsList = existingKeywords.length > 0 ? existingKeywords.join(', ') : '';
 
     const clusterConstraint = topicFocus ? `\n- All results must belong to the topic cluster: "${topicFocus}" (use this exact value for suggested_topic_cluster)\n- Avoid repeating the seed phrase verbatim; use natural paraphrases and related language` : '';
+    const industryHint = (() => {
+      const d = (websiteDomain || '').toLowerCase();
+      if (/produce|fruit|vegetable|lemon|grape|import|wholesale|distributor/.test(d)) {
+        return `\nContext: B2B wholesale/import for produce (e.g., fruit like lemons and grapes) in South Florida. Prefer commercial long-tail phrases with procurement/logistics language.`;
+      }
+      return '';
+    })();
 
     const prompt = `Generate ${generateCount} long-tail keyword variations for SEO content strategy.
 
@@ -161,6 +182,7 @@ Website: ${websiteDomain}
 ${baseKeywordsList ? `Base keywords: ${baseKeywordsList}` : ''}
 ${topicFocus ? `Topic focus: ${topicFocus}` : ''}
 ${existingKeywordsList ? `Existing keywords to AVOID duplicating: ${existingKeywordsList}` : ''}
+${industryHint}
 
 Requirements:
 - Generate long-tail keywords (3-6 words each)

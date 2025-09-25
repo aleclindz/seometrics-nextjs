@@ -958,7 +958,13 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
       const cluster = k.suggested_topic_cluster ? ` (cluster: ${k.suggested_topic_cluster})` : '';
       return `- ${kw}${intent}${cluster}`;
     }).join('\n');
-    return `✨ Generated ${count} keyword ideas:\n\n${bullets}\n\nUse "View details" to select and save keywords.`;
+    return [
+      `✨ Generated ${count} keyword ideas:`,
+      '',
+      bullets,
+      '',
+      'Reply with: "save keywords" (optionally add "to <cluster name>") and I\'ll store them in your Strategy. You can also specify a number, e.g., "save top 10".'
+    ].join('\n');
   }
   if (first.name === 'KEYWORDS_brainstorm_auto') {
     const ideas = res?.data?.generated_keywords || res?.generated_keywords || [];
@@ -968,7 +974,13 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
     const seedNote = seeds.length ? ` (seeds from ${source}: ${seeds.slice(0,3).join(', ')}${seeds.length>3?'…':''})` : '';
     const top = ideas.slice(0, Math.min(10, ideas.length));
     const bullets = top.map((k: any) => `- ${k.keyword || k}`).join('\n');
-    return `✨ Generated ${count} keyword ideas${seedNote}:\n\n${bullets}\n\nUse the Strategy tab to save selected keywords.`;
+    return [
+      `✨ Generated ${count} keyword ideas${seedNote}:`,
+      '',
+      bullets,
+      '',
+      'Reply with: "save keywords" (optionally add "to <cluster name>") and I\'ll store them in your Strategy.'
+    ].join('\n');
   }
 
   if (first.name === 'SEO_crawl_website') {
