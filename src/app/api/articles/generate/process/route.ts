@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
         *,
         websites:website_id (
           id,
-          domain
+          domain,
+          website_token
         )
       `)
       .eq('id', articleId)
@@ -74,13 +75,71 @@ export async function POST(request: NextRequest) {
     });
 
     const generator = new EnhancedArticleGenerator();
+
+    // Compute effective target keywords from cluster if missing
+    let effectiveKeywords: string[] = Array.isArray(article.target_keywords) ? article.target_keywords : [];
+    if (!effectiveKeywords || effectiveKeywords.length === 0) {
+      try {
+        const websiteToken = (article as any)?.websites?.website_token;
+        if (websiteToken) {
+          const norm = (s: string) => String(s || '')
+            .toLowerCase()
+            .replace(/&/g, 'and')
+            .replace(/[^a-z0-9\s]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const titleNorm = norm(article.title);
+          const { data: kw } = await supabase
+            .from('website_keywords')
+            .select('keyword, topic_cluster')
+            .eq('website_token', websiteToken);
+          if (kw && kw.length > 0) {
+            const clusters: Record<string, { name: string; keywords: string[] }> = {};
+            for (const row of kw) {
+              const cName = row.topic_cluster || 'uncategorized';
+              const cNorm = norm(cName);
+              clusters[cNorm] = clusters[cNorm] || { name: cName, keywords: [] };
+              if (row.keyword) clusters[cNorm].keywords.push(row.keyword);
+            }
+            let match = clusters[titleNorm];
+            if (!match) {
+              const candidates = Object.keys(clusters).filter(c => titleNorm.includes(c) || c.includes(titleNorm));
+              if (candidates.length > 0) match = clusters[candidates[0]];
+            }
+            if (!match) {
+              const words = new Set(titleNorm.split(' ').filter(w => w.length > 3));
+              let best = { key: '', score: 0 };
+              for (const [key] of Object.entries(clusters)) {
+                const kWords = key.split(' ');
+                const score = kWords.reduce((acc, w) => acc + (words.has(w) ? 1 : 0), 0);
+                if (score > best.score) best = { key, score };
+              }
+              if (best.score > 0) match = clusters[best.key];
+            }
+            if (match) {
+              effectiveKeywords = Array.from(new Set(match.keywords.map((s: string) => s.toLowerCase()))).slice(0, 6);
+              await supabase.from('article_queue').update({ target_keywords: effectiveKeywords }).eq('id', articleId);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // Heuristic article type from title
+    const titleLc = String(article.title || '').toLowerCase();
+    const heuristicType = titleLc.startsWith('how to') || titleLc.includes('how to') ? 'how_to'
+      : (titleLc.includes('faq') || titleLc.includes('questions')) ? 'faq'
+      : (titleLc.includes(' vs ') || titleLc.includes('versus') || titleLc.includes('comparison')) ? 'comparison'
+      : (/(^|\s)(top|best|\d{1,2})\b/.test(titleLc)) ? 'listicle'
+      : 'blog';
+
     const req: EnhancedArticleRequest = {
       title: article.title,
-      keywords: article.target_keywords || [],
-      websiteDomain: article.websites?.domain,
+      keywords: effectiveKeywords || [],
+      websiteDomain: (article as any)?.websites?.domain,
       contentLength: 'medium',
       tone: 'professional',
-      articleType: 'blog',
+      articleType: heuristicType as any,
       includeCitations: false,
       referenceStyle: 'link',
       includeImages: false,

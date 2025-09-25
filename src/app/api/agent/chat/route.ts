@@ -849,16 +849,26 @@ async function processOpenAIResponse(
         actionCard = null;
       }
     } else if (functionCall.name === 'KEYWORDS_get_strategy') {
-      // Show a simple informational card without a View Details link; the narrative covers details
-      actionCard = {
-        type: 'technical-fix',
-        data: {
-          title: getFunctionDisplayName(functionCall.name),
-          description: getDescriptionForFunction(functionCall.name),
-          status: 'completed',
-          affectedPages: 1
-        }
-      };
+      // Build a Generate From Cluster action card to create briefs directly from clusters
+      try {
+        const strategy = (functionCall.result as any)?.data?.strategy || (functionCall.result as any)?.strategy || {};
+        const clusters = Array.isArray(strategy.topic_clusters) ? strategy.topic_clusters : [];
+        const simplified = clusters.map((c: any) => ({
+          name: c.name,
+          keywordCount: (c.keywords?.length || 0),
+          contentCount: (c.content?.length || 0)
+        })).sort((a: any, b: any) => b.keywordCount - a.keywordCount);
+        actionCard = {
+          type: 'generate-from-cluster',
+          data: {
+            title: 'Generate From Cluster',
+            description: 'Pick a topic cluster to instantly add an article brief to your queue.',
+            clusters: simplified.slice(0, 12) // show top 12 clusters
+          }
+        };
+      } catch {
+        actionCard = null;
+      }
     } else if (functionCall.result && typeof functionCall.result === 'object' && 'success' in functionCall.result && functionCall.result.success) {
       // Let tools provide their own action cards when available
       const toolData = functionCall.result as any;

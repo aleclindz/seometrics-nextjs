@@ -202,20 +202,22 @@ export class ContentAbility extends BaseAbility {
       }
 
       // Return immediately with progress info
+      // Return a brief-style action card instead of progress spinner
+      const normalizedSite = (args.site_url || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+      const contentUrl = normalizedSite ? `/website/${encodeURIComponent(normalizedSite)}?tab=content` : '/dashboard';
       return this.success({
-        message: 'Article generation started. I will notify you when the draft is ready.',
+        message: 'Article brief added to queue.',
         articleId,
         actionCard: {
-          type: 'progress',
+          type: 'technical-fix',
           data: {
-            title: 'Article Generation Started',
-            description: 'Creating a draft without images to ensure fast delivery. Images can be added later.',
-            progress: 10,
-            status: 'running',
-            estimatedTime: '~1 minute',
-            currentStep: 'Generating draft content',
-            totalSteps: 2,
-            currentStepIndex: 1
+            title: 'Article Brief Added',
+            description: 'A new article brief was added to your Content queue. Open the Content tab to review and publish.',
+            status: 'completed',
+            affectedPages: 1,
+            links: [
+              { label: 'Open Content Queue', url: contentUrl }
+            ]
           }
         }
       });

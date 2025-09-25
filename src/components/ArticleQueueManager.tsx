@@ -224,10 +224,8 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex justify-between items-center">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Upcoming Articles</h3>
-            <p className="text-sm text-gray-500">
-              {queue.length} articles scheduled • Next: {queue[0] ? new Date(queue[0].scheduledFor).toLocaleDateString() : 'None'}
-            </p>
+            <h3 className="text-lg font-semibold text-gray-900">Article Briefs Queue</h3>
+            <p className="text-sm text-gray-500">{queue.length} brief{queue.length === 1 ? '' : 's'} in queue</p>
           </div>
 
           {/* Removed auto-idea generation buttons per request */}
@@ -239,9 +237,9 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
         {queue.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <Sparkles className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No articles scheduled</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No article briefs yet</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Generate your first batch of AI-powered article ideas based on your GSC data and keyword strategy.
+              Add your first article briefs based on clusters and strategy.
             </p>
             <div className="mt-6">
               <button
@@ -250,7 +248,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Generate 10 Ideas for This Week
+                Add 10 Article Briefs for This Week
               </button>
             </div>
           </div>

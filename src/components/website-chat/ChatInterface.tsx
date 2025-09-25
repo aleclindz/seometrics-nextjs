@@ -469,6 +469,37 @@ What would you like to work on first?`,
           </div>
         );
       }
+      case 'generate-from-cluster': {
+        const clusters = actionCard.data?.clusters || [];
+        return (
+          <div className="border rounded-lg p-4 bg-white shadow-sm">
+            <div className="mb-2 font-semibold text-gray-900">{actionCard.data?.title || 'Generate From Cluster'}</div>
+            <p className="text-sm text-gray-600 mb-3">{actionCard.data?.description || 'Select a cluster to create an article brief.'}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {clusters.map((c: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between border rounded px-2 py-1 text-sm">
+                  <div className="truncate">
+                    <div className="font-medium text-gray-900 truncate">{c.name || 'Uncategorized'}</div>
+                    <div className="text-xs text-gray-500">{c.keywordCount} keywords{c.contentCount ? ` • ${c.contentCount} articles` : ''}</div>
+                  </div>
+                  <button
+                    className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => {
+                      const clusterName = c.name || 'Uncategorized';
+                      const cmd = `Generate an article brief titled "${clusterName}" for ${selectedSite}.`;
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('seoagent:send-message', { detail: { message: cmd, autoSend: true } }));
+                      }
+                    }}
+                  >
+                    Generate Brief
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
       default:
         return null;
     }
