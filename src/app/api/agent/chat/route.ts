@@ -817,9 +817,36 @@ async function processOpenAIResponse(
     };
     
     // Generate action card based on the actual function
-    if (functionCall.name === 'KEYWORDS_brainstorm' || functionCall.name === 'brainstorm_keywords') {
-      // Don’t create a generic action card with a broken "View Details" link for brainstorming
-      actionCard = null;
+    if (functionCall.name === 'KEYWORDS_brainstorm' || functionCall.name === 'brainstorm_keywords' || functionCall.name === 'KEYWORDS_brainstorm_auto') {
+      // Build a Keyword Save action card with cluster summary
+      try {
+        const ideas = (
+          functionCall.result?.data?.generated_keywords ||
+          functionCall.result?.generated_keywords ||
+          []
+        ) as any[];
+        const clusters: Record<string, number> = {};
+        ideas.forEach((k: any) => {
+          const c = (k?.suggested_topic_cluster || 'uncategorized') as string;
+          clusters[c] = (clusters[c] || 0) + 1;
+        });
+        const clusterList = Object.entries(clusters)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count);
+
+        actionCard = {
+          type: 'keyword-save',
+          data: {
+            title: 'Save Keywords to Strategy',
+            description: 'Review and save brainstormed keywords grouped by suggested topic clusters.',
+            total: ideas.length,
+            clusters: clusterList,
+            ideas
+          }
+        };
+      } catch {
+        actionCard = null;
+      }
     } else if (functionCall.name === 'KEYWORDS_get_strategy') {
       // Show a simple informational card without a View Details link; the narrative covers details
       actionCard = {

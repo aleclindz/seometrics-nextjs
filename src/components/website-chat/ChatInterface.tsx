@@ -414,6 +414,61 @@ What would you like to work on first?`,
             onCancel={actionCard.data.onCancel}
           />
         );
+      case 'keyword-save': {
+        const clusters = actionCard.data?.clusters || [];
+        const total = actionCard.data?.total || 0;
+        return (
+          <div className="border rounded-lg p-4 bg-white shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold text-gray-900">{actionCard.data?.title || 'Save Keywords to Strategy'}</div>
+              <span className="text-xs text-gray-500">{total} keywords</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">{actionCard.data?.description || 'Review and save brainstormed keywords grouped by clusters.'}</p>
+            <div className="text-sm text-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+              {clusters.map((c: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between border rounded px-2 py-1">
+                  <span className="truncate">{c.name}</span>
+                  <span className="text-gray-500">{c.count}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+                onClick={() => openBrainstormModal(actionCard.data?.ideas || [])}
+              >
+                Review &amp; Save
+              </button>
+              <button
+                className="px-3 py-2 text-sm rounded border hover:bg-gray-50"
+                onClick={async () => {
+                  const ideas = (actionCard.data?.ideas || []) as any[];
+                  if (!ideas.length) return;
+                  try {
+                    const payload = ideas.map(k => ({
+                      keyword: k.keyword,
+                      keyword_type: 'long_tail',
+                      topic_cluster: k.suggested_topic_cluster || null
+                    }));
+                    const resp = await fetch('/api/keyword-strategy', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userToken, domain: selectedSite, keywords: payload })
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok || !data.success) throw new Error(data.error || 'Failed to save keywords');
+                    window.dispatchEvent(new CustomEvent('seoagent:strategy-updated', { detail: { site: selectedSite } }));
+                  } catch (e) {
+                    console.error('Bulk save failed:', e);
+                  }
+                }}
+              >
+                Save All
+              </button>
+            </div>
+          </div>
+        );
+      }
       default:
         return null;
     }
@@ -668,25 +723,39 @@ What would you like to work on first?`,
                   {brainstormIdeas.length === 0 ? (
                     <div className="text-sm text-gray-500">No ideas to display.</div>
                   ) : (
-                    <div className="space-y-2">
-                      {brainstormIdeas.map((idea: any, idx: number) => (
-                        <label key={idx} className="flex items-start gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            className="mt-1"
-                            checked={!!selectedIdeas[idx]}
-                            onChange={(e) => setSelectedIdeas(prev => ({ ...prev, [idx]: e.target.checked }))}
-                          />
-                          <div>
-                            <div className="font-medium text-gray-900">{idea.keyword}</div>
-                            <div className="text-xs text-gray-600">
-                              {(idea.search_intent || 'unknown')} {idea.suggested_topic_cluster ? `• cluster: ${idea.suggested_topic_cluster}` : ''}
-                            </div>
-                            {idea.rationale && (
-                              <div className="text-xs text-gray-500 mt-1">{idea.rationale}</div>
-                            )}
+                    <div className="space-y-4">
+                      {Object.entries(
+                        brainstormIdeas.reduce((acc: any, idea: any, idx: number) => {
+                          const cluster = idea.suggested_topic_cluster || 'uncategorized';
+                          acc[cluster] = acc[cluster] || [];
+                          acc[cluster].push({ idea, idx });
+                          return acc;
+                        }, {})
+                      ).map(([clusterName, items]: any, groupIdx: number) => (
+                        <div key={groupIdx}>
+                          <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">{clusterName}</div>
+                          <div className="space-y-2">
+                            {items.map(({ idea, idx }: any) => (
+                              <label key={idx} className="flex items-start gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="mt-1"
+                                  checked={!!selectedIdeas[idx]}
+                                  onChange={(e) => setSelectedIdeas(prev => ({ ...prev, [idx]: e.target.checked }))}
+                                />
+                                <div>
+                                  <div className="font-medium text-gray-900">{idea.keyword}</div>
+                                  <div className="text-xs text-gray-600">
+                                    {(idea.search_intent || 'unknown')}
+                                  </div>
+                                  {idea.rationale && (
+                                    <div className="text-xs text-gray-500 mt-1">{idea.rationale}</div>
+                                  )}
+                                </div>
+                              </label>
+                            ))}
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   )}
