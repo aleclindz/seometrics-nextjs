@@ -19,40 +19,60 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Normalize URL (add https if missing)
+    const normUrl = site_url.startsWith('http://') || site_url.startsWith('https://')
+      ? site_url
+      : `https://${site_url}`;
+
     console.log('[WEBSITE ANALYZE] Starting analysis for:', site_url);
 
     // Step 1: Scrape the homepage and key pages
-    const pages = [];
-    const urlsToScrape = [
-      site_url,
-      `${site_url}/about`,
-      `${site_url}/services`,
-      `${site_url}/products`,
-      `${site_url}/pricing`
-    ].slice(0, max_pages);
+    const pages: Array<{ url: string; content: string; title: string }> = [];
+    const candidates = [
+      normUrl,
+      `${normUrl.replace(/\/$/, '')}/about`,
+      `${normUrl.replace(/\/$/, '')}/services`
+    ].slice(0, Math.max(1, Math.min(max_pages, 3)));
 
-    for (const url of urlsToScrape) {
+    // Scrape in parallel with aggressive per-request timeout
+    const results = await Promise.allSettled(candidates.map(async (url) => {
       try {
         console.log('[WEBSITE ANALYZE] Scraping:', url);
-        const page = await scrapeUrl(url);
-        if (page.markdown && page.markdown.length > 100) {
-          pages.push({
+        const page = await scrapeUrl(url, { timeoutMs: 2500 });
+        const md = page.markdown || '';
+        if (md && md.length > 120) {
+          return {
             url: page.url,
-            content: page.markdown.substring(0, 2000), // Tighter limit for speed
+            content: md.substring(0, 1800),
             title: page.metadata?.title || 'Unknown'
-          });
+          };
         }
-      } catch (error) {
-        console.log('[WEBSITE ANALYZE] Failed to scrape:', url, error);
-        // Continue with other pages
+      } catch (e) {
+        console.log('[WEBSITE ANALYZE] Failed to scrape:', url);
       }
-    }
+      return null;
+    }));
+
+    results.forEach(r => { if (r.status === 'fulfilled' && r.value) pages.push(r.value); });
 
     if (pages.length === 0) {
+      // Return a minimal analysis payload indicating blank site
       return NextResponse.json({
-        success: false,
-        error: 'Could not scrape any content from the website'
-      }, { status: 400 });
+        success: true,
+        data: {
+          site_url: normUrl,
+          pages_analyzed: 0,
+          analysis: {
+            business_model: 'No content detected (site may be blank or not live)',
+            target_audience: [],
+            services_products: [],
+            industry: 'Unknown',
+            website_type: 'Unknown',
+            blank_site: true
+          },
+          scraped_pages: []
+        }
+      });
     }
 
     // Step 2: Analyze content with OpenAI
@@ -84,7 +104,7 @@ Please provide a structured analysis in this JSON format. Return ONLY raw JSON w
 Focus on extracting concrete, actionable information for SEO strategy development.`;
 
     try {
-      console.log('[WEBSITE ANALYZE][LLM] model=gpt-4o', { userPreview: analysisPrompt.slice(0, 300) });
+      console.log('[WEBSITE ANALYZE][LLM] model=gpt-4o-mini', { userPreview: analysisPrompt.slice(0, 300) });
     } catch {}
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',

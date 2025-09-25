@@ -130,62 +130,61 @@ export class IntelligentAgentAbility extends BaseAbility {
 
       let analysis = business_analysis;
 
-      // Fallback: if no business_analysis provided, try to infer it
-      if (!analysis) {
-        // If we have a site_url, try a quick website analysis to construct business_analysis
-        if (site_url) {
-          try {
-            const quickAnalyze = await this.fetchAPI('/api/agent/website-analyze', {
-              method: 'POST',
-              body: JSON.stringify({ site_url, max_pages: 3 })
-            });
-            if (quickAnalyze?.success && quickAnalyze?.data?.analysis) {
-              analysis = quickAnalyze.data.analysis;
-            }
-          } catch (e) {
-            // Non-fatal, fall back to simple brainstorm
-            console.log('[KEYWORDS STRATEGY] Quick analysis failed; falling back to seed-based brainstorm');
-          }
-        }
-
-        // If still no analysis, fall back to simple brainstorm using seeds
-        if (!analysis) {
-          const payload: any = {
-            userToken: this.userToken,
-            ...(site_url ? { domain: this.cleanDomain(site_url) } : {}),
-            baseKeywords: Array.isArray(target_keywords) && target_keywords.length > 0 ? target_keywords : [],
-            topicFocus: Array.isArray(focus_areas) && focus_areas.length > 0 ? focus_areas[0] : '',
-            generateCount: keyword_count || 25,
-            avoidDuplicates: true
-          };
-
-          const response = await this.fetchAPI('/api/keyword-strategy/brainstorm', {
+      // If no business_analysis provided, attempt a very fast website analysis (1 page, early exit on blank)
+      if (!analysis && site_url) {
+        try {
+          const quickAnalyze = await this.fetchAPI('/api/agent/website-analyze', {
             method: 'POST',
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ site_url, max_pages: 1 })
           });
-
-          if (!response?.success) {
-            return this.error(response?.error || 'Failed to brainstorm keywords');
+          if (quickAnalyze?.success && quickAnalyze?.data?.analysis) {
+            const a = quickAnalyze.data.analysis;
+            if (!a.blank_site) {
+              analysis = a;
+            }
           }
-
-          return this.success({
-            keyword_strategy: {
-              primary_keywords: response.generated_keywords.filter((k: any) => k.search_intent !== 'informational').slice(0, 10),
-              long_tail_keywords: response.generated_keywords.filter((k: any) => k.search_intent === 'informational').slice(0, 25),
-              secondary_keywords: response.generated_keywords.slice(0, 10),
-              content_keywords: response.generated_keywords.slice(0, 15),
-              strategy_summary: {
-                total_keywords: response.total_generated,
-                distribution: response.distribution || {
-                  primary: 10, long_tail: 25, secondary: 10, content: 15
-                },
-                focus_approach: 'Seed-based brainstorm without full business analysis',
-                quick_wins: (response.generated_keywords || []).slice(0, 3).map((k: any) => k.keyword)
-              }
-            },
-            generated_at: new Date().toISOString()
-          });
+        } catch (e) {
+          // Non-fatal; fall back to seed-based
         }
+      }
+
+      // If still no analysis, do seed-based brainstorm (fast path)
+      if (!analysis) {
+        const payload: any = {
+          userToken: this.userToken,
+          ...(site_url ? { domain: this.cleanDomain(site_url) } : {}),
+          baseKeywords: Array.isArray(target_keywords) && target_keywords.length > 0 ? target_keywords : [],
+          topicFocus: Array.isArray(focus_areas) && focus_areas.length > 0 ? focus_areas[0] : '',
+          generateCount: keyword_count || 25,
+          avoidDuplicates: true
+        };
+
+        const response = await this.fetchAPI('/api/keyword-strategy/brainstorm', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        if (!response?.success) {
+          return this.error(response?.error || 'Failed to brainstorm keywords');
+        }
+
+        return this.success({
+          keyword_strategy: {
+            primary_keywords: response.generated_keywords.filter((k: any) => k.search_intent !== 'informational').slice(0, 10),
+            long_tail_keywords: response.generated_keywords.filter((k: any) => k.search_intent === 'informational').slice(0, 25),
+            secondary_keywords: response.generated_keywords.slice(0, 10),
+            content_keywords: response.generated_keywords.slice(0, 15),
+            strategy_summary: {
+              total_keywords: response.total_generated,
+              distribution: response.distribution || {
+                primary: 10, long_tail: 25, secondary: 10, content: 15
+              },
+              focus_approach: 'Seed-based brainstorm (blank or unavailable site)',
+              quick_wins: (response.generated_keywords || []).slice(0, 3).map((k: any) => k.keyword)
+            }
+          },
+          generated_at: new Date().toISOString()
+        });
       }
 
       const response = await this.fetchAPI('/api/agent/keywords-brainstorm', {

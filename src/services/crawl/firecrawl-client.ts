@@ -36,7 +36,9 @@ function getApiKey(): string {
   return key;
 }
 
-async function firecrawlFetch(path: string, init?: RequestInit) {
+type RequestInitWithTimeout = RequestInit & { timeoutMs?: number };
+
+async function firecrawlFetch(path: string, init?: RequestInitWithTimeout) {
   const res = await fetch(`${FIRECRAWL_BASE}${path}`, {
     ...init,
     headers: {
@@ -47,7 +49,7 @@ async function firecrawlFetch(path: string, init?: RequestInit) {
     // Keep serverless timeouts in mind
     cache: 'no-store',
     // Add a client-side timeout to avoid hanging within the route's maxDuration
-    signal: (init as any)?.signal ?? AbortSignal.timeout(10000)
+    signal: (init as any)?.signal ?? AbortSignal.timeout((init as any)?.timeoutMs ?? 10000)
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -56,7 +58,7 @@ async function firecrawlFetch(path: string, init?: RequestInit) {
   return res.json();
 }
 
-export async function startCrawl(opts: StartCrawlOptions): Promise<FirecrawlJob> {
+export async function startCrawl(opts: StartCrawlOptions & { timeoutMs?: number }): Promise<FirecrawlJob> {
   const body: any = {
     url: opts.url,
     crawlerOptions: {
@@ -73,18 +75,19 @@ export async function startCrawl(opts: StartCrawlOptions): Promise<FirecrawlJob>
   };
   const data = await firecrawlFetch('/v0/crawl', {
     method: 'POST',
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    timeoutMs: opts.timeoutMs
   });
   return { jobId: data.jobId || data.id || data.job?.id, status: data.status };
 }
 
-export async function getCrawlStatus(jobId: string): Promise<{ status: string; done: boolean; progress?: any; }>{
-  const data = await firecrawlFetch(`/v0/crawl/status?jobId=${encodeURIComponent(jobId)}`);
+export async function getCrawlStatus(jobId: string, timeoutMs?: number): Promise<{ status: string; done: boolean; progress?: any; }>{
+  const data = await firecrawlFetch(`/v0/crawl/status?jobId=${encodeURIComponent(jobId)}`, { timeoutMs });
   return { status: data.status, done: data.status === 'completed', progress: data };
 }
 
-export async function getCrawlResult(jobId: string): Promise<CrawlResultPage[]> {
-  const data = await firecrawlFetch(`/v0/crawl/result?jobId=${encodeURIComponent(jobId)}`);
+export async function getCrawlResult(jobId: string, timeoutMs?: number): Promise<CrawlResultPage[]> {
+  const data = await firecrawlFetch(`/v0/crawl/result?jobId=${encodeURIComponent(jobId)}`, { timeoutMs });
   const pages = Array.isArray(data.data) ? data.data : (data.pages || []);
   return pages.map((p: any) => ({
     url: p.url,
@@ -94,10 +97,11 @@ export async function getCrawlResult(jobId: string): Promise<CrawlResultPage[]> 
   }));
 }
 
-export async function scrapeUrl(url: string): Promise<CrawlResultPage> {
+export async function scrapeUrl(url: string, opts?: { timeoutMs?: number }): Promise<CrawlResultPage> {
   const data = await firecrawlFetch('/v0/scrape', {
     method: 'POST',
-    body: JSON.stringify({ url, formats: ['html', 'markdown'], pageOptions: { fetchPageContent: true } })
+    body: JSON.stringify({ url, formats: ['html', 'markdown'], pageOptions: { fetchPageContent: true } }),
+    timeoutMs: opts?.timeoutMs ?? 5000
   });
   const content = data.data || data;
   return {

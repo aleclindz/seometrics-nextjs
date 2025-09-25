@@ -1033,7 +1033,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   'KEYWORDS_brainstorm_strategy': {
     schema: {
       name: 'KEYWORDS_brainstorm_strategy',
-      description: 'Generate comprehensive keyword strategy based on business analysis and competitor research, including primary, long-tail, secondary, and content keywords',
+      description: 'Generate comprehensive keyword strategy based on business analysis and competitor research, including primary, long-tail, secondary, and content keywords. Prefer KEYWORDS_brainstorm or KEYWORDS_brainstorm_auto when business_analysis is not already available to avoid extra steps.',
       parameters: {
         type: 'object',
         properties: {
