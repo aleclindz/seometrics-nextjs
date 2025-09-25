@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 
 export const metadata = {
@@ -171,4 +169,3 @@ export default function PartnersPage() {
     </main>
   );
 }
-
