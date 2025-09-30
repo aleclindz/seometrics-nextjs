@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
         targetQueries: (r.target_queries || []) as string[],
         topicCluster: r.parent_cluster || null
       };
-      return NextResponse.json({ success: true, queue });
+    });
+    return NextResponse.json({ success: true, queue });
   } catch (e) {
     console.error('[ARTICLE BRIEFS QUEUE] Unexpected error:', e);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
