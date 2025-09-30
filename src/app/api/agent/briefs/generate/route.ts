@@ -126,6 +126,19 @@ export async function POST(request: NextRequest) {
       const linkUp = suggestPillarLink(parentCluster, existingByCluster);
       const linksCross = [] as any[]; // Cross-cluster suggestions kept empty for now or could be extended
 
+      // Derive recommendation from cannibalization risk
+      let recommendation: 'differentiate' | 'consolidate' | 'canonicalize' | null = null;
+      switch (cannibalRisk) {
+        case 'high':
+          recommendation = 'canonicalize';
+          break;
+        case 'possible':
+          recommendation = 'differentiate';
+          break;
+        default:
+          recommendation = null;
+      }
+
       const brief: ContentBrief = {
         title,
         h1,
@@ -145,7 +158,7 @@ export async function POST(request: NextRequest) {
         cannibalization: {
           risk: cannibalRisk,
           conflicts,
-          recommendation: cannibalRisk === 'high' ? 'canonicalize' : cannibalRisk === 'possible' ? 'differentiate' : null,
+          recommendation,
           canonical_to: canonicalTo
         },
         metadata: {
@@ -303,4 +316,3 @@ function summarizeBriefs(briefs: ContentBrief[]) {
     cannibalization: { none, possible, high }
   };
 }
-
