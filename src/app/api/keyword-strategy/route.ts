@@ -304,18 +304,26 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (topicCluster) {
-      // Delete entire topic cluster
-      const { error: deleteKeywordsError } = await supabase
-        .from('website_keywords')
-        .delete()
-        .eq('website_token', websiteToken)
-        .eq('topic_cluster', topicCluster);
+      // Delete entire topic cluster (case-insensitive match)
+      let deleteKeywordsError: any = null;
+      let deleteContentError: any = null;
+      try {
+        const delKw = await supabase
+          .from('website_keywords')
+          .delete()
+          .eq('website_token', websiteToken)
+          .ilike('topic_cluster', topicCluster);
+        deleteKeywordsError = (delKw as any)?.error || null;
+      } catch (e) { deleteKeywordsError = e; }
 
-      const { error: deleteContentError } = await supabase
-        .from('topic_cluster_content')
-        .delete()
-        .eq('website_token', websiteToken)
-        .eq('topic_cluster', topicCluster);
+      try {
+        const delCt = await supabase
+          .from('topic_cluster_content')
+          .delete()
+          .eq('website_token', websiteToken)
+          .ilike('topic_cluster', topicCluster);
+        deleteContentError = (delCt as any)?.error || null;
+      } catch (e) { deleteContentError = e; }
 
       if (deleteKeywordsError || deleteContentError) {
         console.error('[KEYWORD STRATEGY] Error deleting topic cluster:', { deleteKeywordsError, deleteContentError });

@@ -208,44 +208,54 @@ export async function POST(request: NextRequest) {
 
     try { console.log('[BRIEFS] briefs generated:', briefs.length); } catch {}
 
-    // Optional: persist to content_generation_queue when requested via addToQueue flag
+    // Optional: persist briefs when requested via addToQueue flag
     const shouldQueue = Boolean((body as any)?.addToQueue);
     let savedCount = 0;
     if (shouldQueue && briefs.length > 0) {
       try {
         const now = new Date();
-        const queueItems = briefs.map((b, index) => {
+        // Prefer saving to article_briefs if the table exists; fall back to content_generation_queue
+        const briefsRows = briefs.map((b, index) => {
           const hoursOffset = (index * (7 * 24 / Math.max(1, briefs.length)));
           const scheduledTime = new Date(now.getTime() + hoursOffset * 60 * 60 * 1000);
           return {
             user_token: userToken,
             website_token: effectiveWebsiteToken,
-            scheduled_for: scheduledTime.toISOString(),
-            topic: b.title,
-            target_word_count: b.metadata.word_count_range?.[1] || 2000,
-            content_style: b.metadata.tone || 'professional',
+            title: b.title,
+            h1: b.h1,
+            url_path: b.url_path,
+            page_type: b.page_type,
+            parent_cluster: b.parent_cluster,
+            primary_keyword: b.primary_keyword,
+            intent: b.intent,
+            secondary_keywords: b.secondary_keywords,
+            target_queries: b.target_queries,
+            summary: b.summary,
+            internal_links: b.internal_links,
+            cannibal_risk: b.cannibalization?.risk,
+            cannibal_conflicts: b.cannibalization?.conflicts || [],
+            recommendation: b.cannibalization?.recommendation || null,
+            canonical_to: b.cannibalization?.canonical_to || null,
+            word_count_min: b.metadata?.word_count_range?.[0] || 1200,
+            word_count_max: b.metadata?.word_count_range?.[1] || 2000,
+            tone: b.metadata?.tone || 'professional',
+            notes: b.metadata?.notes || [],
             status: 'draft',
-            topic_cluster: b.parent_cluster,
-            content_pillar: b.parent_cluster,
-            target_keywords: JSON.stringify([b.primary_keyword, ...(b.secondary_keywords || [])].filter(Boolean)),
-            short_description: b.summary?.slice(0, 200) || b.title,
-            article_format: JSON.stringify({ type: b.page_type, wordCountRange: b.metadata.word_count_range || [1500, 2500] }),
-            authority_level: 'foundation',
-            priority: index + 1,
-            estimated_traffic_potential: 0,
-            target_queries: JSON.stringify(b.target_queries || []),
-            content_brief: b.summary,
-            queue_position: index + 1
+            scheduled_for: scheduledTime.toISOString()
           };
         });
 
-        const { data: inserted, error: insertErr } = await supabase
-          .from('content_generation_queue')
-          .insert(queueItems)
+        const { data: insBriefs, error: errBriefs } = await supabase
+          .from('article_briefs')
+          .insert(briefsRows)
           .select('id');
-        if (!insertErr) savedCount = inserted?.length || 0;
+        if (!errBriefs) {
+          savedCount = insBriefs?.length || 0;
+        } else {
+          throw errBriefs;
+        }
       } catch (e) {
-        console.log('[BRIEFS] queue persistence failed:', e);
+        console.log('[BRIEFS] article_briefs persistence failed:', e);
       }
     }
 
@@ -279,24 +289,26 @@ function inferIntent(idea: any, primary: string | undefined): SearchIntent {
 }
 
 function pickPrimary(idea: any, existing: Set<string>, used: Set<string>): string | undefined {
+  const normalize = (s: string) => dedupeTokens(String(s || '').toLowerCase().trim());
   const candidates = ([] as string[])
     .concat(Array.isArray(idea.targetKeywords) ? idea.targetKeywords : [])
     .concat(Array.isArray(idea.targetQueries) ? idea.targetQueries : [])
-    .map(s => String(s || '').trim().toLowerCase())
+    .map(normalize)
     .filter(Boolean);
   for (const c of candidates) {
     if (!used.has(c)) { used.add(c); return c; }
   }
   // Fallback to title noun phrase
-  const base = String(idea.title || idea.mainTopic || '').trim().toLowerCase();
-  const norm = base.replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim();
+  const base = String(idea.title || idea.mainTopic || '');
+  const norm = normalize(base).replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim();
   if (norm && !used.has(norm)) { used.add(norm); return norm; }
   return candidates[0] || norm || undefined;
 }
 
 function pickSecondaries(idea: any, primary?: string): string[] {
   const set = new Set<string>();
-  const push = (s?: string) => { const v = (s || '').toLowerCase().trim(); if (v && v !== (primary || '')) set.add(v); };
+  const norm = (s?: string) => dedupeTokens(String(s || '').toLowerCase().trim());
+  const push = (s?: string) => { const v = norm(s); if (v && v !== (primary || '')) set.add(v); };
   (Array.isArray(idea.targetQueries) ? idea.targetQueries : []).forEach((q: string) => push(q));
   (Array.isArray(idea.targetKeywords) ? idea.targetKeywords : []).forEach((k: string) => push(k));
   return Array.from(set).slice(0, 4).slice(0, Math.max(2, Math.min(4, set.size)));
@@ -304,6 +316,19 @@ function pickSecondaries(idea: any, primary?: string): string[] {
 
 function slugify(s: string): string { return s.toLowerCase().trim().replace(/&/g, ' and ').replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-'); }
 function toTitle(s: string): string { return s.split(/[-_\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }
+
+// Remove immediate duplicate tokens (e.g., "importer importer" -> "importer") and collapse spaces
+function dedupeTokens(input: string): string {
+  const tokens = input
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (i === 0 || tokens[i] !== tokens[i - 1]) out.push(tokens[i]);
+  }
+  return out.join(' ');
+}
 
 function buildSummary(cluster: string | null, primary: string | undefined, intent: SearchIntent): string {
   const parts = [

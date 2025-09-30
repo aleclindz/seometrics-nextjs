@@ -38,7 +38,8 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
 
   const fetchQueue = useCallback(async () => {
     try {
-      const response = await fetch(`/api/content/article-queue?userToken=${encodeURIComponent(userToken)}&websiteToken=${encodeURIComponent(websiteToken)}&limit=20`);
+      // Use article briefs queue for planned briefs
+      const response = await fetch(`/api/content/article-briefs-queue?userToken=${encodeURIComponent(userToken)}&websiteToken=${encodeURIComponent(websiteToken)}&limit=20`);
       const data = await response.json();
 
       if (data.success) {
@@ -86,7 +87,8 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
           websiteToken,
           domain,
           count,
-          includePillar: false
+          includePillar: false,
+          addToQueue: true
         })
       });
 
@@ -97,37 +99,8 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
 
       const briefs: Array<any> = briefsData.briefs || [];
 
-      if (addToQueue && briefs.length > 0) {
-        // 2) Resolve websiteId
-        const sitesResp = await fetch(`/api/websites?userToken=${encodeURIComponent(userToken)}`);
-        const sitesData = await sitesResp.json();
-        if (!sitesResp.ok || !sitesData.success) throw new Error('Failed to resolve websites');
-        const site = (sitesData.websites || []).find((w: any) => w.website_token === websiteToken);
-        const websiteId = site?.id;
-        if (!websiteId) throw new Error('Website not found for queue insertion');
-
-        // 3) Insert each brief as an article_queue row via /api/articles
-        for (let i = 0; i < briefs.length; i++) {
-          const b = briefs[i];
-          const targetKeywords: string[] = Array.from(new Set([
-            b.primary_keyword,
-            ...(Array.isArray(b.secondary_keywords) ? b.secondary_keywords : [])
-          ].filter(Boolean)));
-
-          await fetch('/api/articles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userToken,
-              websiteId,
-              title: b.title,
-              targetKeywords,
-              contentOutline: { intent: b.intent, parent_cluster: b.parent_cluster, url_path: b.url_path }
-            })
-          });
-        }
-        await fetchQueue();
-      }
+      // Items are persisted inside the briefs API when addToQueue: true
+      if (addToQueue) await fetchQueue();
 
       return briefs;
     } catch (error) {
