@@ -69,7 +69,6 @@ export async function GET(request: NextRequest) {
         targetQueries: (r.target_queries || []) as string[],
         topicCluster: r.parent_cluster || null
       };
-        };
       return NextResponse.json({ success: true, queue });
   } catch (e) {
     console.error('[ARTICLE BRIEFS QUEUE] Unexpected error:', e);
