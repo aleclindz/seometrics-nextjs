@@ -75,29 +75,61 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   const generateBulkIdeas = async (period: 'week' | 'month', count: number, addToQueue: boolean = false) => {
     setGenerating(true);
     try {
-      const response = await fetch('/api/content/bulk-article-ideas', {
+      // New source: generate structured briefs (anti-cannibalization + pillar/cluster)
+      // Then insert into article_queue via /api/articles
+      // 1) Generate briefs
+      const briefsResp = await fetch('/api/agent/briefs/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userToken,
           websiteToken,
           domain,
-          period,
           count,
-          addToQueue
+          includePillar: false
         })
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        if (addToQueue) {
-          await fetchQueue(); // Refresh queue
-        }
-        return data.articleIdeas;
-      } else {
-        throw new Error(data.error);
+      const briefsData = await briefsResp.json();
+      if (!briefsResp.ok || !briefsData.success) {
+        throw new Error(briefsData.error || 'Failed to generate briefs');
       }
+
+      const briefs: Array<any> = briefsData.briefs || [];
+
+      if (addToQueue && briefs.length > 0) {
+        // 2) Resolve websiteId
+        const sitesResp = await fetch(`/api/websites?userToken=${encodeURIComponent(userToken)}`);
+        const sitesData = await sitesResp.json();
+        if (!sitesResp.ok || !sitesData.success) throw new Error('Failed to resolve websites');
+        const site = (sitesData.websites || []).find((w: any) => w.website_token === websiteToken);
+        const websiteId = site?.id;
+        if (!websiteId) throw new Error('Website not found for queue insertion');
+
+        // 3) Insert each brief as an article_queue row via /api/articles
+        for (let i = 0; i < briefs.length; i++) {
+          const b = briefs[i];
+          const targetKeywords: string[] = Array.from(new Set([
+            b.primary_keyword,
+            ...(Array.isArray(b.secondary_keywords) ? b.secondary_keywords : [])
+          ].filter(Boolean)));
+
+          await fetch('/api/articles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userToken,
+              websiteId,
+              title: b.title,
+              targetKeywords,
+              contentOutline: { intent: b.intent, parent_cluster: b.parent_cluster, url_path: b.url_path }
+            })
+          });
+        }
+        await fetchQueue();
+      }
+
+      return briefs;
     } catch (error) {
       console.error('Error generating bulk ideas:', error);
       throw error;

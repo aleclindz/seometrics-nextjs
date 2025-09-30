@@ -1110,6 +1110,38 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
+  'BRIEFS_generate': {
+    schema: {
+      name: 'BRIEFS_generate',
+      description: 'Generate content briefs aligned to anti-cannibalization and pillar/cluster strategy (one primary keyword per page, distinct intent, internal link map).',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL or domain' },
+          website_token: { type: 'string', description: 'Website token (optional if site_url provided)' },
+          count: { type: 'integer', description: 'Number of briefs to generate', default: 10 },
+          clusters: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Optional cluster names to focus on'
+          },
+          include_pillar: { type: 'boolean', description: 'Include pillar briefs for clusters', default: false }
+        },
+        required: ['site_url'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: flexibleUrlSchema,
+      website_token: z.string().optional(),
+      count: z.number().int().min(1).max(50).optional().default(10),
+      clusters: z.array(z.string()).optional().default([]),
+      include_pillar: z.boolean().optional().default(false)
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
   'CONTENT_gap_analysis': {
     schema: {
       name: 'CONTENT_gap_analysis',

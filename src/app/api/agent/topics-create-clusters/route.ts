@@ -63,6 +63,12 @@ ${allKeywords.map(kw => `"${kw.keyword}" (${kw.search_intent}, ${kw.difficulty} 
 
 Create ${cluster_count} topic clusters that group semantically related keywords for content creation. Each cluster should represent a cohesive content theme or pillar page opportunity.
 
+NON-NEGOTIABLE RULES (avoid cannibalization):
+1) One primary keyword per page with a distinct intent (informational, transactional, comparison, pricing, location). Do NOT plan multiple pages targeting the exact same head term + same intent.
+2) If the same head term appears with clearly different intents, separate pages are allowed (e.g., comparison vs. pricing vs. how-to). Otherwise consolidate.
+3) For each cluster, define a pillar (hub) page and supporting pages. Supporting pages link up to the pillar; related pages cross-link with varied, descriptive anchors.
+4) Prefer specific, intent-labeled content opportunities (e.g., 'bulk lemons supplier Miami' [location+commercial]) over generic duplicates.
+
 Return in this JSON format:
 {
   "topic_clusters": [
@@ -100,9 +106,10 @@ Guidelines:
 1. Group keywords by semantic similarity and search intent
 2. Each cluster should have 3-12 keywords (avoid too large or too small clusters)
 3. Prioritize clusters based on business relevance and keyword difficulty
-4. Suggest specific content opportunities for each cluster
-5. Balance informational, commercial, and transactional intent across clusters
-6. Consider content calendar planning with realistic article counts`;
+4. Suggest specific content opportunities for each cluster with clear intent labels and unique primaries
+5. Balance informational, commercial, transactional, comparison, pricing, and location intents across clusters
+6. Consider content calendar planning with realistic article counts
+7. Avoid planning multiple pages for the same head term + same intent; recommend consolidation when detected`;
 
     try { console.log('[TOPIC CLUSTERS][LLM] model=gpt-4o (clustering)', { keywords: allKeywords.length, clusters: cluster_count }); } catch {}
     const completion = await openai.chat.completions.create({

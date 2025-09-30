@@ -33,7 +33,8 @@ export class ContentAbility extends BaseAbility {
       'CONTENT_manage_queue', // NEW: Queue management (view, edit, reorder)
       'CONTENT_add_to_queue', // NEW: Add specific topics to queue
       'CONTENT_remove_from_queue', // NEW: Remove topics from queue
-      'CONTENT_reorder_queue' // NEW: Reorder queue priorities
+      'CONTENT_reorder_queue', // NEW: Reorder queue priorities
+      'BRIEFS_generate' // NEW: Generate structured briefs
     ];
   }
 
@@ -73,6 +74,8 @@ export class ContentAbility extends BaseAbility {
         return await this.publishContent(args);
       case 'analyze_content_performance':
         return await this.analyzeContentPerformance(args);
+      case 'BRIEFS_generate':
+        return await this.generateBriefs(args);
       default:
         return this.error(`Unknown content function: ${name}`);
     }
@@ -113,6 +116,53 @@ export class ContentAbility extends BaseAbility {
 
     } catch (error) {
       return this.error('Failed to generate article', error);
+    }
+  }
+
+  /**
+   * Generate structured content briefs with anti-cannibalization safeguards
+   */
+  private async generateBriefs(args: {
+    site_url: string;
+    website_token?: string;
+    count?: number;
+    clusters?: string[];
+    include_pillar?: boolean;
+  }): Promise<FunctionCallResult> {
+    try {
+      if (!args.site_url && !args.website_token) {
+        return this.error('site_url or website_token is required');
+      }
+
+      const payload = {
+        userToken: this.userToken,
+        websiteToken: args.website_token,
+        domain: args.site_url,
+        count: args.count || 10,
+        clusters: args.clusters || [],
+        includePillar: args.include_pillar || false
+      };
+
+      const response = await this.fetchAPI('/api/agent/briefs/generate', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.success) {
+        return this.error(response.error || 'Failed to generate briefs');
+      }
+
+      return this.success({
+        briefs: response.briefs,
+        summary: response.summary,
+        guidance: [
+          'One primary keyword per page; distinct intent per article.',
+          'If two drafts would rank on the same SERP, merge or differentiate.',
+          'Every cluster page should link up to the pillar with descriptive anchors.'
+        ]
+      });
+    } catch (error) {
+      return this.error('Failed to generate briefs', error);
     }
   }
 
