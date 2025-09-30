@@ -27,3 +27,15 @@ Operational notes
 - When adding external API calls in app routes, respect serverless timeouts (prefer smaller payloads, short timeouts, and parallelism).
 - Log clearly and avoid leaking secrets (mask tokens, don’t print credentials).
 
+Pitfalls to avoid (enforced for future changes)
+- API route syntax hygiene
+  - Close Array.map blocks with `});` before returning from the handler. Missing closures cause “Expected ',' got 'catch' or ';'” in build.
+  - Return plain objects from map (i.e., `return { ... };`), not wrapped in `return ({ ... });` that can lead to mismatched braces.
+  - Don’t chain `.filter` on a `Set`. Build an array first, then `.filter(Boolean)`.
+- React hooks
+  - Functions referenced by `useEffect` should be wrapped in `useCallback` and included in deps to satisfy `react-hooks/exhaustive-deps`.
+- Briefs data flow
+  - Persist briefs only to `article_briefs` with `user_token` and `website_token` so UI filters match. No fallbacks to other tables.
+  - Expose a GET route to verify persisted rows with the same filters the UI uses.
+- Keyword/title normalization
+  - Deduplicate consecutive tokens (avoid strings like `importer importer`). Clean titles/keywords before saving.

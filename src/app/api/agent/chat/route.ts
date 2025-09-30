@@ -875,6 +875,10 @@ async function processOpenAIResponse(
       if (toolData?.data?.actionCard) {
         actionCard = toolData.data.actionCard;
       } else {
+        // Suppress generic "completed" card for BRIEFS_generate to avoid duplicates; show raw JSON card only
+        if (functionCall.name === 'BRIEFS_generate') {
+          actionCard = null;
+        } else {
         const normalizedSite = (selectedSite || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
         const detailsUrl = normalizedSite ? `/website/${encodeURIComponent(normalizedSite)}` : '#';
         actionCard = {
@@ -889,6 +893,7 @@ async function processOpenAIResponse(
             ]
           }
         };
+        }
       }
     }
     

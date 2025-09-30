@@ -145,10 +145,15 @@ export async function POST(request: NextRequest) {
           recommendation = null;
       }
 
+      // Improve title quality and URLs
+      const improvedTitle = refineTitle(title, parentCluster, primaryKeyword || '', cleanedDomain);
+      const improvedUrlCluster = slugify(parentCluster || extractClusterFromDomain(cleanedDomain) || 'topic');
+      const improvedUrlPath = `/${improvedUrlCluster}/${slugify(primaryKeyword || improvedTitle)}`;
+
       const brief: ContentBrief = {
-        title,
-        h1,
-        url_path: urlPath,
+        title: improvedTitle,
+        h1: improvedTitle,
+        url_path: improvedUrlPath,
         page_type: pageType,
         parent_cluster: parentCluster,
         primary_keyword: primaryKeyword || (parentCluster || title),
@@ -391,4 +396,26 @@ function summarizeBriefs(briefs: ContentBrief[]) {
     by_intent,
     cannibalization: { none, possible, high }
   };
+}
+function refineTitle(current: string, cluster: string | null, primary: string, domain: string): string {
+  const c = (current || '').toLowerCase();
+  const primaryTitle = toTitle(primary || '');
+  // Avoid generic titles like "General Tools" or "Best ... Tools for 2025"
+  const genericPatterns = [/general\b/, /best .*tools/i];
+  if (!primaryTitle && !genericPatterns.some(p => p.test(c))) return current;
+  // Build a domain-aware title
+  const niche = domain.includes('southflorida') ? 'South Florida' : '';
+  const clusterTitle = cluster ? toTitle(cluster) : '';
+  if (primaryTitle) {
+    return `${toTitle(primary)}${niche ? ' — ' + niche : ''}`;
+  }
+  if (clusterTitle) {
+    return `${clusterTitle}${niche ? ' — ' + niche : ''}`;
+  }
+  return current;
+}
+
+function extractClusterFromDomain(domain: string): string | null {
+  if (domain.includes('southflorida')) return 'south-florida-imports';
+  return null;
 }

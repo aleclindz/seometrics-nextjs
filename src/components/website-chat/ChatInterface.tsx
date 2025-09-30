@@ -277,6 +277,10 @@ What would you like to work on first?`,
           if (fname === 'KEYWORDS_add_keywords' || fname === 'update_keyword_strategy') {
             window.dispatchEvent(new CustomEvent('seoagent:strategy-updated', { detail: { site: selectedSite } }));
           }
+          // Auto-refresh briefs queue on successful BRIEFS_generate
+          if (fname === 'BRIEFS_generate' && (websiteToken || selectedSite)) {
+            window.dispatchEvent(new CustomEvent('seoagent:queue-updated', { detail: { websiteToken: websiteToken || selectedSite } }));
+          }
         }
       } else {
         throw new Error(data.error || 'Failed to get response');
