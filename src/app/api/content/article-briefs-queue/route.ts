@@ -54,24 +54,23 @@ export async function GET(request: NextRequest) {
         ...((Array.isArray(r.secondary_keywords) ? r.secondary_keywords : []) as string[])
       ].filter(Boolean) as string[];
       const targetKeywords = Array.from(new Set<string>(kws));
-      return ({
-      id: r.id,
-      title: r.title,
-      scheduledFor: r.scheduled_for || r.created_at,
-      status: mapStatus(r.status),
-      wordCount: r.word_count_max || r.word_count_min || 0,
-      contentStyle: r.tone || 'professional',
-      priority: typeof r.sort_index === 'number' ? r.sort_index : (idx + 1),
-      targetKeywords,
-      articleFormat: { type: r.page_type, template: 'brief', wordCountRange: [r.word_count_min || 1000, r.word_count_max || 2000] as [number, number] },
-      authorityLevel: 'foundation',
-      estimatedTrafficPotential: 0,
-      targetQueries: (r.target_queries || []) as string[],
-      topicCluster: r.parent_cluster || null
-    });
-    });
-
-    return NextResponse.json({ success: true, queue });
+      return {
+        id: r.id,
+        title: r.title,
+        scheduledFor: r.scheduled_for || r.created_at,
+        status: mapStatus(r.status),
+        wordCount: r.word_count_max || r.word_count_min || 0,
+        contentStyle: r.tone || 'professional',
+        priority: typeof r.sort_index === 'number' ? r.sort_index : (idx + 1),
+        targetKeywords,
+        articleFormat: { type: r.page_type, template: 'brief', wordCountRange: [r.word_count_min || 1000, r.word_count_max || 2000] as [number, number] },
+        authorityLevel: 'foundation',
+        estimatedTrafficPotential: 0,
+        targetQueries: (r.target_queries || []) as string[],
+        topicCluster: r.parent_cluster || null
+      };
+        };
+      return NextResponse.json({ success: true, queue });
   } catch (e) {
     console.error('[ARTICLE BRIEFS QUEUE] Unexpected error:', e);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
@@ -171,8 +170,8 @@ export async function POST(request: NextRequest) {
         const kws = [r.primary_keyword, ...((Array.isArray(r.secondary_keywords) ? r.secondary_keywords : []) as string[])]
           .filter(Boolean) as string[];
         const targetKeywords = Array.from(new Set<string>(kws));
-        return ({
-        id: r.id,
+        return {
+          id: r.id,
         title: r.title,
         scheduledFor: r.scheduled_for || r.created_at,
         status: mapStatus(r.status),
@@ -185,6 +184,7 @@ export async function POST(request: NextRequest) {
         estimatedTrafficPotential: 0,
         targetQueries: (r.target_queries || []) as string[],
         topicCluster: r.parent_cluster || null
+        };
       });
       return NextResponse.json({ success: true, items });
     }
