@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Edit3, Trash2, GripVertical, Plus, Sparkles, Clock, Target, TrendingUp } from 'lucide-react';
 
 interface ArticleQueueItem {
@@ -36,9 +36,24 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   const [editingItem, setEditingItem] = useState<ArticleQueueItem | null>(null);
   const [draggedItem, setDraggedItem] = useState<ArticleQueueItem | null>(null);
 
+  const fetchQueue = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/content/article-queue?userToken=${encodeURIComponent(userToken)}&websiteToken=${encodeURIComponent(websiteToken)}&limit=20`);
+      const data = await response.json();
+
+      if (data.success) {
+        setQueue(data.queue || []);
+      }
+    } catch (error) {
+      console.error('Error fetching article queue:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [userToken, websiteToken]);
+
   useEffect(() => {
     fetchQueue();
-  }, [userToken, websiteToken]);
+  }, [fetchQueue]);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -55,22 +70,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
         window.removeEventListener('seoagent:queue-updated', handler as any);
       }
     };
-  }, [websiteToken]);
-
-  const fetchQueue = async () => {
-    try {
-      const response = await fetch(`/api/content/article-queue?userToken=${encodeURIComponent(userToken)}&websiteToken=${encodeURIComponent(websiteToken)}&limit=20`);
-      const data = await response.json();
-
-      if (data.success) {
-        setQueue(data.queue || []);
-      }
-    } catch (error) {
-      console.error('Error fetching article queue:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [websiteToken, fetchQueue]);
 
   const generateBulkIdeas = async (period: 'week' | 'month', count: number, addToQueue: boolean = false) => {
     setGenerating(true);
