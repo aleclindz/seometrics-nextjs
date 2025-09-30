@@ -119,6 +119,9 @@ export async function POST(request: NextRequest) {
           conflicts.push({ url: existing.url || `/` + slugify(existing.title), title: existing.title, primary_keyword: existing.primary, intent });
           canonicalTo = existing.url || null;
         }
+      } else if (pkLower && existingKeywords.has(pkLower)) {
+        // Primary overlaps an already-tracked keyword (but not a declared primary) => possible risk
+        cannibalRisk = 'possible';
       }
 
       // Build internal links
