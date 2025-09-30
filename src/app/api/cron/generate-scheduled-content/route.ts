@@ -85,167 +85,100 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // Check if there are queued articles ready to generate
-          const { data: queuedArticles, error: queueError } = await supabase
-            .from('content_generation_queue')
+          // Fetch due briefs
+          const { data: dueBriefs, error: briefsErr } = await supabase
+            .from('article_briefs')
             .select('*')
             .eq('user_token', schedule.user_token)
             .eq('website_token', schedule.website_token)
-            .eq('status', 'pending')
+            .in('status', ['draft', 'queued'])
             .lte('scheduled_for', now.toISOString())
-            .order('priority', { ascending: true })
+            .order('sort_index', { ascending: true, nullsFirst: true })
             .order('scheduled_for', { ascending: true })
             .limit(articlesToGenerate);
 
-          if (queueError) {
-            console.error(`[CONTENT CRON] Error fetching queued articles:`, queueError);
+          if (briefsErr) {
+            console.error('[CONTENT CRON] Error fetching article briefs:', briefsErr);
             continue;
           }
 
-          let articlesFromQueue = queuedArticles || [];
+          let briefs = dueBriefs || [];
 
-          // If we don't have enough queued articles, generate new ones
-          if (articlesFromQueue.length < articlesToGenerate) {
-            const needed = articlesToGenerate - articlesFromQueue.length;
-            console.log(`[CONTENT CRON] Need ${needed} more articles for ${schedule.websites?.domain || schedule.domain}`);
-
-            // Generate new topics to fill the gap
+          // If not enough briefs are due, generate additional briefs
+          if (briefs.length < articlesToGenerate) {
+            const needed = articlesToGenerate - briefs.length;
             try {
-              const cronBase = (() => {
-                try { return new URL(request.url).origin; } catch { return process.env.NEXT_PUBLIC_APP_URL || process.env.SITE_URL || process.env.APP_URL || 'http://localhost:3000'; }
-              })();
-              const topicResponse = await fetch(`${cronBase}/api/content/bulk-article-ideas`, {
+              const cronBase = (() => { try { return new URL(request.url).origin; } catch { return process.env.NEXT_PUBLIC_APP_URL || process.env.SITE_URL || process.env.APP_URL || 'http://localhost:3000'; } })();
+              const resp = await fetch(`${cronBase}/api/agent/briefs/generate`, {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   userToken: schedule.user_token,
                   websiteToken: schedule.website_token,
                   domain: schedule.websites?.cleaned_domain || schedule.websites?.domain || schedule.domain,
-                  period: 'week',
                   count: needed,
+                  includePillar: false,
                   addToQueue: true
                 })
               });
-
-              if (topicResponse.ok) {
-                console.log(`[CONTENT CRON] Generated ${needed} new article ideas for queue`);
-
-                // Fetch the newly added queue items
-                const { data: newQueueItems } = await supabase
-                  .from('content_generation_queue')
-                  .select('*')
-                  .eq('user_token', schedule.user_token)
-                  .eq('website_token', schedule.website_token)
-                  .eq('status', 'draft')
-                  .order('created_at', { ascending: false })
-                  .limit(needed);
-
-                // Update their status to pending and set proper schedule times
-                if (newQueueItems && newQueueItems.length > 0) {
-                  const updates = newQueueItems.map((item, index) => {
-                    const scheduledTime = new Date(now);
-                    scheduledTime.setHours(
-                      schedule.preferred_hours[index % schedule.preferred_hours.length] || 12,
-                      Math.floor(Math.random() * 60),
-                      0,
-                      0
-                    );
-
-                    return supabase
-                      .from('content_generation_queue')
-                      .update({
-                        status: 'pending',
-                        scheduled_for: scheduledTime.toISOString(),
-                        schedule_id: schedule.id
-                      })
-                      .eq('id', item.id);
-                  });
-
-                  await Promise.all(updates);
-                  articlesFromQueue = [...articlesFromQueue, ...newQueueItems];
-                }
+              if (resp.ok) {
+                const data = await resp.json();
+                const created = Array.isArray(data?.briefs) ? data.briefs : [];
+                briefs = briefs.concat(created);
               }
-            } catch (error) {
-              console.error(`[CONTENT CRON] Failed to generate additional topics:`, error);
+            } catch (e) {
+              console.log('[CONTENT CRON] Brief generation error:', e);
             }
           }
 
-          // Process each queued article
-          for (const queueItem of articlesFromQueue.slice(0, articlesToGenerate)) {
+          // Process each brief
+          for (const brief of briefs.slice(0, articlesToGenerate)) {
             try {
-              // Update status to generating
-              await supabase
-                .from('content_generation_queue')
-                .update({ status: 'generating' })
-                .eq('id', queueItem.id);
+              const targetKeywords: string[] = Array.from(new Set([brief.primary_keyword, ...((brief.secondary_keywords || []) as string[])])).filter(Boolean) as string[];
+              const targetQueries: string[] = Array.isArray(brief.target_queries) ? brief.target_queries : [];
+              const wc = (brief.metadata?.word_count_range?.[1]) || brief.word_count_max || schedule.target_word_count;
+              const tone = (brief.metadata?.tone || brief.tone || schedule.content_style || 'professional');
+              const enhancedPrompt = `Write a comprehensive ${wc}-word article titled "${brief.title}" in a ${tone} style.
 
-              // Parse metadata for enhanced generation
-              let metadata: any = {};
-              try {
-                metadata = JSON.parse(queueItem.metadata || '{}');
-              } catch (e) {
-                console.warn('Failed to parse queue item metadata');
-              }
+Primary Keyword: ${brief.primary_keyword}
+Secondary Keywords: ${targetKeywords.slice(1).join(', ')}
+Target Queries: ${targetQueries.join(', ')}
 
-              const topicDetails = {
-                title: queueItem.topic,
-                targetKeywords: queueItem.target_keywords || metadata.targetKeywords || [],
-                targetQueries: queueItem.target_queries || metadata.targetQueries || [],
-                contentBrief: queueItem.content_brief || metadata.contentBrief || '',
-                articleFormat: queueItem.article_format || metadata.articleFormat || {},
-                authorityLevel: queueItem.authority_level || metadata.authorityLevel || 'foundation',
-                estimatedTrafficPotential: queueItem.estimated_traffic_potential || metadata.estimatedTrafficPotential || 0
-              };
+${brief.summary || 'Include practical tips, examples, and actionable advice.'}
 
-              // Enhanced prompt based on queue metadata
-              const enhancedPrompt = `Write a comprehensive ${queueItem.target_word_count || schedule.target_word_count}-word article about "${queueItem.topic}" in a ${queueItem.content_style || schedule.content_style} style.
-
-${topicDetails.articleFormat.type ? `Article Format: ${topicDetails.articleFormat.type}` : ''}
-${topicDetails.authorityLevel ? `Authority Level: ${topicDetails.authorityLevel}` : ''}
-${topicDetails.targetKeywords.length > 0 ? `Target Keywords: ${topicDetails.targetKeywords.join(', ')}` : ''}
-${topicDetails.targetQueries.length > 0 ? `Target Queries: ${topicDetails.targetQueries.join(', ')}` : ''}
-
-${topicDetails.contentBrief || 'Include practical tips, examples, and actionable advice.'}
-
-${topicDetails.estimatedTrafficPotential > 0 ? `This topic has an estimated traffic potential of ${topicDetails.estimatedTrafficPotential} monthly visitors based on GSC data analysis.` : ''}`;
+`;
 
               const articleResult = await generateArticleContent({
                 userToken: schedule.user_token,
                 websiteToken: schedule.website_token,
                 domain: schedule.websites?.cleaned_domain || schedule.websites?.domain || schedule.domain,
-                topic: queueItem.topic,
+                topic: brief.title,
                 prompt: enhancedPrompt,
-                wordCount: queueItem.target_word_count || schedule.target_word_count,
-                contentStyle: queueItem.content_style || schedule.content_style,
+                wordCount: wc,
+                contentStyle: tone,
                 includeImages: schedule.include_images,
                 autoPublish: schedule.auto_publish,
-                topicDetails,
-                queueItemId: queueItem.id
+                topicDetails: { targetKeywords, targetQueries, intent: brief.intent, parentCluster: brief.parent_cluster }
               });
 
               if (articleResult && articleResult.success) {
-                // Update queue item as completed
                 await supabase
-                  .from('content_generation_queue')
-                  .update({
-                    status: 'completed',
-                    generated_article_id: articleResult.articleId
-                  })
-                  .eq('id', queueItem.id);
+                  .from('article_briefs')
+                  .update({ status: 'generated', updated_at: new Date().toISOString() })
+                  .eq('id', brief.id)
+                  .eq('user_token', schedule.user_token);
 
                 results.generated++;
-                console.log(`[CONTENT CRON] Generated queued article: "${queueItem.topic}" (Queue ID: ${queueItem.id})`);
+                console.log(`[CONTENT CRON] Generated article from brief: "${brief.title}" (Brief ID: ${brief.id || 'new'})`);
               } else {
-                // Mark as failed
                 await supabase
-                  .from('content_generation_queue')
-                  .update({ status: 'failed' })
-                  .eq('id', queueItem.id);
+                  .from('article_briefs')
+                  .update({ status: 'draft', updated_at: new Date().toISOString() })
+                  .eq('id', brief.id)
+                  .eq('user_token', schedule.user_token);
 
                 results.failed++;
-                console.error(`[CONTENT CRON] Failed to generate queued article: "${queueItem.topic}"`);
+                console.error(`[CONTENT CRON] Failed to generate article from brief: "${brief.title}"`);
               }
 
               // Add delay between articles to avoid rate limiting
@@ -253,15 +186,14 @@ ${topicDetails.estimatedTrafficPotential > 0 ? `This topic has an estimated traf
 
             } catch (error) {
               results.failed++;
-              const errorMsg = `Failed to generate queued article ${queueItem.id}: ${error}`;
+              const errorMsg = `Failed to generate article from brief ${brief.id || 'new'}: ${error}`;
               results.errors.push(errorMsg);
               console.error(`[CONTENT CRON] ${errorMsg}`);
-
-              // Mark queue item as failed
               await supabase
-                .from('content_generation_queue')
-                .update({ status: 'failed' })
-                .eq('id', queueItem.id);
+                .from('article_briefs')
+                .update({ status: 'draft', updated_at: new Date().toISOString() })
+                .eq('id', brief.id)
+                .eq('user_token', schedule.user_token);
             }
           }
 

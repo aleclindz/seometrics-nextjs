@@ -209,7 +209,8 @@ export async function POST(request: NextRequest) {
     try { console.log('[BRIEFS] briefs generated:', briefs.length); } catch {}
 
     // Optional: persist briefs when requested via addToQueue flag
-    const shouldQueue = Boolean((body as any)?.addToQueue);
+    // Always persist briefs to the article_briefs table
+    const shouldQueue = true;
     let savedCount = 0;
     if (shouldQueue && briefs.length > 0) {
       try {

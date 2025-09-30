@@ -22,6 +22,15 @@ interface ArticleQueueItem {
   topicCluster?: string;
 }
 
+interface PublishedArticleItem {
+  id: number;
+  title: string;
+  slug: string;
+  created_at?: string;
+  published_at?: string | null;
+  domain?: string;
+}
+
 interface Props {
   userToken: string;
   websiteToken: string;
@@ -35,6 +44,16 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   const [generating, setGenerating] = useState(false);
   const [editingItem, setEditingItem] = useState<ArticleQueueItem | null>(null);
   const [draggedItem, setDraggedItem] = useState<ArticleQueueItem | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newBrief, setNewBrief] = useState({
+    title: '',
+    parentCluster: '',
+    primaryKeyword: '',
+    intent: 'informational',
+    scheduledFor: new Date().toISOString().slice(0,16),
+    wordCount: 1500
+  } as any);
+  const [published, setPublished] = useState<PublishedArticleItem[]>([]);
 
   const fetchQueue = useCallback(async () => {
     try {
@@ -55,6 +74,24 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   useEffect(() => {
     fetchQueue();
   }, [fetchQueue]);
+
+  useEffect(() => {
+    const fetchPublished = async () => {
+      try {
+        const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+          const target = clean(domain);
+          const items: PublishedArticleItem[] = (data.articles || [])
+            .filter((a: any) => (a.status === 'completed' || a.status === 'published') && clean(a.websites?.domain) === target)
+            .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain }));
+          setPublished(items);
+        }
+      } catch (e) { /* no-op */ }
+    };
+    fetchPublished();
+  }, [userToken, websiteToken, domain]);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -113,7 +150,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
 
   const updateItem = async (id: number, updates: Partial<ArticleQueueItem>) => {
     try {
-      const response = await fetch('/api/content/article-queue', {
+      const response = await fetch('/api/content/article-briefs-queue', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, updates, userToken })
@@ -132,7 +169,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
 
   const deleteItem = async (id: number) => {
     try {
-      const response = await fetch(`/api/content/article-queue?id=${id}&userToken=${encodeURIComponent(userToken)}`, {
+      const response = await fetch(`/api/content/article-briefs-queue?id=${id}&userToken=${encodeURIComponent(userToken)}`, {
         method: 'DELETE'
       });
 
@@ -148,19 +185,17 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
 
   const reorderQueue = async (reorderedItems: ArticleQueueItem[]) => {
     try {
-      const response = await fetch('/api/content/article-queue', {
+      const response = await fetch('/api/content/article-briefs-queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reorderedItems, userToken })
+        body: JSON.stringify({ reorderedItems, userToken, websiteToken })
       });
-
       const data = await response.json();
-
       if (data.success) {
         setQueue(data.items);
       }
     } catch (error) {
-      console.error('Error reordering queue:', error);
+      console.error('Error reordering briefs:', error);
     }
   };
 
@@ -233,7 +268,14 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
             <p className="text-sm text-gray-500">{queue.length} brief{queue.length === 1 ? '' : 's'} in queue</p>
           </div>
 
-          {/* Removed auto-idea generation buttons per request */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCreating(true)}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <Plus className="w-4 h-4 mr-2" /> New Brief
+            </button>
+          </div>
         </div>
       </div>
 
@@ -246,7 +288,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
             <p className="mt-1 text-sm text-gray-500">
               Add your first article briefs based on clusters and strategy.
             </p>
-            <div className="mt-6">
+            <div className="mt-6 flex gap-2 justify-center">
               <button
                 onClick={() => generateBulkIdeas('week', 10, true)}
                 disabled={generating}
@@ -254,6 +296,12 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add 10 Article Briefs for This Week
+              </button>
+              <button
+                onClick={() => setCreating(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <Plus className="w-4 h-4 mr-2" /> Add One Manually
               </button>
             </div>
           </div>
@@ -370,6 +418,33 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
         )}
       </div>
 
+      {/* Published Articles */}
+      <div className="px-6 py-4 border-t border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-medium text-gray-900">Published Articles</h4>
+          <span className="text-xs text-gray-500">{published.length}</span>
+        </div>
+        {published.length === 0 ? (
+          <p className="text-sm text-gray-500">No published articles yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {published.slice(0, 10).map((a) => (
+              <li key={a.id} className="flex items-center justify-between">
+                <span className="text-sm text-gray-800 truncate pr-3">{a.title}</span>
+                <a
+                  className="text-sm text-blue-600 hover:underline flex-shrink-0"
+                  href={`https://${(a.domain || domain).replace(/^https?:\/\//,'').replace(/\/$/,'')}/${a.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Edit Modal */}
       {editingItem && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -449,6 +524,128 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                     Save Changes
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {creating && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Add Article Brief</h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={newBrief.title}
+                    onChange={(e) => setNewBrief({ ...newBrief, title: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Parent Cluster</label>
+                  <input
+                    type="text"
+                    value={newBrief.parentCluster}
+                    onChange={(e) => setNewBrief({ ...newBrief, parentCluster: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Primary Keyword</label>
+                  <input
+                    type="text"
+                    value={newBrief.primaryKeyword}
+                    onChange={(e) => setNewBrief({ ...newBrief, primaryKeyword: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Intent</label>
+                  <select
+                    value={newBrief.intent}
+                    onChange={(e) => setNewBrief({ ...newBrief, intent: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="informational">Informational</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="transactional">Transactional</option>
+                    <option value="comparison">Comparison</option>
+                    <option value="pricing">Pricing</option>
+                    <option value="location">Location</option>
+                    <option value="mixed">Mixed</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date</label>
+                  <input
+                    type="datetime-local"
+                    value={newBrief.scheduledFor}
+                    onChange={(e) => setNewBrief({ ...newBrief, scheduledFor: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Word Count (target)</label>
+                  <input
+                    type="number"
+                    value={newBrief.wordCount}
+                    onChange={(e) => setNewBrief({ ...newBrief, wordCount: parseInt(e.target.value) || 1500 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end items-center mt-6 gap-3">
+                <button
+                  onClick={() => setCreating(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!newBrief.title || !newBrief.primaryKeyword) return;
+                    try {
+                      const resp = await fetch('/api/content/article-briefs-queue', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          userToken,
+                          websiteToken,
+                          title: newBrief.title,
+                          h1: newBrief.title,
+                          pageType: 'cluster',
+                          parentCluster: newBrief.parentCluster || null,
+                          primaryKeyword: newBrief.primaryKeyword,
+                          intent: newBrief.intent,
+                          wordCountMin: Math.max(800, Math.floor(newBrief.wordCount * 0.7)),
+                          wordCountMax: newBrief.wordCount,
+                          scheduledFor: new Date(newBrief.scheduledFor).toISOString()
+                        })
+                      });
+                      const data = await resp.json();
+                      if (resp.ok && data.success) {
+                        setCreating(false);
+                        setNewBrief({ title: '', parentCluster: '', primaryKeyword: '', intent: 'informational', scheduledFor: new Date().toISOString().slice(0,16), wordCount: 1500 });
+                        await fetchQueue();
+                      }
+                    } catch (e) { console.error('Create brief failed:', e); }
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                >
+                  Save Brief
+                </button>
               </div>
             </div>
           </div>
