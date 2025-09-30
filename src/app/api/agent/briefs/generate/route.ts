@@ -86,15 +86,18 @@ export async function POST(request: NextRequest) {
 
     const topicsData = await topicsResp.json();
     let ideas: any[] = Array.isArray(topicsData?.selectedTopics) ? topicsData.selectedTopics : [];
+    try { console.log('[BRIEFS] topics selected:', Array.isArray(ideas) ? ideas.length : 0); } catch {}
     if (clustersLower.size > 0) {
       ideas = ideas.filter((i: any) => clustersLower.has(String(i.mainTopic || '').toLowerCase()));
     }
+    try { console.log('[BRIEFS] ideas after cluster filter:', ideas.length); } catch {}
 
     // Transform to briefs with rules
     const briefs: ContentBrief[] = [];
     const usedPrimaries = new Set<string>();
 
-    for (const idea of ideas.slice(0, count)) {
+    const batch = ideas.slice(0, Math.max(1, count));
+    for (const idea of batch) {
       const parentCluster = (String(idea.mainTopic || '').trim() || null) as string | null;
       const pageType: 'pillar' | 'cluster' | 'supporting' = includePillar ? 'cluster' : classifyPageType(idea);
       const primaryKeyword = pickPrimary(idea, existingKeywords, usedPrimaries);
@@ -203,8 +206,52 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    try { console.log('[BRIEFS] briefs generated:', briefs.length); } catch {}
+
+    // Optional: persist to content_generation_queue when requested via addToQueue flag
+    const shouldQueue = Boolean((body as any)?.addToQueue);
+    let savedCount = 0;
+    if (shouldQueue && briefs.length > 0) {
+      try {
+        const now = new Date();
+        const queueItems = briefs.map((b, index) => {
+          const hoursOffset = (index * (7 * 24 / Math.max(1, briefs.length)));
+          const scheduledTime = new Date(now.getTime() + hoursOffset * 60 * 60 * 1000);
+          return {
+            user_token: userToken,
+            website_token: effectiveWebsiteToken,
+            scheduled_for: scheduledTime.toISOString(),
+            topic: b.title,
+            target_word_count: b.metadata.word_count_range?.[1] || 2000,
+            content_style: b.metadata.tone || 'professional',
+            status: 'draft',
+            topic_cluster: b.parent_cluster,
+            content_pillar: b.parent_cluster,
+            target_keywords: JSON.stringify([b.primary_keyword, ...(b.secondary_keywords || [])].filter(Boolean)),
+            short_description: b.summary?.slice(0, 200) || b.title,
+            article_format: JSON.stringify({ type: b.page_type, wordCountRange: b.metadata.word_count_range || [1500, 2500] }),
+            authority_level: 'foundation',
+            priority: index + 1,
+            estimated_traffic_potential: 0,
+            target_queries: JSON.stringify(b.target_queries || []),
+            content_brief: b.summary,
+            queue_position: index + 1
+          };
+        });
+
+        const { data: inserted, error: insertErr } = await supabase
+          .from('content_generation_queue')
+          .insert(queueItems)
+          .select('id');
+        if (!insertErr) savedCount = inserted?.length || 0;
+      } catch (e) {
+        console.log('[BRIEFS] queue persistence failed:', e);
+      }
+    }
+
     const summary = summarizeBriefs(briefs);
-    const payload: BriefsGenerationResponse = { success: true, briefs, summary };
+    const payload: BriefsGenerationResponse & { queued?: number } = { success: true, briefs, summary };
+    if (savedCount > 0) (payload as any).queued = savedCount;
     return NextResponse.json(payload);
   } catch (error) {
     console.error('[BRIEFS] Generation error:', error);
