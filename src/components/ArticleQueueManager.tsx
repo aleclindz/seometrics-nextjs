@@ -95,10 +95,8 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
 
   useEffect(() => {
     const handler = (e: any) => {
-      // Optional: filter by websiteToken if provided
-      if (!e?.detail?.websiteToken || e.detail.websiteToken === websiteToken) {
-        fetchQueue();
-      }
+      // Refresh on any queue-updated signal to avoid missed refreshes
+      fetchQueue();
     };
     if (typeof window !== 'undefined') {
       window.addEventListener('seoagent:queue-updated', handler as any);
