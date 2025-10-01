@@ -58,7 +58,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   const fetchQueue = useCallback(async () => {
     try {
       // Use article briefs queue for planned briefs
-      const response = await fetch(`/api/content/article-briefs-queue?userToken=${encodeURIComponent(userToken)}&websiteToken=${encodeURIComponent(websiteToken)}&limit=20`);
+      const response = await fetch(`/api/content/article-briefs-queue?userToken=${encodeURIComponent(userToken)}&websiteToken=${encodeURIComponent(websiteToken)}&domain=${encodeURIComponent(domain)}&limit=20`);
       const data = await response.json();
 
       if (data.success) {

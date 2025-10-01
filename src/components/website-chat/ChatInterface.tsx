@@ -226,6 +226,16 @@ What would you like to work on first?`,
     setIsLoading(true);
 
     try {
+      // Ensure we always send a real websiteToken (resolve from domain when missing)
+      let effectiveWebsiteToken = websiteToken;
+      try {
+        if (!effectiveWebsiteToken && selectedSite) {
+          const lookup = await fetch(`/api/websites/token-lookup?userToken=${encodeURIComponent(userToken)}&site=${encodeURIComponent(selectedSite)}`);
+          const lk = await lookup.json();
+          if (lookup.ok && lk?.success && lk?.websiteToken) effectiveWebsiteToken = lk.websiteToken;
+        }
+      } catch {}
+
       const response = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: {
@@ -235,7 +245,8 @@ What would you like to work on first?`,
           message: input.trim(),
           userToken: userToken,
           selectedSite: selectedSite,
-          websiteToken: websiteToken || selectedSite, // Use resolved websiteToken
+          websiteToken: effectiveWebsiteToken, // Always send the canonical website token
+          domain: selectedSite,
           conversationHistory: messages.slice(-10), // Last 10 messages for context
           conversationId: conversationId // Include conversation ID for persistence
         }),

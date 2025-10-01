@@ -19,14 +19,31 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userToken = searchParams.get('userToken');
-    const websiteToken = searchParams.get('websiteToken');
+    let websiteToken = searchParams.get('websiteToken');
+    const domain = searchParams.get('domain');
     const limit = Math.max(1, Math.min(parseInt(searchParams.get('limit') || '20', 10), 100));
 
-    if (!userToken || !websiteToken) {
-      return NextResponse.json({ success: false, error: 'userToken and websiteToken are required' }, { status: 400 });
+    if (!userToken) {
+      return NextResponse.json({ success: false, error: 'userToken is required' }, { status: 400 });
     }
 
-    const { data: rows, error } = await supabase
+    // Resolve websiteToken by domain if not provided
+    if (!websiteToken && domain) {
+      const clean = String(domain).replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const { data: site } = await supabase
+        .from('websites')
+        .select('website_token, domain, cleaned_domain')
+        .eq('user_token', userToken)
+        .or([`domain.eq.${clean}`, `cleaned_domain.eq.${clean}`, `domain.eq.https://${clean}`].join(','))
+        .maybeSingle();
+      websiteToken = site?.website_token || websiteToken;
+    }
+
+    if (!websiteToken) {
+      return NextResponse.json({ success: true, queue: [] });
+    }
+
+    let { data: rows, error } = await supabase
       .from('article_briefs')
       .select('*')
       .eq('user_token', userToken)
@@ -37,6 +54,30 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('[ARTICLE BRIEFS QUEUE] Fetch error:', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch article briefs' }, { status: 500 });
+    }
+
+    // Fallback: if empty and domain supplied, re-resolve by domain and try again
+    if ((rows || []).length === 0 && domain) {
+      try {
+        const clean = String(domain).replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const { data: site } = await supabase
+          .from('websites')
+          .select('website_token')
+          .eq('user_token', userToken)
+          .or([`domain.eq.${clean}`, `cleaned_domain.eq.${clean}`, `domain.eq.https://${clean}`].join(','))
+          .maybeSingle();
+        const fallbackToken = site?.website_token;
+        if (fallbackToken && fallbackToken !== websiteToken) {
+          const res = await supabase
+            .from('article_briefs')
+            .select('*')
+            .eq('user_token', userToken)
+            .eq('website_token', fallbackToken)
+            .in('status', ['draft', 'queued'])
+            .limit(limit);
+          if (!res.error) rows = res.data || [];
+        }
+      } catch {}
     }
 
     const sorted = (rows || []).slice().sort((a: any, b: any) => {
