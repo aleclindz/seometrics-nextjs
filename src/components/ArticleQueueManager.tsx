@@ -54,6 +54,8 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
     wordCount: 1500
   } as any);
   const [published, setPublished] = useState<PublishedArticleItem[]>([]);
+  const [drafts, setDrafts] = useState<PublishedArticleItem[]>([]);
+  const [schedule, setSchedule] = useState<{ enabled: boolean; auto_publish: boolean; next_scheduled_at?: string | null } | null>(null);
 
   const fetchQueue = useCallback(async () => {
     try {
@@ -91,6 +93,31 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
       } catch (e) { /* no-op */ }
     };
     fetchPublished();
+    const fetchSchedule = async () => {
+      try {
+        const resp = await fetch(`/api/content/schedule-config?userToken=${encodeURIComponent(userToken)}&websiteToken=${encodeURIComponent(websiteToken)}`);
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          setSchedule({ enabled: !!data.config.enabled, auto_publish: !!data.config.auto_publish, next_scheduled_at: data.config.next_scheduled_at });
+        }
+      } catch {}
+    };
+    if (userToken && websiteToken) fetchSchedule();
+    const fetchDrafts = async () => {
+      try {
+        const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+          const target = clean(domain);
+          const items: PublishedArticleItem[] = (data.articles || [])
+            .filter((a: any) => (!a.published_at) && clean(a.websites?.domain) === target)
+            .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain }));
+          setDrafts(items);
+        }
+      } catch {}
+    };
+    fetchDrafts();
   }, [userToken, websiteToken, domain]);
 
   useEffect(() => {
@@ -394,6 +421,33 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
 
                       <div className="flex items-center space-x-2 ml-4">
                         <button
+                          onClick={async () => {
+                            try {
+                              await fetch('/api/articles/from-brief', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userToken, websiteToken, briefId: item.id, start: true })
+                              });
+                              // Refresh both queue and drafts
+                              fetchQueue();
+                              const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
+                              const data = await resp.json();
+                              if (resp.ok && data.success) {
+                                const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+                                const target = clean(domain);
+                                const items: PublishedArticleItem[] = (data.articles || [])
+                                  .filter((a: any) => (!a.published_at) && clean(a.websites?.domain) === target)
+                                  .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain }));
+                                setDrafts(items);
+                              }
+                            } catch (e) { console.error('Failed to generate from brief', e); }
+                          }}
+                          className="p-1 text-gray-400 hover:text-blue-600"
+                          title="Generate Article"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => setEditingItem(item)}
                           className="p-1 text-gray-400 hover:text-gray-600"
                         >
@@ -437,6 +491,120 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                 >
                   View
                 </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Schedule Controls */}
+      <div className="px-6 py-3 border-t border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={!!schedule?.enabled}
+                onChange={async (e) => {
+                  const newEnabled = e.target.checked;
+                  try {
+                    const resp = await fetch('/api/content/schedule-config', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userToken, websiteToken, config: { enabled: newEnabled } })
+                    });
+                    const data = await resp.json();
+                    if (resp.ok && data.success) {
+                      setSchedule({ enabled: data.config.enabled, auto_publish: data.config.auto_publish, next_scheduled_at: data.config.next_scheduled_at });
+                    }
+                  } catch {}
+                }}
+              />
+              Auto‑generate
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={!!schedule?.auto_publish}
+                onChange={async (e) => {
+                  const newAuto = e.target.checked;
+                  try {
+                    const resp = await fetch('/api/content/schedule-config', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userToken, websiteToken, config: { auto_publish: newAuto } })
+                    });
+                    const data = await resp.json();
+                    if (resp.ok && data.success) {
+                      setSchedule({ enabled: data.config.enabled, auto_publish: data.config.auto_publish, next_scheduled_at: data.config.next_scheduled_at });
+                    }
+                  } catch {}
+                }}
+              />
+              Auto‑publish
+            </label>
+          </div>
+          <div className="text-xs text-gray-600">
+            {schedule?.enabled && schedule?.auto_publish ? (
+              <span>Next auto publish: {schedule?.next_scheduled_at ? new Date(schedule.next_scheduled_at).toLocaleString() : 'scheduled'}</span>
+            ) : (
+              <span>Auto‑publish: Off</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Drafted Articles */}
+      <div className="px-6 py-4 border-t border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-medium text-gray-900">Drafted Articles</h4>
+          <span className="text-xs text-gray-500">{drafts.length}</span>
+        </div>
+        {drafts.length === 0 ? (
+          <p className="text-sm text-gray-500">No drafted articles yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {drafts.slice(0, 10).map((a) => (
+              <li key={a.id} className="flex items-center justify-between">
+                <div className="flex flex-col pr-3">
+                  <span className="text-sm text-gray-800 truncate">{a.title}</span>
+                  {schedule?.enabled && schedule?.auto_publish && (
+                    <span className="text-xs text-gray-500">Next publish: {schedule?.next_scheduled_at ? new Date(schedule.next_scheduled_at).toLocaleString() : 'scheduled'}</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const resp = await fetch('/api/articles/publish', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ userToken, articleId: a.id, publishDraft: true })
+                        });
+                        if (resp.ok) {
+                          // refresh published and drafts
+                          const p = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
+                          const d = await p.json();
+                          if (p.ok && d.success) {
+                            const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+                            const target = clean(domain);
+                            const pub: PublishedArticleItem[] = (d.articles || [])
+                              .filter((art: any) => art.published_at && clean(art.websites?.domain) === target)
+                              .map((art: any) => ({ id: art.id, title: art.title, slug: art.slug, created_at: art.created_at, published_at: art.published_at, domain: art.websites?.domain }));
+                            const drf: PublishedArticleItem[] = (d.articles || [])
+                              .filter((art: any) => !art.published_at && clean(art.websites?.domain) === target)
+                              .map((art: any) => ({ id: art.id, title: art.title, slug: art.slug, created_at: art.created_at, published_at: art.published_at, domain: art.websites?.domain }));
+                            setPublished(pub);
+                            setDrafts(drf);
+                          }
+                        }
+                      } catch (e) { console.error('Publish failed', e); }
+                    }}
+                    className="inline-flex items-center px-2 py-1 text-xs border rounded text-gray-700 hover:bg-gray-50"
+                  >
+                    Publish Now
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

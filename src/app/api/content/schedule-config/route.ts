@@ -126,39 +126,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate next scheduled time if enabled
-    let nextScheduledAt = null;
-    if (config.enabled) {
-      const now = new Date();
-      const preferredHours = config.preferred_hours || [9, 12, 15];
-      const randomHour = preferredHours[Math.floor(Math.random() * preferredHours.length)];
+    // Load existing config to merge fields (only change provided keys)
+    let current: any = null;
+    try {
+      const { data: row } = await supabase
+        .from('content_schedules')
+        .select('*')
+        .eq('user_token', userToken)
+        .eq('website_token', websiteToken)
+        .maybeSingle();
+      current = row || {};
+    } catch {}
 
+    const merged: any = {
+      enabled: typeof config.enabled === 'boolean' ? config.enabled : (current?.enabled ?? false),
+      frequency: config.frequency || current?.frequency || 'daily',
+      daily_count: config.daily_count ?? current?.daily_count ?? 1,
+      weekly_count: config.weekly_count ?? current?.weekly_count ?? 3,
+      monthly_count: config.monthly_count ?? current?.monthly_count ?? 10,
+      timezone: current?.timezone || 'UTC',
+      preferred_hours: current?.preferred_hours || [9, 12, 15],
+      content_style: config.content_style || current?.content_style || 'professional',
+      target_word_count: config.target_word_count ?? current?.target_word_count ?? 1200,
+      include_images: typeof config.include_images === 'boolean' ? config.include_images : (current?.include_images ?? true),
+      auto_publish: typeof config.auto_publish === 'boolean' ? config.auto_publish : (current?.auto_publish ?? false),
+      topic_sources: config.topic_sources ?? current?.topic_sources ?? [],
+      avoid_topics: config.avoid_topics ?? current?.avoid_topics ?? [],
+      content_pillars: config.content_pillars ?? current?.content_pillars ?? []
+    };
+
+    // Calculate next scheduled time if enabled
+    let nextScheduledAt = current?.next_scheduled_at || null;
+    if (merged.enabled) {
+      const now = new Date();
+      const preferredHours = Array.isArray(merged.preferred_hours) && merged.preferred_hours.length > 0 ? merged.preferred_hours : [9, 12, 15];
+      const randomHour = preferredHours[Math.floor(Math.random() * preferredHours.length)];
       // Schedule for tomorrow at the selected hour
       nextScheduledAt = new Date(now);
       nextScheduledAt.setDate(now.getDate() + 1);
       nextScheduledAt.setHours(randomHour, 0, 0, 0);
     }
 
-    // Upsert the configuration
+    // Upsert the configuration (merged)
     const { data: savedConfig, error: saveError } = await supabase
       .from('content_schedules')
       .upsert({
         user_token: userToken,
         website_token: websiteToken,
-        enabled: config.enabled,
-        frequency: config.frequency,
-        daily_count: config.daily_count,
-        weekly_count: config.weekly_count,
-        monthly_count: config.monthly_count,
-        timezone: config.timezone,
-        preferred_hours: config.preferred_hours,
-        content_style: config.content_style,
-        target_word_count: config.target_word_count,
-        include_images: config.include_images,
-        auto_publish: config.auto_publish,
-        topic_sources: config.topic_sources,
-        avoid_topics: config.avoid_topics,
-        content_pillars: config.content_pillars,
+        enabled: merged.enabled,
+        frequency: merged.frequency,
+        daily_count: merged.daily_count,
+        weekly_count: merged.weekly_count,
+        monthly_count: merged.monthly_count,
+        timezone: merged.timezone,
+        preferred_hours: merged.preferred_hours,
+        content_style: merged.content_style,
+        target_word_count: merged.target_word_count,
+        include_images: merged.include_images,
+        auto_publish: merged.auto_publish,
+        topic_sources: merged.topic_sources,
+        avoid_topics: merged.avoid_topics,
+        content_pillars: merged.content_pillars,
         next_scheduled_at: nextScheduledAt,
         updated_at: new Date().toISOString()
       }, {
