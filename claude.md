@@ -97,7 +97,55 @@ Always maintain the feature implementation status below. When working on feature
 - `react/jsx-key`: Always provide keys for list items
 - `@typescript-eslint/no-unused-vars`: Remove unused variables
 
-**Remember:** ESLint errors will cause deployment failures on Vercel. Always prioritize fixing these issues immediately. 
+**Remember:** ESLint errors will cause deployment failures on Vercel. Always prioritize fixing these issues immediately.
+
+## 🤖 **AUTOMATIC DEPLOYMENT FIX SYSTEM**
+
+**CRITICAL:** An autonomous webhook system monitors all Vercel deployments and automatically fixes failures.
+
+### How It Works:
+1. **Vercel Webhook** (`/api/webhooks/vercel-deployment`) receives deployment failure notifications
+2. **Error Analysis** automatically fetches build logs and identifies common issues
+3. **Auto-Fix Queue** stores failed deployments with error analysis and fix suggestions
+4. **Cron Job** (`/api/cron/auto-fix-deployments`) runs every 5 minutes to process fixes
+5. **Automatic Fixes** applied for common ESLint errors (quotes, Image components, etc.)
+6. **Auto-Commit & Push** creates fix commits and pushes to trigger new deployment
+7. **Retry Logic** attempts up to 3 automatic fix attempts per failure
+
+### Database Tables:
+- `deployment_failures` - Logs all failed deployments with error details
+- `auto_fix_queue` - Queue of pending fixes with status tracking
+
+### Automatic Fix Capabilities:
+✅ Unescaped quotes in JSX (`react/no-unescaped-entities`)
+✅ Missing Next.js Image imports (`@next/next/no-img-element`)
+✅ Common TypeScript type errors (detection + suggestions)
+✅ Missing dependencies (detection + install suggestions)
+⚠️ Complex errors require manual review
+
+### Monitoring:
+- Check `/api/cron/auto-fix-deployments` logs for fix attempts
+- Query `auto_fix_queue` table for pending/completed fixes
+- Deployment failures automatically notify you via sound (Funk.aiff)
+
+### Configuration Required:
+1. **Set Vercel Webhook** in project settings to: `https://seoagent.com/api/webhooks/vercel-deployment`
+2. **Webhook Events:** Subscribe to `deployment.error` and `deployment.failed`
+3. **Environment Variables:**
+   - `VERCEL_WEBHOOK_SECRET` - Webhook signature verification
+   - `VERCEL_TOKEN` - API token for fetching deployment logs
+   - `CRON_SECRET` - Cron job authentication
+
+### How Claude Code Uses This:
+When Claude Code commits and pushes changes:
+1. If deployment fails, webhook triggers automatically
+2. Errors are analyzed and queued for fixing
+3. Every 5 minutes, cron job attempts automatic fixes
+4. If automated fix succeeds, new deployment triggers
+5. If manual review needed, Claude Code will be notified
+6. Process repeats until deployment succeeds
+
+**This system ensures deployments self-heal without manual intervention.** 
 
 # 🎯 SEOAGENT.COM STRATEGIC IMPLEMENTATION
 
