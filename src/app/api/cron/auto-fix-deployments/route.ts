@@ -174,10 +174,19 @@ async function updateFixStatus(
 
 // Increment retry count
 async function incrementRetryCount(fixId: number, error: string) {
+  // First fetch the current retry count
+  const { data: currentFix } = await supabase
+    .from('auto_fix_queue')
+    .select('retry_count')
+    .eq('id', fixId)
+    .single();
+
+  const newRetryCount = (currentFix?.retry_count || 0) + 1;
+
   await supabase
     .from('auto_fix_queue')
     .update({
-      retry_count: supabase.raw('retry_count + 1'),
+      retry_count: newRetryCount,
       last_error: error,
       status: 'queued', // Keep in queue for retry
     })
