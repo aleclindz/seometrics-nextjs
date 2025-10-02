@@ -56,6 +56,11 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   const [published, setPublished] = useState<PublishedArticleItem[]>([]);
   const [drafts, setDrafts] = useState<PublishedArticleItem[]>([]);
   const [schedule, setSchedule] = useState<{ enabled: boolean; auto_publish: boolean; next_scheduled_at?: string | null } | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error'|'info' }>({ visible: false, message: '', type: 'info' });
+  const showToast = (message: string, type: 'success'|'error'|'info' = 'info', ms = 2500) => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), ms);
+  };
 
   const fetchQueue = useCallback(async () => {
     try {
@@ -423,11 +428,17 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                         <button
                           onClick={async () => {
                             try {
-                              await fetch('/api/articles/from-brief', {
+                              showToast('Draft creation started', 'info');
+                              const respBrief = await fetch('/api/articles/from-brief', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ userToken, websiteToken, briefId: item.id, start: true })
                               });
+                              if (!respBrief.ok) {
+                                const err = await respBrief.json().catch(() => ({}));
+                                showToast(`Failed: ${err.error || respBrief.statusText}`, 'error', 3000);
+                                return;
+                              }
                               // Refresh both queue and drafts
                               fetchQueue();
                               const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
@@ -440,12 +451,12 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                                   .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain }));
                                 setDrafts(items);
                               }
-                            } catch (e) { console.error('Failed to generate from brief', e); }
+                            } catch (e) { console.error('Failed to generate from brief', e); showToast('Failed to start draft', 'error', 3000); }
                           }}
-                          className="p-1 text-gray-400 hover:text-blue-600"
-                          title="Generate Article"
+                          className="inline-flex items-center px-2 py-1 text-xs border rounded text-gray-700 hover:bg-gray-50"
+                          title="Generate Article from Brief"
                         >
-                          <Sparkles className="w-4 h-4" />
+                          Generate article from brief
                         </button>
                         <button
                           onClick={() => setEditingItem(item)}
@@ -576,6 +587,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                   <button
                     onClick={async () => {
                       try {
+                        showToast('Publishing…', 'info');
                         const resp = await fetch('/api/articles/publish', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
@@ -596,6 +608,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                               .map((art: any) => ({ id: art.id, title: art.title, slug: art.slug, created_at: art.created_at, published_at: art.published_at, domain: art.websites?.domain }));
                             setPublished(pub);
                             setDrafts(drf);
+                            showToast('Published', 'success');
                           }
                         }
                       } catch (e) { console.error('Publish failed', e); }
@@ -818,5 +831,10 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
         </div>
       )}
     </div>
+    {toast.visible && (
+      <div className={`fixed top-4 right-4 z-[9999] px-4 py-2 rounded-lg shadow ${toast.type==='success' ? 'bg-green-600 text-white' : toast.type==='error' ? 'bg-red-600 text-white' : 'bg-gray-800 text-white'}`}>
+        {toast.message}
+      </div>
+    )}
   );
 }
