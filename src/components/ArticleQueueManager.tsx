@@ -289,6 +289,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   }
 
   return (
+    <>
     <div className="bg-white rounded-lg shadow">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200">
@@ -836,5 +837,6 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
         {toast.message}
       </div>
     )}
+    </>
   );
 }
