@@ -32,9 +32,8 @@ Success → Clear queue | Fail → Retry (max 3x)
 ### 2. Configure Webhook
 - **URL**: `https://seoagent.com/api/webhooks/vercel-deployment`
 - **Events**: Select the following:
-  - ✅ `deployment.error` - Build/deployment errors
-  - ✅ `deployment.failed` - Failed deployments
-  - ✅ `deployment.success` - Successful deployments (to clear queue)
+  - ✅ `deployment.error` - Build/deployment errors (ONLY failure event)
+  - ✅ `deployment.succeeded` - Successful deployments (to clear queue)
 - **Secret**: Generate with: `openssl rand -hex 32`
 - **Projects**: Select "seometrics-nextjs"
 
@@ -82,8 +81,7 @@ curl -X POST "https://api.vercel.com/v1/webhooks" \
     "url": "https://seoagent.com/api/webhooks/vercel-deployment",
     "events": [
       "deployment.error",
-      "deployment.failed",
-      "deployment.success"
+      "deployment.succeeded"
     ],
     "projectIds": ["prj_8n5bC0IAtBfKx6Z5LW60jZTAVt6O"]
   }'
@@ -230,7 +228,7 @@ SUPABASE_SERVICE_ROLE_KEY=<service-key>
 
 ### Webhook Not Firing
 - Check webhook URL is correct: `https://seoagent.com/api/webhooks/vercel-deployment`
-- Verify events selected: `deployment.error`, `deployment.failed`, `deployment.success`
+- Verify events selected: `deployment.error`, `deployment.succeeded`
 - Check Vercel webhook delivery logs for errors
 
 ### Fixes Not Applied

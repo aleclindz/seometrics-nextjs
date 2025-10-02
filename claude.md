@@ -130,7 +130,7 @@ Always maintain the feature implementation status below. When working on feature
 
 ### Configuration Required:
 1. **Set Vercel Webhook** in project settings to: `https://seoagent.com/api/webhooks/vercel-deployment`
-2. **Webhook Events:** Subscribe to `deployment.error` and `deployment.failed`
+2. **Webhook Events:** Subscribe to `deployment.error` (failures) and `deployment.succeeded` (success to clear queue)
 3. **Environment Variables:**
    - `VERCEL_WEBHOOK_SECRET` - Webhook signature verification
    - `VERCEL_TOKEN` - API token for fetching deployment logs

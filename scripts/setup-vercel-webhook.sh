@@ -32,8 +32,7 @@ RESPONSE=$(curl -s -X POST "https://api.vercel.com/v1/webhooks" \
     \"url\": \"$WEBHOOK_URL\",
     \"events\": [
       \"deployment.error\",
-      \"deployment.failed\",
-      \"deployment.success\"
+      \"deployment.succeeded\"
     ],
     \"projectIds\": [
       \"$PROJECT_ID\"

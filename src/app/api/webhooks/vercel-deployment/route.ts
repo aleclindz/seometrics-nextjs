@@ -193,11 +193,8 @@ export async function POST(request: NextRequest) {
       deploymentUrl: payload.payload?.deployment?.url,
     });
 
-    // Handle deployment failure events
-    if (
-      payload.type === 'deployment.error' ||
-      payload.type === 'deployment.failed'
-    ) {
+    // Handle deployment failure events (deployment.error is the only failure event)
+    if (payload.type === 'deployment.error') {
       const { deployment, project, team } = payload.payload;
 
       // Fetch deployment logs to analyze the failure
@@ -233,7 +230,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle successful deployment events
-    if (payload.type === 'deployment.success') {
+    if (payload.type === 'deployment.succeeded') {
       // Clear any pending fixes for this project
       const { project } = payload.payload;
       await supabase
