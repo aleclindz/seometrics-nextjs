@@ -35,7 +35,7 @@ interface CMSConnectionFormProps {
   onCancel: () => void;
   connection?: any; // For editing existing connections
   preselectedWebsiteId?: string; // For modal usage
-  initialCmsType?: 'wordpress' | 'strapi' | 'wix';
+  initialCmsType?: 'wordpress' | 'strapi' | 'wix' | 'ghost';
 }
 
 export default function CMSConnectionForm({ onSuccess, onCancel, connection, preselectedWebsiteId, initialCmsType }: CMSConnectionFormProps) {
@@ -224,6 +224,17 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         api_token: (prev.wp_username && compactPass) ? `${prev.wp_username}:${compactPass}` : prev.api_token,
         content_type: 'posts',
         connection_name: prev.connection_name || `WordPress - ${prev.base_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
+      }));
+      setCurrentStep(3);
+      return;
+    }
+
+    // Ghost doesn't need content type discovery - skip to final step
+    if (formData.cms_type === 'ghost') {
+      setFormData(prev => ({
+        ...prev,
+        content_type: 'posts',
+        connection_name: prev.connection_name || `Ghost - ${prev.base_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
       }));
       setCurrentStep(3);
       return;
@@ -494,17 +505,32 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
           </>
         ) : (
           <div>
-            <label htmlFor="api_token" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Token *</label>
+            <label htmlFor="api_token" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {formData.cms_type === 'ghost' ? 'Admin API Key *' : 'API Token *'}
+            </label>
             <input
               id="api_token"
               type="password"
               name="api_token"
               value={formData.api_token}
               onChange={handleInputChange}
-              placeholder={formData.cms_type === 'wix' ? 'Your Wix API Key' : 'Your Strapi API token'}
+              placeholder={
+                formData.cms_type === 'ghost'
+                  ? 'Your Ghost Admin API Key (format: id:secret)'
+                  : formData.cms_type === 'wix'
+                  ? 'Your Wix API Key'
+                  : 'Your Strapi API token'
+              }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
               required
             />
+            {formData.cms_type === 'ghost' && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 space-y-1">
+                <p>Get your Admin API Key from Ghost Admin:</p>
+                <p>Settings → Integrations → Add Custom Integration</p>
+                <p className="text-amber-600 dark:text-amber-400">Copy the full Admin API Key (looks like: 6414...abc:1234...def)</p>
+              </div>
+            )}
           </div>
         )}
 

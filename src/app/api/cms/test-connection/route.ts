@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
       testResult = await testWixConnection(base_url, actualApiToken, content_type);
     } else if (cms_type === 'wordpress') {
       testResult = await testWordPressConnection(base_url, actualApiToken, content_type);
+    } else if (cms_type === 'ghost') {
+      testResult = await testGhostConnection(base_url, actualApiToken, content_type);
     } else {
       return NextResponse.json(
         { error: `CMS type '${cms_type}' is not yet supported` },
@@ -1185,6 +1187,203 @@ async function testWordPressConnection(siteUrl: string, applicationPassword: str
     return {
       success: false,
       message: 'Could not connect to WordPress. Please check your site URL and application password.',
+      details: { error: error instanceof Error ? error.message : 'Unknown error' }
+    };
+  }
+}
+
+async function testGhostConnection(siteUrl: string, apiKey: string, contentType: string = 'posts') {
+  try {
+    console.log('[GHOST TEST] Testing Ghost connection to:', siteUrl);
+
+    // Validate API key format (should be id:secret)
+    const parts = apiKey.split(':');
+    if (parts.length !== 2) {
+      return {
+        success: false,
+        message: 'Invalid Ghost Admin API Key format. Should be "id:secret" (e.g., 6414abc...def:1234ghi...jkl)',
+        details: { error: 'Invalid API key format', expectedFormat: 'id:secret' }
+      };
+    }
+
+    const cleanUrl = siteUrl.replace(/\/$/, '');
+
+    // Import Ghost Admin API client
+    const GhostAdminAPI = (await import('@tryghost/admin-api')).default;
+
+    // Initialize Ghost Admin API client
+    const api = new GhostAdminAPI({
+      url: cleanUrl,
+      key: apiKey,
+      version: 'v5.0'
+    });
+
+    // Test 1: Get site information
+    console.log('[GHOST TEST] Testing basic connectivity...');
+    let siteInfo: any = null;
+    try {
+      siteInfo = await api.site.read();
+      console.log('[GHOST TEST] Site info retrieved:', siteInfo?.title || 'Unknown');
+    } catch (siteError: any) {
+      console.error('[GHOST TEST] Site info failed:', siteError.message);
+
+      if (siteError.message?.includes('401') || siteError.message?.includes('Unauthorized')) {
+        return {
+          success: false,
+          message: 'Authentication failed. Please check your Admin API Key is correct and copied exactly from Ghost Admin.',
+          details: { status: 401, error: 'Unauthorized', ghostError: siteError.message }
+        };
+      } else if (siteError.message?.includes('404') || siteError.message?.includes('not found')) {
+        return {
+          success: false,
+          message: 'Ghost site not found at this URL. Please verify your Ghost site URL is correct.',
+          details: { status: 404, error: 'Site not found', url: cleanUrl }
+        };
+      } else if (siteError.message?.includes('ENOTFOUND') || siteError.message?.includes('network')) {
+        return {
+          success: false,
+          message: 'Could not connect to Ghost site. Please check your site URL and internet connection.',
+          details: { error: 'Network error', url: cleanUrl }
+        };
+      }
+
+      return {
+        success: false,
+        message: `Ghost connection failed: ${siteError.message}`,
+        details: { error: siteError.message }
+      };
+    }
+
+    // Test 2: Check post read access
+    console.log('[GHOST TEST] Testing post read access...');
+    let posts: any[] = [];
+    try {
+      const postsResponse = await api.posts.browse({ limit: 5 });
+      posts = postsResponse || [];
+      console.log('[GHOST TEST] Posts retrieved:', posts.length);
+    } catch (postsError: any) {
+      console.warn('[GHOST TEST] Posts retrieval failed:', postsError.message);
+      // Not fatal - maybe no posts exist yet
+    }
+
+    // Test 3: Test write permissions by creating a draft post
+    console.log('[GHOST TEST] Testing write permissions...');
+    let writeAccess = false;
+    let writeError = '';
+
+    try {
+      const testPost = await api.posts.add({
+        title: 'SEOAgent Test Post - Safe to Delete',
+        lexical: JSON.stringify({
+          root: {
+            children: [
+              {
+                children: [
+                  {
+                    detail: 0,
+                    format: 0,
+                    mode: 'normal',
+                    style: '',
+                    text: 'This is a test post created by SEOAgent to verify write permissions. You can safely delete this post.',
+                    type: 'text',
+                    version: 1
+                  }
+                ],
+                direction: 'ltr',
+                format: '',
+                indent: 0,
+                type: 'paragraph',
+                version: 1
+              }
+            ],
+            direction: 'ltr',
+            format: '',
+            indent: 0,
+            type: 'root',
+            version: 1
+          }
+        }),
+        status: 'draft'
+      });
+
+      console.log('[GHOST TEST] Test post created:', testPost?.id);
+      writeAccess = true;
+
+      // Clean up: Delete the test post
+      if (testPost?.id) {
+        try {
+          await api.posts.delete({ id: testPost.id });
+          console.log('[GHOST TEST] Test post cleaned up');
+        } catch (cleanupError) {
+          console.warn('[GHOST TEST] Could not clean up test post:', cleanupError);
+        }
+      }
+    } catch (writeTestError: any) {
+      writeError = writeTestError.message || 'Unknown error';
+      console.warn('[GHOST TEST] Write test failed:', writeError);
+
+      if (writeError.includes('403') || writeError.includes('Forbidden')) {
+        return {
+          success: true, // Connection works but limited permissions
+          message: 'Connection successful, but write permissions are limited. Your API key may have read-only access.',
+          details: {
+            readAccess: true,
+            writeAccess: false,
+            siteInfo: {
+              title: siteInfo?.title || 'Ghost Site',
+              description: siteInfo?.description || '',
+              url: cleanUrl,
+              version: siteInfo?.version || 'Unknown'
+            },
+            postsCount: posts.length,
+            writeError: writeError
+          }
+        };
+      }
+    }
+
+    // Success with full access
+    return {
+      success: true,
+      message: `Ghost connection successful! Full read and write access confirmed for "${siteInfo?.title || 'Ghost Site'}".`,
+      details: {
+        readAccess: true,
+        writeAccess: writeAccess,
+        siteInfo: {
+          title: siteInfo?.title || 'Ghost Site',
+          description: siteInfo?.description || '',
+          url: cleanUrl,
+          version: siteInfo?.version || 'Unknown'
+        },
+        postsCount: posts.length,
+        discoveredContentTypes: [{
+          uid: 'ghost::posts::post',
+          apiID: 'posts',
+          displayName: 'Posts',
+          pluralName: 'posts',
+          singularName: 'post',
+          apiEndpoint: 'ghost/api/admin/posts',
+          fieldCount: 10, // title, lexical, html, feature_image, featured, status, etc.
+          hasRichText: true,
+          hasMedia: true,
+          hasUID: true,
+          hasString: true,
+          hasText: true,
+          hasRelation: true,
+          hasDraftAndPublish: true,
+          isEmpty: false,
+          category: 'blog',
+          suitableForBlogging: 30 // High score for Ghost posts
+        }],
+        contentTypesCount: 1
+      }
+    };
+
+  } catch (error) {
+    console.error('[GHOST TEST] Connection test error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Could not connect to Ghost. Please check your site URL and Admin API Key.',
       details: { error: error instanceof Error ? error.message : 'Unknown error' }
     };
   }

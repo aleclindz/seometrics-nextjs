@@ -81,7 +81,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [cmsConnections, setCmsConnections] = useState<CMSConnection[]>([]);
   const [cmsLoading, setCmsLoading] = useState(false);
   const [cmsError, setCmsError] = useState<string | null>(null);
-  const [selectedCmsType, setSelectedCmsType] = useState<'wordpress'|'strapi'|'wix'|null>(null);
+  const [selectedCmsType, setSelectedCmsType] = useState<'wordpress'|'strapi'|'wix'|'ghost'|null>(null);
 
   // Host Connection State
   const [hostConnections, setHostConnections] = useState<HostConnection[]>([]);
@@ -1040,6 +1040,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                     {[
                       { type: 'strapi', name: 'Strapi', icon: '🚀', available: true },
                       { type: 'wordpress', name: 'WordPress', icon: '📝', available: true },
+                      { type: 'ghost', name: 'Ghost', icon: '👻', available: true },
                       { type: 'wix', name: 'Wix', icon: '🌟', available: false },
                       { type: 'webflow', name: 'Webflow', icon: '🌊', available: false },
                       { type: 'shopify', name: 'Shopify', icon: '🛒', available: false },
