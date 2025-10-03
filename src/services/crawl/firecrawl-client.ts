@@ -61,16 +61,11 @@ async function firecrawlFetch(path: string, init?: RequestInitWithTimeout) {
 export async function startCrawl(opts: StartCrawlOptions & { timeoutMs?: number }): Promise<FirecrawlJob> {
   const body: any = {
     url: opts.url,
-    crawlerOptions: {
-      limit: Math.max(1, Math.min(opts.maxPages || 50, 1000)),
-      include: opts.includePaths || [],
-      exclude: opts.excludePaths || []
-    },
-    // Return both raw HTML and markdown if available
-    formats: ['html', 'markdown'],
-    // Render JavaScript pages for modern sites
-    pageOptions: {
-      fetchPageContent: opts.parseJS !== false
+    limit: Math.max(1, Math.min(opts.maxPages || 50, 1000)),
+    includePaths: opts.includePaths || [],
+    excludePaths: opts.excludePaths || [],
+    scrapeOptions: {
+      formats: ['html', 'markdown']
     }
   };
   const data = await firecrawlFetch('/v2/crawl', {
@@ -100,7 +95,10 @@ export async function getCrawlResult(jobId: string, timeoutMs?: number): Promise
 export async function scrapeUrl(url: string, opts?: { timeoutMs?: number }): Promise<CrawlResultPage> {
   const data = await firecrawlFetch('/v2/scrape', {
     method: 'POST',
-    body: JSON.stringify({ url, formats: ['html', 'markdown'], pageOptions: { fetchPageContent: true } }),
+    body: JSON.stringify({
+      url,
+      formats: ['html', 'markdown']
+    }),
     timeoutMs: opts?.timeoutMs ?? 5000
   });
   const content = data.data || data;
