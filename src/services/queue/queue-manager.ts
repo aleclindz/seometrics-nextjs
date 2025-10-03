@@ -8,7 +8,13 @@ import { createClient } from '@supabase/supabase-js';
 // Otherwise, all queue operations will be no-ops to avoid burning through free tier
 const REDIS_ENABLED = process.env.ENABLE_REDIS_QUEUES === 'true';
 
-// Lazily create a single Redis connection to avoid burning Upstash credits on cold starts
+// Only start workers in dedicated worker processes (not web replicas)
+const START_WORKERS = process.env.START_WORKERS === 'true';
+
+// Only start QueueEvents in a single leader instance to avoid duplicate listeners
+const START_EVENTS = process.env.START_EVENTS === 'true';
+
+// Single shared Redis connection to avoid connection churn
 let redisConnection: IORedis | null = null;
 function getRedisConnection(): IORedis {
   if (!REDIS_ENABLED) {
@@ -17,7 +23,22 @@ function getRedisConnection(): IORedis {
   if (!redisConnection) {
     redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: null, // Required for BullMQ
+      enableReadyCheck: false, // Reduce Redis commands on startup
+      enableOfflineQueue: true,
+      // Connection pool settings to reduce churn
+      lazyConnect: false,
+      keepAlive: 30000,
+      // Retry strategy with exponential backoff
+      retryStrategy(times) {
+        if (times > 10) return null; // Stop retrying after 10 attempts
+        return Math.min(times * 200, 5000); // Max 5s between retries
+      },
     });
+
+    // Log connection events for debugging
+    redisConnection.on('connect', () => console.log('[REDIS] Connected'));
+    redisConnection.on('error', (err) => console.error('[REDIS] Error:', err.message));
+    redisConnection.on('close', () => console.log('[REDIS] Connection closed'));
   }
   return redisConnection;
 }
@@ -79,8 +100,9 @@ export class AgentQueueManager {
   private getOrCreateQueue(queueName: string): Queue {
     let queue = this.queues.get(queueName);
     if (!queue) {
+      const connection = getRedisConnection();
       queue = new Queue(queueName, {
-        connection: getRedisConnection(),
+        connection,
         defaultJobOptions: {
           removeOnComplete: 100,
           removeOnFail: 50,
@@ -90,12 +112,14 @@ export class AgentQueueManager {
       });
       this.queues.set(queueName, queue);
 
-      // Only attach QueueEvents in long-lived worker processes to avoid extra Redis polling
-      if (process.env.ENABLE_QUEUE_EVENTS === 'true') {
+      // Only attach QueueEvents if this is the designated events leader
+      // This prevents duplicate pub/sub listeners that multiply Redis traffic
+      if (START_EVENTS) {
+        console.log(`[QUEUE MANAGER] Starting QueueEvents for ${queueName} (leader mode)`);
         const events = new QueueEvents(queueName, {
-          connection: getRedisConnection(),
-          // Reduce Redis command usage on Upstash by blocking longer between polls
-          blockingTimeout: 300000,
+          connection,
+          // Dramatically reduce polling to conserve Upstash requests
+          blockingTimeout: 300000, // 5 minutes
         } as any);
         this.events.set(queueName, events);
         this.setupEventListeners(queueName, events);
@@ -119,27 +143,47 @@ export class AgentQueueManager {
   }
 
   private initializeWorkers() {
-    // Agent Actions Worker
+    const connection = getRedisConnection();
+
+    // Shared worker options with aggressive rate limiting
+    const baseWorkerOptions = {
+      connection,
+      // CRITICAL: Rate limit to prevent hammering Upstash
+      limiter: {
+        max: 50,        // Max 50 jobs per duration window
+        duration: 1000, // Per second (50 ops/sec per worker)
+      },
+      // Reduce stalled check frequency to save Redis commands
+      stalledInterval: 60000,    // Check every 60s instead of default 30s
+      maxStalledCount: 1,        // Fail jobs quickly if stalled
+      lockDuration: 60000,       // 60s lock for jobs (renew less often)
+    };
+
+    // Agent Actions Worker - Low concurrency
     const agentWorker = new Worker(
       QUEUE_NAMES.AGENT_ACTIONS,
       async (job: Job<AgentJobData>) => {
         return await this.processAgentAction(job);
       },
       {
-        connection: getRedisConnection(),
-        concurrency: 5, // Process up to 5 jobs concurrently
+        ...baseWorkerOptions,
+        concurrency: 2, // Reduced from 5
       }
     );
 
-    // Content Generation Worker
+    // Content Generation Worker - Very low concurrency (AI-heavy)
     const contentWorker = new Worker(
       QUEUE_NAMES.CONTENT_GENERATION,
       async (job: Job<AgentJobData>) => {
         return await this.processContentGeneration(job);
       },
       {
-        connection: getRedisConnection(),
-        concurrency: 3,
+        ...baseWorkerOptions,
+        concurrency: 1, // Reduced from 3 (AI calls are slow anyway)
+        limiter: {
+          max: 20,        // Even more conservative for AI jobs
+          duration: 1000,
+        },
       }
     );
 
@@ -150,8 +194,8 @@ export class AgentQueueManager {
         return await this.processTechnicalSEO(job);
       },
       {
-        connection: getRedisConnection(),
-        concurrency: 5,
+        ...baseWorkerOptions,
+        concurrency: 2, // Reduced from 5
       }
     );
 
@@ -162,8 +206,8 @@ export class AgentQueueManager {
         return await this.processCMSPublishing(job);
       },
       {
-        connection: getRedisConnection(),
-        concurrency: 2,
+        ...baseWorkerOptions,
+        concurrency: 1, // Keep at 1 (external API calls)
       }
     );
 
@@ -174,8 +218,8 @@ export class AgentQueueManager {
         return await this.processVerification(job);
       },
       {
-        connection: getRedisConnection(),
-        concurrency: 10,
+        ...baseWorkerOptions,
+        concurrency: 3, // Reduced from 10
       }
     );
 
@@ -184,14 +228,30 @@ export class AgentQueueManager {
     this.workers.set(QUEUE_NAMES.TECHNICAL_SEO, seoWorker);
     this.workers.set(QUEUE_NAMES.CMS_PUBLISHING, cmsWorker);
     this.workers.set(QUEUE_NAMES.VERIFICATION, verificationWorker);
+
+    console.log('[QUEUE MANAGER] Workers initialized with rate limiting');
   }
 
   // Public method to start workers explicitly (idempotent)
   startWorkers() {
-    if (this.workersStarted) return;
+    if (this.workersStarted) {
+      console.log('[QUEUE MANAGER] Workers already started, skipping');
+      return;
+    }
+
+    // Only start workers if explicitly enabled
+    if (!START_WORKERS) {
+      console.log('[QUEUE MANAGER] START_WORKERS not enabled, skipping worker initialization');
+      console.log('[QUEUE MANAGER] Set START_WORKERS=true to enable workers');
+      return;
+    }
+
     this.initializeWorkers();
     this.workersStarted = true;
-    console.log('[QUEUE MANAGER] Workers started');
+    console.log('[QUEUE MANAGER] Workers started successfully');
+    console.log('[QUEUE MANAGER] Rate limiting: 50 ops/sec per worker');
+    console.log('[QUEUE MANAGER] Stalled checks: every 60s');
+    console.log('[QUEUE MANAGER] QueueEvents:', START_EVENTS ? 'ENABLED (leader mode)' : 'DISABLED');
   }
 
   // Queue a new agent action
