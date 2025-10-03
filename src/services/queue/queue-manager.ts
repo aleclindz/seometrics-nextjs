@@ -3,9 +3,17 @@ import { EnhancedArticleGenerator, EnhancedArticleRequest } from '../content/enh
 import IORedis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 
+// REDIS USAGE GUARD: Prevent Redis connections to conserve Upstash quota
+// Set ENABLE_REDIS_QUEUES=true in environment to enable Redis-based queues
+// Otherwise, all queue operations will be no-ops to avoid burning through free tier
+const REDIS_ENABLED = process.env.ENABLE_REDIS_QUEUES === 'true';
+
 // Lazily create a single Redis connection to avoid burning Upstash credits on cold starts
 let redisConnection: IORedis | null = null;
 function getRedisConnection(): IORedis {
+  if (!REDIS_ENABLED) {
+    throw new Error('Redis queues are disabled. Set ENABLE_REDIS_QUEUES=true to enable.');
+  }
   if (!redisConnection) {
     redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: null, // Required for BullMQ
@@ -200,7 +208,7 @@ export class AgentQueueManager {
     } = {}
   ): Promise<string> {
     const idempotencyKey = `${actionId}-${Date.now()}`;
-    
+
     // Create run record in database
     const { data: runData, error } = await supabase
       .from('agent_runs')
@@ -216,6 +224,14 @@ export class AgentQueueManager {
 
     if (error || !runData) {
       throw new Error(`Failed to create run record: ${error?.message}`);
+    }
+
+    // If Redis is disabled, just return the database record ID
+    // The job will need to be processed synchronously or via polling
+    if (!REDIS_ENABLED) {
+      console.log('[QUEUE MANAGER] Redis disabled, job stored in database only:', idempotencyKey);
+      await this.updateActionStatus(actionId, 'pending'); // Mark as pending for manual processing
+      return idempotencyKey;
     }
 
     // Determine which queue to use based on action type
