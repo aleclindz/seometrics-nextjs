@@ -12,8 +12,8 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const { userToken, websiteToken, briefId, start = true } = await request.json();
-    if (!userToken || !websiteToken || !briefId) {
-      return NextResponse.json({ success: false, error: 'userToken, websiteToken, and briefId are required' }, { status: 400 });
+    if (!userToken || !briefId) {
+      return NextResponse.json({ success: false, error: 'userToken and briefId are required' }, { status: 400 });
     }
 
     // Resolve website id
@@ -27,17 +27,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Website not found' }, { status: 404 });
     }
 
-    // Load brief
+    // Load brief (trust brief's own website association)
     const { data: brief, error: briefErr } = await supabase
       .from('article_briefs')
       .select('*')
       .eq('id', briefId)
       .eq('user_token', userToken)
-      .eq('website_token', websiteToken)
       .maybeSingle();
     if (briefErr || !brief) {
       return NextResponse.json({ success: false, error: 'Brief not found' }, { status: 404 });
     }
+
+    const effectiveWebsiteToken = brief.website_token as string;
 
     // Prepare draft insert
     const targetKeywords = Array.from(new Set<string>([
@@ -58,6 +59,17 @@ export async function POST(request: NextRequest) {
       generated_from_brief_id: brief.id,
       created_at: new Date().toISOString()
     };
+
+    // Resolve website id from brief's website_token (safer than trusting the client param)
+    const { data: site, error: siteErr } = await supabase
+      .from('websites')
+      .select('id, domain')
+      .eq('website_token', effectiveWebsiteToken)
+      .eq('user_token', userToken)
+      .maybeSingle();
+    if (siteErr || !site?.id) {
+      return NextResponse.json({ success: false, error: 'Website not found for brief' }, { status: 404 });
+    }
 
     const { data: draft, error: insErr } = await supabase
       .from('article_queue')
