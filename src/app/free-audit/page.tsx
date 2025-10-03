@@ -10,10 +10,14 @@ export default function FreeAuditPage() {
   const [status, setStatus] = useState<"idle" | "starting" | "running" | "analyzing" | "completed" | "error">("idle");
   const [result, setResult] = useState<any>(null);
   const pollRef = useRef<any>(null);
+  const retryCountRef = useRef<number>(0);
+  const pollIntervalRef = useRef<number>(2000);
 
   const startAudit = async () => {
     setResult(null);
     setStatus("starting");
+    retryCountRef.current = 0;
+    pollIntervalRef.current = 2000;
     try {
       const res = await fetch("/api/crawl/firecrawl", {
         method: "POST",
@@ -31,9 +35,30 @@ export default function FreeAuditPage() {
 
   useEffect(() => {
     if (!jobId || status !== "running") return;
-    pollRef.current = setInterval(async () => {
+
+    const poll = async () => {
+      // Max 60 attempts (2 minutes with initial 2s polling)
+      if (retryCountRef.current >= 60) {
+        clearInterval(pollRef.current);
+        setStatus("error");
+        return;
+      }
+
+      retryCountRef.current++;
+
       try {
         const sres = await fetch(`/api/crawl/firecrawl?jobId=${encodeURIComponent(jobId)}`);
+
+        if (!sres.ok) {
+          // On error, implement exponential backoff
+          if (pollIntervalRef.current < 30000) {
+            clearInterval(pollRef.current);
+            pollIntervalRef.current = Math.min(pollIntervalRef.current * 1.5, 30000);
+            pollRef.current = setInterval(poll, pollIntervalRef.current);
+          }
+          return;
+        }
+
         const sdata = await sres.json();
         if (sdata.success && sdata.status?.done) {
           clearInterval(pollRef.current);
@@ -48,9 +73,16 @@ export default function FreeAuditPage() {
           }
         }
       } catch (e) {
-        // keep polling; transient
+        // On error, implement exponential backoff
+        if (pollIntervalRef.current < 30000) {
+          clearInterval(pollRef.current);
+          pollIntervalRef.current = Math.min(pollIntervalRef.current * 1.5, 30000);
+          pollRef.current = setInterval(poll, pollIntervalRef.current);
+        }
       }
-    }, 2000);
+    };
+
+    pollRef.current = setInterval(poll, pollIntervalRef.current);
     return () => clearInterval(pollRef.current);
   }, [jobId, status]);
 

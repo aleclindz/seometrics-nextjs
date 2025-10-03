@@ -73,7 +73,7 @@ export async function startCrawl(opts: StartCrawlOptions & { timeoutMs?: number 
       fetchPageContent: opts.parseJS !== false
     }
   };
-  const data = await firecrawlFetch('/v0/crawl', {
+  const data = await firecrawlFetch('/v2/crawl', {
     method: 'POST',
     body: JSON.stringify(body),
     timeoutMs: opts.timeoutMs
@@ -82,12 +82,12 @@ export async function startCrawl(opts: StartCrawlOptions & { timeoutMs?: number 
 }
 
 export async function getCrawlStatus(jobId: string, timeoutMs?: number): Promise<{ status: string; done: boolean; progress?: any; }>{
-  const data = await firecrawlFetch(`/v0/crawl/status?jobId=${encodeURIComponent(jobId)}`, { timeoutMs });
+  const data = await firecrawlFetch(`/v2/crawl/${encodeURIComponent(jobId)}`, { timeoutMs });
   return { status: data.status, done: data.status === 'completed', progress: data };
 }
 
 export async function getCrawlResult(jobId: string, timeoutMs?: number): Promise<CrawlResultPage[]> {
-  const data = await firecrawlFetch(`/v0/crawl/result?jobId=${encodeURIComponent(jobId)}`, { timeoutMs });
+  const data = await firecrawlFetch(`/v2/crawl/${encodeURIComponent(jobId)}`, { timeoutMs });
   const pages = Array.isArray(data.data) ? data.data : (data.pages || []);
   return pages.map((p: any) => ({
     url: p.url,
@@ -98,7 +98,7 @@ export async function getCrawlResult(jobId: string, timeoutMs?: number): Promise
 }
 
 export async function scrapeUrl(url: string, opts?: { timeoutMs?: number }): Promise<CrawlResultPage> {
-  const data = await firecrawlFetch('/v0/scrape', {
+  const data = await firecrawlFetch('/v2/scrape', {
     method: 'POST',
     body: JSON.stringify({ url, formats: ['html', 'markdown'], pageOptions: { fetchPageContent: true } }),
     timeoutMs: opts?.timeoutMs ?? 5000

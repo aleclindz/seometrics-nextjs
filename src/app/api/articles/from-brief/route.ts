@@ -16,17 +16,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'userToken and briefId are required' }, { status: 400 });
     }
 
-    // Resolve website id
-    const { data: site, error: siteErr } = await supabase
-      .from('websites')
-      .select('id, domain')
-      .eq('website_token', websiteToken)
-      .eq('user_token', userToken)
-      .maybeSingle();
-    if (siteErr || !site?.id) {
-      return NextResponse.json({ success: false, error: 'Website not found' }, { status: 404 });
-    }
-
     // Load brief (trust brief's own website association)
     const { data: brief, error: briefErr } = await supabase
       .from('article_briefs')
@@ -39,6 +28,17 @@ export async function POST(request: NextRequest) {
     }
 
     const effectiveWebsiteToken = brief.website_token as string;
+
+    // Resolve website id from brief's website_token (safer than trusting the client param)
+    const { data: site, error: siteErr } = await supabase
+      .from('websites')
+      .select('id, domain')
+      .eq('website_token', effectiveWebsiteToken)
+      .eq('user_token', userToken)
+      .maybeSingle();
+    if (siteErr || !site?.id) {
+      return NextResponse.json({ success: false, error: 'Website not found for brief' }, { status: 404 });
+    }
 
     // Prepare draft insert
     const targetKeywords = Array.from(new Set<string>([
@@ -59,17 +59,6 @@ export async function POST(request: NextRequest) {
       generated_from_brief_id: brief.id,
       created_at: new Date().toISOString()
     };
-
-    // Resolve website id from brief's website_token (safer than trusting the client param)
-    const { data: site, error: siteErr } = await supabase
-      .from('websites')
-      .select('id, domain')
-      .eq('website_token', effectiveWebsiteToken)
-      .eq('user_token', userToken)
-      .maybeSingle();
-    if (siteErr || !site?.id) {
-      return NextResponse.json({ success: false, error: 'Website not found for brief' }, { status: 404 });
-    }
 
     const { data: draft, error: insErr } = await supabase
       .from('article_queue')
