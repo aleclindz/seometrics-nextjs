@@ -23,7 +23,12 @@ export async function POST(request: NextRequest) {
       .eq('id', briefId)
       .eq('user_token', userToken)
       .maybeSingle();
-    if (briefErr || !brief) {
+    if (briefErr) {
+      console.error('[FROM BRIEF] Error fetching brief:', briefErr);
+      return NextResponse.json({ success: false, error: `Brief fetch error: ${briefErr.message}` }, { status: 500 });
+    }
+    if (!brief) {
+      console.error('[FROM BRIEF] Brief not found:', { briefId, userToken });
       return NextResponse.json({ success: false, error: 'Brief not found' }, { status: 404 });
     }
 
@@ -36,7 +41,12 @@ export async function POST(request: NextRequest) {
       .eq('website_token', effectiveWebsiteToken)
       .eq('user_token', userToken)
       .maybeSingle();
-    if (siteErr || !site?.id) {
+    if (siteErr) {
+      console.error('[FROM BRIEF] Error fetching website:', siteErr);
+      return NextResponse.json({ success: false, error: `Website fetch error: ${siteErr.message}` }, { status: 500 });
+    }
+    if (!site?.id) {
+      console.error('[FROM BRIEF] Website not found:', { effectiveWebsiteToken, userToken });
       return NextResponse.json({ success: false, error: 'Website not found for brief' }, { status: 404 });
     }
 
@@ -65,8 +75,14 @@ export async function POST(request: NextRequest) {
       .insert(insertPayload)
       .select('*')
       .single();
-    if (insErr || !draft) {
-      return NextResponse.json({ success: false, error: 'Failed to create draft' }, { status: 500 });
+    if (insErr) {
+      console.error('[FROM BRIEF] Error inserting draft:', insErr);
+      console.error('[FROM BRIEF] Insert payload:', JSON.stringify(insertPayload, null, 2));
+      return NextResponse.json({ success: false, error: `Failed to create draft: ${insErr.message}` }, { status: 500 });
+    }
+    if (!draft) {
+      console.error('[FROM BRIEF] Draft insert succeeded but no data returned');
+      return NextResponse.json({ success: false, error: 'Failed to create draft: no data returned' }, { status: 500 });
     }
 
     // Link brief -> draft and mark brief generated
