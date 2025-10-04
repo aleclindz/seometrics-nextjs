@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -100,28 +102,60 @@ export async function POST(request: NextRequest) {
     // Optionally trigger generation pipeline
     if (start) {
       console.log('[FROM BRIEF] Triggering article generation for article ID:', draft.id);
-      try {
-        const base = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith('http'))
-          ? process.env.NEXT_PUBLIC_APP_URL
-          : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
-        const processUrl = `${base}/api/articles/generate/process`;
-        console.log('[FROM BRIEF] Calling process endpoint:', processUrl);
+      if (process.env.ENABLE_REDIS_QUEUES === 'true') {
+        // Add job to BullMQ queue for Railway worker processing
+        try {
+          console.log('[FROM BRIEF] Adding job to content-generation queue');
 
-        const processResp = await fetch(processUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userToken, articleId: draft.id })
-        });
+          const connection = new IORedis(process.env.REDIS_URL!, {
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false
+          });
 
-        const processData = await processResp.json();
-        console.log('[FROM BRIEF] Process endpoint response:', processData);
+          const queue = new Queue('content-generation', { connection });
 
-        if (!processResp.ok) {
-          console.error('[FROM BRIEF] Process endpoint failed:', processData);
+          await queue.add('generate-article', {
+            articleId: draft.id,
+            userToken,
+            payload: {
+              articleId: draft.id,
+              conversationId: null
+            }
+          });
+
+          console.log('[FROM BRIEF] Job added to queue successfully');
+
+          await queue.close();
+          await connection.quit();
+        } catch (error: any) {
+          console.error('[FROM BRIEF] Error adding job to queue:', error.message);
         }
-      } catch (error: any) {
-        console.error('[FROM BRIEF] Error triggering generation:', error.message);
+      } else {
+        // Fallback: Direct processing (synchronous)
+        try {
+          const base = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith('http'))
+            ? process.env.NEXT_PUBLIC_APP_URL
+            : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+          const processUrl = `${base}/api/articles/generate/process`;
+          console.log('[FROM BRIEF] Calling process endpoint directly:', processUrl);
+
+          const processResp = await fetch(processUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userToken, articleId: draft.id })
+          });
+
+          const processData = await processResp.json();
+          console.log('[FROM BRIEF] Process endpoint response:', processData);
+
+          if (!processResp.ok) {
+            console.error('[FROM BRIEF] Process endpoint failed:', processData);
+          }
+        } catch (error: any) {
+          console.error('[FROM BRIEF] Error triggering generation:', error.message);
+        }
       }
     }
 
