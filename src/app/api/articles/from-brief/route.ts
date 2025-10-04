@@ -62,11 +62,14 @@ export async function POST(request: NextRequest) {
       title: brief.title || brief.h1 || 'New Article',
       slug: (brief.url_path || (brief.title || '')).toLowerCase().replace(/[^a-z0-9\-\/]/g, '-').replace(/-+/g, '-').replace(/\/+/, '/').replace(/^-+|-+$/g, ''),
       target_keywords: targetKeywords,
-      article_format: JSON.stringify({ type: brief.page_type || 'blog', template: 'from-brief' }),
-      content_outline: { parent_cluster: brief.parent_cluster, intent: brief.intent },
-      content_brief: brief.summary || null,
+      secondary_keywords: Array.isArray(brief.secondary_keywords) ? brief.secondary_keywords : [],
+      content_outline: {
+        parent_cluster: brief.parent_cluster,
+        intent: brief.intent,
+        page_type: brief.page_type || 'blog',
+        template: 'from-brief'
+      },
       status: 'pending',
-      generated_from_brief_id: brief.id,
       created_at: new Date().toISOString()
     };
 
