@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
         template: 'from-brief'
       },
       status: 'pending',
+      generated_from_brief_id: brief.id,
+      topic_cluster: brief.parent_cluster || null,
       created_at: new Date().toISOString()
     };
 
@@ -97,18 +99,33 @@ export async function POST(request: NextRequest) {
 
     // Optionally trigger generation pipeline
     if (start) {
+      console.log('[FROM BRIEF] Triggering article generation for article ID:', draft.id);
       try {
         const base = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith('http'))
           ? process.env.NEXT_PUBLIC_APP_URL
           : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-        fetch(`${base}/api/articles/generate/start`, {
+
+        const processUrl = `${base}/api/articles/generate/process`;
+        console.log('[FROM BRIEF] Calling process endpoint:', processUrl);
+
+        const processResp = await fetch(processUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userToken, websiteId: site.id, title: draft.title, targetKeywords })
-        }).catch(() => {});
-      } catch {}
+          body: JSON.stringify({ userToken, articleId: draft.id })
+        });
+
+        const processData = await processResp.json();
+        console.log('[FROM BRIEF] Process endpoint response:', processData);
+
+        if (!processResp.ok) {
+          console.error('[FROM BRIEF] Process endpoint failed:', processData);
+        }
+      } catch (error: any) {
+        console.error('[FROM BRIEF] Error triggering generation:', error.message);
+      }
     }
 
+    console.log('[FROM BRIEF] Successfully created draft:', { draftId: draft.id, briefId: brief.id, title: draft.title });
     return NextResponse.json({ success: true, draft });
   } catch (e) {
     console.error('[FROM BRIEF] Error:', e);
