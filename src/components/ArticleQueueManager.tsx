@@ -29,6 +29,7 @@ interface PublishedArticleItem {
   created_at?: string;
   published_at?: string | null;
   domain?: string;
+  status?: string;
 }
 
 interface Props {
@@ -57,6 +58,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   const [drafts, setDrafts] = useState<PublishedArticleItem[]>([]);
   const [schedule, setSchedule] = useState<{ enabled: boolean; auto_publish: boolean; next_scheduled_at?: string | null } | null>(null);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error'|'info' }>({ visible: false, message: '', type: 'info' });
+  const [generatingBriefs, setGeneratingBriefs] = useState<Set<number>>(new Set());
   const showToast = (message: string, type: 'success'|'error'|'info' = 'info', ms = 2500) => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), ms);
@@ -116,8 +118,14 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
           const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
           const target = clean(domain);
           const items: PublishedArticleItem[] = (data.articles || [])
-            .filter((a: any) => (!a.published_at) && clean(a.websites?.domain) === target)
-            .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain }));
+            .filter((a: any) => {
+              // Show articles that are generated/pending/generating and not yet published
+              const isNotPublished = !a.published_at && a.status !== 'published';
+              const matchesDomain = clean(a.websites?.domain) === target;
+              const isDraft = ['pending', 'generating', 'generated'].includes(a.status);
+              return isNotPublished && matchesDomain && isDraft;
+            })
+            .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain, status: a.status }));
           setDrafts(items);
         }
       } catch {}
@@ -429,17 +437,25 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                         <button
                           onClick={async () => {
                             try {
-                              showToast('Draft creation started', 'info');
+                              // Mark brief as generating
+                              setGeneratingBriefs(prev => new Set(prev).add(item.id));
+                              showToast('Article generation started...', 'info');
+
                               const respBrief = await fetch('/api/articles/from-brief', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ userToken, websiteToken, briefId: item.id, start: true })
                               });
+
                               if (!respBrief.ok) {
                                 const err = await respBrief.json().catch(() => ({}));
                                 showToast(`Failed: ${err.error || respBrief.statusText}`, 'error', 3000);
+                                setGeneratingBriefs(prev => { const next = new Set(prev); next.delete(item.id); return next; });
                                 return;
                               }
+
+                              showToast('Article queued successfully! Generation in progress...', 'success', 4000);
+
                               // Refresh both queue and drafts
                               fetchQueue();
                               const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
@@ -448,16 +464,42 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                                 const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
                                 const target = clean(domain);
                                 const items: PublishedArticleItem[] = (data.articles || [])
-                                  .filter((a: any) => (!a.published_at) && clean(a.websites?.domain) === target)
-                                  .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain }));
+                                  .filter((a: any) => {
+                                    const isNotPublished = !a.published_at && a.status !== 'published';
+                                    const matchesDomain = clean(a.websites?.domain) === target;
+                                    const isDraft = ['pending', 'generating', 'generated'].includes(a.status);
+                                    return isNotPublished && matchesDomain && isDraft;
+                                  })
+                                  .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain, status: a.status }));
                                 setDrafts(items);
                               }
-                            } catch (e) { console.error('Failed to generate from brief', e); showToast('Failed to start draft', 'error', 3000); }
+
+                              // Keep indicator for 3 seconds, then clear
+                              setTimeout(() => {
+                                setGeneratingBriefs(prev => { const next = new Set(prev); next.delete(item.id); return next; });
+                              }, 3000);
+                            } catch (e) {
+                              console.error('Failed to generate from brief', e);
+                              showToast('Failed to start draft', 'error', 3000);
+                              setGeneratingBriefs(prev => { const next = new Set(prev); next.delete(item.id); return next; });
+                            }
                           }}
-                          className="inline-flex items-center px-2 py-1 text-xs border rounded text-gray-700 hover:bg-gray-50"
+                          disabled={generatingBriefs.has(item.id)}
+                          className={`inline-flex items-center px-2 py-1 text-xs border rounded ${
+                            generatingBriefs.has(item.id)
+                              ? 'bg-blue-50 text-blue-600 border-blue-300 cursor-not-allowed'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
                           title="Generate Article from Brief"
                         >
-                          Generate article from brief
+                          {generatingBriefs.has(item.id) ? (
+                            <>
+                              <span className="animate-spin mr-1">⏳</span>
+                              Generating...
+                            </>
+                          ) : (
+                            'Generate article from brief'
+                          )}
                         </button>
                         <button
                           onClick={() => setEditingItem(item)}
