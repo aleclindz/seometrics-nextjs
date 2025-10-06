@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     console.log('[ARTICLES API] Fetching articles for user:', userToken);
 
     // Get articles from article_queue table (the new article system)
+    // Note: websites(id) is the foreign key, not websites(website_id)
     const { data: articles, error } = await supabase
       .from('article_queue')
       .select(`
@@ -37,10 +38,10 @@ export async function GET(request: NextRequest) {
         readability_score,
         target_keywords,
         website_id,
-        websites:website_id (
+        websites!website_id (
           domain
         ),
-        cms_connections:cms_connection_id (
+        cms_connections!cms_connection_id (
           connection_name,
           cms_type
         )
