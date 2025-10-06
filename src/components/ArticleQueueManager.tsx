@@ -58,7 +58,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   const [drafts, setDrafts] = useState<PublishedArticleItem[]>([]);
   const [schedule, setSchedule] = useState<{ enabled: boolean; auto_publish: boolean; next_scheduled_at?: string | null } | null>(null);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error'|'info' }>({ visible: false, message: '', type: 'info' });
-  const [generatingBriefs, setGeneratingBriefs] = useState<Set<number>>(new Set());
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const showToast = (message: string, type: 'success'|'error'|'info' = 'info', ms = 2500) => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), ms);
@@ -147,6 +147,50 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
       }
     };
   }, [websiteToken, fetchQueue]);
+
+  // Start polling when any briefs are in 'generating' status
+  useEffect(() => {
+    const hasGenerating = queue.some(item => item.status === 'generating');
+
+    if (hasGenerating && !pollingInterval) {
+      // Start polling every 10 seconds for draft updates
+      const interval = setInterval(async () => {
+        try {
+          const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
+          const data = await resp.json();
+          if (resp.ok && data.success) {
+            const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const target = clean(domain);
+            const items: PublishedArticleItem[] = (data.articles || [])
+              .filter((a: any) => {
+                const isNotPublished = !a.published_at && a.status !== 'published';
+                const matchesDomain = clean(a.websites?.domain) === target;
+                const isDraft = ['pending', 'generating', 'generated'].includes(a.status);
+                return isNotPublished && matchesDomain && isDraft;
+              })
+              .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain, status: a.status }));
+            setDrafts(items);
+          }
+          // Also refresh queue to update status
+          await fetchQueue();
+        } catch (e) {
+          console.error('Polling error:', e);
+        }
+      }, 10000); // Poll every 10 seconds
+
+      setPollingInterval(interval);
+    } else if (!hasGenerating && pollingInterval) {
+      // Stop polling when no briefs are generating
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [queue, pollingInterval, userToken, domain, fetchQueue]);
 
   const generateBulkIdeas = async (period: 'week' | 'month', count: number, addToQueue: boolean = false) => {
     setGenerating(true);
@@ -437,8 +481,6 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                         <button
                           onClick={async () => {
                             try {
-                              // Mark brief as generating
-                              setGeneratingBriefs(prev => new Set(prev).add(item.id));
                               showToast('Article generation started...', 'info');
 
                               const respBrief = await fetch('/api/articles/from-brief', {
@@ -450,49 +492,27 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                               if (!respBrief.ok) {
                                 const err = await respBrief.json().catch(() => ({}));
                                 showToast(`Failed: ${err.error || respBrief.statusText}`, 'error', 3000);
-                                setGeneratingBriefs(prev => { const next = new Set(prev); next.delete(item.id); return next; });
                                 return;
                               }
 
                               showToast('Article queued successfully! Generation in progress...', 'success', 4000);
 
-                              // Refresh both queue and drafts
-                              fetchQueue();
-                              const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
-                              const data = await resp.json();
-                              if (resp.ok && data.success) {
-                                const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-                                const target = clean(domain);
-                                const items: PublishedArticleItem[] = (data.articles || [])
-                                  .filter((a: any) => {
-                                    const isNotPublished = !a.published_at && a.status !== 'published';
-                                    const matchesDomain = clean(a.websites?.domain) === target;
-                                    const isDraft = ['pending', 'generating', 'generated'].includes(a.status);
-                                    return isNotPublished && matchesDomain && isDraft;
-                                  })
-                                  .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain, status: a.status }));
-                                setDrafts(items);
-                              }
-
-                              // Keep indicator for 3 seconds, then clear
-                              setTimeout(() => {
-                                setGeneratingBriefs(prev => { const next = new Set(prev); next.delete(item.id); return next; });
-                              }, 3000);
+                              // Refresh queue immediately to show new 'generating' status from database
+                              await fetchQueue();
                             } catch (e) {
                               console.error('Failed to generate from brief', e);
                               showToast('Failed to start draft', 'error', 3000);
-                              setGeneratingBriefs(prev => { const next = new Set(prev); next.delete(item.id); return next; });
                             }
                           }}
-                          disabled={generatingBriefs.has(item.id)}
+                          disabled={item.status === 'generating'}
                           className={`inline-flex items-center px-2 py-1 text-xs border rounded ${
-                            generatingBriefs.has(item.id)
+                            item.status === 'generating'
                               ? 'bg-blue-50 text-blue-600 border-blue-300 cursor-not-allowed'
                               : 'text-gray-700 hover:bg-gray-50'
                           }`}
                           title="Generate Article from Brief"
                         >
-                          {generatingBriefs.has(item.id) ? (
+                          {item.status === 'generating' ? (
                             <>
                               <span className="animate-spin mr-1">⏳</span>
                               Generating...

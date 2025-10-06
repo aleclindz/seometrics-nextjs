@@ -213,14 +213,12 @@ export async function POST(request: NextRequest) {
 
     try { console.log('[BRIEFS] briefs generated:', briefs.length); } catch {}
 
-    // Optional: persist briefs when requested via addToQueue flag
     // Always persist briefs to the article_briefs table
     const shouldQueue = true;
-    let savedCount = 0;
+    let savedBriefs: any[] = [];
     if (shouldQueue && briefs.length > 0) {
       try {
         const now = new Date();
-        // Prefer saving to article_briefs if the table exists; fall back to content_generation_queue
         const briefsRows = briefs.map((b, index) => {
           const hoursOffset = (index * (7 * 24 / Math.max(1, briefs.length)));
           const scheduledTime = new Date(now.getTime() + hoursOffset * 60 * 60 * 1000);
@@ -254,9 +252,10 @@ export async function POST(request: NextRequest) {
         const { data: insBriefs, error: errBriefs } = await supabase
           .from('article_briefs')
           .insert(briefsRows)
-          .select('id');
-        if (!errBriefs) {
-          savedCount = insBriefs?.length || 0;
+          .select('*'); // Select all fields to return full brief data
+        if (!errBriefs && insBriefs) {
+          savedBriefs = insBriefs;
+          try { console.log('[BRIEFS] Saved to DB:', savedBriefs.length); } catch {}
         } else {
           throw errBriefs;
         }
@@ -265,9 +264,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const summary = summarizeBriefs(briefs);
-    const payload: BriefsGenerationResponse & { queued?: number } = { success: true, briefs, summary };
-    if (savedCount > 0) (payload as any).queued = savedCount;
+    // Return saved briefs from database instead of the original generated array
+    // This ensures UI gets the actual persisted data with IDs
+    const finalBriefs = savedBriefs.length > 0 ? savedBriefs.map((db: any) => ({
+      title: db.title,
+      h1: db.h1,
+      url_path: db.url_path,
+      page_type: db.page_type,
+      parent_cluster: db.parent_cluster,
+      primary_keyword: db.primary_keyword,
+      intent: db.intent,
+      secondary_keywords: db.secondary_keywords,
+      target_queries: db.target_queries,
+      summary: db.summary,
+      internal_links: db.internal_links,
+      cannibalization: {
+        risk: db.cannibal_risk,
+        conflicts: db.cannibal_conflicts,
+        recommendation: db.recommendation,
+        canonical_to: db.canonical_to
+      },
+      metadata: {
+        word_count_range: [db.word_count_min, db.word_count_max] as [number, number],
+        tone: db.tone,
+        notes: db.notes
+      }
+    })) : briefs;
+
+    const summary = summarizeBriefs(finalBriefs);
+    const payload: BriefsGenerationResponse & { queued?: number } = { success: true, briefs: finalBriefs, summary };
+    if (savedBriefs.length > 0) (payload as any).queued = savedBriefs.length;
     return NextResponse.json(payload);
   } catch (error) {
     console.error('[BRIEFS] Generation error:', error);

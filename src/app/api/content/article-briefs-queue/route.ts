@@ -12,6 +12,7 @@ function mapStatus(status: string | null | undefined): 'draft' | 'pending' | 'ge
   const s = (status || '').toLowerCase();
   if (s === 'generated' || s === 'completed' || s === 'published') return 'completed';
   if (s === 'queued' || s === 'pending') return 'pending';
+  if (s === 'generating') return 'generating';
   return 'draft';
 }
 
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_token', userToken)
       .eq('website_token', websiteToken)
-      .in('status', ['draft', 'queued'])
+      .in('status', ['draft', 'queued', 'generating'])
       .limit(limit);
 
     if (error) {
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
             .select('*')
             .eq('user_token', userToken)
             .eq('website_token', fallbackToken)
-            .in('status', ['draft', 'queued'])
+            .in('status', ['draft', 'queued', 'generating'])
             .limit(limit);
           if (!res.error) rows = res.data || [];
         }
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest) {
         .select('*')
         .eq('user_token', userToken)
         .eq('website_token', websiteToken)
-        .in('status', ['draft', 'queued']);
+        .in('status', ['draft', 'queued', 'generating']);
       const sorted = (rows || []).slice().sort((a: any, b: any) => {
         const ai = typeof a.sort_index === 'number' ? a.sort_index : Number.MAX_SAFE_INTEGER;
         const bi = typeof b.sort_index === 'number' ? b.sort_index : Number.MAX_SAFE_INTEGER;
