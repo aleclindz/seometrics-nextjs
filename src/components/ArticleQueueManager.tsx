@@ -90,7 +90,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
         const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
         const data = await resp.json();
         if (resp.ok && data.success) {
-          const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+          const clean = (s: string) => String(s || '').replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
           const target = clean(domain);
           const items: PublishedArticleItem[] = (data.articles || [])
             .filter((a: any) => (a.status === 'completed' || a.status === 'published') && clean(a.websites?.domain) === target)
@@ -116,7 +116,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
         const data = await resp.json();
         console.log('[DRAFTS] API response:', { success: data.success, count: data.articles?.length, articles: data.articles });
         if (resp.ok && data.success) {
-          const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+          const clean = (s: string) => String(s || '').replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
           const target = clean(domain);
           console.log('[DRAFTS] Filter target domain:', target);
           const items: PublishedArticleItem[] = (data.articles || [])
@@ -178,7 +178,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
           const data = await resp.json();
           console.log('[POLLING] Got response:', { count: data.articles?.length });
           if (resp.ok && data.success) {
-            const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const clean = (s: string) => String(s || '').replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
             const target = clean(domain);
             const items: PublishedArticleItem[] = (data.articles || [])
               .filter((a: any) => {
