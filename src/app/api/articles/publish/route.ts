@@ -128,7 +128,10 @@ export async function POST(request: NextRequest) {
             throw new Error('CMS connection not found in new system');
           }
 
-          const provider = cmsManager.getProvider(connection.type);
+          // Normalize CMS type: wordpress_com → wordpress
+          const normalizedType = connection.type === 'wordpress_com' ? 'wordpress' : connection.type;
+          console.log('[PUBLISH EDGE] CMS type normalization:', { original: connection.type, normalized: normalizedType });
+          const provider = cmsManager.getProvider(normalizedType);
         
           // Prepare article data
           const articleData = {
