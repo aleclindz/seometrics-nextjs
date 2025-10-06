@@ -681,7 +681,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                           const p = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
                           const d = await p.json();
                           if (p.ok && d.success) {
-                            const clean = (s: string) => String(s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+                            const clean = (s: string) => String(s || '').replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
                             const target = clean(domain);
                             const pub: PublishedArticleItem[] = (d.articles || [])
                               .filter((art: any) => art.published_at && clean(art.websites?.domain) === target)
