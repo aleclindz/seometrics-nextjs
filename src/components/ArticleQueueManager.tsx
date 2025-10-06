@@ -114,33 +114,18 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
       try {
         const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
         const data = await resp.json();
-        console.log('[DRAFTS] API response:', { success: data.success, count: data.articles?.length, articles: data.articles });
         if (resp.ok && data.success) {
           const clean = (s: string) => String(s || '').replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
           const target = clean(domain);
-          console.log('[DRAFTS] Filter target domain:', target);
           const items: PublishedArticleItem[] = (data.articles || [])
             .filter((a: any) => {
               // Show articles that are generated/pending/generating and not yet published
               const isNotPublished = !a.published_at && a.status !== 'published';
               const matchesDomain = clean(a.websites?.domain) === target;
               const isDraft = ['pending', 'generating', 'generated'].includes(a.status);
-              console.log('[DRAFTS] Article filter:', {
-                id: a.id,
-                title: a.title,
-                status: a.status,
-                domain: a.websites?.domain,
-                cleanedDomain: clean(a.websites?.domain || ''),
-                target,
-                isNotPublished,
-                matchesDomain,
-                isDraft,
-                passes: isNotPublished && matchesDomain && isDraft
-              });
               return isNotPublished && matchesDomain && isDraft;
             })
             .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain, status: a.status }));
-          console.log('[DRAFTS] Filtered items:', items.length, items);
           setDrafts(items);
         }
       } catch (e) {
@@ -173,10 +158,8 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
       // Start polling every 10 seconds for draft updates
       const interval = setInterval(async () => {
         try {
-          console.log('[POLLING] Checking for drafted articles...');
           const resp = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
           const data = await resp.json();
-          console.log('[POLLING] Got response:', { count: data.articles?.length });
           if (resp.ok && data.success) {
             const clean = (s: string) => String(s || '').replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
             const target = clean(domain);
@@ -188,10 +171,8 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                 return isNotPublished && matchesDomain && isDraft;
               })
               .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain, status: a.status }));
-            console.log('[POLLING] Filtered drafts:', items.length);
             setDrafts(items);
           }
-          // Also refresh queue to update status
           await fetchQueue();
         } catch (e) {
           console.error('[POLLING] Error:', e);
