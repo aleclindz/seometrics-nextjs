@@ -277,7 +277,7 @@ function DraggableArticle({ item, isSelected }: { item: ContentItem; isSelected?
 
   return (
     <div
-      ref={drag}
+      ref={drag as any}
       className={classNames(
         "p-2 mb-2 border rounded-lg cursor-move bg-white shadow-sm",
         isDragging ? "opacity-50" : "hover:shadow-md",
@@ -311,7 +311,7 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
 
   return (
     <div
-      ref={drop}
+      ref={drop as any}
       className={classNames(
         "min-h-[140px] p-3 border border-gray-200",
         isToday ? "bg-blue-50 border-blue-300" : "bg-white",

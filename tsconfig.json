@@ -29,6 +29,7 @@
     "node_modules",
     "supabase/functions/**/*",
     "strapi-cms/**/*",
-    "guidelines/**/*"
+    "guidelines/**/*",
+    "Revamp Content Tab Layout/**/*"
   ]
 }
