@@ -115,23 +115,21 @@ export async function POST(request: NextRequest) {
 
     try {
       let cmsArticleId: string;
-      
+
       // Check if this is a new CMS connection (modular system)
-      // Skip CMS Manager for Strapi since it's not implemented there yet
-      if (effectiveCmsId && effectiveCms?.cms_type !== 'strapi') {
-        // Use new modular CMS system for WordPress, Webflow, Shopify
+      // Skip CMS Manager for Strapi and WordPress.com - they use legacy publishing paths
+      if (effectiveCmsId && effectiveCms?.cms_type !== 'strapi' && effectiveCms?.cms_type !== 'wordpress_com') {
+        // Use new modular CMS system for self-hosted WordPress, Webflow, Shopify
         try {
           const connection = await cmsManager.getConnection(String(effectiveCmsId), userToken);
-          
+
           if (!connection) {
             console.log('[PUBLISH EDGE] New CMS connection not found, falling back to legacy system');
             throw new Error('CMS connection not found in new system');
           }
 
-          // Normalize CMS type: wordpress_com → wordpress
-          const normalizedType = connection.type === 'wordpress_com' ? 'wordpress' : connection.type;
-          console.log('[PUBLISH EDGE] CMS type normalization:', { original: connection.type, normalized: normalizedType });
-          const provider = cmsManager.getProvider(normalizedType);
+          console.log('[PUBLISH EDGE] Using new CMS system for:', connection.type);
+          const provider = cmsManager.getProvider(connection.type);
         
           // Prepare article data
           const articleData = {

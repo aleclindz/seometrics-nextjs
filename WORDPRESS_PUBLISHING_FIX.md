@@ -10,20 +10,70 @@ WordPress.com publishing was failing with **HTTP 404: Page not found** errors de
 <title>Page not found</title>
 ```
 
+And:
+
+```
+CMS type normalization: { original: 'wordpress_com', normalized: 'wordpress' }
+```
+
 This indicated the API endpoint was returning an HTML error page instead of a JSON response, suggesting the URL was incorrect or the API handlers were not intercepting the request.
 
 ## Root Cause Analysis
 
-The issue was **not** with authentication (OAuth was working correctly), but with:
+The issue was **not** with authentication (OAuth was working correctly), but with **incorrect API endpoint routing**:
 
-1. **Insufficient diagnostic logging** - The exact API URL being called was not logged
-2. **No endpoint validation** - No pre-flight checks to verify API accessibility
-3. **Generic error handling** - 404 errors weren't being distinguished from other failures
-4. **Missing WordPress.com-specific handling** - The code path for WordPress.com vs self-hosted wasn't clearly differentiated
+### Primary Bug: CMS Type Normalization
+
+**File:** `/src/app/api/articles/publish/route.ts` (Line 132)
+
+The publishing endpoint was normalizing `wordpress_com` to `wordpress`:
+
+```typescript
+// BEFORE (BROKEN):
+const normalizedType = connection.type === 'wordpress_com' ? 'wordpress' : connection.type;
+const provider = cmsManager.getProvider(normalizedType);
+```
+
+This caused the code to use the **WordPressProvider** (designed for self-hosted WordPress) instead of the **WordPress.com-specific publishing path**. The WordPressProvider uses:
+
+- ❌ **Wrong:** `{site_url}/wp-json/wp/v2/posts` (self-hosted format)
+- ✅ **Correct:** `https://public-api.wordpress.com/wp/v2/sites/{site}/posts` (WordPress.com format)
+
+### Secondary Issues
+
+1. **Missing wordpress_com provider** - The CMSManager only registered `wordpress`, not `wordpress_com`
+2. **Insufficient diagnostic logging** - The exact API URL being called was not logged
+3. **No endpoint validation** - No pre-flight checks to verify API accessibility
+4. **Generic error handling** - 404 errors weren't being distinguished from other failures
 
 ## Solution Implemented
 
-### 1. Enhanced Logging in Publishing Endpoint
+### 1. Fixed CMS Type Routing (PRIMARY FIX)
+
+**File:** `/src/app/api/articles/publish/route.ts` (Lines 119-132)
+
+Changed the condition to **exclude wordpress_com** from the new CMS system, forcing it to use the legacy WordPress.com-specific publishing path:
+
+```typescript
+// AFTER (FIXED):
+if (effectiveCmsId && effectiveCms?.cms_type !== 'strapi' && effectiveCms?.cms_type !== 'wordpress_com') {
+  // Use new modular CMS system for self-hosted WordPress, Webflow, Shopify
+  const connection = await cmsManager.getConnection(String(effectiveCmsId), userToken);
+  const provider = cmsManager.getProvider(connection.type); // No more normalization!
+  // ... publish using provider
+}
+else if (effectiveCms?.cms_type === 'wordpress_com') {
+  // Use legacy WordPress.com-specific path with correct API endpoint
+  const wpcomResult = await publishToWordPressCom({ ... });
+}
+```
+
+This ensures WordPress.com connections use the `publishToWordPressCom()` function which correctly calls:
+```
+https://public-api.wordpress.com/wp/v2/sites/{site}/posts
+```
+
+### 2. Enhanced Logging in Publishing Endpoint
 
 **File:** `/src/app/api/cms/wordpress/publish/route.ts`
 
@@ -125,6 +175,10 @@ npx tsx scripts/test-wordpress-publish.ts 6 71d3a313-563d-4701-afa5-59d3ba8d7a9c
 
 ## Files Modified
 
+### Core Fix
+- ✅ `/src/app/api/articles/publish/route.ts` - **FIXED CMS type routing to use correct WordPress.com API**
+
+### Diagnostic Tools
 - ✅ `/src/app/api/cms/wordpress/publish/route.ts` - Enhanced logging and error handling
 - ✅ `/src/app/api/cms/wordpress/discover-api/route.ts` - New diagnostic endpoint
 - ✅ `/scripts/test-wordpress-publish.ts` - Comprehensive test script
