@@ -601,14 +601,20 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                       Edit
                     </a>
                   )}
-                  <a
-                    className="text-sm text-blue-600 hover:underline"
-                    href={a.public_url || `https://${(a.domain || domain).replace(/^https?:\/\//,'').replace(/\/$/,'')}/${a.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View
-                  </a>
+                  {(a.public_url || a.slug) ? (
+                    <a
+                      className="text-sm text-blue-600 hover:underline"
+                      href={a.public_url || `https://${(a.domain || domain).replace(/^https?:\/\//,'').replace(/\/$/,'')}/${a.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View
+                    </a>
+                  ) : (
+                    <span className="text-sm text-gray-400" title="No public URL available">
+                      View
+                    </span>
+                  )}
                 </div>
               </li>
             ))}
