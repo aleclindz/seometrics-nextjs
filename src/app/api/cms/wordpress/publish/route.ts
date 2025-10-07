@@ -117,13 +117,32 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[WORDPRESS PUBLISH] Creating WordPress post...');
+    console.log('[WORDPRESS PUBLISH] Post data:', {
+      title: postData.title,
+      status: postData.status,
+      hasContent: !!postData.content,
+      contentLength: postData.content?.length || 0
+    });
 
     let response: Response;
+    let publishUrl: string;
+
     if (isWpCom) {
       // Use WordPress.com REST API v2
       let siteIdentifier = '';
-      try { siteIdentifier = new URL(siteUrl).host; } catch { siteIdentifier = siteUrl; }
-      response = await fetch(`https://public-api.wordpress.com/wp/v2/sites/${siteIdentifier}/posts`, {
+      try {
+        siteIdentifier = new URL(siteUrl).host;
+      } catch {
+        siteIdentifier = siteUrl;
+      }
+
+      publishUrl = `https://public-api.wordpress.com/wp/v2/sites/${siteIdentifier}/posts`;
+      console.log('[WORDPRESS PUBLISH] WordPress.com detected');
+      console.log('[WORDPRESS PUBLISH] Publishing to URL:', publishUrl);
+      console.log('[WORDPRESS PUBLISH] Site identifier:', siteIdentifier);
+      console.log('[WORDPRESS PUBLISH] Using OAuth Bearer token:', wpcomAccessToken ? 'Present' : 'Missing');
+
+      response = await fetch(publishUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${wpcomAccessToken}`,
@@ -132,7 +151,12 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify(postData)
       });
     } else {
-      response = await fetch(`${siteUrl}/wp-json/wp/v2/posts`, {
+      publishUrl = `${siteUrl}/wp-json/wp/v2/posts`;
+      console.log('[WORDPRESS PUBLISH] Self-hosted WordPress detected');
+      console.log('[WORDPRESS PUBLISH] Publishing to URL:', publishUrl);
+      console.log('[WORDPRESS PUBLISH] Using Basic Auth for user:', connection.api_token?.split(':')[0] || 'unknown');
+
+      response = await fetch(publishUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${authBasic}`,
@@ -142,14 +166,44 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    console.log('[WORDPRESS PUBLISH] Response status:', response.status);
+    console.log('[WORDPRESS PUBLISH] Response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[WORDPRESS PUBLISH] Post creation failed:', response.status, errorText);
+      const isHtmlError = errorText.trim().startsWith('<!DOCTYPE') || errorText.trim().startsWith('<html');
+
+      console.error('[WORDPRESS PUBLISH] ========================================');
+      console.error('[WORDPRESS PUBLISH] POST REQUEST FAILED');
+      console.error('[WORDPRESS PUBLISH] ========================================');
+      console.error('[WORDPRESS PUBLISH] Target URL:', publishUrl);
+      console.error('[WORDPRESS PUBLISH] Status code:', response.status);
+      console.error('[WORDPRESS PUBLISH] Content-Type:', response.headers.get('content-type'));
+      console.error('[WORDPRESS PUBLISH] Is HTML error page:', isHtmlError);
+      console.error('[WORDPRESS PUBLISH] Error preview:', errorText.substring(0, 500));
+      console.error('[WORDPRESS PUBLISH] ========================================');
+
+      let errorMessage = `Failed to create WordPress post (${response.status})`;
+      let diagnosticInfo = {
+        url: publishUrl,
+        statusCode: response.status,
+        isHtmlError,
+        contentType: response.headers.get('content-type')
+      };
+
+      if (isHtmlError && response.status === 404) {
+        errorMessage = 'WordPress API endpoint not found (404). The URL may be incorrect or the REST API is disabled.';
+        diagnosticInfo = {
+          ...diagnosticInfo,
+          suggestion: 'Run the /api/cms/wordpress/discover-api endpoint to diagnose API accessibility issues'
+        } as any;
+      }
 
       return NextResponse.json(
         {
-          error: `Failed to create WordPress post (${response.status})`,
-          details: errorText
+          error: errorMessage,
+          details: errorText.substring(0, 1000),
+          diagnostic: diagnosticInfo
         },
         { status: response.status }
       );
