@@ -249,6 +249,21 @@ export async function POST(request: NextRequest) {
         });
         cmsArticleId = wpcomResult.cmsId;
 
+        // Save WordPress admin and public URLs immediately
+        try {
+          await supabase
+            .from('article_queue')
+            .update({
+              cms_admin_url: wpcomResult.adminUrl,
+              public_url: wpcomResult.publicUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', articleId);
+          console.log('[WORDPRESS] Saved admin and public URLs');
+        } catch (urlError) {
+          console.error('[WORDPRESS] Failed to save URLs:', urlError);
+        }
+
       } else if (effectiveCms?.cms_type === 'strapi') {
         // Legacy Strapi support
         const strapiResult = await publishToStrapi({
@@ -378,6 +393,139 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Clean HTML content for WordPress publishing
+ * Fixes malformed HTML structure, especially images wrapped in header tags
+ */
+function cleanHtmlForWordPress(content: string): string {
+  let cleaned = content.trim();
+
+  // Fix images wrapped in header tags (e.g., <h2><figure>...</figure></h2>Introduction</h2>)
+  // Match patterns like <h2><figure>...</figure></h2> and extract just the figure
+  // Using [\s\S] instead of . with /s flag for ES5 compatibility
+  cleaned = cleaned.replace(/<h([1-6])>(\s*<figure[^>]*>[\s\S]*?<\/figure>\s*)<\/h\1>/g, '$2');
+
+  // Fix headers that have content after the closing tag split incorrectly
+  // Pattern: </h2>Content</h2> should be </h2><p>Content</p>
+  cleaned = cleaned.replace(/<\/h([1-6])>([^<]+)<\/h\1>/g, '</h$1><p>$2</p>');
+
+  // Remove paragraph tags wrapping headers
+  cleaned = cleaned.replace(/<p>\s*(<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>)\s*<\/p>/g, '$1');
+
+  // Remove paragraph tags wrapping figures
+  cleaned = cleaned.replace(/<p>\s*(<figure[^>]*>[\s\S]*?<\/figure>)\s*<\/p>/g, '$1');
+
+  // Fix double-wrapped elements
+  cleaned = cleaned.replace(/<h([1-6])>\s*<h\1>/g, '<h$1>');
+  cleaned = cleaned.replace(/<\/h([1-6])>\s*<\/h\1>/g, '</h$1>');
+
+  // Clean up excessive whitespace between tags
+  cleaned = cleaned.replace(/>\s+</g, '><');
+
+  // Add proper spacing between block elements
+  cleaned = cleaned.replace(/<\/(h[1-6]|figure|ul|ol|blockquote)>/g, '</$1>\n');
+  cleaned = cleaned.replace(/<(h[1-6]|figure|ul|ol|blockquote)/g, '\n<$1');
+
+  // Remove empty paragraphs
+  cleaned = cleaned.replace(/<p>\s*<\/p>/g, '');
+
+  // Clean up multiple consecutive newlines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+
+  return cleaned.trim();
+}
+
+/**
+ * Upload images from temporary URLs to WordPress Media Library
+ * Returns content with updated image URLs
+ */
+async function uploadImagesToWordPress({
+  content,
+  accessToken,
+  site
+}: {
+  content: string;
+  accessToken: string;
+  site: string;
+}): Promise<string> {
+  // Find all image URLs in the content (especially OpenAI blob URLs)
+  const imgRegex = /<img[^>]+src="([^"]+)"/g;
+  const matches: string[] = [];
+  let match;
+
+  // Use exec() loop for ES5 compatibility instead of matchAll()
+  while ((match = imgRegex.exec(content)) !== null) {
+    matches.push(match[1]);
+  }
+
+  let updatedContent = content;
+
+  for (const imageUrl of matches) {
+
+    // Only process temporary URLs (OpenAI, blob storage, etc.)
+    if (imageUrl.includes('oaidalleapiprodscus.blob.core.windows.net') ||
+        imageUrl.includes('blob.core.windows.net') ||
+        imageUrl.includes('temp') ||
+        imageUrl.includes('temporary')) {
+
+      try {
+        console.log('[WORDPRESS] Uploading image to Media Library:', imageUrl.substring(0, 80) + '...');
+
+        // Download the image
+        const imageResponse = await fetch(imageUrl);
+        if (!imageResponse.ok) {
+          console.error('[WORDPRESS] Failed to download image:', imageResponse.status);
+          continue;
+        }
+
+        const imageBlob = await imageResponse.blob();
+        const imageBuffer = Buffer.from(await imageBlob.arrayBuffer());
+
+        // Extract filename from URL or generate one
+        const urlParts = imageUrl.split('/');
+        const urlFilename = urlParts[urlParts.length - 1].split('?')[0];
+        const extension = urlFilename.includes('.') ? urlFilename.split('.').pop() : 'jpg';
+        const filename = urlFilename.includes('.') ? urlFilename : `image-${Date.now()}.${extension}`;
+
+        // Upload to WordPress Media Library
+        const mediaEndpoint = `https://public-api.wordpress.com/wp/v2/sites/${site}/media`;
+
+        const formData = new FormData();
+        formData.append('file', new Blob([imageBuffer]), filename);
+
+        const uploadResponse = await fetch(mediaEndpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: formData
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('[WORDPRESS] Media upload failed:', uploadResponse.status, errorText);
+          continue;
+        }
+
+        const mediaData = await uploadResponse.json();
+        const wordpressImageUrl = mediaData.source_url || mediaData.url;
+
+        if (wordpressImageUrl) {
+          console.log('[WORDPRESS] Successfully uploaded image, replacing URL');
+          // Replace the temporary URL with the permanent WordPress URL
+          updatedContent = updatedContent.replace(imageUrl, wordpressImageUrl);
+        }
+
+      } catch (uploadError) {
+        console.error('[WORDPRESS] Image upload error:', uploadError);
+        // Continue with next image on error
+      }
+    }
+  }
+
+  return updatedContent;
+}
+
 async function publishToWordPressCom({
   accessToken,
   site,
@@ -392,15 +540,29 @@ async function publishToWordPressCom({
   content: string;
   slug?: string;
   publishDraft: boolean;
-}): Promise<{ cmsId: string }> {
+}): Promise<{ cmsId: string; adminUrl: string; publicUrl: string }> {
+  // Step 1: Clean HTML for WordPress
+  console.log('[WORDPRESS] Cleaning HTML markup...');
+  let cleanedContent = cleanHtmlForWordPress(content);
+
+  // Step 2: Upload images to WordPress Media Library
+  console.log('[WORDPRESS] Uploading images to Media Library...');
+  cleanedContent = await uploadImagesToWordPress({
+    content: cleanedContent,
+    accessToken,
+    site
+  });
+
+  // Step 3: Publish the article with cleaned content
   const endpoint = `https://public-api.wordpress.com/wp/v2/sites/${site}/posts`;
   const payload: any = {
     title,
-    content,
+    content: cleanedContent,
     status: publishDraft ? 'draft' : 'publish'
   };
   if (slug) payload.slug = slug;
 
+  console.log('[WORDPRESS] Publishing to:', endpoint);
   const resp = await fetch(endpoint, {
     method: 'POST',
     headers: {
@@ -409,12 +571,30 @@ async function publishToWordPressCom({
     },
     body: JSON.stringify(payload)
   });
+
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`WordPress.com publish failed (${resp.status}): ${text}`);
   }
+
   const data = await resp.json();
-  return { cmsId: String(data.id) };
+  const postId = String(data.id);
+
+  // Step 4: Generate admin and public URLs
+  const adminUrl = `https://wordpress.com/post/${site}/${postId}`;
+  const publicUrl = data.link || `https://${site}/${data.slug}`;
+
+  console.log('[WORDPRESS] Published successfully:', {
+    postId,
+    adminUrl,
+    publicUrl
+  });
+
+  return {
+    cmsId: postId,
+    adminUrl,
+    publicUrl
+  };
 }
 
 async function publishToStrapi({

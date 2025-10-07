@@ -32,6 +32,8 @@ interface PublishedArticleItem {
   status?: string;
   error_message?: string | null;
   publishing?: boolean; // Local state for button
+  cms_admin_url?: string | null; // Edit link in CMS
+  public_url?: string | null; // Public article URL
 }
 
 interface Props {
@@ -96,7 +98,16 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
           const target = clean(domain);
           const items: PublishedArticleItem[] = (data.articles || [])
             .filter((a: any) => (a.status === 'completed' || a.status === 'published') && clean(a.websites?.domain) === target)
-            .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain }));
+            .map((a: any) => ({
+              id: a.id,
+              title: a.title,
+              slug: a.slug,
+              created_at: a.created_at,
+              published_at: a.published_at,
+              domain: a.websites?.domain,
+              cms_admin_url: a.cms_admin_url,
+              public_url: a.public_url
+            }));
           setPublished(items);
         }
       } catch (e) { /* no-op */ }
@@ -578,14 +589,27 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
             {published.slice(0, 10).map((a) => (
               <li key={a.id} className="flex items-center justify-between">
                 <span className="text-sm text-gray-800 truncate pr-3">{a.title}</span>
-                <a
-                  className="text-sm text-blue-600 hover:underline flex-shrink-0"
-                  href={`https://${(a.domain || domain).replace(/^https?:\/\//,'').replace(/\/$/,'')}/${a.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View
-                </a>
+                <div className="flex gap-2 flex-shrink-0">
+                  {a.cms_admin_url && (
+                    <a
+                      className="text-sm text-gray-600 hover:text-gray-900 hover:underline"
+                      href={a.cms_admin_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Edit in CMS"
+                    >
+                      Edit
+                    </a>
+                  )}
+                  <a
+                    className="text-sm text-blue-600 hover:underline"
+                    href={a.public_url || `https://${(a.domain || domain).replace(/^https?:\/\//,'').replace(/\/$/,'')}/${a.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View
+                  </a>
+                </div>
               </li>
             ))}
           </ul>
@@ -683,7 +707,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                         const resp = await fetch('/api/articles/publish', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ userToken, articleId: a.id, publishDraft: true })
+                          body: JSON.stringify({ userToken, articleId: a.id, publishDraft: false })
                         });
 
                         if (resp.ok) {
@@ -702,7 +726,9 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                                 created_at: art.created_at,
                                 published_at: art.published_at,
                                 domain: art.websites?.domain,
-                                status: art.status
+                                status: art.status,
+                                cms_admin_url: art.cms_admin_url,
+                                public_url: art.public_url
                               }));
                             const drf: PublishedArticleItem[] = (d.articles || [])
                               .filter((art: any) => {
