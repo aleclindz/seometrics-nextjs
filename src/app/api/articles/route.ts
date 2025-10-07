@@ -32,11 +32,16 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at,
         published_at,
+        scheduled_for,
+        scheduled_publish_at,
         word_count,
         quality_score,
         seo_score,
         readability_score,
         target_keywords,
+        topic_cluster,
+        public_url,
+        cms_admin_url,
         website_id,
         websites!website_id (
           domain
