@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!userToken || !articleId) {
+      console.error('[PUBLISH EDGE] 400 ERROR: Missing required fields', { userToken: !!userToken, articleId: !!articleId });
       return new Response(
         JSON.stringify({ error: 'Missing required fields: userToken, articleId' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!article.article_content) {
+      console.error('[PUBLISH EDGE] 400 ERROR: Article content not generated yet', { articleId, title: article.title });
       return new Response(
         JSON.stringify({ error: 'Article content not generated yet' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -67,8 +69,17 @@ export async function POST(request: NextRequest) {
     // Resolve CMS connection: prefer article-level; fallback to website-level active connection
     let effectiveCms: any = (article as any).cms_connections || null;
     let effectiveCmsId: number | null = (article as any).cms_connection_id || null;
+
+    console.log('[PUBLISH EDGE] CMS connection resolution:', {
+      articleCmsConnectionId: effectiveCmsId,
+      hasArticleLevelConnection: !!effectiveCms,
+      websiteId: article.website_id,
+      userToken: userToken.substring(0, 8) + '...'
+    });
+
     if (!effectiveCms) {
-      const { data: fallbackConn } = await supabase
+      console.log('[PUBLISH EDGE] No article-level CMS connection, searching for website-level connection...');
+      const { data: fallbackConn, error: fallbackError } = await supabase
         .from('cms_connections')
         .select('id, base_url, api_token, content_type, cms_type, status')
         .eq('user_token', userToken)
@@ -76,17 +87,42 @@ export async function POST(request: NextRequest) {
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .maybeSingle();
+
+      console.log('[PUBLISH EDGE] Fallback connection search result:', {
+        found: !!fallbackConn,
+        error: fallbackError?.message,
+        cmsType: fallbackConn?.cms_type,
+        baseUrl: fallbackConn?.base_url
+      });
+
       if (fallbackConn) {
         effectiveCms = fallbackConn;
         effectiveCmsId = fallbackConn.id as unknown as number;
       }
     }
+
     if (!effectiveCms || !effectiveCmsId) {
+      console.error('[PUBLISH EDGE] 400 ERROR: No CMS connection found', {
+        articleId,
+        websiteId: article.website_id,
+        userToken: userToken.substring(0, 8) + '...',
+        hasEffectiveCms: !!effectiveCms,
+        hasEffectiveCmsId: !!effectiveCmsId
+      });
       return new Response(
-        JSON.stringify({ error: 'No CMS connection found for this website' }),
+        JSON.stringify({
+          error: 'No CMS connection found for this website',
+          details: 'Please connect a CMS platform (WordPress, Strapi, etc.) in your website settings before publishing.'
+        }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('[PUBLISH EDGE] Using CMS connection:', {
+      id: effectiveCmsId,
+      type: effectiveCms.cms_type,
+      baseUrl: effectiveCms.base_url
+    });
 
     // Update status to publishing
     await supabase

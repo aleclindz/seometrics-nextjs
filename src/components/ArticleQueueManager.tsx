@@ -30,6 +30,8 @@ interface PublishedArticleItem {
   published_at?: string | null;
   domain?: string;
   status?: string;
+  error_message?: string | null;
+  publishing?: boolean; // Local state for button
 }
 
 interface Props {
@@ -119,13 +121,22 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
           const target = clean(domain);
           const items: PublishedArticleItem[] = (data.articles || [])
             .filter((a: any) => {
-              // Show articles that are generated/pending/generating and not yet published
+              // Show articles that are generated/pending/generating/publishing_failed and not yet published
               const isNotPublished = !a.published_at && a.status !== 'published';
               const matchesDomain = clean(a.websites?.domain) === target;
-              const isDraft = ['pending', 'generating', 'generated'].includes(a.status);
+              const isDraft = ['pending', 'generating', 'generated', 'publishing_failed'].includes(a.status);
               return isNotPublished && matchesDomain && isDraft;
             })
-            .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain, status: a.status }));
+            .map((a: any) => ({
+              id: a.id,
+              title: a.title,
+              slug: a.slug,
+              created_at: a.created_at,
+              published_at: a.published_at,
+              domain: a.websites?.domain,
+              status: a.status,
+              error_message: a.error_message
+            }));
           setDrafts(items);
         }
       } catch (e) {
@@ -167,10 +178,19 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
               .filter((a: any) => {
                 const isNotPublished = !a.published_at && a.status !== 'published';
                 const matchesDomain = clean(a.websites?.domain) === target;
-                const isDraft = ['pending', 'generating', 'generated'].includes(a.status);
+                const isDraft = ['pending', 'generating', 'generated', 'publishing_failed'].includes(a.status);
                 return isNotPublished && matchesDomain && isDraft;
               })
-              .map((a: any) => ({ id: a.id, title: a.title, slug: a.slug, created_at: a.created_at, published_at: a.published_at, domain: a.websites?.domain, status: a.status }));
+              .map((a: any) => ({
+                id: a.id,
+                title: a.title,
+                slug: a.slug,
+                created_at: a.created_at,
+                published_at: a.published_at,
+                domain: a.websites?.domain,
+                status: a.status,
+                error_message: a.error_message
+              }));
             setDrafts(items);
           }
           await fetchQueue();
@@ -647,16 +667,25 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                     <span className="text-xs text-gray-500">Next publish: {schedule?.next_scheduled_at ? new Date(schedule.next_scheduled_at).toLocaleString() : 'scheduled'}</span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-col items-end">
+                  {a.error_message && (
+                    <div className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded border border-red-200 max-w-xs">
+                      ⚠️ {a.error_message}
+                    </div>
+                  )}
                   <button
                     onClick={async () => {
                       try {
+                        // Set publishing state
+                        setDrafts(prev => prev.map(art => art.id === a.id ? { ...art, publishing: true, error_message: null } : art));
                         showToast('Publishing…', 'info');
+
                         const resp = await fetch('/api/articles/publish', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ userToken, articleId: a.id, publishDraft: true })
                         });
+
                         if (resp.ok) {
                           // refresh published and drafts
                           const p = await fetch(`/api/articles?userToken=${encodeURIComponent(userToken)}`);
@@ -665,21 +694,77 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
                             const clean = (s: string) => String(s || '').replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
                             const target = clean(domain);
                             const pub: PublishedArticleItem[] = (d.articles || [])
-                              .filter((art: any) => art.published_at && clean(art.websites?.domain) === target)
-                              .map((art: any) => ({ id: art.id, title: art.title, slug: art.slug, created_at: art.created_at, published_at: art.published_at, domain: art.websites?.domain }));
+                              .filter((art: any) => (art.status === 'completed' || art.status === 'published') && clean(art.websites?.domain) === target)
+                              .map((art: any) => ({
+                                id: art.id,
+                                title: art.title,
+                                slug: art.slug,
+                                created_at: art.created_at,
+                                published_at: art.published_at,
+                                domain: art.websites?.domain,
+                                status: art.status
+                              }));
                             const drf: PublishedArticleItem[] = (d.articles || [])
-                              .filter((art: any) => !art.published_at && clean(art.websites?.domain) === target)
-                              .map((art: any) => ({ id: art.id, title: art.title, slug: art.slug, created_at: art.created_at, published_at: art.published_at, domain: art.websites?.domain }));
+                              .filter((art: any) => {
+                                const isNotPublished = !art.published_at && art.status !== 'published';
+                                const matchesDomain = clean(art.websites?.domain) === target;
+                                const isDraft = ['pending', 'generating', 'generated', 'publishing_failed'].includes(art.status);
+                                return isNotPublished && matchesDomain && isDraft;
+                              })
+                              .map((art: any) => ({
+                                id: art.id,
+                                title: art.title,
+                                slug: art.slug,
+                                created_at: art.created_at,
+                                published_at: art.published_at,
+                                domain: art.websites?.domain,
+                                status: art.status,
+                                error_message: art.error_message
+                              }));
                             setPublished(pub);
                             setDrafts(drf);
-                            showToast('Published', 'success');
+                            showToast('Published successfully!', 'success', 3000);
                           }
+                        } else {
+                          // Handle error response
+                          const errorData = await resp.json().catch(() => ({}));
+                          const errorMessage = errorData.error || errorData.details || `Publishing failed (${resp.status})`;
+
+                          console.error('[PUBLISH] Failed:', resp.status, errorData);
+
+                          // Keep article in drafts with error message
+                          setDrafts(prev => prev.map(art =>
+                            art.id === a.id
+                              ? { ...art, publishing: false, error_message: errorMessage, status: 'publishing_failed' }
+                              : art
+                          ));
+
+                          showToast(`Publishing failed: ${errorMessage}`, 'error', 5000);
                         }
-                      } catch (e) { console.error('Publish failed', e); }
+                      } catch (e) {
+                        console.error('[PUBLISH] Unexpected error:', e);
+                        const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+
+                        // Keep article in drafts with error message
+                        setDrafts(prev => prev.map(art =>
+                          art.id === a.id
+                            ? { ...art, publishing: false, error_message: errorMsg, status: 'publishing_failed' }
+                            : art
+                        ));
+
+                        showToast(`Publishing failed: ${errorMsg}`, 'error', 5000);
+                      }
                     }}
-                    className="inline-flex items-center px-2 py-1 text-xs border rounded text-gray-700 hover:bg-gray-50"
+                    disabled={a.publishing}
+                    className={`inline-flex items-center px-2 py-1 text-xs border rounded ${
+                      a.publishing
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : a.error_message
+                          ? 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100'
+                          : 'text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
-                    Publish Now
+                    {a.publishing ? '⏳ Publishing...' : a.error_message ? 'Retry Publish' : 'Publish Now'}
                   </button>
                 </div>
               </li>
