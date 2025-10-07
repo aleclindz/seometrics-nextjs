@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at,
         published_at,
+        generated_at,
         scheduled_for,
         scheduled_publish_at,
         word_count,

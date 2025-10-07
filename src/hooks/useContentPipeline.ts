@@ -197,17 +197,39 @@ export function useContentPipeline({ userToken, websiteToken, domain }: UseConte
 
   // Remove article from schedule
   const removeFromSchedule = useCallback(async (id: string) => {
-    await scheduleForPublication(id, null as any); // Clear the schedule
+    const articleId = id.replace('article-', '');
 
-    // Update local state
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id
-          ? { ...item, scheduledPublishAt: null }
-          : item
-      )
-    );
-  }, [scheduleForPublication]);
+    try {
+      const response = await fetch('/api/content/schedule-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          articleId: Number(articleId),
+          scheduledDate: null // Explicitly set to null to unschedule
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to remove from schedule');
+      }
+
+      // Update local state
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === id
+            ? { ...item, scheduledPublishAt: null }
+            : item
+        )
+      );
+    } catch (err) {
+      console.error('Error removing from schedule:', err);
+      // Refresh to get correct state
+      await fetchContent();
+      throw err;
+    }
+  }, [userToken, fetchContent]);
 
   // Initial fetch
   useEffect(() => {

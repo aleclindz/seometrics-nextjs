@@ -313,37 +313,34 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
     <div
       ref={drop as any}
       className={classNames(
-        "min-h-[140px] p-3 border border-gray-200",
+        "min-h-[200px] p-4 border border-gray-200",
         isToday ? "bg-blue-50 border-blue-300" : "bg-white",
         isOver ? "bg-blue-100" : ""
       )}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <span className={classNames(
-          "text-sm font-medium",
-          isToday ? "font-bold text-blue-600" : "text-gray-700"
+          "text-2xl font-bold",
+          isToday ? "text-blue-600" : "text-gray-700"
         )}>
           {format(date, "d")}
-        </span>
-        <span className="text-xs text-gray-500">
-          {format(date, "EEE")}
         </span>
       </div>
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.id} className="group relative">
-            <div className="text-xs bg-amber-100 text-amber-800 px-2 py-2 rounded-lg border border-amber-200">
-              <div className="flex items-start justify-between gap-1">
+            <div className="text-sm bg-amber-100 text-amber-800 px-3 py-2.5 rounded-lg border border-amber-200">
+              <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{item.title}</div>
-                  <div className="text-amber-600 mt-1">{item.cluster}</div>
+                  <div className="font-semibold truncate text-sm leading-snug">{item.title}</div>
+                  <div className="text-xs text-amber-700 mt-1.5">{item.cluster}</div>
                 </div>
                 <button
                   onClick={() => onRemove(item.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-1 rounded hover:bg-amber-200"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-1.5 rounded hover:bg-amber-200"
                   title="Remove from schedule"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -674,57 +671,63 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
             {/* Calendar Grid */}
             <div className="lg:col-span-3">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium">
+                <h3 className="font-medium text-base">
                   {format(weekStart, "MMM d")} - {format(addDays(weekStart, 13), "MMM d, yyyy")}
                 </h3>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setCurrentDate(addDays(currentDate, -14))}
-                    className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50"
+                    className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
                   >
                     Previous 2 Weeks
                   </button>
                   <button
                     onClick={() => setCurrentDate(new Date())}
-                    className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50"
+                    className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
                   >
                     Today
                   </button>
                   <button
                     onClick={() => setCurrentDate(addDays(currentDate, 14))}
-                    className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50"
+                    className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
                   >
                     Next 2 Weeks
                   </button>
                 </div>
               </div>
 
-              <div className="border rounded-xl overflow-hidden">
-                {/* Calendar Header */}
-                <div className="grid grid-cols-7 bg-gray-50">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => (
-                    <div key={day} className="p-3 text-center text-sm font-medium border-r border-gray-200 last:border-r-0">
-                      {day}
-                    </div>
-                  ))}
-                </div>
+              {/* Horizontal scrollable container */}
+              <div className="border rounded-xl overflow-x-auto">
+                <div className="min-w-[1400px]">
+                  {/* Calendar Header */}
+                  <div className="grid grid-cols-7 bg-gray-50">
+                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => (
+                      <div key={day} className="p-4 text-center text-base font-semibold border-r border-gray-200 last:border-r-0">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
 
-                {/* Calendar Days - 2 weeks */}
-                <div className="grid grid-cols-7">
-                  {calendarDays.map(day => {
-                    const dateKey = format(day, "yyyy-MM-dd");
-                    const dayItems = itemsByDate[dateKey] || [];
-                    return (
-                      <CalendarDay
-                        key={dateKey}
-                        date={day}
-                        items={dayItems}
-                        onDrop={handleDropOnCalendar}
-                        onRemove={handleRemoveFromCalendar}
-                      />
-                    );
-                  })}
+                  {/* Calendar Days - 2 weeks */}
+                  <div className="grid grid-cols-7">
+                    {calendarDays.map(day => {
+                      const dateKey = format(day, "yyyy-MM-dd");
+                      const dayItems = itemsByDate[dateKey] || [];
+                      return (
+                        <CalendarDay
+                          key={dateKey}
+                          date={day}
+                          items={dayItems}
+                          onDrop={handleDropOnCalendar}
+                          onRemove={handleRemoveFromCalendar}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
+              </div>
+              <div className="mt-2 text-sm text-gray-500 text-center">
+                ← Scroll horizontally to see all days →
               </div>
             </div>
           </div>
