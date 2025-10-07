@@ -9,8 +9,7 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/website-chat/ChatInterface';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
-import ContentScheduleConfig from '@/components/ContentScheduleConfig';
-import ArticleQueueManager from '@/components/ArticleQueueManager';
+import ContentTab from '@/components/ContentTab';
 import { useContentAutomation } from '@/hooks/useContentAutomation';
 import { useFeatures } from '@/hooks/useFeatures';
 import { ChevronDown, ChevronRight, Send, Loader2, RefreshCw, TrendingUp, TrendingDown, Target, Tag, DollarSign, Wrench, Users, FileText, BookOpen, Search, Globe, Zap, Sparkles, Calendar, Clock, Eye, Edit } from 'lucide-react';
@@ -1126,150 +1125,12 @@ export default function WebsitePage() {
               )}
 
               {activeTab === 'content' && (
-                <section className="space-y-6">
-                  {/* Header and Settings Card */}
-                  <div className="bg-white border border-gray-200 rounded-lg">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                        <h3 className="text-lg font-semibold text-gray-900">Automated Content Scheduling</h3>
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-6">
-                      {/* Enable Toggle */}
-                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            className="sr-only peer"
-                            type="checkbox"
-                            checked={automation.websites[0]?.enable_automated_content || false}
-                            onChange={async (e) => {
-                              if (automation.websites[0]) {
-                                try {
-                                  await automation.updateAutomationSettings(
-                                    automation.websites[0].website_token,
-                                    { enable_automated_content: e.target.checked }
-                                  );
-                                } catch (error) {
-                                  console.error('Failed to update automation setting:', error);
-                                }
-                              }
-                            }}
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                        <div>
-                          <div className="font-medium text-gray-900">Enable Automated Content Generation</div>
-                          <div className="text-sm text-gray-500">SEOAgent will automatically generate and schedule blog posts for this website</div>
-                        </div>
-                      </div>
-
-                      {/* Article Quota Display */}
-                      <div className="bg-white border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-medium text-gray-900">Article Quota</h4>
-                          <span className="text-xs text-gray-500">
-                            {automation.quota.billing_period.start && automation.quota.billing_period.end
-                              ? `${new Date(automation.quota.billing_period.start).toLocaleDateString()} - ${new Date(automation.quota.billing_period.end).toLocaleDateString()}`
-                              : 'Current billing period'
-                            }
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Used this month:</span>
-                            <span className="font-medium">
-                              {automation.quota.used} of {automation.quota.limit === -1 ? 'unlimited' : automation.quota.limit}
-                            </span>
-                          </div>
-                          {automation.quota.limit === -1 ? (
-                            <div className="w-full bg-green-100 rounded-full h-2">
-                              <div className="h-2 rounded-full bg-green-500 w-full" />
-                            </div>
-                          ) : (
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  automation.quota.remaining === 0 ? 'bg-red-500' :
-                                  automation.quota.remaining <= 2 ? 'bg-yellow-500' : 'bg-green-500'
-                                }`}
-                                style={{ width: `${Math.min((automation.quota.used / automation.quota.limit) * 100, 100)}%` }}
-                              />
-                            </div>
-                          )}
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>
-                              {automation.quota.limit === -1
-                                ? 'Unlimited articles available'
-                                : `${automation.quota.remaining} articles remaining`
-                              }
-                            </span>
-                            {automation.quota.remaining === 0 && automation.quota.limit !== -1 && (
-                              <span className="text-red-600 font-medium">Quota exceeded</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Automation Settings */}
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-700">Frequency</label>
-                          <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 font-medium">
-                            {getPlanFrequency().display}
-                            <span className="text-xs text-gray-500 ml-2">
-                              (Based on {userPlan?.tier || 'free'} plan)
-                            </span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-700">Auto Publish</label>
-                          <select
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            value={automation.websites[0]?.scheduling.auto_publish ? 'publish' : 'draft'}
-                            onChange={async (e) => {
-                              if (automation.websites[0]) {
-                                try {
-                                  await automation.updateAutomationSettings(
-                                    automation.websites[0].website_token,
-                                    {
-                                      scheduling: {
-                                        ...automation.websites[0].scheduling,
-                                        auto_publish: e.target.value === 'publish'
-                                      }
-                                    }
-                                  );
-                                } catch (error) {
-                                  console.error('Failed to update auto-publish setting:', error);
-                                }
-                              }
-                            }}
-                          >
-                            <option value="draft">Save as Draft</option>
-                            <option value="publish">Auto-Publish</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Articles Management */}
-                  <div className="bg-white border border-gray-200 rounded-lg">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <FileText className="w-5 h-5" />
-                        Article Briefs
-                      </h3>
-                    </div>
-                    <div className="p-6">
-                      <ArticleQueueManager
-                        userToken={user?.token || ''}
-                        websiteToken={currentWebsite?.website_token || automation.websites[0]?.website_token || ''}
-                        domain={domain}
-                        onTopicClusterClick={switchToStrategyAndExpandCluster}
-                      />
-                    </div>
-                  </div>
+                <section>
+                  <ContentTab
+                    userToken={user?.token || ''}
+                    websiteToken={currentWebsite?.website_token || automation.websites[0]?.website_token || ''}
+                    domain={domain}
+                  />
                 </section>
               )}
 
