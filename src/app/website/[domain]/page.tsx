@@ -56,6 +56,18 @@ export default function WebsitePage() {
     user?.token || '',
     currentWebsite?.website_token || ''
   );
+
+  // Get website token with fallbacks
+  const getWebsiteToken = () => {
+    if (currentWebsite?.website_token) {
+      return currentWebsite.website_token;
+    }
+    if (automation.websites?.[0]?.website_token) {
+      return automation.websites[0].website_token;
+    }
+    console.warn('[WEBSITE TOKEN] No website token found for domain:', domain);
+    return '';
+  };
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [backfilling, setBackfilling] = useState(false);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error' }>({ visible: false, message: '', type: 'success' });
@@ -1311,7 +1323,7 @@ export default function WebsitePage() {
                                                 try {
                                                   const payload = {
                                                     userToken: user?.token,
-                                                    websiteToken: currentWebsite?.website_token,
+                                                    websiteToken: getWebsiteToken(),
                                                     keywords: [{ keyword: kw, keyword_type: 'long_tail', topic_cluster: cluster.name }]
                                                   };
                                                   const resp = await fetch('/api/keyword-strategy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1332,7 +1344,7 @@ export default function WebsitePage() {
                                               onClick={async () => {
                                                 if (!confirm(`Delete the entire \"${cluster.name}\" cluster and its keywords?`)) return;
                                                 try {
-                                                  const params = new URLSearchParams({ userToken: user?.token || '', websiteToken: currentWebsite?.website_token || '', topicCluster: cluster.name });
+                                                  const params = new URLSearchParams({ userToken: user?.token || '', websiteToken: getWebsiteToken(), topicCluster: cluster.name });
                                                   const resp = await fetch(`/api/keyword-strategy?${params.toString()}`, { method: 'DELETE' });
                                                   const data = await resp.json();
                                                   if (resp.ok && data.success) {
@@ -1362,13 +1374,39 @@ export default function WebsitePage() {
                                                   className="text-xs text-red-600 hover:text-red-700 flex-shrink-0"
                                                   onClick={async () => {
                                                     try {
-                                                      const params = new URLSearchParams({ userToken: user?.token || '', websiteToken: currentWebsite?.website_token || '', keyword: (k.keyword || k) });
+                                                      const keywordValue = k.keyword || k;
+                                                      const websiteToken = getWebsiteToken();
+                                                      console.log('[Remove Keyword] Attempting to delete:', keywordValue);
+                                                      console.log('[Remove Keyword] User token:', user?.token);
+                                                      console.log('[Remove Keyword] Website token:', websiteToken);
+
+                                                      if (!websiteToken) {
+                                                        alert('Website token not found. Please refresh the page and try again.');
+                                                        console.error('[Remove Keyword] No website token available');
+                                                        return;
+                                                      }
+
+                                                      const params = new URLSearchParams({
+                                                        userToken: user?.token || '',
+                                                        websiteToken: websiteToken,
+                                                        keyword: keywordValue
+                                                      });
                                                       const resp = await fetch(`/api/keyword-strategy?${params.toString()}`, { method: 'DELETE' });
                                                       const data = await resp.json();
+
+                                                      console.log('[Remove Keyword] Response:', { ok: resp.ok, status: resp.status, data });
+
                                                       if (resp.ok && data.success) {
+                                                        console.log('[Remove Keyword] Success! Refreshing strategy data...');
                                                         await fetchStrategyData();
+                                                      } else {
+                                                        console.error('[Remove Keyword] Failed:', data);
+                                                        alert(`Failed to remove keyword: ${data.error || 'Unknown error'}`);
                                                       }
-                                                    } catch (err) { console.error('Delete keyword failed:', err); }
+                                                    } catch (err) {
+                                                      console.error('[Remove Keyword] Exception:', err);
+                                                      alert('Error removing keyword. Check console for details.');
+                                                    }
                                                   }}
                                                 >
                                                   Remove

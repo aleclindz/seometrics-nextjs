@@ -289,18 +289,39 @@ export async function DELETE(request: NextRequest) {
 
     if (keyword) {
       // Delete specific keyword
-      const { error: deleteError } = await supabase
+      const normalizedKeyword = keyword.toLowerCase().trim();
+      console.log('[KEYWORD STRATEGY DELETE] Deleting keyword:', {
+        keyword,
+        normalizedKeyword,
+        websiteToken,
+        userToken
+      });
+
+      const { data: deletedData, error: deleteError } = await supabase
         .from('website_keywords')
         .delete()
         .eq('website_token', websiteToken)
-        .eq('keyword', keyword.toLowerCase().trim());
+        .eq('keyword', normalizedKeyword)
+        .select();
+
+      console.log('[KEYWORD STRATEGY DELETE] Delete result:', {
+        deletedData,
+        deleteError,
+        deletedCount: deletedData?.length || 0
+      });
 
       if (deleteError) {
         console.error('[KEYWORD STRATEGY] Error deleting keyword:', deleteError);
-        return NextResponse.json({ error: 'Failed to delete keyword' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to delete keyword', details: deleteError.message }, { status: 500 });
       }
 
-      return NextResponse.json({ success: true, message: 'Keyword deleted successfully' });
+      if (!deletedData || deletedData.length === 0) {
+        console.warn('[KEYWORD STRATEGY DELETE] No keyword found to delete:', normalizedKeyword);
+        return NextResponse.json({ error: 'Keyword not found', keyword: normalizedKeyword }, { status: 404 });
+      }
+
+      console.log('[KEYWORD STRATEGY DELETE] Successfully deleted keyword:', normalizedKeyword);
+      return NextResponse.json({ success: true, message: 'Keyword deleted successfully', deletedCount: deletedData.length });
     }
 
     if (topicCluster) {
