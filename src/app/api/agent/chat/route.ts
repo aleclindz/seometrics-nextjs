@@ -128,9 +128,10 @@ export async function POST(request: NextRequest) {
     );
     const assistantMessageOrder = userMessageOrder + 1;
 
-    // Get OpenAI API key from server environment (runtime evaluation to prevent build-time inlining)
-    const getApiKey = () => process.env['OPENAI_API_KEY'];
-    const apiKey = getApiKey();
+    // Get OpenAI API key from server environment
+    // Use dynamic key lookup to prevent webpack from inlining the value at build time
+    const envKey = ['OPENAI', 'API', 'KEY'].join('_');
+    const apiKey = process.env[envKey];
     if (!apiKey) {
       // Fallback response for testing when OpenAI key is not available
       const testResponse = getTestResponse(message);
