@@ -293,6 +293,127 @@ CREATE TABLE article_generation_logs (
 
 ---
 
+## 🎯 Keyword Strategy & Tracking
+
+### `keyword_mentions`
+**Purpose**: Track which keywords are mentioned in generated articles for coverage analysis
+```sql
+CREATE TABLE keyword_mentions (
+    id SERIAL PRIMARY KEY,
+    article_queue_id INTEGER NOT NULL REFERENCES article_queue(id) ON DELETE CASCADE,
+    website_token TEXT NOT NULL REFERENCES websites(website_token) ON DELETE CASCADE,
+    keyword TEXT NOT NULL,
+    mention_count INTEGER DEFAULT 1,
+    mention_type TEXT CHECK (mention_type IN ('primary', 'secondary', 'contextual')),
+    locations JSONB DEFAULT '[]', -- ['title', 'meta_title', 'meta_description', 'body', 'heading']
+    first_mentioned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(article_queue_id, keyword)
+);
+```
+**Key Points**:
+- Tracks keyword coverage in generated articles
+- `mention_type`: primary (in title), secondary (target keyword), contextual (natural mention)
+- `locations`: Array of where the keyword appears (title, meta, body, headings)
+- Used to calculate keyword coverage scores and identify gaps
+
+### `keyword_similarity_groups`
+**Purpose**: Store pre-computed semantic similarity groups for multi-keyword articles
+```sql
+CREATE TABLE keyword_similarity_groups (
+    id SERIAL PRIMARY KEY,
+    website_token TEXT NOT NULL REFERENCES websites(website_token) ON DELETE CASCADE,
+    topic_cluster TEXT NOT NULL,
+    group_id INTEGER NOT NULL,
+    keywords TEXT[] NOT NULL,
+    primary_keyword TEXT NOT NULL,
+    secondary_keywords TEXT[] DEFAULT '{}',
+    average_similarity_score DECIMAL(4,3),
+    recommended_article_count INTEGER DEFAULT 1,
+    article_brief_id BIGINT REFERENCES article_briefs(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(website_token, topic_cluster, group_id)
+);
+```
+**Key Points**:
+- Groups 5-10 semantically related keywords for comprehensive articles
+- Generated using OpenAI embeddings and cosine similarity (threshold 0.75)
+- Prevents keyword cannibalization (one primary keyword per article)
+- Used by brief generation to assign keyword groups to articles
+
+**Keyword Strategy Updates** (Migration 057):
+- `website_keywords.embedding` - vector(1536) for OpenAI embeddings
+- `website_keywords.similarity_cluster_id` - Links to similarity group
+- `article_queue.keyword_coverage_score` - DECIMAL(4,2) percentage of target keywords mentioned
+- `article_briefs.coverage_keywords` - JSONB tracking which keywords brief should cover
+
+**Database Views**:
+```sql
+-- View 1: Keyword coverage overview per website
+CREATE VIEW keyword_coverage_overview AS
+SELECT
+    wk.website_token,
+    wk.topic_cluster,
+    wk.keyword,
+    COALESCE(km.total_mentions, 0) AS mentions_count,
+    COALESCE(km.articles_count, 0) AS articles_mentioning,
+    CASE
+        WHEN km.total_mentions > 0 THEN 'covered'
+        ELSE 'uncovered'
+    END AS coverage_status
+FROM website_keywords wk
+LEFT JOIN (
+    SELECT
+        website_token,
+        keyword,
+        SUM(mention_count) AS total_mentions,
+        COUNT(DISTINCT article_queue_id) AS articles_count
+    FROM keyword_mentions
+    GROUP BY website_token, keyword
+) km ON wk.website_token = km.website_token AND wk.keyword = km.keyword;
+
+-- View 2: Topic cluster coverage statistics
+CREATE VIEW topic_cluster_coverage_stats AS
+SELECT
+    website_token,
+    topic_cluster,
+    COUNT(*) AS total_keywords,
+    COUNT(*) FILTER (WHERE mentions_count > 0) AS covered_keywords,
+    ROUND((COUNT(*) FILTER (WHERE mentions_count > 0)::DECIMAL / COUNT(*)) * 100, 1) AS coverage_percentage
+FROM keyword_coverage_overview
+WHERE topic_cluster IS NOT NULL
+GROUP BY website_token, topic_cluster;
+```
+
+**Database Constraints**:
+```sql
+-- Enforce max 100 keywords per topic cluster
+CREATE OR REPLACE FUNCTION check_topic_cluster_keyword_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+  keyword_count INTEGER;
+BEGIN
+  IF NEW.topic_cluster IS NOT NULL THEN
+    SELECT COUNT(*) INTO keyword_count
+    FROM website_keywords
+    WHERE website_token = NEW.website_token
+    AND topic_cluster = NEW.topic_cluster;
+
+    IF keyword_count >= 100 THEN
+      RAISE EXCEPTION 'Topic cluster "%" has reached maximum of 100 keywords', NEW.topic_cluster;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER enforce_topic_cluster_limit
+  BEFORE INSERT ON website_keywords
+  FOR EACH ROW
+  EXECUTE FUNCTION check_topic_cluster_keyword_limit();
+```
+
+---
+
 ## 🔗 CMS Integration
 
 ### `cms_connections`

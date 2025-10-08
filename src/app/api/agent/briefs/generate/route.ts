@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       cleanedDomain = site.cleaned_domain || site.domain || cleanedDomain;
     }
 
-    // Fetch existing keyword strategy parts
-    const [kwRes, clusterContentRes] = await Promise.all([
+    // Fetch existing keyword strategy parts and similarity groups
+    const [kwRes, clusterContentRes, similarityGroupsRes] = await Promise.all([
       supabase
         .from('website_keywords')
         .select('keyword, keyword_type, topic_cluster')
@@ -44,6 +44,10 @@ export async function POST(request: NextRequest) {
       supabase
         .from('topic_cluster_content')
         .select('topic_cluster, article_title, article_url, primary_keyword')
+        .eq('website_token', effectiveWebsiteToken),
+      supabase
+        .from('keyword_similarity_groups')
+        .select('*')
         .eq('website_token', effectiveWebsiteToken)
     ]);
 
@@ -58,6 +62,33 @@ export async function POST(request: NextRequest) {
       url: c.article_url as string | null,
       primary: (c.primary_keyword || null) as string | null
     }));
+
+    // Process keyword similarity groups
+    const similarityGroups = (similarityGroupsRes.data || []).map((g: any) => ({
+      topic_cluster: g.topic_cluster,
+      group_id: g.group_id,
+      primary_keyword: g.primary_keyword,
+      secondary_keywords: g.secondary_keywords || [],
+      average_similarity_score: g.average_similarity_score,
+      article_brief_id: g.article_brief_id
+    }));
+
+    // Build lookup: cluster -> groups[], and primary -> group
+    const groupsByCluster: Record<string, typeof similarityGroups> = {};
+    const groupByPrimary: Record<string, typeof similarityGroups[0]> = {};
+    for (const group of similarityGroups) {
+      const clusterKey = (group.topic_cluster || '').toLowerCase();
+      if (clusterKey) {
+        if (!groupsByCluster[clusterKey]) groupsByCluster[clusterKey] = [];
+        groupsByCluster[clusterKey].push(group);
+      }
+      const primaryKey = (group.primary_keyword || '').toLowerCase();
+      if (primaryKey) {
+        groupByPrimary[primaryKey] = group;
+      }
+    }
+
+    try { console.log('[BRIEFS] Loaded', similarityGroups.length, 'keyword similarity groups'); } catch {}
 
     // Build indices for cannibalization checks
     const existingPrimary = new Set<string>();
@@ -95,14 +126,39 @@ export async function POST(request: NextRequest) {
     // Transform to briefs with rules
     const briefs: ContentBrief[] = [];
     const usedPrimaries = new Set<string>();
+    const usedGroups = new Set<number>(); // Track which similarity groups we've used
 
     const batch = ideas.slice(0, Math.max(1, count));
     for (const idea of batch) {
       const parentCluster = (String(idea.mainTopic || '').trim() || null) as string | null;
       const pageType: 'pillar' | 'cluster' | 'supporting' = includePillar ? 'cluster' : classifyPageType(idea);
-      const primaryKeyword = pickPrimary(idea, existingKeywords, usedPrimaries);
+
+      // Try to use a keyword similarity group if available
+      let primaryKeyword: string | undefined;
+      let secKeywords: string[] = [];
+      let usedGroupId: number | undefined;
+
+      const clusterKey = (parentCluster || '').toLowerCase();
+      const availableGroups = (groupsByCluster[clusterKey] || []).filter(g =>
+        !usedGroups.has(g.group_id) && !usedPrimaries.has((g.primary_keyword || '').toLowerCase())
+      );
+
+      if (availableGroups.length > 0) {
+        // Use the first available similarity group for this cluster
+        const group = availableGroups[0];
+        primaryKeyword = group.primary_keyword;
+        secKeywords = group.secondary_keywords || [];
+        usedGroups.add(group.group_id);
+        usedPrimaries.add((primaryKeyword || '').toLowerCase());
+        usedGroupId = group.group_id;
+        try { console.log('[BRIEFS] Using similarity group', group.group_id, 'for', primaryKeyword); } catch {}
+      } else {
+        // Fallback to original logic if no similarity groups available
+        primaryKeyword = pickPrimary(idea, existingKeywords, usedPrimaries);
+        secKeywords = pickSecondaries(idea, primaryKeyword);
+      }
+
       const intent = inferIntent(idea, primaryKeyword);
-      const secKeywords = pickSecondaries(idea, primaryKeyword);
       const title = idea.title || toTitle(primaryKeyword || (parentCluster || ''));
       const h1 = title;
       const urlPath = `/${slugify(parentCluster || primaryKeyword || title)}/${slugify(primaryKeyword || title)}`.replace(/\/+/g, '/');
@@ -222,6 +278,15 @@ export async function POST(request: NextRequest) {
         const briefsRows = briefs.map((b, index) => {
           const hoursOffset = (index * (7 * 24 / Math.max(1, briefs.length)));
           const scheduledTime = new Date(now.getTime() + hoursOffset * 60 * 60 * 1000);
+
+          // Build coverage keywords for tracking
+          const coverageKeywords = {
+            primary: b.primary_keyword,
+            secondary: b.secondary_keywords || [],
+            total_count: 1 + (b.secondary_keywords?.length || 0),
+            similarity_group_used: true // Indicates this brief uses keyword similarity groups
+          };
+
           return {
             user_token: userToken,
             website_token: effectiveWebsiteToken,
@@ -245,7 +310,8 @@ export async function POST(request: NextRequest) {
             tone: b.metadata?.tone || 'professional',
             notes: b.metadata?.notes || [],
             status: 'draft',
-            scheduled_for: scheduledTime.toISOString()
+            scheduled_for: scheduledTime.toISOString(),
+            coverage_keywords: coverageKeywords
           };
         });
 

@@ -1110,6 +1110,46 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
+  'KEYWORDS_cluster_similarity': {
+    schema: {
+      name: 'KEYWORDS_cluster_similarity',
+      description: 'Group keywords within a topic cluster by semantic similarity for article planning. Uses AI embeddings to identify 5-10 related keywords that should be covered in single comprehensive articles. This prevents thin one-keyword-per-article content and creates authoritative coverage.',
+      parameters: {
+        type: 'object',
+        properties: {
+          website_token: { type: 'string', description: 'Website token for the keywords' },
+          topic_cluster: { type: 'string', description: 'Topic cluster name to analyze' },
+          keywords: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Array of keywords to cluster (from the topic cluster)'
+          },
+          target_articles: {
+            type: 'integer',
+            description: 'Desired number of articles to create from these keywords (optional, auto-calculated if not provided)',
+            default: 0
+          },
+          similarity_threshold: {
+            type: 'number',
+            description: 'Minimum similarity score (0.0-1.0) for grouping keywords together',
+            default: 0.75
+          }
+        },
+        required: ['website_token', 'topic_cluster', 'keywords'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      website_token: z.string().min(1, 'Website token is required'),
+      topic_cluster: z.string().min(1, 'Topic cluster name is required'),
+      keywords: z.array(z.string()).min(1, 'At least one keyword is required'),
+      target_articles: z.number().int().min(0).optional().default(0),
+      similarity_threshold: z.number().min(0.5).max(1.0).optional().default(0.75)
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
   'BRIEFS_generate': {
     schema: {
       name: 'BRIEFS_generate',

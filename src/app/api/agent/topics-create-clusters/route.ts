@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { clusterKeywordsBySimilarity, storeSimilarityGroups } from '@/services/keyword-similarity';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -170,10 +171,61 @@ Guidelines:
       }
     }
 
+    // Lookup website_token from site_url for similarity grouping
+    const cleanedDomain = site_url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+    const { data: websiteData, error: websiteLookupError } = await supabase
+      .from('websites')
+      .select('website_token')
+      .eq('domain', cleanedDomain)
+      .single();
+
+    let similarityGroupsCount = 0;
+
+    // Generate keyword similarity groups for each cluster
+    if (websiteData?.website_token) {
+      const websiteToken = websiteData.website_token;
+
+      for (const cluster of clustersData.topic_clusters || []) {
+        try {
+          // Extract just the keyword strings from the cluster
+          const clusterKeywords = (cluster.keywords || []).map((kw: any) =>
+            typeof kw === 'string' ? kw : kw.keyword
+          );
+
+          if (clusterKeywords.length > 0) {
+            console.log(`[KEYWORD CLUSTERING] Generating similarity groups for cluster "${cluster.cluster_name}" (${clusterKeywords.length} keywords)`);
+
+            // Generate keyword similarity groups using embeddings
+            const keywordGroups = await clusterKeywordsBySimilarity(
+              clusterKeywords,
+              0.75, // similarity threshold
+              0 // target_articles (auto-determine)
+            );
+
+            // Store similarity groups in database
+            await storeSimilarityGroups(
+              websiteToken,
+              cluster.cluster_name,
+              keywordGroups
+            );
+
+            similarityGroupsCount += keywordGroups.length;
+            console.log(`[KEYWORD CLUSTERING] Created ${keywordGroups.length} similarity groups for "${cluster.cluster_name}"`);
+          }
+        } catch (clusterError) {
+          console.error(`[KEYWORD CLUSTERING] Failed to generate similarity groups for cluster "${cluster.cluster_name}":`, clusterError);
+          // Continue with other clusters even if one fails
+        }
+      }
+    } else {
+      console.warn('[KEYWORD CLUSTERING] Could not find website_token for', site_url, '- skipping similarity grouping');
+    }
+
     // Create content calendar suggestions
     const contentCalendar = await generateContentCalendar(clustersData.topic_clusters, business_context);
 
     console.log('[TOPICS CLUSTERING] Created', savedClusters.length, 'topic clusters with', allKeywords.length, 'keywords');
+    console.log('[KEYWORD CLUSTERING] Generated', similarityGroupsCount, 'total similarity groups across all clusters');
 
     return NextResponse.json({
       success: true,
@@ -183,6 +235,7 @@ Guidelines:
         content_calendar: contentCalendar,
         saved_clusters: savedClusters.length,
         keywords_processed: allKeywords.length,
+        similarity_groups_created: similarityGroupsCount,
         generated_at: new Date().toISOString()
       }
     });

@@ -179,6 +179,69 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to update article' }, { status: 500 });
     }
 
+    // Track keyword mentions in the generated content
+    const websiteToken = (article as any)?.websites?.website_token;
+    if (websiteToken && effectiveKeywords.length > 0) {
+      try {
+        const contentLower = stripHtml(result.content).toLowerCase();
+        const titleLower = (result.metaTitle || article.title || '').toLowerCase();
+
+        for (const keyword of effectiveKeywords) {
+          const keywordLower = keyword.toLowerCase();
+
+          // Count mentions in content
+          const contentMentions = (contentLower.match(new RegExp(keywordLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+
+          // Determine mention type (primary if in title, otherwise secondary)
+          const mentionType = titleLower.includes(keywordLower) ? 'primary' : 'secondary';
+
+          // Find locations (simplified - just check title, first paragraph, headings)
+          const locations: string[] = [];
+          if (titleLower.includes(keywordLower)) locations.push('title');
+          if (result.metaTitle?.toLowerCase().includes(keywordLower)) locations.push('meta_title');
+          if (result.metaDescription?.toLowerCase().includes(keywordLower)) locations.push('meta_description');
+          if (contentMentions > 0) locations.push('body');
+
+          // Only track if keyword was actually mentioned
+          if (contentMentions > 0 || locations.length > 0) {
+            await supabase.from('keyword_mentions').insert({
+              article_queue_id: articleId,
+              website_token: websiteToken,
+              keyword: keyword,
+              mention_count: contentMentions,
+              mention_type: mentionType,
+              locations: locations
+            });
+          }
+        }
+
+        console.log(`[KEYWORD TRACKING] Tracked ${effectiveKeywords.length} keywords for article ${articleId}`);
+
+        // Calculate keyword coverage score
+        const { data: mentions } = await supabase
+          .from('keyword_mentions')
+          .select('keyword, mention_count')
+          .eq('article_queue_id', articleId);
+
+        if (mentions && mentions.length > 0) {
+          const totalKeywords = effectiveKeywords.length;
+          const mentionedKeywords = mentions.filter(m => m.mention_count > 0).length;
+          const coverageScore = totalKeywords > 0 ? (mentionedKeywords / totalKeywords) * 100 : 0;
+
+          // Update article_queue with coverage score
+          await supabase
+            .from('article_queue')
+            .update({ keyword_coverage_score: Math.round(coverageScore * 100) / 100 })
+            .eq('id', articleId);
+
+          console.log(`[KEYWORD TRACKING] Coverage score: ${coverageScore.toFixed(1)}% (${mentionedKeywords}/${totalKeywords} keywords)`);
+        }
+      } catch (trackError) {
+        console.error('[KEYWORD TRACKING] Failed to track keyword mentions:', trackError);
+        // Don't fail the whole request if keyword tracking fails
+      }
+    }
+
     // Log completion
     await supabase.from('article_generation_logs').insert({
       article_queue_id: articleId,
@@ -190,7 +253,8 @@ export async function POST(request: NextRequest) {
         hasMetaTitle: !!result.metaTitle,
         hasMetaDescription: !!result.metaDescription,
         hasContentOutline: !!result.contentOutline,
-        imagesCount: 0
+        imagesCount: 0,
+        keywordsTracked: effectiveKeywords.length
       }
     });
 

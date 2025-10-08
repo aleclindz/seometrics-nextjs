@@ -17,6 +17,50 @@ export const CONTENT_PROMPTS: PromptTemplate[] = [
 
 OUTPUT FORMAT: Return ONE valid JSON object only (no prose, no markdown). If any field is unknown, use null rather than inventing facts.
 
+MANDATORY KEYWORD INTEGRATION:
+You MUST incorporate ALL provided keywords into the article. This is non-negotiable.
+
+INPUT KEYWORDS:
+- Primary keyword: {{primaryKeyword}} (REQUIRED in title, H1, first paragraph, meta)
+- Secondary keywords: {{secondaryKeywords}} (ALL MUST appear at least once)
+
+STRICT REQUIREMENTS:
+
+1. PRIMARY KEYWORD ({{primaryKeyword}}):
+   ✅ MUST appear in: Article title (H1)
+   ✅ MUST appear in: First paragraph (within first 100 words)
+   ✅ MUST appear in: At least one H2 heading
+   ✅ MUST appear in: Meta title
+   ✅ MUST appear in: Meta description
+   ✅ MUST appear: 2-4 times throughout body (natural density, not stuffed)
+
+2. SECONDARY KEYWORDS ({{secondaryKeywords}}):
+   ✅ EVERY secondary keyword MUST be mentioned at least once
+   ✅ Use them naturally in:
+      - H2 or H3 headings (when semantically appropriate)
+      - Body paragraphs explaining related concepts
+      - Examples, tips, or callouts
+      - FAQ answers
+   ✅ If a keyword doesn&apos;t fit in one section, find another section where it makes sense
+   ✅ ZERO keywords can be skipped - find a way to incorporate each one naturally
+
+3. VALIDATION REQUIREMENT:
+   Before finalizing your article, verify:
+   - [ ] Primary keyword appears in all 6 required locations
+   - [ ] All secondary keywords are mentioned
+   - [ ] No keyword is "stuffed" (appears awkwardly or too frequently)
+   - [ ] Each keyword adds semantic value to the content
+
+4. HOW TO INTEGRATE NATURALLY:
+   - Use keywords to introduce topics: "When considering [keyword]..."
+   - Use in headings: "How [keyword] Impacts Your Strategy"
+   - Use in comparisons: "[keyword A] vs [keyword B]"
+   - Use in examples: "For instance, [keyword] works best when..."
+   - Use in lists: "Key benefits of [keyword] include..."
+   - Use in FAQs: "What is [keyword]?" or "How does [keyword] work?"
+
+REMEMBER: You are writing ONE comprehensive article that covers ALL these related keywords, not separate articles. The keywords are semantically related and should flow naturally as you explore different facets of the main topic.
+
 HALLUCINATION GUARDRAILS:
 - Ground all non-trivial claims in specific sources. If no reliable source is available, clearly mark as "uncertain" and avoid definitive language.
 - Do not fabricate statistics, quotes, names, or dates.
@@ -61,6 +105,26 @@ JSON SCHEMA (keys and types must match exactly):
     "originality_checklist": string[], // steps taken to avoid derivative slop
     "fact_checks": string[],           // list the claims you verified
     "limitations": string[]            // where evidence is weak or evolving
+  },
+  "keyword_coverage_report": {       // MANDATORY: Proves all keywords were used
+    "primary_keyword": string,        // Must match {{primaryKeyword}}
+    "primary_mentions": {
+      "title": boolean,               // true if in title/H1
+      "first_paragraph": boolean,     // true if in first 100 words
+      "h2_heading": boolean,          // true if in at least one H2
+      "meta_title": boolean,          // true if in meta.title
+      "meta_description": boolean,    // true if in meta.description
+      "body_count": number            // 2-4 mentions throughout
+    },
+    "secondary_coverage": [           // Array for EVERY secondary keyword
+      {
+        "keyword": string,            // Exact keyword from {{secondaryKeywords}}
+        "mentioned": boolean,         // MUST be true for ALL
+        "locations": string[],        // ["H2: heading text", "Section: excerpt"]
+        "mention_count": number       // How many times mentioned
+      }
+    ],
+    "all_keywords_covered": boolean   // MUST be true or article is rejected
   }
 }
 
@@ -69,8 +133,8 @@ STYLE & QUALITY:
 - Use plain language; prefer active voice and short sentences.
 - Each section must advance the argument; remove fluff and restatements.
 - Never output anything except the JSON object.`,
-    variables: ['articleType'],
-    version: '1.0.0',
+    variables: ['articleType', 'primaryKeyword', 'secondaryKeywords'],
+    version: '2.0.0',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -282,6 +346,83 @@ QUALITY RULES:
 - Include concrete examples tailored to {{websiteDomain}}’s audience.
 - Never output anything except the JSON object.`,
     variables: ['websiteDomain', 'websiteContext', 'articleType', 'contentSpecs', 'tone'],
+    version: '1.0.0',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+
+  {
+    id: 'brief_generator_with_keyword_groups',
+    category: 'content',
+    name: 'BRIEF_GENERATOR_WITH_KEYWORD_GROUPS',
+    description: 'Generate content briefs that cover multiple semantically related keywords in one comprehensive article',
+    template: `You are generating a content brief for an article that will cover MULTIPLE related keywords (not just one).
+
+INPUT:
+- Primary keyword: {{primaryKeyword}}
+- Secondary keywords (5-10 related terms): {{secondaryKeywords}}
+- Topic cluster: {{topicCluster}}
+- Existing content coverage: {{existingCoverage}}
+
+STRATEGY:
+1. The primary keyword is the main focus (H1, title, meta)
+2. Secondary keywords MUST be naturally integrated throughout:
+   - Use 2-3 secondary keywords in H2/H3 headings
+   - Mention each secondary keyword at least once in body content
+   - Include semantic variants in meta description
+   - NO keyword stuffing - use naturally in context
+
+3. Anti-Cannibalization:
+   - This article owns the primary keyword exclusively
+   - Check that no existing articles target the same primary keyword
+   - If conflict detected, flag as "cannibal_risk": "high"
+
+OUTPUT JSON:
+{
+  "title": string,                             // includes primary keyword naturally
+  "h1": string,                                // primary keyword + value proposition
+  "primary_keyword": string,
+  "secondary_keywords": string[],              // array of 5-10 strings
+  "intent": "informational" | "commercial" | "transactional" | "comparison" | "pricing" | "location" | "mixed",
+  "page_type": "pillar" | "cluster" | "supporting",
+  "parent_cluster": string,                    // topic cluster name
+  "h2_sections": [
+    {
+      "heading": string,                       // incorporate secondary keywords when natural
+      "target_keywords": string[],             // keywords to mention in this section
+      "key_points": string[]
+    }
+  ],
+  "keyword_integration_plan": {
+    "primary_placement": "H1, title, first paragraph, meta title",
+    "secondary_placements": [
+      {
+        "keyword": string,
+        "sections": string[],                  // H2 names where mentioned
+        "mention_count": number                // How many times total
+      }
+    ]
+  },
+  "word_count_min": number,                    // Suggested minimum (e.g. 1500)
+  "word_count_max": number,                    // Suggested maximum (e.g. 2500)
+  "summary": string,                           // Brief description of article purpose
+  "internal_links": {},                        // Suggested internal linking opportunities
+  "cannibal_risk": "none" | "possible" | "high",
+  "cannibal_conflicts": [],                    // If conflicts found, list them
+  "meta": {
+    "title": string,                           // 50-60 chars with primary keyword
+    "description": string                      // 140-160 chars with primary + 1-2 secondary keywords
+  }
+}
+
+REQUIREMENTS:
+- Ensure ALL secondary keywords have a home in the h2_sections
+- Map each keyword to specific sections where it will be mentioned
+- Create comprehensive coverage that addresses all related search intents
+- Avoid thin briefs - each section should have substance
+
+Never output anything except the JSON object.`,
+    variables: ['primaryKeyword', 'secondaryKeywords', 'topicCluster', 'existingCoverage'],
     version: '1.0.0',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
