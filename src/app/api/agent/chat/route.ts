@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import { FunctionCaller } from '@/services/chat/function-caller';
 import { getFunctionSchemas, validateFunctionArgs } from '@/services/chat/function-schemas';
 import { getPromptManager } from '@/prompts';
+import { parseValidationError, buildErrorSummaryForLLM, shouldAutoRetry, getAutoRetryAction } from '@/services/chat/error-parser';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -304,13 +305,31 @@ export async function POST(request: NextRequest) {
         const validation = validateFunctionArgs(functionName, functionArgs);
         if (!validation.success) {
           console.error('[AGENT CHAT] Argument validation failed:', validation.error);
-          toolResults[toolCall.id] = { 
-            success: false, 
-            error: validation.error 
+
+          // Parse validation error for better user feedback
+          const parsedErrors = parseValidationError(validation.error, {
+            functionName,
+            providedArgs: functionArgs,
+            userMessage: message
+          });
+
+          const errorSummary = buildErrorSummaryForLLM(parsedErrors, {
+            functionName,
+            providedArgs: functionArgs,
+            userMessage: message
+          });
+
+          toolResults[toolCall.id] = {
+            success: false,
+            error: validation.error,
+            parsed_errors: parsedErrors,
+            user_friendly_error: errorSummary,
+            should_retry: shouldAutoRetry(parsedErrors, { functionName, providedArgs: functionArgs }),
+            suggested_action: getAutoRetryAction(parsedErrors, { functionName, providedArgs: functionArgs })
           };
           return;
         }
-        
+
         functionArgs = validation.data;
         // Pass through conversation_id from client when available so downstream abilities can use it
         try {
@@ -1095,11 +1114,39 @@ function buildToolSummary(executed: Array<{ name: string; arguments: any; id: st
     ].join('\n');
   }
 
-  // Generic fallback
-  if (res && typeof res === 'object') {
-    if (res.success === false || res.error) {
-      return `⚠️ The tool reported an error: ${res.error || 'Unknown error'}`;
+  // Check for validation errors with parsed context
+  if (res && typeof res === 'object' && (res.success === false || res.error)) {
+    // Use parsed error information if available
+    if (res.user_friendly_error) {
+      return res.user_friendly_error;
     }
+
+    // Check if it's a validation error we can parse
+    if (res.parsed_errors && Array.isArray(res.parsed_errors) && res.parsed_errors.length > 0) {
+      const errorLines = ['⚠️ I encountered some issues:'];
+
+      for (const parsedErr of res.parsed_errors) {
+        errorLines.push(`• ${parsedErr.userFriendlyMessage}`);
+        if (parsedErr.suggestion) {
+          errorLines.push(`  💡 ${parsedErr.suggestion}`);
+        }
+      }
+
+      // Add suggested action if available
+      if (res.suggested_action) {
+        errorLines.push('');
+        errorLines.push(`Let me try a different approach to help you with this...`);
+      }
+
+      return errorLines.join('\n');
+    }
+
+    // Generic error fallback
+    return `⚠️ I encountered an issue: ${res.error || 'Unknown error'}. Please try rephrasing your request or provide more details.`;
+  }
+
+  // Success case
+  if (res && typeof res === 'object') {
     return `✅ Completed: ${first.name.replace(/_/g, ' ')}`;
   }
 
@@ -1129,10 +1176,35 @@ function getConversationalResponse(functionName: string, userMessage: string): s
       '🎯 Creating strategic keyword recommendations tailored to your business...',
       '✨ Brainstorming high-impact keywords for your content strategy...'
     ],
+    'KEYWORDS_brainstorm': [
+      '💡 Brainstorming long-tail keyword opportunities for you...',
+      '🎯 Generating keyword ideas based on search intent and competition...',
+      '✨ Finding strategic keywords that balance search volume with ranking opportunity...'
+    ],
+    'KEYWORDS_brainstorm_auto': [
+      '🔍 Analyzing your site and GSC data to find relevant keyword opportunities...',
+      '💡 Automatically discovering keywords aligned with your content...',
+      '✨ Using your existing performance data to suggest strategic keywords...'
+    ],
+    'KEYWORDS_add_keywords': [
+      '✅ Adding these keywords to your strategy for tracking and planning...',
+      '📊 Saving keywords to your strategy - this helps organize your content roadmap...',
+      '🎯 Adding keywords to your strategy. I&apos;ll monitor their performance over time...'
+    ],
+    'KEYWORDS_get_strategy': [
+      '📊 Fetching your current keyword strategy and performance data...',
+      '🔍 Let me pull up your tracked keywords and topic clusters...',
+      '✨ Retrieving your keyword strategy to see what we&apos;re tracking...'
+    ],
     'TOPICS_create_clusters': [
       '🗂️ Organizing keywords into strategic topic clusters for content planning...',
       '📋 Creating content pillars and topic clusters from your keyword strategy...',
-      '🎯 Structuring your keywords into actionable content themes...'
+      '🎯 Structuring your keywords into actionable content themes that establish topical authority...'
+    ],
+    'BRIEFS_generate': [
+      '📝 Creating strategic content briefs with anti-cannibalization checks...',
+      '✨ Generating article briefs optimized for your topic clusters...',
+      '🎯 Building content briefs that map to your pillar/cluster strategy...'
     ],
     'CONTENT_gap_analysis': [
       '🔍 Analyzing content gaps compared to your competitors...',
@@ -1142,17 +1214,32 @@ function getConversationalResponse(functionName: string, userMessage: string): s
     'GSC_sync_data': [
       '📊 Syncing your latest Google Search Console data...',
       '🔄 Updating your performance metrics from GSC...',
-      '📈 Fetching fresh search performance data...'
+      '📈 Fetching fresh search performance data to identify opportunities...'
     ],
     'SEO_analyze_technical': [
       '🔧 Scanning your website for technical SEO issues...',
       '⚙️ Running a comprehensive technical audit...',
       '🔍 Analyzing your site&apos;s technical SEO health...'
     ],
+    'SEO_crawl_website': [
+      '🕷️ Crawling your website to identify technical SEO opportunities...',
+      '🔍 Analyzing your site structure, metadata, and on-page elements...',
+      '📊 Performing a deep crawl to find optimization opportunities...'
+    ],
     'CONTENT_generate_article': [
       '✍️ Creating a high-quality, SEO-optimized article for you...',
       '📝 Generating strategic content based on your requirements...',
       '✨ Writing an engaging article optimized for search...'
+    ],
+    'CONTENT_generate_and_publish': [
+      '✍️ Generating article content and preparing for CMS publication...',
+      '📝 Creating SEO-optimized content ready for publishing...',
+      '✨ Writing and formatting article for your connected CMS...'
+    ],
+    'SITEMAP_generate_submit': [
+      '🗺️ Generating XML sitemap and submitting to Google Search Console...',
+      '📋 Creating optimized sitemap for better crawl efficiency...',
+      '✨ Building sitemap to help search engines discover your content...'
     ]
   };
 

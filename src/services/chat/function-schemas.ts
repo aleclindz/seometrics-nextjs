@@ -189,14 +189,14 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   'KEYWORDS_add_keywords': {
     schema: {
       name: 'KEYWORDS_add_keywords',
-      description: 'Add keywords to the strategy (tracked keywords) with optional types and clusters',
+      description: 'Add keywords to the strategy (tracked keywords) with optional types and clusters. Use this to save keywords for tracking, performance monitoring, and content planning.',
       parameters: {
         type: 'object',
         properties: {
           site_url: { type: 'string', description: 'Website URL (optional; primary site used if omitted)' },
           keywords: {
             type: 'array',
-            description: 'Keywords to add to strategy',
+            description: 'Keywords to add to strategy. At least one keyword is required.',
             items: {
               type: 'object',
               properties: {
@@ -215,10 +215,10 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     validator: z.object({
       site_url: z.string().optional(),
       keywords: z.array(z.object({
-        keyword: z.string().min(1),
+        keyword: z.string().min(1, 'Keyword phrase cannot be empty'),
         keyword_type: z.enum(['primary', 'secondary', 'long_tail']).optional().default('long_tail'),
         topic_cluster: z.string().optional()
-      }))
+      })).min(1, 'At least one keyword is required to add to strategy')
     }),
     category: 'content',
     requiresSetup: false
@@ -1079,17 +1079,17 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   'TOPICS_create_clusters': {
     schema: {
       name: 'TOPICS_create_clusters',
-      description: 'Organize keywords from strategy into semantic topic clusters for content planning and pillar page development',
+      description: 'Organize keywords from strategy into semantic topic clusters for content planning and pillar page development. IMPORTANT: Requires at least 3 keywords in the strategy to create effective clusters. If keyword_strategy is not available, call KEYWORDS_get_strategy first.',
       parameters: {
         type: 'object',
         properties: {
           keyword_strategy: {
             type: 'object',
-            description: 'Keyword strategy data with categorized keywords'
+            description: 'Keyword strategy data with categorized keywords. If not available, fetch it first using KEYWORDS_get_strategy.'
           },
           user_token: { type: 'string', description: 'User authentication token' },
           site_url: { type: 'string', description: 'Website URL for cluster association' },
-          cluster_count: { type: 'integer', description: 'Number of topic clusters to create', default: 8 },
+          cluster_count: { type: 'integer', description: 'Number of topic clusters to create (3-15). Topic clusters need at least 3 keywords to establish semantic relationships.', default: 8 },
           business_context: {
             type: 'object',
             description: 'Business context for strategic clustering'
@@ -1101,9 +1101,9 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     },
     validator: z.object({
       keyword_strategy: z.object({}).passthrough(),
-      user_token: z.string().min(1),
+      user_token: z.string().min(1, 'User token is required for authentication'),
       site_url: flexibleUrlSchema,
-      cluster_count: z.number().int().min(3).max(15).optional().default(8),
+      cluster_count: z.number().int().min(3, 'Topic clusters need at least 3 keywords to be effective - this creates the semantic relationships that search engines recognize').max(15, 'Maximum 15 clusters recommended for focused content strategy').optional().default(8),
       business_context: z.object({}).passthrough().optional()
     }),
     category: 'content',
