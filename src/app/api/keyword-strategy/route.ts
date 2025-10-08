@@ -297,6 +297,15 @@ export async function DELETE(request: NextRequest) {
         userToken
       });
 
+      // First, check what keywords actually exist for debugging
+      const { data: existingKeywords } = await supabase
+        .from('website_keywords')
+        .select('keyword')
+        .eq('website_token', websiteToken)
+        .limit(20);
+
+      console.log('[KEYWORD STRATEGY DELETE] Existing keywords in DB:', existingKeywords?.map(k => k.keyword));
+
       const { data: deletedData, error: deleteError } = await supabase
         .from('website_keywords')
         .delete()
