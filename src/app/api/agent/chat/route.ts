@@ -6,6 +6,10 @@ import { getFunctionSchemas, validateFunctionArgs } from '@/services/chat/functi
 import { getPromptManager } from '@/prompts';
 import { parseValidationError, buildErrorSummaryForLLM, shouldAutoRetry, getAutoRetryAction } from '@/services/chat/error-parser';
 
+// Force Node.js runtime and prevent build-time environment variable inlining
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -124,8 +128,9 @@ export async function POST(request: NextRequest) {
     );
     const assistantMessageOrder = userMessageOrder + 1;
 
-    // Get OpenAI API key from server environment
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Get OpenAI API key from server environment (runtime evaluation to prevent build-time inlining)
+    const getApiKey = () => process.env['OPENAI_API_KEY'];
+    const apiKey = getApiKey();
     if (!apiKey) {
       // Fallback response for testing when OpenAI key is not available
       const testResponse = getTestResponse(message);
