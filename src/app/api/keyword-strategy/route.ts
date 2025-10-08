@@ -29,15 +29,19 @@ export async function GET(request: NextRequest) {
 
     // If domain provided, find website by domain first
     if (domain) {
+      console.log('[KEYWORD STRATEGY GET] Looking up website by domain:', domain);
+
       const { data: website, error: websiteError } = await supabase
         .from('websites')
-        .select('website_token')
+        .select('website_token, domain, cleaned_domain')
         .eq('user_token', userToken)
         .or(`domain.eq.${domain},cleaned_domain.eq.${domain}`)
         .single();
 
+      console.log('[KEYWORD STRATEGY GET] Found website:', { website_token: website?.website_token, domain: website?.domain, cleaned_domain: website?.cleaned_domain });
+
       if (websiteError || !website) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'Website not found',
           hasStrategy: false,
           keywords: [],
@@ -276,12 +280,21 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verify user owns this website
+    console.log('[KEYWORD STRATEGY DELETE] Validating access:', { userToken, websiteToken });
+
     const { data: website, error: websiteError } = await supabase
       .from('websites')
-      .select('website_token')
+      .select('website_token, domain, cleaned_domain')
       .eq('website_token', websiteToken)
       .eq('user_token', userToken)
       .single();
+
+    console.log('[KEYWORD STRATEGY DELETE] Website validation result:', {
+      found: !!website,
+      website_token: website?.website_token,
+      domain: website?.domain,
+      error: websiteError?.message
+    });
 
     if (websiteError || !website) {
       return NextResponse.json({ error: 'Website not found or access denied' }, { status: 404 });
@@ -377,12 +390,16 @@ export async function DELETE(request: NextRequest) {
 // Helper function to get keyword strategy for a specific website
 async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string, returnResponse = true): Promise<NextResponse | any> {
   try {
+    console.log('[KEYWORD STRATEGY] Getting strategy for website_token:', websiteToken);
+
     // Get all keywords for this website
     const { data: keywords, error: keywordsError } = await supabase
       .from('website_keywords')
       .select('*')
       .eq('website_token', websiteToken)
       .order('created_at', { ascending: true });
+
+    console.log('[KEYWORD STRATEGY] Found keywords count:', keywords?.length || 0);
 
     if (keywordsError) {
       console.error('[KEYWORD STRATEGY] Error fetching keywords:', keywordsError);

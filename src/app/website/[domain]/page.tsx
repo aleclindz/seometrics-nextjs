@@ -44,29 +44,35 @@ export default function WebsitePage() {
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
   const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string; website_token?: string }>>([]);
+  const [currentWebsite, setCurrentWebsite] = useState<{ domain: string; cleaned_domain?: string; website_token: string } | null>(null);
   const [business, setBusiness] = useState<{ type: string; description: string } | null>(null);
   const [bizLoading, setBizLoading] = useState(false);
   const [bizEditOpen, setBizEditOpen] = useState(false);
   const [bizEditType, setBizEditType] = useState('unknown');
   const [bizEditDesc, setBizEditDesc] = useState('');
 
-  // Content automation hook - find current website from userWebsites array
-  const currentWebsite = userWebsites.find(site => site.url === domain);
   const automation = useContentAutomation(
     user?.token || '',
     currentWebsite?.website_token || ''
   );
 
-  // Get website token with fallbacks
-  const getWebsiteToken = () => {
-    if (currentWebsite?.website_token) {
-      return currentWebsite.website_token;
+  // Fetch the current website by domain on page load
+  const fetchCurrentWebsite = async () => {
+    if (!user?.token) return;
+
+    try {
+      const response = await fetch(`/api/websites/token-lookup?userToken=${user.token}&domain=${domain}`);
+      const data = await response.json();
+
+      if (data.success && data.website) {
+        setCurrentWebsite(data.website);
+        console.log('[CURRENT WEBSITE] Loaded:', data.website);
+      } else {
+        console.error('[CURRENT WEBSITE] Not found for domain:', domain);
+      }
+    } catch (error) {
+      console.error('[CURRENT WEBSITE] Error fetching:', error);
     }
-    if (automation.websites?.[0]?.website_token) {
-      return automation.websites[0].website_token;
-    }
-    console.warn('[WEBSITE TOKEN] No website token found for domain:', domain);
-    return '';
   };
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [backfilling, setBackfilling] = useState(false);
@@ -554,6 +560,7 @@ export default function WebsitePage() {
   };
 
   useEffect(() => {
+    fetchCurrentWebsite(); // Load current website first
     loadInitialSetupStatus(); // Load from database only, no API checking
     fetchUserWebsites();
     fetchBusinessInfo();
@@ -1323,7 +1330,7 @@ export default function WebsitePage() {
                                                 try {
                                                   const payload = {
                                                     userToken: user?.token,
-                                                    websiteToken: getWebsiteToken(),
+                                                    websiteToken: currentWebsite?.website_token || '',
                                                     keywords: [{ keyword: kw, keyword_type: 'long_tail', topic_cluster: cluster.name }]
                                                   };
                                                   const resp = await fetch('/api/keyword-strategy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1344,7 +1351,7 @@ export default function WebsitePage() {
                                               onClick={async () => {
                                                 if (!confirm(`Delete the entire \"${cluster.name}\" cluster and its keywords?`)) return;
                                                 try {
-                                                  const params = new URLSearchParams({ userToken: user?.token || '', websiteToken: getWebsiteToken(), topicCluster: cluster.name });
+                                                  const params = new URLSearchParams({ userToken: user?.token || '', websiteToken: currentWebsite?.website_token || '', topicCluster: cluster.name });
                                                   const resp = await fetch(`/api/keyword-strategy?${params.toString()}`, { method: 'DELETE' });
                                                   const data = await resp.json();
                                                   if (resp.ok && data.success) {
@@ -1375,7 +1382,7 @@ export default function WebsitePage() {
                                                   onClick={async () => {
                                                     try {
                                                       const keywordValue = k.keyword || k;
-                                                      const websiteToken = getWebsiteToken();
+                                                      const websiteToken = currentWebsite?.website_token || '';
                                                       console.log('[Remove Keyword] Attempting to delete:', keywordValue);
                                                       console.log('[Remove Keyword] User token:', user?.token);
                                                       console.log('[Remove Keyword] Website token:', websiteToken);

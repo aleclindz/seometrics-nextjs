@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (website?.website_token) {
-      return NextResponse.json({ success: true, websiteToken: website.website_token });
+      return NextResponse.json({ success: true, website, websiteToken: website.website_token });
     }
 
     // Fallback: partial ilike match
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (fallback?.website_token) {
-      return NextResponse.json({ success: true, websiteToken: fallback.website_token });
+      return NextResponse.json({ success: true, website: fallback, websiteToken: fallback.website_token });
     }
 
     return NextResponse.json({ success: false, error: 'Website not found' }, { status: 404 });
