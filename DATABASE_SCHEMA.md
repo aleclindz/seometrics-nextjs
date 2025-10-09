@@ -916,8 +916,151 @@ CREATE INDEX IF NOT EXISTS idx_agent_events_created_at ON agent_events(created_a
 
 ---
 
+## 🎯 Strategy Discovery System (Migration 059)
+
+### Overview
+The Strategy Discovery System implements Master Discovery Prompt with Firecrawl integration for automated SEO strategy initialization. Creates topic clusters with pillar/supporting article structure and section mapping.
+
+### `strategy_discoveries`
+Tracks Master Discovery runs with full input/output JSON.
+
+**Columns:**
+- `id` (SERIAL PRIMARY KEY)
+- `website_token` (TEXT, FK → websites)
+- `discovery_type` (TEXT: 'initial', 'refresh', 'manual')
+- `input_site` (JSONB) - {brand, domain, geo_focus[], seed_topics[]}
+- `input_sources` (JSONB) - {seed_urls[], raw_owner_context}
+- `input_controls` (JSONB) - {max_clusters, min_clusters, map_sections, include_local_slices}
+- `output_clusters` (JSONB NOT NULL) - Full clusters[] output
+- `output_articles` (JSONB NOT NULL) - Full articles[] output
+- `output_section_maps` (JSONB) - Section mapping data
+- `output_changes` (TEXT[]) - Changes log for cannibalization prevention
+- `scrape_log` (JSONB) - {seed_urls, pages_fetched, notes}
+- `status` (TEXT: 'pending', 'processing', 'completed', 'failed')
+- `error_message` (TEXT)
+- `created_at` (TIMESTAMP)
+- `completed_at` (TIMESTAMP)
+
+**Indexes:**
+```sql
+CREATE INDEX idx_strategy_discoveries_website_token ON strategy_discoveries(website_token);
+CREATE INDEX idx_strategy_discoveries_status ON strategy_discoveries(status);
+CREATE INDEX idx_strategy_discoveries_discovery_type ON strategy_discoveries(discovery_type);
+```
+
+**RLS:** Row Level Security enabled, scoped to user's websites
+
+### `topic_clusters`
+Stores semantic keyword clusters (5-12 per website, max 100 keywords each).
+
+**Columns:**
+- `id` (SERIAL PRIMARY KEY)
+- `website_token` (TEXT, FK → websites)
+- `discovery_id` (INTEGER, FK → strategy_discoveries)
+- `cluster_name` (TEXT NOT NULL) - Maps to pillar_title from discovery
+- `primary_keyword` (TEXT NOT NULL)
+- `secondary_keywords` (TEXT[] DEFAULT '{}')
+- `notes` (TEXT)
+- `pillar_count` (INTEGER DEFAULT 0)
+- `supporting_count` (INTEGER DEFAULT 0)
+- `created_at` (TIMESTAMP)
+- `updated_at` (TIMESTAMP)
+
+**Constraints:**
+- UNIQUE(website_token, cluster_name)
+
+**Indexes:**
+```sql
+CREATE INDEX idx_topic_clusters_website_token ON topic_clusters(website_token);
+CREATE INDEX idx_topic_clusters_discovery_id ON topic_clusters(discovery_id);
+CREATE INDEX idx_topic_clusters_cluster_name ON topic_clusters(website_token, cluster_name);
+```
+
+**RLS:** Row Level Security enabled, full CRUD access for user's websites
+
+### `article_roles`
+Tracks PILLAR vs SUPPORTING article roles with section mapping.
+
+**Columns:**
+- `id` (SERIAL PRIMARY KEY)
+- `website_token` (TEXT, FK → websites)
+- `discovery_id` (INTEGER, FK → strategy_discoveries)
+- `article_brief_id` (BIGINT, FK → article_briefs, nullable)
+- `article_queue_id` (INTEGER, FK → article_queue, nullable)
+- `discovery_article_id` (TEXT NOT NULL) - e.g., "pill_imports_fl"
+- `role` (TEXT: 'PILLAR', 'SUPPORTING')
+- `title` (TEXT NOT NULL)
+- `primary_keyword` (TEXT NOT NULL) - Exactly 1 per article
+- `secondary_keywords` (TEXT[] DEFAULT '{}') - 4-10 for PILLAR, 0-5 for SUPPORTING
+- `topic_cluster_id` (INTEGER, FK → topic_clusters)
+- `links_to_article_ids` (TEXT[]) - For SUPPORTING: discovery IDs to link to
+- `section_map` (JSONB) - For PILLAR: [{type: "H2|FAQ", heading: "...", absorbs: [keywords]}]
+- `created_at` (TIMESTAMP)
+
+**Constraints:**
+- UNIQUE(website_token, discovery_article_id)
+- CHECK(role IN ('PILLAR', 'SUPPORTING'))
+
+**Indexes:**
+```sql
+CREATE INDEX idx_article_roles_website_token ON article_roles(website_token);
+CREATE INDEX idx_article_roles_discovery_id ON article_roles(discovery_id);
+CREATE INDEX idx_article_roles_role ON article_roles(role);
+CREATE INDEX idx_article_roles_topic_cluster_id ON article_roles(topic_cluster_id);
+CREATE INDEX idx_article_roles_discovery_article_id ON article_roles(website_token, discovery_article_id);
+```
+
+**RLS:** Row Level Security enabled, full CRUD access for user's websites
+
+### Enhanced Existing Tables
+
+**`websites` (Updated):**
+- `strategy_initialized` (BOOLEAN DEFAULT FALSE)
+- `strategy_initialized_at` (TIMESTAMP)
+- `last_discovery_id` (INTEGER, FK → strategy_discoveries)
+
+**`article_briefs` (Updated):**
+- `article_role` (TEXT: 'PILLAR', 'SUPPORTING')
+- `discovery_article_id` (TEXT)
+- `topic_cluster_id` (INTEGER, FK → topic_clusters)
+- `section_map` (JSONB)
+
+**`article_queue` (Updated):**
+- `discovery_article_id` (TEXT)
+- `article_role` (TEXT: 'PILLAR', 'SUPPORTING')
+
+**`keyword_similarity_groups` (Updated):**
+- `topic_cluster_id` (INTEGER, FK → topic_clusters)
+
+### Utility Views
+
+**`strategy_status_overview`:**
+Shows strategy initialization status per website with cluster and article counts.
+
+**`cluster_details_view`:**
+Shows cluster details with actual vs expected article counts.
+
+### Key Constraints
+
+1. **Keyword Limits:**
+   - PILLAR articles: 1 primary + 4-10 secondaries
+   - SUPPORTING articles: 1 primary + 0-5 secondaries
+   - Max 100 keywords per cluster
+   - 5-12 clusters per website
+
+2. **Cannibalization Prevention:**
+   - No keyword appears in multiple articles
+   - Tracked in `output_changes` log
+
+3. **Section Mapping (PILLAR only):**
+   - All secondary keywords must be absorbed in H2/FAQ sections
+   - Stored as JSONB array in `section_map`
+
+---
+
 ## 🔄 Recent Schema Changes
 
+- **2025-10-09 (Migration 059)**: 🎯 **STRATEGY DISCOVERY SYSTEM** - Added Master Discovery with Firecrawl integration, topic clusters, pillar/supporting articles, section mapping
 - **2025-08-26 (Migration 040)**: 🚀 **MAJOR CLEANUP** - Removed 11 legacy SEO tables, Agent Operating System is now primary
 - **2025-08-22**: Added Agent Operating System (6 new tables with state machines)
 - **2025-08-13**: Added `seo_action_items` table (now removed in favor of agent system)
@@ -926,6 +1069,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_events_created_at ON agent_events(created_a
 
 ---
 
-**📝 Last Updated**: August 27, 2025 (Added Memory & Learning Tables)  
-**📋 Migration Version**: Current (Verified from Live Database)  
+**📝 Last Updated**: October 9, 2025 (Added Strategy Discovery System)
+**📋 Migration Version**: 059 (Strategy Discovery)
 **🤖 Agent System**: Active and Primary with Memory System
+**🎯 Strategy System**: Master Discovery with Firecrawl Integration

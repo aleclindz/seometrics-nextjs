@@ -14,7 +14,7 @@ export class KeywordStrategyAbility extends BaseAbility {
   getFunctionNames(): string[] {
     return [
       'get_keyword_strategy',
-      'update_keyword_strategy', 
+      'update_keyword_strategy',
       'brainstorm_keywords',
       'organize_topic_clusters',
       'get_internal_link_opportunities',
@@ -28,7 +28,9 @@ export class KeywordStrategyAbility extends BaseAbility {
       'KEYWORDS_brainstorm_auto',
       'KEYWORDS_organize_clusters',
       'KEYWORDS_suggest_content',
-      'KEYWORDS_analyze_gaps'
+      'KEYWORDS_analyze_gaps',
+      // Strategy initialization
+      'STRATEGY_initialize'
     ];
   }
 
@@ -59,6 +61,8 @@ export class KeywordStrategyAbility extends BaseAbility {
       case 'suggest_content_from_keywords':
       case 'KEYWORDS_suggest_content':
         return await this.suggestContentFromKeywords(args);
+      case 'STRATEGY_initialize':
+        return await this.initializeStrategy(args);
       default:
         return this.error(`Unknown keyword strategy function: ${name}`);
     }
@@ -925,19 +929,125 @@ export class KeywordStrategyAbility extends BaseAbility {
 
   private calculateContentPriority(cluster: any): number {
     let priority = 0;
-    
+
     // Higher priority for more keywords
     priority += cluster.keyword_count * 2;
-    
+
     // Higher priority if no existing content
     if (cluster.content_count === 0) {
       priority += 10;
     }
-    
+
     // Lower priority if already has lots of content
     priority -= cluster.content_count * 3;
-    
+
     return Math.max(0, priority);
+  }
+
+  /**
+   * Initialize SEO content strategy using Master Discovery
+   */
+  private async initializeStrategy(args: {
+    site_url: string;
+    brand: string;
+    geo_focus: string[];
+    seed_topics: string[];
+    seed_urls?: string[];
+    raw_owner_context?: string;
+    max_clusters?: number;
+    min_clusters?: number;
+    include_local_slices?: boolean;
+  }): Promise<FunctionCallResult> {
+    try {
+      // Extract domain from site_url
+      const domain = this.cleanDomain(args.site_url);
+
+      // Find website token
+      const websiteToken = await this.getWebsiteToken(domain);
+      if (!websiteToken) {
+        return this.error(`Website not found for domain: ${domain}. Please add this website first.`);
+      }
+
+      // Call discovery API
+      const response = await this.fetchAPI('/api/strategy/discover', {
+        method: 'POST',
+        body: JSON.stringify({
+          websiteToken,
+          domain,
+          brand: args.brand,
+          geoFocus: args.geo_focus,
+          seedTopics: args.seed_topics,
+          seedUrls: args.seed_urls || [],
+          rawOwnerContext: args.raw_owner_context,
+          discoveryType: 'initial',
+          controls: {
+            maxClusters: args.max_clusters,
+            minClusters: args.min_clusters,
+            mapSections: true,
+            includeLocalSlices: args.include_local_slices
+          }
+        })
+      });
+
+      if (!response.success) {
+        return this.error(response.message || 'Strategy discovery failed');
+      }
+
+      // Format response for agent
+      const summary = {
+        success: true,
+        discovery_id: response.discoveryId,
+        clusters_created: response.summary.clusters,
+        articles_planned: response.summary.articles,
+        breakdown: {
+          pillar_articles: response.summary.pillars,
+          supporting_articles: response.summary.supporting
+        },
+        clusters: response.output.clusters.map((cluster: any) => ({
+          name: cluster.pillar_title,
+          primary_keyword: cluster.primary_keyword,
+          keyword_count: 1 + cluster.secondary_keywords.length
+        })),
+        next_steps: [
+          'Strategy initialized successfully',
+          `Created ${response.summary.clusters} topic clusters with ${response.summary.articles} articles`,
+          `${response.summary.pillars} pillar articles and ${response.summary.supporting} supporting articles planned`,
+          'You can now view the strategy in the Strategy tab',
+          'Generate article briefs for any of the planned articles'
+        ]
+      };
+
+      return this.success(summary);
+
+    } catch (error) {
+      return this.error('Failed to initialize strategy', error);
+    }
+  }
+
+  /**
+   * Helper to get website token from domain
+   */
+  private async getWebsiteToken(domain: string): Promise<string | null> {
+    try {
+      const params = new URLSearchParams({
+        userToken: this.userToken || ''
+      });
+
+      const response = await this.fetchAPI(`/api/chat/sites?${params}`);
+
+      if (!response.success || !response.sites) {
+        return null;
+      }
+
+      const site = response.sites.find((s: any) =>
+        s.domain === domain || s.domain === `www.${domain}` || s.domain === domain.replace('www.', '')
+      );
+
+      return site?.website_token || null;
+    } catch (error) {
+      console.error('Error fetching website token:', error);
+      return null;
+    }
   }
 }
 
