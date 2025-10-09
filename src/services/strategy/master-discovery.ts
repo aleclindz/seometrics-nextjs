@@ -300,11 +300,11 @@ export function validateDiscoveryOutput(output: MasterDiscoveryOutput): {
   }
 
   // Check for keyword cannibalization
-  for (const [keyword, articles] of keywordUsage.entries()) {
+  Array.from(keywordUsage.entries()).forEach(([keyword, articles]) => {
     if (articles.length > 1) {
       errors.push(`Keyword "${keyword}" appears in multiple articles: ${articles.join(', ')}`);
     }
-  }
+  });
 
   // Validate cluster keyword counts
   const clusterKeywordCounts = new Map<string, number>();
@@ -316,11 +316,11 @@ export function validateDiscoveryOutput(output: MasterDiscoveryOutput): {
     );
   }
 
-  for (const [cluster, count] of clusterKeywordCounts.entries()) {
+  Array.from(clusterKeywordCounts.entries()).forEach(([cluster, count]) => {
     if (count > 100) {
       errors.push(`Cluster "${cluster}" has ${count} keywords (max 100)`);
     }
-  }
+  });
 
   return {
     valid: errors.length === 0,

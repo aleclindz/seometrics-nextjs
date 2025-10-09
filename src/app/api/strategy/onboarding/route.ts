@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     const domainParts = website.domain.replace(/^www\./, '').split('.');
     const brand = domainParts[0]
       .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
 
     // Suggest seed URLs (homepage + common pages)
