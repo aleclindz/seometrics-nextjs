@@ -83,7 +83,12 @@ export async function POST(request: NextRequest) {
         seed_urls: seedUrls,
         raw_owner_context: rawOwnerContext
       },
-      controls
+      controls: controls ? {
+        max_clusters: controls.maxClusters,
+        min_clusters: controls.minClusters,
+        map_sections: controls.mapSections,
+        include_local_slices: controls.includeLocalSlices
+      } : undefined
     };
 
     // Run discovery

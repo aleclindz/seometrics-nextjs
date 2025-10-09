@@ -109,3 +109,27 @@ export async function scrapeUrl(url: string, opts?: { timeoutMs?: number }): Pro
     metadata: content.metadata || content.meta || {}
   };
 }
+
+/**
+ * Batch scrape multiple URLs
+ */
+export async function scrapeUrlsWithFirecrawl(urls: string[]): Promise<CrawlResultPage[]> {
+  const results: CrawlResultPage[] = [];
+
+  for (const url of urls) {
+    try {
+      const result = await scrapeUrl(url);
+      results.push(result);
+
+      // Small delay between requests to avoid rate limiting
+      if (urls.length > 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } catch (error) {
+      console.error(`[FIRECRAWL] Failed to scrape ${url}:`, error);
+      // Continue with other URLs even if one fails
+    }
+  }
+
+  return results;
+}
