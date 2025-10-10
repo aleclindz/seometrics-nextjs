@@ -638,11 +638,15 @@ What would you like to work on first?`,
                 {/* Special handling for brainstorm */}
                 {message.functionCall?.result?.success && message.functionCall?.name?.includes('brainstorm') ? (
                   <div className="text-sm text-gray-600">
-                    Generated keyword ideas. <button className="underline" onClick={() => openBrainstormModal(
-                      (message.functionCall?.result?.data?.generated_keywords as any[]) ||
-                      (message.functionCall?.result?.generated_keywords as any[]) ||
-                      []
-                  )}>View details</button>
+                    Generated keyword ideas. <button className="underline" onClick={() => {
+                      // Try multiple data paths to handle different result structures
+                      const ideas = (message.functionCall?.result?.data?.generated_keywords as any[]) ||
+                                   (message.functionCall?.result?.generated_keywords as any[]) ||
+                                   (message.functionCall?.result?.data as any[]) ||
+                                   [];
+                      console.log('[BRAINSTORM MODAL] Opening with ideas:', ideas.length, ideas);
+                      openBrainstormModal(ideas);
+                  }}>View details</button>
                 </div>
                 ) : (message.functionCall?.result?.success && message.functionCall?.name?.includes('CONTENT_generate_bulk_ideas')) ? (
                   <div className="text-sm text-gray-600">
