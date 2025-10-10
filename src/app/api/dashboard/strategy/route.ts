@@ -169,18 +169,63 @@ export async function GET(request: NextRequest) {
       if (website?.website_token) {
         const websiteToken = website.website_token;
 
-        // Fetch tracked keywords and topic cluster content
+        // Fetch tracked keywords and topic clusters from NEW Master Discovery system
         const { data: keywords } = await supabase
           .from('website_keywords')
           .select('keyword, keyword_type, topic_cluster')
           .eq('website_token', websiteToken);
 
-        const { data: clusterContent } = await supabase
-          .from('topic_cluster_content')
-          .select('topic_cluster')
+        // Query NEW topic_clusters table (from Master Discovery)
+        const { data: topicClusters } = await supabase
+          .from('topic_clusters')
+          .select('cluster_name, primary_keyword, secondary_keywords, pillar_count, supporting_count')
+          .eq('website_token', websiteToken)
+          .order('created_at', { ascending: true });
+
+        // Query article_roles table to see how many articles are planned
+        const { data: articleRoles } = await supabase
+          .from('article_roles')
+          .select('id, title, role, cluster, primary_keyword')
           .eq('website_token', websiteToken);
 
-        if (keywords && keywords.length > 0) {
+        // Prefer new topic_clusters data if available
+        if (topicClusters && topicClusters.length > 0) {
+          const totalKeywords = topicClusters.reduce((sum, cluster) =>
+            sum + 1 + (cluster.secondary_keywords?.length || 0), 0
+          );
+          const totalArticles = articleRoles?.length || 0;
+          const pillarArticles = articleRoles?.filter(a => a.role === 'PILLAR').length || 0;
+          const supportingArticles = articleRoles?.filter(a => a.role === 'SUPPORTING').length || 0;
+
+          strategyData.keywords = {
+            tracked: totalKeywords,
+            clusters: topicClusters.length,
+            opportunities: totalArticles,
+            topKeywords: topicClusters.map(c => ({
+              keyword: c.primary_keyword,
+              cluster: c.cluster_name,
+              impressions: 0
+            })),
+            status: 'good'
+          };
+
+          strategyData.opportunities = {
+            quickWins: pillarArticles,
+            contentGaps: supportingArticles,
+            technicalIssues: 0,
+            items: topicClusters.slice(0, 5).map(c => ({
+              type: 'cluster',
+              title: c.cluster_name,
+              description: `${c.pillar_count || 0} pillar + ${c.supporting_count || 0} supporting articles planned`,
+              priority: 'high'
+            })),
+            status: 'good'
+          };
+
+          strategyData.hasData = true;
+          strategyData.message = `Strategy initialized with ${topicClusters.length} topic clusters and ${totalArticles} articles planned`;
+        } else if (keywords && keywords.length > 0) {
+          // Fallback to old keyword tracking system
           const clusterSet = new Set<string>();
           const keywordsByCluster: Record<string, number> = {};
           (keywords || []).forEach(k => {
@@ -189,8 +234,7 @@ export async function GET(request: NextRequest) {
             keywordsByCluster[cluster] = (keywordsByCluster[cluster] || 0) + 1;
           });
 
-          const clustersWithContent = new Set((clusterContent || []).map(c => c.topic_cluster));
-          const contentGaps = Array.from(clusterSet).filter(c => !clustersWithContent.has(c)).length;
+          const contentGaps = 0; // No way to calculate without cluster content
 
           // Update keywords card to reflect tracked keywords
           strategyData.keywords = {
