@@ -392,6 +392,92 @@ async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string
   try {
     console.log('[KEYWORD STRATEGY] Getting strategy for website_token:', websiteToken);
 
+    // PRIORITY 1: Check for NEW Master Discovery tables first
+    const { data: masterClusters } = await supabase
+      .from('topic_clusters')
+      .select('*')
+      .eq('website_token', websiteToken)
+      .order('created_at', { ascending: true });
+
+    const { data: masterArticles } = await supabase
+      .from('article_roles')
+      .select('*')
+      .eq('website_token', websiteToken)
+      .order('created_at', { ascending: true });
+
+    console.log('[KEYWORD STRATEGY] Master Discovery data:', {
+      clusters: masterClusters?.length || 0,
+      articles: masterArticles?.length || 0
+    });
+
+    // If Master Discovery data exists, use that exclusively
+    if (masterClusters && masterClusters.length > 0) {
+      console.log('[KEYWORD STRATEGY] Using Master Discovery data');
+
+      const topicClusters = masterClusters.map((cluster: any) => {
+        // Extract all keywords from cluster
+        const allKeywords = [
+          { keyword: cluster.primary_keyword, keyword_type: 'primary' },
+          ...(cluster.secondary_keywords || []).map((kw: string) => ({
+            keyword: kw,
+            keyword_type: 'secondary'
+          }))
+        ];
+
+        // Find articles for this cluster
+        const clusterArticles = (masterArticles || []).filter(
+          (article: any) => article.cluster === cluster.cluster_name
+        );
+
+        return {
+          name: cluster.cluster_name,
+          keywords: allKeywords,
+          content: clusterArticles.map((article: any) => ({
+            article_title: article.title,
+            primary_keyword: article.primary_keyword,
+            role: article.role
+          })),
+          internal_links: [],
+          description: cluster.notes || ''
+        };
+      });
+
+      const allKeywords = masterClusters.flatMap((cluster: any) => [
+        { keyword: cluster.primary_keyword, keyword_type: 'primary' },
+        ...(cluster.secondary_keywords || []).map((kw: string) => ({
+          keyword: kw,
+          keyword_type: 'secondary'
+        }))
+      ]);
+
+      const strategy = {
+        hasStrategy: true,
+        keywords: allKeywords,
+        topicClusters,
+        totalKeywords: allKeywords.length,
+        primaryKeywords: masterClusters.length,
+        secondaryKeywords: masterClusters.reduce((sum: number, c: any) =>
+          sum + (c.secondary_keywords?.length || 0), 0
+        ),
+        longTailKeywords: 0,
+        totalClusters: masterClusters.length,
+        totalContent: masterArticles?.length || 0,
+        totalInternalLinks: 0
+      };
+
+      if (returnResponse) {
+        return NextResponse.json({
+          success: true,
+          ...strategy
+        });
+      }
+
+      return strategy;
+    }
+
+    // FALLBACK: Use OLD tables if no Master Discovery data
+    console.log('[KEYWORD STRATEGY] Falling back to legacy tables');
+
     // Get all keywords for this website
     const { data: keywords, error: keywordsError } = await supabase
       .from('website_keywords')
@@ -438,7 +524,7 @@ async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string
 
     // Organize data by topic clusters
     const topicClusters: { [key: string]: any } = {};
-    
+
     // Group keywords by topic cluster
     (keywords || []).forEach((keyword: any) => {
       const cluster = keyword.topic_cluster || 'uncategorized';
@@ -467,7 +553,7 @@ async function getWebsiteKeywordStrategy(userToken: string, websiteToken: string
       topicClusters[cluster].content.push(content);
     });
 
-    // Add internal links to clusters  
+    // Add internal links to clusters
     (internalLinks || []).forEach((link: any) => {
       if (link.topic_cluster) {
         const cluster = link.topic_cluster;
