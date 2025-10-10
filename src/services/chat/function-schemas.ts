@@ -126,8 +126,8 @@ export const StrategyInitializeSchema = z.object({
   seed_topics: z.array(z.string()).min(3, 'At least 3 seed topics are required').max(10, 'Maximum 10 seed topics'),
   seed_urls: z.array(z.string()).optional(),
   raw_owner_context: z.string().optional(),
-  max_clusters: z.number().int().optional().default(10),
-  min_clusters: z.number().int().optional().default(5),
+  max_clusters: z.number().int().optional().default(12),
+  min_clusters: z.number().int().optional().default(3),
   include_local_slices: z.boolean().optional().default(false)
 });
 
@@ -291,7 +291,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   'STRATEGY_initialize': {
     schema: {
       name: 'STRATEGY_initialize',
-      description: 'Initialize SEO content strategy by running Master Discovery. Creates 5-12 topic clusters with pillar and supporting articles. Requires site URL, brand, geographic focus, and seed topics.',
+      description: 'Initialize SEO content strategy by running Master Discovery. Creates 3-12 topic clusters with pillar and supporting articles (3 for small businesses, 5+ for larger sites). Requires site URL, brand, geographic focus, and seed topics.',
       parameters: {
         type: 'object',
         properties: {
@@ -301,8 +301,8 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
           seed_topics: { type: 'array', items: { type: 'string' }, description: 'Seed topics for strategy (3-10 topics)' },
           seed_urls: { type: 'array', items: { type: 'string' }, description: 'Optional URLs to scrape for content analysis' },
           raw_owner_context: { type: 'string', description: 'Optional: Business description, target audience, unique value prop' },
-          max_clusters: { type: 'integer', description: 'Maximum clusters to create', default: 10 },
-          min_clusters: { type: 'integer', description: 'Minimum clusters to create', default: 5 },
+          max_clusters: { type: 'integer', description: 'Maximum clusters to create', default: 12 },
+          min_clusters: { type: 'integer', description: 'Minimum clusters to create', default: 3 },
           include_local_slices: { type: 'boolean', description: 'Include geo-specific article variations', default: false }
         },
         required: ['site_url', 'brand', 'geo_focus', 'seed_topics'],
