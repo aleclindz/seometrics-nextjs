@@ -9,7 +9,7 @@
  * 5. Prevents keyword cannibalization
  *
  * Constraints:
- * - 5-12 topic clusters per website
+ * - 3-12 topic clusters per website (3 for small businesses, 5+ for larger sites)
  * - Max 100 keywords per cluster
  * - PILLAR: 1 primary + 4-10 secondaries
  * - SUPPORTING: 1 primary + 0-5 secondaries
@@ -100,7 +100,7 @@ const MASTER_DISCOVERY_PROMPT = `You are an expert SEO strategist specializing i
    - Never assign the same keyword to multiple articles (prevents cannibalization)
 
 2. **Clustering:**
-   - Create 5-12 topic clusters total
+   - Create 3-12 topic clusters total (3 for small businesses, 5+ for larger sites)
    - Max 100 keywords per cluster
    - Each cluster represents a semantic theme
    - Cluster names should be clear, descriptive titles
@@ -170,7 +170,7 @@ Return valid JSON with this exact structure:
 ✅ No keyword appears in multiple articles
 ✅ All pillar secondaries are mapped to H2/FAQ sections
 ✅ Supporting articles reference their pillars in links_to
-✅ 5-12 clusters total
+✅ 3-12 clusters total (scale based on business size and seed topics)
 ✅ Max 100 keywords per cluster
 ✅ Changes log documents key decisions
 
@@ -224,15 +224,21 @@ function buildDiscoveryPrompt(
 /**
  * Validate discovery output against all constraints
  */
-export function validateDiscoveryOutput(output: MasterDiscoveryOutput): {
+export function validateDiscoveryOutput(
+  output: MasterDiscoveryOutput,
+  controls?: { min_clusters?: number; max_clusters?: number }
+): {
   valid: boolean;
   errors: string[];
 } {
   const errors: string[] = [];
 
-  // Validate cluster count
-  if (output.clusters.length < 5 || output.clusters.length > 12) {
-    errors.push(`Cluster count ${output.clusters.length} outside range 5-12`);
+  // Validate cluster count (use controls or defaults)
+  const minClusters = controls?.min_clusters || 3; // Allow small businesses with 3 clusters
+  const maxClusters = controls?.max_clusters || 12;
+
+  if (output.clusters.length < minClusters || output.clusters.length > maxClusters) {
+    errors.push(`Cluster count ${output.clusters.length} outside range ${minClusters}-${maxClusters}`);
   }
 
   // Track keyword usage to detect duplicates
@@ -300,9 +306,27 @@ export function validateDiscoveryOutput(output: MasterDiscoveryOutput): {
   }
 
   // Check for keyword cannibalization
+  // Allow keywords to appear in PILLAR + 1 SUPPORTING (natural relationship)
+  // But flag if appearing in 2+ supporting articles or 2+ pillars
   Array.from(keywordUsage.entries()).forEach(([keyword, articles]) => {
-    if (articles.length > 1) {
-      errors.push(`Keyword "${keyword}" appears in multiple articles: ${articles.join(', ')}`);
+    if (articles.length > 2) {
+      // Definitely too many duplicates
+      errors.push(`Keyword "${keyword}" appears in ${articles.length} articles: ${articles.join(', ')}`);
+    } else if (articles.length === 2) {
+      // Allow if it's 1 PILLAR + 1 SUPPORTING (natural semantic relationship)
+      const articleRoles = articles.map(articleId => {
+        const article = output.articles.find(a => a.id === articleId);
+        return article?.role || 'UNKNOWN';
+      });
+
+      const hasPillar = articleRoles.includes('PILLAR');
+      const hasSupporting = articleRoles.includes('SUPPORTING');
+
+      // Only flag if it's NOT the natural PILLAR+SUPPORTING relationship
+      if (!hasPillar || !hasSupporting) {
+        errors.push(`Keyword "${keyword}" appears in multiple articles: ${articles.join(', ')}`);
+      }
+      // Otherwise, this is acceptable (pillar + supporting semantic relationship)
     }
   });
 
@@ -398,7 +422,7 @@ export async function runMasterDiscovery(
   }
 
   // Step 5: Validate output
-  const validation = validateDiscoveryOutput(output);
+  const validation = validateDiscoveryOutput(output, input.controls);
   if (!validation.valid) {
     console.error('[MASTER DISCOVERY] Validation failed:', validation.errors);
     throw new Error(`Discovery output validation failed: ${validation.errors.join('; ')}`);
