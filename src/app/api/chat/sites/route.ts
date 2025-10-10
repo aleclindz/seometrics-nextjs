@@ -89,6 +89,8 @@ export async function GET(request: NextRequest) {
       return {
         id: website.website_token,
         url: website.domain,
+        domain: website.domain, // Add domain property for backward compatibility
+        website_token: website.website_token, // Add explicit website_token for clarity
         name: website.domain, // You might want to add a name field to websites table
         gscStatus: gscConnection?.is_active ? 'connected' : 'none',
         cmsStatus: cmsConnection?.status === 'active' ? 'connected' : 'none',

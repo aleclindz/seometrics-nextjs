@@ -1,6 +1,6 @@
 /**
  * Keyword Strategy Ability
- * 
+ *
  * Handles all keyword strategy and topic cluster functions including:
  * - Keyword strategy management
  * - Long-tail keyword generation
@@ -9,6 +9,7 @@
  */
 
 import { BaseAbility, FunctionCallResult } from './base-ability';
+import { DomainUtils } from '@/lib/utils/DomainUtils';
 
 export class KeywordStrategyAbility extends BaseAbility {
   getFunctionNames(): string[] {
@@ -962,11 +963,20 @@ export class KeywordStrategyAbility extends BaseAbility {
       // Extract domain from site_url
       const domain = this.cleanDomain(args.site_url);
 
+      console.log('[STRATEGY INIT] Starting strategy initialization for domain:', domain);
+
       // Find website token
       const websiteToken = await this.getWebsiteToken(domain);
       if (!websiteToken) {
-        return this.error(`Website not found for domain: ${domain}. Please add this website first.`);
+        console.error('[STRATEGY INIT] Failed to find website token for domain:', domain);
+        return this.error(
+          `Website not found for domain: ${domain}. ` +
+          `Please ensure this website is added and managed in your account. ` +
+          `Try visiting the Dashboard and verifying the domain is listed.`
+        );
       }
+
+      console.log('[STRATEGY INIT] Found website token, calling discovery API...');
 
       // Call discovery API
       const response = await this.fetchAPI('/api/strategy/discover', {
@@ -1033,19 +1043,44 @@ export class KeywordStrategyAbility extends BaseAbility {
         userToken: this.userToken || ''
       });
 
+      console.log('[STRATEGY INIT] Looking up website token for domain:', domain);
+
       const response = await this.fetchAPI(`/api/chat/sites?${params}`);
 
       if (!response.success || !response.sites) {
+        console.log('[STRATEGY INIT] No sites returned from API');
         return null;
       }
 
-      const site = response.sites.find((s: any) =>
-        s.domain === domain || s.domain === `www.${domain}` || s.domain === domain.replace('www.', '')
-      );
+      console.log('[STRATEGY INIT] Found', response.sites.length, 'sites for user');
+
+      // Use DomainUtils to clean both input and stored domains for accurate matching
+      const cleanInput = DomainUtils.cleanDomain(domain);
+      console.log('[STRATEGY INIT] Cleaned input domain:', cleanInput);
+
+      const site = response.sites.find((s: any) => {
+        const cleanStored = DomainUtils.cleanDomain(s.url || s.domain || '');
+        const match = cleanStored === cleanInput;
+        console.log('[STRATEGY INIT] Comparing:', {
+          input: cleanInput,
+          stored: cleanStored,
+          originalStored: s.url || s.domain,
+          match
+        });
+        return match;
+      });
+
+      if (site) {
+        console.log('[STRATEGY INIT] Match found! Website token:', site.website_token);
+      } else {
+        console.log('[STRATEGY INIT] No matching site found. Available domains:',
+          response.sites.map((s: any) => DomainUtils.cleanDomain(s.url || s.domain || '')).join(', ')
+        );
+      }
 
       return site?.website_token || null;
     } catch (error) {
-      console.error('Error fetching website token:', error);
+      console.error('[STRATEGY INIT] Error fetching website token:', error);
       return null;
     }
   }
