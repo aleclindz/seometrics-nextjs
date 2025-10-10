@@ -752,16 +752,16 @@ What would you like to work on first?`,
             onKeyDown={handleKeyPress}
             placeholder="Ask me about your SEO strategy, technical fixes, or content ideas..."
             disabled={isLoading}
-            className="w-full rounded-none border-0 border-t border-gray-200 bg-white min-h-24 max-h-64 px-4 py-3 pr-14 text-sm focus-visible:ring-0 focus-visible:border-gray-300 resize-none overflow-y-auto"
-            rows={3}
+            className="w-full rounded-none border-0 border-t border-gray-200 bg-white min-h-32 max-h-64 px-4 py-4 pr-12 text-sm focus-visible:ring-0 focus-visible:border-gray-300 resize-none overflow-y-auto"
+            rows={4}
           />
           <Button
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
             size="icon"
-            className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md"
+            className="absolute bottom-3 right-3 h-7 w-7 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-3.5 w-3.5" />
           </Button>
         </div>
 
