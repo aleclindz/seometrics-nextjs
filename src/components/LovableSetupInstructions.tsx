@@ -5,15 +5,19 @@ import { Copy, CheckCircle, ExternalLink, FileText, Settings, RefreshCw, Check, 
 
 interface LovableSetupInstructionsProps {
   domain: string;
+  websiteId?: number;
+  userToken?: string;
   onComplete?: () => void;
 }
 
-export default function LovableSetupInstructions({ domain, onComplete }: LovableSetupInstructionsProps) {
+export default function LovableSetupInstructions({ domain, websiteId, userToken, onComplete }: LovableSetupInstructionsProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [sitemapTestResults, setSitemapTestResults] = useState<{
     testing: boolean;
     results: { url: string; status: 'success' | 'error'; message: string; }[] | null;
   }>({ testing: false, results: null });
+  const [creatingIntegration, setCreatingIntegration] = useState(false);
+  const [integrationCreated, setIntegrationCreated] = useState(false);
 
   const normalizedDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
@@ -95,6 +99,55 @@ export default function LovableSetupInstructions({ domain, onComplete }: Lovable
     }
     
     setSitemapTestResults({ testing: false, results });
+
+    // If all tests pass and we have user credentials, create the integration
+    const allTestsPassed = results.every(r => r.status === 'success');
+    if (allTestsPassed && userToken && !integrationCreated) {
+      await createManualIntegration(results);
+    }
+  };
+
+  const createManualIntegration = async (verificationResults: any[]) => {
+    if (!userToken || integrationCreated) return;
+
+    setCreatingIntegration(true);
+
+    try {
+      const response = await fetch('/api/hosting/integrations/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          provider: 'lovable',
+          domain: normalizedDomain,
+          websiteId,
+          capabilities: ['sitemap_redirect', 'robots_redirect'],
+          configuration: {
+            setup_method: 'manual_instructions',
+            verified_at: new Date().toISOString()
+          },
+          verificationResults: verificationResults.map(r => ({
+            url: r.url,
+            status: r.status,
+            message: r.message,
+            verified_at: new Date().toISOString()
+          }))
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('[LOVABLE SETUP] Integration created:', data.integration);
+        setIntegrationCreated(true);
+      } else {
+        console.error('[LOVABLE SETUP] Failed to create integration:', data.error);
+      }
+    } catch (error) {
+      console.error('[LOVABLE SETUP] Error creating integration:', error);
+    } finally {
+      setCreatingIntegration(false);
+    }
   };
 
 
@@ -598,14 +651,31 @@ export async function GET() {
       </div>
 
 
-      {/* Completion Button */}
+      {/* Completion Status & Button */}
+      {integrationCreated && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+          <div className="flex items-center space-x-3">
+            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div>
+              <h5 className="font-medium text-green-900 dark:text-green-100">
+                Lovable Hosting Integration Active
+              </h5>
+              <p className="text-sm text-green-700 dark:text-green-300">
+                Your sitemap and robots.txt setup has been verified and connected to SEOAgent.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {onComplete && (
         <div className="flex justify-end">
           <button
             onClick={onComplete}
-            className="px-6 py-2 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors"
+            disabled={creatingIntegration}
+            className="px-6 py-2 bg-pink-600 hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
           >
-            Setup Complete
+            {creatingIntegration ? 'Saving...' : integrationCreated ? 'Continue' : 'Setup Complete'}
           </button>
         </div>
       )}
