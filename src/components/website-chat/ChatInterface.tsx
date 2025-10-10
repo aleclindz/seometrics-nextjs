@@ -734,27 +734,26 @@ What would you like to work on first?`,
         </div>
         
         {/* Input Area */}
-        <div className="border-t border-gray-100 bg-gray-50/50 p-6 flex-shrink-0">
+        <div className="flex-shrink-0">
           {/* Input */}
-          <div className="flex gap-3 mb-4">
+          <div className="flex">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask me about your SEO strategy, technical fixes, or content ideas..."
               disabled={isLoading}
-              className="flex-1 border-gray-200 bg-white"
+              className="flex-1 rounded-none border-0 border-t border-gray-200 bg-white h-14 px-4 text-base focus-visible:ring-0 focus-visible:border-gray-300"
             />
             <Button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              size="icon"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-sm"
+              className="rounded-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white h-14 px-6"
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-5 w-5" />
             </Button>
           </div>
-          
+
         </div>
 
         {/* Brainstorm Details Modal */}
