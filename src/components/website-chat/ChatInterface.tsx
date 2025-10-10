@@ -11,14 +11,15 @@ import TechnicalFixCard from './ActionCards/TechnicalFixCard';
 import ContentSuggestionCard from './ActionCards/ContentSuggestionCard';
 import ProgressCard from './ActionCards/ProgressCard';
 import { getSmartJSStatus } from '@/lib/seoagent-js-status';
-import { 
-  Send, 
-  Bot, 
-  User, 
+import {
+  Send,
+  Bot,
+  User,
   Loader2,
   Sparkles,
   Zap,
-  Target
+  Target,
+  FileText
 } from 'lucide-react';
 
 interface ChatInterfaceProps {
@@ -33,7 +34,7 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   actionCard?: {
-    type: 'technical-fix' | 'content-suggestion' | 'progress';
+    type: 'technical-fix' | 'content-suggestion' | 'progress' | 'content-ready';
     data: any;
   };
   functionCall?: {
@@ -524,6 +525,36 @@ What would you like to work on first?`,
           </div>
         );
       }
+      case 'content-ready':
+        return (
+          <div className="mt-3 p-4 bg-gradient-to-r from-indigo-50 via-violet-50 to-fuchsia-50 rounded-lg border border-indigo-200">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <FileText className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900 mb-1">
+                  {actionCard.data?.briefsGenerated || 0} Article Briefs Ready
+                </h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  {actionCard.data?.pillarBriefs || 0} pillar articles and {actionCard.data?.supportingBriefs || 0} supporting articles are ready to schedule for generation.
+                </p>
+                <button
+                  onClick={() => {
+                    const event = new CustomEvent('seoagent:switch-tab', {
+                      detail: { tab: 'content' }
+                    });
+                    window.dispatchEvent(event);
+                  }}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                >
+                  <FileText size={16} />
+                  View Content Tab →
+                </button>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return null;
     }

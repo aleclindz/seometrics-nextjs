@@ -15,6 +15,11 @@ import {
   MasterDiscoveryOutput,
   DiscoveryResult
 } from './master-discovery';
+import {
+  generateBriefsFromArticleRoles,
+  linkBriefsToArticleRoles,
+  ArticleRole
+} from './brief-generator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,6 +28,7 @@ const supabase = createClient(
 
 export interface SaveDiscoveryOptions {
   websiteToken: string;
+  userToken: string; // Added for brief generation
   discoveryType: 'initial' | 'refresh' | 'manual';
   input: MasterDiscoveryInput;
   result: DiscoveryResult;
@@ -32,6 +38,9 @@ export interface SaveDiscoveryResponse {
   discoveryId: number;
   clusterIds: Record<string, number>; // cluster_name -> id
   articleRoleIds: Record<string, number>; // discovery_article_id -> id
+  briefsGenerated?: number; // Number of briefs auto-generated
+  pillarBriefs?: number;
+  supportingBriefs?: number;
 }
 
 /**
@@ -40,7 +49,7 @@ export interface SaveDiscoveryResponse {
 export async function saveDiscoveryToDatabase(
   options: SaveDiscoveryOptions
 ): Promise<SaveDiscoveryResponse> {
-  const { websiteToken, discoveryType, input, result } = options;
+  const { websiteToken, userToken, discoveryType, input, result } = options;
 
   console.log('[DISCOVERY PERSISTENCE] Starting save for', websiteToken);
 
@@ -217,10 +226,75 @@ export async function saveDiscoveryToDatabase(
 
   console.log('[DISCOVERY PERSISTENCE] Updated website strategy status');
 
+  // Step 6: Auto-generate article briefs from article roles
+  console.log('[DISCOVERY PERSISTENCE] Auto-generating article briefs...');
+
+  let briefsGenerated = 0;
+  let pillarBriefs = 0;
+  let supportingBriefs = 0;
+
+  try {
+    // Fetch article roles with cluster names for brief generation
+    const { data: articleRolesWithClusters, error: rolesError } = await supabase
+      .from('article_roles')
+      .select(`
+        *,
+        topic_clusters!article_roles_topic_cluster_id_fkey (
+          cluster_name
+        )
+      `)
+      .eq('website_token', websiteToken)
+      .eq('discovery_id', discoveryId);
+
+    if (rolesError) {
+      console.error('[DISCOVERY PERSISTENCE] Error fetching article roles:', rolesError);
+    } else if (articleRolesWithClusters && articleRolesWithClusters.length > 0) {
+      // Transform to ArticleRole format
+      const articleRolesForBriefGen: ArticleRole[] = articleRolesWithClusters.map(role => ({
+        id: role.id,
+        discovery_article_id: role.discovery_article_id,
+        role: role.role as 'PILLAR' | 'SUPPORTING',
+        title: role.title,
+        primary_keyword: role.primary_keyword,
+        secondary_keywords: role.secondary_keywords || [],
+        topic_cluster_id: role.topic_cluster_id,
+        cluster_name: role.topic_clusters?.cluster_name,
+        section_map: role.section_map,
+        links_to_article_ids: role.links_to_article_ids || []
+      }));
+
+      // Generate briefs
+      const briefResult = await generateBriefsFromArticleRoles(
+        websiteToken,
+        userToken,
+        discoveryId,
+        articleRolesForBriefGen
+      );
+
+      briefsGenerated = briefResult.totalGenerated;
+      pillarBriefs = briefResult.pillarCount;
+      supportingBriefs = briefResult.supportingCount;
+
+      // Link briefs back to article roles
+      await linkBriefsToArticleRoles(websiteToken, briefResult.briefIdMap);
+
+      console.log('[DISCOVERY PERSISTENCE] Auto-generated', briefsGenerated, 'briefs:', {
+        pillar: pillarBriefs,
+        supporting: supportingBriefs
+      });
+    }
+  } catch (error) {
+    console.error('[DISCOVERY PERSISTENCE] Error auto-generating briefs:', error);
+    // Don't fail the entire discovery process if brief generation fails
+  }
+
   return {
     discoveryId,
     clusterIds,
-    articleRoleIds
+    articleRoleIds,
+    briefsGenerated,
+    pillarBriefs,
+    supportingBriefs
   };
 }
 

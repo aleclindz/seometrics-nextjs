@@ -29,6 +29,7 @@ import { z } from 'zod';
 
 const DiscoverRequestSchema = z.object({
   websiteToken: z.string().min(1),
+  userToken: z.string().min(1), // Added for brief generation
   brand: z.string().min(1),
   domain: z.string().min(1),
   geoFocus: z.array(z.string()),
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
 
     const {
       websiteToken,
+      userToken,
       brand,
       domain,
       geoFocus,
@@ -94,9 +96,10 @@ export async function POST(request: NextRequest) {
     // Run discovery
     const result = await runMasterDiscovery(input);
 
-    // Save to database
+    // Save to database (includes auto-brief generation)
     const saveResult = await saveDiscoveryToDatabase({
       websiteToken,
+      userToken,
       discoveryType,
       input,
       result
@@ -105,7 +108,8 @@ export async function POST(request: NextRequest) {
     console.log('[DISCOVERY API] Discovery completed', {
       discoveryId: saveResult.discoveryId,
       clusters: Object.keys(saveResult.clusterIds).length,
-      articles: Object.keys(saveResult.articleRoleIds).length
+      articles: Object.keys(saveResult.articleRoleIds).length,
+      briefsGenerated: saveResult.briefsGenerated || 0
     });
 
     return NextResponse.json({
@@ -115,7 +119,10 @@ export async function POST(request: NextRequest) {
         clusters: Object.keys(saveResult.clusterIds).length,
         articles: Object.keys(saveResult.articleRoleIds).length,
         pillars: result.output.articles.filter(a => a.role === 'PILLAR').length,
-        supporting: result.output.articles.filter(a => a.role === 'SUPPORTING').length
+        supporting: result.output.articles.filter(a => a.role === 'SUPPORTING').length,
+        briefsGenerated: saveResult.briefsGenerated || 0,
+        pillarBriefs: saveResult.pillarBriefs || 0,
+        supportingBriefs: saveResult.supportingBriefs || 0
       },
       output: result.output
     });

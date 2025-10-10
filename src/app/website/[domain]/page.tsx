@@ -688,6 +688,18 @@ export default function WebsitePage() {
     };
   }, []);
 
+  // Listen for tab switch events from chat (e.g., "View Content Tab" button)
+  useEffect(() => {
+    const handleSwitchTab = (event: any) => {
+      if (event.detail?.tab) {
+        setActiveTab(event.detail.tab as 'performance' | 'technical' | 'content' | 'strategy');
+      }
+    };
+
+    window.addEventListener('seoagent:switch-tab', handleSwitchTab as EventListener);
+    return () => window.removeEventListener('seoagent:switch-tab', handleSwitchTab as EventListener);
+  }, []);
+
   if (!user) {
     return null; // ProtectedRoute will handle the redirect
   }

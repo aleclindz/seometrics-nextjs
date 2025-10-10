@@ -983,6 +983,7 @@ export class KeywordStrategyAbility extends BaseAbility {
         method: 'POST',
         body: JSON.stringify({
           websiteToken,
+          userToken: this.userToken,
           domain,
           brand: args.brand,
           geoFocus: args.geo_focus,
@@ -1009,9 +1010,12 @@ export class KeywordStrategyAbility extends BaseAbility {
         discovery_id: response.discoveryId,
         clusters_created: response.summary.clusters,
         articles_planned: response.summary.articles,
+        briefs_generated: response.summary.briefsGenerated || 0,
         breakdown: {
           pillar_articles: response.summary.pillars,
-          supporting_articles: response.summary.supporting
+          supporting_articles: response.summary.supporting,
+          pillar_briefs: response.summary.pillarBriefs || 0,
+          supporting_briefs: response.summary.supportingBriefs || 0
         },
         clusters: response.output.clusters.map((cluster: any) => ({
           name: cluster.pillar_title,
@@ -1019,12 +1023,18 @@ export class KeywordStrategyAbility extends BaseAbility {
           keyword_count: 1 + cluster.secondary_keywords.length
         })),
         next_steps: [
-          'Strategy initialized successfully',
-          `Created ${response.summary.clusters} topic clusters with ${response.summary.articles} articles`,
-          `${response.summary.pillars} pillar articles and ${response.summary.supporting} supporting articles planned`,
-          'You can now view the strategy in the Strategy tab',
-          'Generate article briefs for any of the planned articles'
-        ]
+          '✅ Strategy initialized successfully',
+          `Created ${response.summary.clusters} topic clusters`,
+          `Generated ${response.summary.briefsGenerated || 0} article briefs (${response.summary.pillarBriefs || 0} pillar, ${response.summary.supportingBriefs || 0} supporting)`,
+          '📝 View your article briefs in the Content tab to schedule articles for generation'
+        ],
+        actionCard: {
+          type: 'content-ready',
+          briefsGenerated: response.summary.briefsGenerated || 0,
+          pillarBriefs: response.summary.pillarBriefs || 0,
+          supportingBriefs: response.summary.supportingBriefs || 0,
+          websiteToken: websiteToken
+        }
       };
 
       return this.success(summary);

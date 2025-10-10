@@ -222,7 +222,144 @@ ${brief.summary || 'Include practical tips, examples, and actionable advice.'}
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      console.log('[CONTENT CRON] Content generation completed:', results);
+      console.log('[CONTENT CRON] Content generation from schedules completed:', results);
+
+      // STEP 2: Process standalone scheduled briefs (briefs scheduled manually without content_schedules)
+      console.log('[CONTENT CRON] Processing standalone scheduled briefs...');
+
+      const { data: standaloneBriefs, error: standaloneError } = await supabase
+        .from('article_briefs')
+        .select(`
+          *,
+          websites!article_briefs_website_token_fkey (
+            domain,
+            cleaned_domain
+          ),
+          login_users!article_briefs_user_token_fkey (
+            token
+          )
+        `)
+        .eq('status', 'queued')
+        .lte('scheduled_for', new Date().toISOString())
+        .order('scheduled_for', { ascending: true })
+        .limit(50);
+
+      if (standaloneError) {
+        console.error('[CONTENT CRON] Error fetching standalone briefs:', standaloneError);
+      } else if (standaloneBriefs && standaloneBriefs.length > 0) {
+        console.log(`[CONTENT CRON] Found ${standaloneBriefs.length} standalone scheduled briefs`);
+
+        // Group briefs by user_token + website_token for batch processing
+        const briefsByWebsite = new Map<string, typeof standaloneBriefs>();
+
+        for (const brief of standaloneBriefs) {
+          const key = `${brief.user_token}:${brief.website_token}`;
+          if (!briefsByWebsite.has(key)) {
+            briefsByWebsite.set(key, []);
+          }
+          briefsByWebsite.get(key)!.push(brief);
+        }
+
+        // Process each website's briefs
+        for (const [key, briefs] of briefsByWebsite.entries()) {
+          const [userToken, websiteToken] = key.split(':');
+          const website = briefs[0].websites;
+
+          console.log(`[CONTENT CRON] Processing ${briefs.length} briefs for ${website?.domain || 'unknown'}`);
+
+          for (const brief of briefs) {
+            try {
+              results.processed++;
+
+              const targetKeywords: string[] = Array.from(new Set([
+                brief.primary_keyword,
+                ...((brief.secondary_keywords || []) as string[])
+              ])).filter(Boolean) as string[];
+
+              const targetQueries: string[] = Array.isArray(brief.target_queries) ? brief.target_queries : [];
+              const wordCount = brief.word_count_max || 1500;
+              const tone = brief.tone || 'professional';
+
+              const enhancedPrompt = `Write a comprehensive ${wordCount}-word article titled "${brief.title}" in a ${tone} style.
+
+Primary Keyword: ${brief.primary_keyword}
+Secondary Keywords: ${targetKeywords.slice(1).join(', ')}
+Target Queries: ${targetQueries.join(', ')}
+
+${brief.summary || 'Include practical tips, examples, and actionable advice.'}
+`;
+
+              const articleResult = await generateArticleContent({
+                userToken,
+                websiteToken,
+                domain: website?.cleaned_domain || website?.domain || '',
+                topic: brief.title,
+                prompt: enhancedPrompt,
+                wordCount,
+                contentStyle: tone,
+                includeImages: false,
+                autoPublish: false,
+                topicDetails: {
+                  targetKeywords,
+                  targetQueries,
+                  intent: brief.intent,
+                  parentCluster: brief.parent_cluster
+                }
+              });
+
+              if (articleResult && articleResult.success) {
+                await supabase
+                  .from('article_briefs')
+                  .update({
+                    status: 'generated',
+                    generated_at: new Date().toISOString(),
+                    generated_article_id: articleResult.articleId || null,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', brief.id)
+                  .eq('user_token', userToken);
+
+                results.generated++;
+                console.log(`[CONTENT CRON] Generated standalone article: "${brief.title}" (Brief ID: ${brief.id})`);
+              } else {
+                await supabase
+                  .from('article_briefs')
+                  .update({
+                    status: 'draft',
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', brief.id)
+                  .eq('user_token', userToken);
+
+                results.failed++;
+                console.error(`[CONTENT CRON] Failed to generate standalone article: "${brief.title}"`);
+              }
+
+              // Rate limiting
+              await new Promise(resolve => setTimeout(resolve, 2000));
+
+            } catch (error) {
+              results.failed++;
+              const errorMsg = `Failed to generate standalone brief ${brief.id}: ${error}`;
+              results.errors.push(errorMsg);
+              console.error(`[CONTENT CRON] ${errorMsg}`);
+
+              await supabase
+                .from('article_briefs')
+                .update({ status: 'draft', updated_at: new Date().toISOString() })
+                .eq('id', brief.id)
+                .eq('user_token', userToken);
+            }
+          }
+
+          // Rate limiting between websites
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } else {
+        console.log('[CONTENT CRON] No standalone scheduled briefs found');
+      }
+
+      console.log('[CONTENT CRON] All content generation completed:', results);
 
       return NextResponse.json({
         success: true,
