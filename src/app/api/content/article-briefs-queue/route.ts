@@ -46,10 +46,18 @@ export async function GET(request: NextRequest) {
 
     let { data: rows, error } = await supabase
       .from('article_briefs')
-      .select('*')
+      .select(`
+        *,
+        topic_clusters!article_briefs_topic_cluster_id_fkey (
+          id,
+          cluster_name
+        )
+      `)
       .eq('user_token', userToken)
       .eq('website_token', websiteToken)
       .in('status', ['draft', 'queued', 'generating'])
+      .order('topic_clusters.cluster_name', { ascending: true, nullsFirst: false })
+      .order('article_role', { ascending: true }) // PILLAR before SUPPORTING alphabetically
       .limit(limit);
 
     if (error) {
@@ -71,10 +79,18 @@ export async function GET(request: NextRequest) {
         if (fallbackToken && fallbackToken !== websiteToken) {
           const res = await supabase
             .from('article_briefs')
-            .select('*')
+            .select(`
+              *,
+              topic_clusters!article_briefs_topic_cluster_id_fkey (
+                id,
+                cluster_name
+              )
+            `)
             .eq('user_token', userToken)
             .eq('website_token', fallbackToken)
             .in('status', ['draft', 'queued', 'generating'])
+            .order('topic_clusters.cluster_name', { ascending: true, nullsFirst: false })
+            .order('article_role', { ascending: true })
             .limit(limit);
           if (!res.error) rows = res.data || [];
         }
@@ -110,7 +126,9 @@ export async function GET(request: NextRequest) {
         authorityLevel: 'foundation',
         estimatedTrafficPotential: 0,
         targetQueries: (r.target_queries || []) as string[],
-        topicCluster: r.parent_cluster || null
+        articleRole: r.article_role || null, // PILLAR or SUPPORTING
+        topicClusterId: r.topic_cluster_id || null,
+        topicCluster: r.topic_clusters?.cluster_name || r.parent_cluster || null
       };
     });
     return NextResponse.json({ success: true, queue });
@@ -197,10 +215,18 @@ export async function POST(request: NextRequest) {
       // Return refreshed list
       const { data: rows } = await supabase
         .from('article_briefs')
-        .select('*')
+        .select(`
+          *,
+          topic_clusters!article_briefs_topic_cluster_id_fkey (
+            id,
+            cluster_name
+          )
+        `)
         .eq('user_token', userToken)
         .eq('website_token', websiteToken)
-        .in('status', ['draft', 'queued', 'generating']);
+        .in('status', ['draft', 'queued', 'generating'])
+        .order('topic_clusters.cluster_name', { ascending: true, nullsFirst: false })
+        .order('article_role', { ascending: true });
       const sorted = (rows || []).slice().sort((a: any, b: any) => {
         const ai = typeof a.sort_index === 'number' ? a.sort_index : Number.MAX_SAFE_INTEGER;
         const bi = typeof b.sort_index === 'number' ? b.sort_index : Number.MAX_SAFE_INTEGER;
@@ -227,7 +253,9 @@ export async function POST(request: NextRequest) {
         authorityLevel: 'foundation',
         estimatedTrafficPotential: 0,
         targetQueries: (r.target_queries || []) as string[],
-        topicCluster: r.parent_cluster || null
+        articleRole: r.article_role || null, // PILLAR or SUPPORTING
+        topicClusterId: r.topic_cluster_id || null,
+        topicCluster: r.topic_clusters?.cluster_name || r.parent_cluster || null
         };
       });
       return NextResponse.json({ success: true, items });

@@ -179,10 +179,11 @@ function ArticleModal({ item }: { item: ContentItem }) {
   );
 }
 
-function TableRow({ item, onAdvance, onScheduleForPublication, onClusterClick }: {
+function TableRow({ item, onAdvance, onScheduleForPublication, onScheduleBriefForGeneration, onClusterClick }: {
   item: ContentItem;
   onAdvance: (id: string) => void;
   onScheduleForPublication: (id: string) => void;
+  onScheduleBriefForGeneration: (id: string) => void;
   onClusterClick: (cluster: string) => void;
 }) {
   const rowStyle = {
@@ -231,12 +232,20 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onClusterClick }:
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           {item.stage === "brief" && (
-            <button
-              onClick={() => onAdvance(item.id)}
-              className="px-2 py-1 text-xs rounded border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-            >
-              Generate Draft
-            </button>
+            <>
+              <button
+                onClick={() => onScheduleBriefForGeneration(item.id)}
+                className="px-2 py-1 text-xs rounded border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+              >
+                Schedule
+              </button>
+              <button
+                onClick={() => onAdvance(item.id)}
+                className="px-2 py-1 text-xs rounded border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+              >
+                Generate Now
+              </button>
+            </>
           )}
           {item.stage === "draft" && (
             <button
@@ -365,7 +374,7 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
 
   // Use content pipeline hook
-  const { items, loading, error, advanceToDraft, scheduleForPublication, removeFromSchedule } = useContentPipeline({
+  const { items, loading, error, advanceToDraft, scheduleForPublication, removeFromSchedule, scheduleBriefForGeneration } = useContentPipeline({
     userToken,
     websiteToken,
     domain
@@ -473,6 +482,25 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
     } catch (err) {
       console.error('Failed to remove from calendar:', err);
       alert('Failed to remove from calendar. Please try again.');
+    }
+  };
+
+  const handleScheduleBriefForGeneration = async (id: string) => {
+    try {
+      // Prompt user for date
+      const dateStr = prompt('Enter scheduled date for article generation (YYYY-MM-DD):');
+      if (!dateStr) return; // User cancelled
+
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        alert('Invalid date format. Please use YYYY-MM-DD');
+        return;
+      }
+
+      await scheduleBriefForGeneration(id, date);
+    } catch (err) {
+      console.error('Failed to schedule brief:', err);
+      alert('Failed to schedule brief. Please try again.');
     }
   };
 
@@ -634,6 +662,7 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
                       item={item}
                       onAdvance={handleAdvanceToDraft}
                       onScheduleForPublication={handleScheduleForPublication}
+                      onScheduleBriefForGeneration={handleScheduleBriefForGeneration}
                       onClusterClick={(cluster) => setSearch(cluster)}
                     />
                   ))}

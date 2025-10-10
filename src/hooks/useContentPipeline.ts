@@ -231,6 +231,45 @@ export function useContentPipeline({ userToken, websiteToken, domain }: UseConte
     }
   }, [userToken, fetchContent]);
 
+  // Schedule brief for article generation (cron will pick it up)
+  const scheduleBriefForGeneration = useCallback(async (id: string, date: Date | null) => {
+    const briefId = id.replace('brief-', '');
+
+    try {
+      const response = await fetch('/api/content/schedule-brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          briefId: Number(briefId),
+          scheduledDate: date ? date.toISOString() : null
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to schedule brief');
+      }
+
+      // Update local state optimistically
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === id
+            ? { ...item, scheduledDraftAt: date ? date.toISOString() : null }
+            : item
+        )
+      );
+
+      // Refresh to get updated data from server
+      await fetchContent();
+    } catch (err) {
+      console.error('Error scheduling brief:', err);
+      // Refresh to get correct state
+      await fetchContent();
+      throw err;
+    }
+  }, [userToken, fetchContent]);
+
   // Initial fetch
   useEffect(() => {
     fetchContent();
@@ -243,6 +282,7 @@ export function useContentPipeline({ userToken, websiteToken, domain }: UseConte
     refresh: fetchContent,
     advanceToDraft,
     scheduleForPublication,
-    removeFromSchedule
+    removeFromSchedule,
+    scheduleBriefForGeneration
   };
 }
