@@ -60,6 +60,7 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollUntilRef = useRef<number>(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     // Initialize with setup-aware welcome message
@@ -206,6 +207,14 @@ What would you like to work on first?`,
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [input]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -734,27 +743,26 @@ What would you like to work on first?`,
         </div>
         
         {/* Input Area */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative">
           {/* Input */}
-          <div className="flex">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="Ask me about your SEO strategy, technical fixes, or content ideas..."
-              disabled={isLoading}
-              className="flex-1 rounded-none border-0 border-t border-gray-200 bg-white min-h-24 max-h-48 px-4 py-3 text-sm focus-visible:ring-0 focus-visible:border-gray-300 resize-y"
-              rows={3}
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={!input.trim() || isLoading}
-              className="rounded-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white self-end px-6 py-3 h-auto"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
-          </div>
-
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder="Ask me about your SEO strategy, technical fixes, or content ideas..."
+            disabled={isLoading}
+            className="w-full rounded-none border-0 border-t border-gray-200 bg-white min-h-24 max-h-64 px-4 py-3 pr-14 text-sm focus-visible:ring-0 focus-visible:border-gray-300 resize-none overflow-y-auto"
+            rows={3}
+          />
+          <Button
+            onClick={sendMessage}
+            disabled={!input.trim() || isLoading}
+            size="icon"
+            className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Brainstorm Details Modal */}
