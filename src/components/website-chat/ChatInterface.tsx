@@ -737,18 +737,19 @@ What would you like to work on first?`,
         <div className="flex-shrink-0">
           {/* Input */}
           <div className="flex">
-            <Input
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Ask me about your SEO strategy, technical fixes, or content ideas..."
               disabled={isLoading}
-              className="flex-1 rounded-none border-0 border-t border-gray-200 bg-white h-14 px-4 text-base focus-visible:ring-0 focus-visible:border-gray-300"
+              className="flex-1 rounded-none border-0 border-t border-gray-200 bg-white min-h-24 max-h-48 px-4 py-3 text-sm focus-visible:ring-0 focus-visible:border-gray-300 resize-y"
+              rows={3}
             />
             <Button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="rounded-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white h-14 px-6"
+              className="rounded-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white self-end px-6 py-3 h-auto"
             >
               <Send className="h-5 w-5" />
             </Button>
