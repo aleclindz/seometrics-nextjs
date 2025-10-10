@@ -223,7 +223,7 @@ Return only the JSON array, no other text.`;
         }
       ],
       temperature: 0.6,
-      max_tokens: 900
+      max_tokens: 2000 // Increased to prevent JSON truncation
     });
     try {
       const usage: any = (completion as any).usage || {};

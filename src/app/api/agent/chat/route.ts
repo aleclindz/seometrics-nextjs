@@ -843,36 +843,8 @@ async function processOpenAIResponse(
     
     // Generate action card based on the actual function
     if (functionCall.name === 'KEYWORDS_brainstorm' || functionCall.name === 'brainstorm_keywords' || functionCall.name === 'KEYWORDS_brainstorm_auto') {
-      // Build a Keyword Save action card with cluster summary
-      try {
-        const toolRes: any = functionCall.result as any;
-        const ideas = (
-          toolRes?.data?.generated_keywords ||
-          toolRes?.generated_keywords ||
-          []
-        ) as any[];
-        const clusters: Record<string, number> = {};
-        ideas.forEach((k: any) => {
-          const c = (k?.suggested_topic_cluster || 'uncategorized') as string;
-          clusters[c] = (clusters[c] || 0) + 1;
-        });
-        const clusterList = Object.entries(clusters)
-          .map(([name, count]) => ({ name, count }))
-          .sort((a, b) => b.count - a.count);
-
-        actionCard = {
-          type: 'keyword-save',
-          data: {
-            title: 'Save Keywords to Strategy',
-            description: 'Review and save brainstormed keywords grouped by suggested topic clusters.',
-            total: ideas.length,
-            clusters: clusterList,
-            ideas
-          }
-        };
-      } catch {
-        actionCard = null;
-      }
+      // Don't create action card for brainstorm - let the function result card handle it
+      actionCard = null;
     } else if (functionCall.name === 'KEYWORDS_get_strategy') {
       // Build a Generate From Cluster action card to create briefs directly from clusters
       try {
