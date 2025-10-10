@@ -261,7 +261,7 @@ ${brief.summary || 'Include practical tips, examples, and actionable advice.'}
         }
 
         // Process each website's briefs
-        for (const [key, briefs] of briefsByWebsite.entries()) {
+        for (const [key, briefs] of Array.from(briefsByWebsite.entries())) {
           const [userToken, websiteToken] = key.split(':');
           const website = briefs[0].websites;
 
