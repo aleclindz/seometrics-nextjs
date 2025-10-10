@@ -66,7 +66,7 @@ async function migrateHostConnections() {
     }
 
     // Map capabilities based on host type
-    let capabilities = [];
+    let capabilities: string[] = [];
     if (connection.host_type === 'lovable') {
       capabilities = ['sitemap_redirect', 'robots_redirect'];
     } else if (connection.host_type === 'vercel') {
