@@ -82,6 +82,54 @@ export async function GET(request: NextRequest) {
 
     console.log('[DEBUG] Attempting to generate briefs...');
 
+    // Try manual insert first to capture exact error
+    const testRole = articleRolesForBriefGen[0];
+    const isPillar = testRole.role === 'PILLAR';
+    const wordCountMin = isPillar ? 1500 : 800;
+    const wordCountMax = isPillar ? 3000 : 1500;
+    const clusterName = testRole.cluster_name || 'Uncategorized';
+
+    const testInsert = {
+      user_token: userToken,
+      website_token: websiteToken,
+      discovery_article_id: testRole.discovery_article_id,
+      topic_cluster_id: testRole.topic_cluster_id,
+      article_role: testRole.role,
+      title: testRole.title,
+      h1: testRole.title,
+      primary_keyword: testRole.primary_keyword,
+      secondary_keywords: testRole.secondary_keywords,
+      intent: isPillar ? `Comprehensive guide covering ${testRole.primary_keyword} and related subtopics` : `Focused deep-dive into ${testRole.primary_keyword}`,
+      summary: `Article about ${testRole.primary_keyword} in the ${clusterName} topic cluster.`,
+      parent_cluster: clusterName,
+      word_count_min: wordCountMin,
+      word_count_max: wordCountMax,
+      tone: 'professional',
+      status: 'draft',
+      section_map: testRole.section_map || null,
+      sort_index: isPillar ? 0 : 100,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('[DEBUG] Test insert data:', JSON.stringify(testInsert, null, 2));
+
+    const { data: testBrief, error: testError } = await supabase
+      .from('article_briefs')
+      .insert(testInsert)
+      .select('id')
+      .single();
+
+    if (testError) {
+      return NextResponse.json({
+        success: false,
+        error: 'Insert failed',
+        errorDetails: testError,
+        testInsertData: testInsert,
+        message: 'This shows the exact error when trying to insert a brief'
+      }, { status: 500 });
+    }
+
     // Generate briefs
     const briefResult = await generateBriefsFromArticleRoles(
       websiteToken,
@@ -97,6 +145,7 @@ export async function GET(request: NextRequest) {
       userToken,
       articleRolesFound: articleRolesWithClusters.length,
       result: briefResult,
+      testBriefId: testBrief?.id,
       sampleRole: articleRolesForBriefGen[0]
     });
 
