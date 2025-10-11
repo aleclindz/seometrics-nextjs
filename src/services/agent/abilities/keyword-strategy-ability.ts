@@ -1021,7 +1021,20 @@ export class KeywordStrategyAbility extends BaseAbility {
             keyword_count: 1 + cluster.secondary_keywords.length
           })),
           status: 'Brief generation in progress... You\'ll see the final results in a moment.',
-          note: 'Article briefs are being generated automatically. A follow-up message will appear with the final counts.'
+          note: 'Article briefs are being generated automatically. A follow-up message will appear with the final counts.',
+          actionCard: {
+            type: 'progress',
+            data: {
+              title: 'Generating Article Briefs',
+              description: 'Creating detailed article briefs for your content strategy...',
+              progress: 50,
+              status: 'running',
+              estimatedTime: '1-2 minutes',
+              currentStep: 'Generating briefs from strategy clusters',
+              totalSteps: 2,
+              currentStepIndex: 1
+            }
+          }
         };
 
         return this.success(summary);
