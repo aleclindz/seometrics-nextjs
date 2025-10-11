@@ -246,6 +246,11 @@ export async function saveDiscoveryToDatabase(
       .eq('website_token', websiteToken)
       .eq('discovery_id', discoveryId);
 
+    console.log('[DISCOVERY PERSISTENCE] Fetched article roles:', {
+      count: articleRolesWithClusters?.length || 0,
+      error: rolesError ? rolesError.message : null
+    });
+
     if (rolesError) {
       console.error('[DISCOVERY PERSISTENCE] Error fetching article roles:', rolesError);
     } else if (articleRolesWithClusters && articleRolesWithClusters.length > 0) {
@@ -264,6 +269,8 @@ export async function saveDiscoveryToDatabase(
       }));
 
       // Generate briefs
+      console.log('[DISCOVERY PERSISTENCE] Calling generateBriefsFromArticleRoles with', articleRolesForBriefGen.length, 'roles');
+
       const briefResult = await generateBriefsFromArticleRoles(
         websiteToken,
         userToken,
@@ -271,9 +278,17 @@ export async function saveDiscoveryToDatabase(
         articleRolesForBriefGen
       );
 
+      console.log('[DISCOVERY PERSISTENCE] Brief generation result:', briefResult);
+
       briefsGenerated = briefResult.totalGenerated;
       pillarBriefs = briefResult.pillarCount;
       supportingBriefs = briefResult.supportingCount;
+
+      console.log('[DISCOVERY PERSISTENCE] Set counts:', {
+        briefsGenerated,
+        pillarBriefs,
+        supportingBriefs
+      });
 
       // Link briefs back to article roles
       await linkBriefsToArticleRoles(websiteToken, briefResult.briefIdMap);
@@ -282,11 +297,20 @@ export async function saveDiscoveryToDatabase(
         pillar: pillarBriefs,
         supporting: supportingBriefs
       });
+    } else {
+      console.log('[DISCOVERY PERSISTENCE] No article roles to generate briefs for');
     }
   } catch (error) {
     console.error('[DISCOVERY PERSISTENCE] Error auto-generating briefs:', error);
+    console.error('[DISCOVERY PERSISTENCE] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     // Don't fail the entire discovery process if brief generation fails
   }
+
+  console.log('[DISCOVERY PERSISTENCE] Returning final counts:', {
+    briefsGenerated,
+    pillarBriefs,
+    supportingBriefs
+  });
 
   return {
     discoveryId,
