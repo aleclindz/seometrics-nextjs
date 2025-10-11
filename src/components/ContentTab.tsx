@@ -308,11 +308,12 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
   onDrop: (articleId: string, date: Date) => void;
   onRemove: (articleId: string) => void;
 }) {
-  const [{ isOver }, drop] = useDrop({
+  const [{ isOver, canDrop }, drop] = useDrop({
     accept: "article",
     drop: (item: { id: string }) => onDrop(item.id, date),
     collect: (monitor) => ({
       isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
     }),
   });
 
@@ -322,34 +323,40 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
     <div
       ref={drop as any}
       className={classNames(
-        "min-h-[200px] p-4 border border-gray-200",
+        "min-h-[200px] p-4 border border-gray-200 transition-all duration-200",
         isToday ? "bg-blue-50 border-blue-300" : "bg-white",
-        isOver ? "bg-blue-100" : ""
+        isOver && canDrop && "bg-blue-100 border-blue-400 ring-2 ring-blue-400 ring-inset shadow-inner",
+        canDrop && !isOver && "border-dashed"
       )}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className={classNames(
-          "text-2xl font-bold",
-          isToday ? "text-blue-600" : "text-gray-700"
-        )}>
-          {format(date, "d")}
-        </span>
+        <div>
+          <span className={classNames(
+            "text-2xl font-bold",
+            isToday ? "text-blue-600" : "text-gray-700"
+          )}>
+            {format(date, "d")}
+          </span>
+          {isOver && canDrop && (
+            <div className="text-xs text-blue-600 font-medium mt-1">Drop to schedule</div>
+          )}
+        </div>
       </div>
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.id} className="group relative">
-            <div className="text-sm bg-amber-100 text-amber-800 px-3 py-2.5 rounded-lg border border-amber-200">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate text-sm leading-snug">{item.title}</div>
-                  <div className="text-xs text-amber-700 mt-1.5">{item.cluster}</div>
+            <div className="text-sm bg-amber-100 text-amber-800 px-3 py-2.5 rounded-lg border border-amber-200 hover:shadow-md transition-shadow">
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0 pr-8">
+                  <div className="font-semibold text-sm leading-snug break-words">{item.title}</div>
+                  <div className="text-xs text-amber-700 mt-1.5 truncate">{item.cluster}</div>
                 </div>
                 <button
                   onClick={() => onRemove(item.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-1.5 rounded hover:bg-amber-200"
+                  className="absolute top-2 right-2 opacity-60 group-hover:opacity-100 transition-opacity shrink-0 p-1 rounded hover:bg-amber-200"
                   title="Remove from schedule"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

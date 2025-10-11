@@ -111,7 +111,7 @@ export function useContentPipeline({ userToken, websiteToken, domain }: UseConte
           wordGoal: article.word_count || 0,
           createdAt: article.created_at,
           scheduledDraftAt: null,
-          scheduledPublishAt: article.scheduled_for || article.published_at || null,
+          scheduledPublishAt: article.scheduled_publish_at || article.published_at || null,
           url: isPublished ? (article.public_url || article.cms_admin_url) : undefined,
           flags: {
             autoGenerate: false,
