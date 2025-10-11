@@ -401,6 +401,13 @@ export async function getLatestDiscovery(websiteToken: string) {
 export async function clearWebsiteStrategy(websiteToken: string) {
   console.log('[DISCOVERY PERSISTENCE] Clearing strategy for', websiteToken);
 
+  // Delete article_briefs generated from strategy
+  await supabase
+    .from('article_briefs')
+    .delete()
+    .eq('website_token', websiteToken)
+    .not('discovery_article_id', 'is', null); // Only delete briefs from strategy discovery
+
   // Delete article_roles (cascades won't handle this due to nullable FKs)
   await supabase
     .from('article_roles')
