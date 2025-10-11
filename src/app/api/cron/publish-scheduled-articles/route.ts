@@ -110,22 +110,55 @@ export async function GET(request: NextRequest) {
           })
           .eq('id', article.id);
 
-        // Check if CMS connection exists
-        if (!article.cms_connection_id) {
-          console.warn(`[PUBLISH CRON] Article ${article.id} has no CMS connection - marking as published without CMS push`);
+        // Check if CMS connection exists - if not, try to find one for the website
+        let cmsConnectionId = article.cms_connection_id;
 
-          // Mark as published but note that it wasn't pushed to CMS
+        if (!cmsConnectionId) {
+          console.log(`[PUBLISH CRON] Article ${article.id} missing cms_connection_id, looking up website's CMS connection`);
+
+          // Try to find active CMS connection for this website
+          const { data: cmsConnection } = await supabase
+            .from('cms_connections')
+            .select('id')
+            .eq('user_token', article.user_token)
+            .eq('website_id', article.website_id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (cmsConnection) {
+            console.log(`[PUBLISH CRON] Found CMS connection ${cmsConnection.id} for website ${article.website_id}`);
+            cmsConnectionId = cmsConnection.id;
+
+            // Update article with the CMS connection for future use
+            await supabase
+              .from('article_queue')
+              .update({ cms_connection_id: cmsConnection.id })
+              .eq('id', article.id);
+          }
+        }
+
+        // If still no CMS connection, this is a failure
+        if (!cmsConnectionId) {
+          console.error(`[PUBLISH CRON] Article ${article.id} has no CMS connection - cannot publish`);
+
+          // Mark as publishing_failed
           await supabase
             .from('article_queue')
             .update({
-              status: 'published',
-              published_at: new Date().toISOString(),
+              status: 'publishing_failed',
               updated_at: new Date().toISOString(),
-              error_message: 'No CMS connection - article marked as published but not pushed to CMS'
+              error_message: 'No CMS connection configured for this website. Please connect a CMS in Settings.'
             })
             .eq('id', article.id);
 
-          results.published++;
+          results.failed++;
+          results.errors.push({
+            articleId: article.id,
+            title: article.title,
+            error: 'No CMS connection configured'
+          });
           continue;
         }
 

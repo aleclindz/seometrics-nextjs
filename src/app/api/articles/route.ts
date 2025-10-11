@@ -99,6 +99,29 @@ export async function POST(request: NextRequest) {
 
     console.log('[ARTICLES API] Creating new article:', { title, websiteId });
 
+    // Auto-lookup CMS connection if not provided
+    let effectiveCmsConnectionId = cmsConnectionId;
+    if (!effectiveCmsConnectionId) {
+      console.log('[ARTICLES API] No cmsConnectionId provided, looking up for website', websiteId);
+
+      const { data: cmsConnection } = await supabase
+        .from('cms_connections')
+        .select('id')
+        .eq('user_token', userToken)
+        .eq('website_id', websiteId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cmsConnection) {
+        console.log('[ARTICLES API] Found CMS connection:', cmsConnection.id);
+        effectiveCmsConnectionId = cmsConnection.id;
+      } else {
+        console.warn('[ARTICLES API] No active CMS connection found for website', websiteId);
+      }
+    }
+
     // Create slug from title
     const slug = title
       .toLowerCase()
@@ -111,7 +134,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_token: userToken,
         website_id: websiteId,
-        cms_connection_id: cmsConnectionId,
+        cms_connection_id: effectiveCmsConnectionId,
         title,
         slug,
         target_keywords: targetKeywords || [],
