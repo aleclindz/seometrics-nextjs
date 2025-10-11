@@ -165,20 +165,22 @@ function ArticleModal({ item }: { item: ContentItem }) {
           <ClusterTag cluster={item.cluster} />
         </div>
 
-        {hasContent ? (
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-2">Article Content</h4>
-            <div
-              className="prose prose-sm max-w-none text-gray-700 leading-relaxed border rounded-lg p-4 bg-gray-50"
-              dangerouslySetInnerHTML={{ __html: item.articleContent || '' }}
-            />
-          </div>
-        ) : item.brief && (
+        {item.brief && (
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">
               {item.stage === "brief" ? "Brief Description" : "Article Description"}
             </h4>
             <p className="text-gray-700 leading-relaxed">{item.brief}</p>
+          </div>
+        )}
+
+        {hasContent && (
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Generated Article Content</h4>
+            <div
+              className="prose prose-sm max-w-none text-gray-700 leading-relaxed border rounded-lg p-4 bg-gray-50"
+              dangerouslySetInnerHTML={{ __html: item.articleContent || '' }}
+            />
           </div>
         )}
 
