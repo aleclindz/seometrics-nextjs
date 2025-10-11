@@ -19,6 +19,8 @@ export interface ContentItem {
   scheduledDraftAt?: string | null;
   scheduledPublishAt?: string | null;
   url?: string;
+  status?: string; // Article generation status: 'pending', 'generating', 'generated', 'published', etc.
+  articleContent?: string; // Generated article content for preview
   flags?: {
     autoGenerate?: boolean;
     autoPublish?: boolean;
@@ -113,6 +115,8 @@ export function useContentPipeline({ userToken, websiteToken, domain }: UseConte
           scheduledDraftAt: null,
           scheduledPublishAt: article.scheduled_publish_at || article.published_at || null,
           url: isPublished ? (article.public_url || article.cms_admin_url) : undefined,
+          status: article.status, // Include article status
+          articleContent: article.article_content, // Include content for preview
           flags: {
             autoGenerate: false,
             autoPublish: false

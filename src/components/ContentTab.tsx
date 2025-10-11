@@ -70,6 +70,45 @@ function StageBadge({ stage }: { stage: ArticleStage }) {
   );
 }
 
+function StatusBadge({ status, scheduledPublishAt }: { status?: string; scheduledPublishAt?: string | null }) {
+  if (!status || status === 'published') return null;
+
+  // Determine badge style based on status
+  let label = '';
+  let styles = '';
+
+  if (status === 'generating') {
+    label = 'Generating...';
+    styles = 'bg-purple-50 text-purple-700 border-purple-200';
+  } else if (status === 'generated') {
+    if (scheduledPublishAt) {
+      label = 'Scheduled';
+      styles = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    } else {
+      label = 'Generated';
+      styles = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    }
+  } else if (status === 'pending') {
+    label = 'Queued';
+    styles = 'bg-gray-50 text-gray-600 border-gray-200';
+  } else if (status === 'generation_failed' || status === 'publishing_failed') {
+    label = 'Failed';
+    styles = 'bg-red-50 text-red-700 border-red-200';
+  } else {
+    label = status.replace('_', ' ');
+    styles = 'bg-gray-50 text-gray-600 border-gray-200';
+  }
+
+  return (
+    <span className={classNames(
+      "inline-flex items-center px-2 py-0.5 text-xs rounded-full border ml-2",
+      styles
+    )}>
+      {label}
+    </span>
+  );
+}
+
 function KeywordList({ keywords }: { keywords?: Keyword[] }) {
   if (!keywords?.length) return <span className="text-gray-400">-</span>;
   const display = keywords.slice(0, 2).map(k => k.term).join(", ");
@@ -110,10 +149,15 @@ function ClusterTag({ cluster, onClick }: { cluster: string; onClick?: () => voi
 }
 
 function ArticleModal({ item }: { item: ContentItem }) {
+  const hasContent = item.articleContent && item.status === 'generated';
+
   return (
-    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle className="text-left text-gray-900">{item.title}</DialogTitle>
+        <div className="flex items-center gap-2 flex-wrap">
+          <DialogTitle className="text-left text-gray-900">{item.title}</DialogTitle>
+          <StatusBadge status={item.status} scheduledPublishAt={item.scheduledPublishAt} />
+        </div>
       </DialogHeader>
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -121,7 +165,15 @@ function ArticleModal({ item }: { item: ContentItem }) {
           <ClusterTag cluster={item.cluster} />
         </div>
 
-        {item.brief && (
+        {hasContent ? (
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Article Content</h4>
+            <div
+              className="prose prose-sm max-w-none text-gray-700 leading-relaxed border rounded-lg p-4 bg-gray-50"
+              dangerouslySetInnerHTML={{ __html: item.articleContent || '' }}
+            />
+          </div>
+        ) : item.brief && (
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">
               {item.stage === "brief" ? "Brief Description" : "Article Description"}
@@ -204,7 +256,10 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onScheduleBriefFo
       <td className="px-4 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="font-medium text-sm">{item.title}</div>
+            <div className="flex items-center gap-1 flex-wrap">
+              <div className="font-medium text-sm">{item.title}</div>
+              <StatusBadge status={item.status} scheduledPublishAt={item.scheduledPublishAt} />
+            </div>
             {item.brief && <div className="text-xs text-gray-600 mt-1 line-clamp-1">{item.brief}</div>}
           </div>
           <Dialog>
@@ -295,7 +350,10 @@ function DraggableArticle({ item, isSelected }: { item: ContentItem; isSelected?
     >
       <div className="flex items-center gap-2 mb-1">
         <FileText className="w-4 h-4 text-amber-600" />
-        <span className="text-sm font-medium truncate">{item.title}</span>
+        <div className="flex-1 flex items-center gap-1 flex-wrap min-w-0">
+          <span className="text-sm font-medium truncate">{item.title}</span>
+          <StatusBadge status={item.status} scheduledPublishAt={item.scheduledPublishAt} />
+        </div>
       </div>
       <div className="text-xs text-gray-500">{item.cluster}</div>
     </div>
@@ -348,15 +406,18 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
             <div className="text-sm bg-amber-100 text-amber-800 px-3 py-2.5 rounded-lg border border-amber-200 hover:shadow-md transition-shadow">
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0 pr-8">
-                  <div className="font-semibold text-sm leading-snug break-words">{item.title}</div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <div className="font-semibold text-sm leading-snug break-words">{item.title}</div>
+                    <StatusBadge status={item.status} scheduledPublishAt={item.scheduledPublishAt} />
+                  </div>
                   <div className="text-xs text-amber-700 mt-1.5 truncate">{item.cluster}</div>
                 </div>
                 <button
                   onClick={() => onRemove(item.id)}
-                  className="absolute top-2 right-2 opacity-60 group-hover:opacity-100 transition-opacity shrink-0 p-1 rounded hover:bg-amber-200"
+                  className="absolute top-2 right-2 opacity-60 group-hover:opacity-100 transition-opacity shrink-0 hover:bg-amber-200 rounded"
                   title="Remove from schedule"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
