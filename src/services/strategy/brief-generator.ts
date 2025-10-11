@@ -83,13 +83,16 @@ export async function generateBriefsFromArticleRoles(
       const wordCountMin = isPillar ? 1500 : 800;
       const wordCountMax = isPillar ? 3000 : 1500;
 
-      // Build intent from role and cluster
-      const intent = isPillar
-        ? `Comprehensive guide covering ${role.primary_keyword} and related subtopics`
-        : `Focused deep-dive into ${role.primary_keyword}`;
+      // Use valid intent value (informational is default for content articles)
+      const intent = 'informational';
 
-      // Build summary from section_map for PILLAR articles
-      let summary = `Article about ${role.primary_keyword} in the ${clusterName} topic cluster.`;
+      // Build summary with descriptive information
+      let summary = isPillar
+        ? `Comprehensive guide covering ${role.primary_keyword} and related subtopics.`
+        : `Focused deep-dive into ${role.primary_keyword}.`;
+
+      summary += ` Article about ${role.primary_keyword} in the ${clusterName} topic cluster.`;
+
       if (isPillar && role.section_map && Array.isArray(role.section_map)) {
         const sections = role.section_map.map((s: any) => s.heading).join(', ');
         summary += ` Covers: ${sections}.`;
