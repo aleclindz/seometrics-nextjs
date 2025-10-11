@@ -13,7 +13,7 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { userToken, websiteToken, briefId, start = true } = await request.json();
+    const { userToken, websiteToken, briefId, start = true, conversationId } = await request.json();
     if (!userToken || !briefId) {
       return NextResponse.json({ success: false, error: 'userToken and briefId are required' }, { status: 400 });
     }
@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
         parent_cluster: brief.parent_cluster,
         intent: brief.intent,
         page_type: brief.page_type || 'blog',
-        template: 'from-brief'
+        template: 'from-brief',
+        conversationId: conversationId || null // Store for callback
       },
       status: 'pending',
       generated_from_brief_id: brief.id,
@@ -98,6 +99,52 @@ export async function POST(request: NextRequest) {
       .update({ generated_article_id: draft.id, status: 'generating', updated_at: new Date().toISOString() })
       .eq('id', brief.id)
       .eq('user_token', userToken);
+
+    // Send agent notification if conversationId provided
+    if (conversationId) {
+      console.log('[FROM BRIEF] Sending agent notification for article generation start');
+
+      const { data: lastMessage } = await supabase
+        .from('agent_conversations')
+        .select('message_order')
+        .eq('user_token', userToken)
+        .eq('website_token', effectiveWebsiteToken)
+        .eq('conversation_id', conversationId)
+        .order('message_order', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextMessageOrder = (lastMessage?.message_order || 0) + 1;
+
+      await supabase
+        .from('agent_conversations')
+        .insert({
+          user_token: userToken,
+          website_token: effectiveWebsiteToken,
+          conversation_id: conversationId,
+          message_role: 'assistant',
+          message_content: `🚀 **Generating Article**\n\n📝 **"${draft.title}"**\n\nI'm now generating your article. This usually takes 1-2 minutes. I'll let you know when it's ready!`,
+          action_card: {
+            type: 'progress',
+            data: {
+              title: 'Article Generation',
+              description: 'Generating article content...',
+              progress: 0,
+              status: 'running',
+              articleId: draft.id,
+              estimatedTime: '1-2 minutes'
+            }
+          },
+          message_order: nextMessageOrder,
+          metadata: {
+            article_id: draft.id,
+            brief_id: brief.id,
+            generation_started: new Date().toISOString()
+          }
+        });
+
+      console.log('[FROM BRIEF] Agent notification sent');
+    }
 
     // Optionally trigger generation pipeline
     if (start) {

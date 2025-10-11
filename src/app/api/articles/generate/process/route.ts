@@ -179,8 +179,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to update article' }, { status: 500 });
     }
 
-    // Track keyword mentions in the generated content
+    // Trigger callback if conversationId exists in content_outline
     const websiteToken = (article as any)?.websites?.website_token;
+    const conversationId = article.content_outline?.conversationId;
+
+    if (conversationId && websiteToken) {
+      console.log('[ARTICLE PROCESS] Triggering generation complete callback');
+
+      // Fire-and-forget callback
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/agent/callback/article-generation-complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          websiteToken,
+          conversationId,
+          articleId,
+          title: article.title,
+          wordCount,
+          status: 'generated'
+        })
+      }).catch(err => {
+        console.error('[ARTICLE PROCESS] Callback failed (non-blocking):', err);
+      });
+    }
+
+    // Track keyword mentions in the generated content
     if (websiteToken && effectiveKeywords.length > 0) {
       try {
         const contentLower = stripHtml(result.content).toLowerCase();
