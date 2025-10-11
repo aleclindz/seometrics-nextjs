@@ -113,7 +113,7 @@ function ArticleModal({ item }: { item: ContentItem }) {
   return (
     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle className="text-left">{item.title}</DialogTitle>
+        <DialogTitle className="text-left text-gray-900">{item.title}</DialogTitle>
       </DialogHeader>
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -123,7 +123,7 @@ function ArticleModal({ item }: { item: ContentItem }) {
 
         {item.brief && (
           <div>
-            <h4 className="font-medium mb-2">
+            <h4 className="font-semibold text-gray-900 mb-2">
               {item.stage === "brief" ? "Brief Description" : "Article Description"}
             </h4>
             <p className="text-gray-700 leading-relaxed">{item.brief}</p>
@@ -132,10 +132,10 @@ function ArticleModal({ item }: { item: ContentItem }) {
 
         {item.keywords && item.keywords.length > 0 && (
           <div>
-            <h4 className="font-medium mb-2">Keywords</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">Keywords</h4>
             <div className="flex flex-wrap gap-2">
               {item.keywords.map((keyword, index) => (
-                <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded">
+                <span key={index} className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded">
                   {keyword.term}
                 </span>
               ))}
@@ -143,31 +143,31 @@ function ArticleModal({ item }: { item: ContentItem }) {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
           {item.wordGoal && (
             <div>
-              <span className="font-medium">Target Length:</span>
+              <span className="font-semibold text-gray-900">Target Length:</span>
               <span className="ml-2">{item.wordGoal.toLocaleString()} words</span>
             </div>
           )}
 
           {item.createdAt && (
             <div>
-              <span className="font-medium">Created:</span>
+              <span className="font-semibold text-gray-900">Created:</span>
               <span className="ml-2">{format(new Date(item.createdAt), "MMM d, yyyy")}</span>
             </div>
           )}
 
           {item.scheduledPublishAt && (
             <div>
-              <span className="font-medium">Scheduled:</span>
+              <span className="font-semibold text-gray-900">Scheduled:</span>
               <span className="ml-2">{format(new Date(item.scheduledPublishAt), "MMM d, yyyy")}</span>
             </div>
           )}
 
           {item.url && (
             <div>
-              <span className="font-medium">Published URL:</span>
+              <span className="font-semibold text-gray-900">Published URL:</span>
               <a href={item.url} target="_blank" rel="noreferrer" className="ml-2 text-blue-600 hover:text-blue-800 inline-flex items-center gap-1">
                 View Article <ExternalLink className="w-3 h-3" />
               </a>
