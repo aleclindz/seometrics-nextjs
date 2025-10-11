@@ -112,7 +112,15 @@ export async function POST(request: NextRequest) {
       briefsGenerated: saveResult.briefsGenerated || 0
     });
 
-    return NextResponse.json({
+    console.log('[DISCOVERY API] saveResult received:', {
+      briefsGenerated: saveResult.briefsGenerated,
+      pillarBriefs: saveResult.pillarBriefs,
+      supportingBriefs: saveResult.supportingBriefs,
+      hasClusterIds: !!saveResult.clusterIds,
+      hasArticleRoleIds: !!saveResult.articleRoleIds
+    });
+
+    const responsePayload = {
       success: true,
       discoveryId: saveResult.discoveryId,
       summary: {
@@ -125,7 +133,15 @@ export async function POST(request: NextRequest) {
         supportingBriefs: saveResult.supportingBriefs || 0
       },
       output: result.output
+    };
+
+    console.log('[DISCOVERY API] Sending response with brief counts:', {
+      briefsGenerated: responsePayload.summary.briefsGenerated,
+      pillarBriefs: responsePayload.summary.pillarBriefs,
+      supportingBriefs: responsePayload.summary.supportingBriefs
     });
+
+    return NextResponse.json(responsePayload);
 
   } catch (error) {
     console.error('[DISCOVERY API] Error:', error);
