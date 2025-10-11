@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       .eq('user_token', userToken)
       .eq('website_token', websiteToken)
       .in('status', ['draft', 'queued', 'generating'])
-      .order('topic_clusters.cluster_name', { ascending: true, nullsFirst: false })
+      .order('topic_cluster_id', { ascending: true, nullsFirst: false })
       .order('article_role', { ascending: true }) // PILLAR before SUPPORTING alphabetically
       .limit(limit);
 
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
             .eq('user_token', userToken)
             .eq('website_token', fallbackToken)
             .in('status', ['draft', 'queued', 'generating'])
-            .order('topic_clusters.cluster_name', { ascending: true, nullsFirst: false })
+            .order('topic_cluster_id', { ascending: true, nullsFirst: false })
             .order('article_role', { ascending: true })
             .limit(limit);
           if (!res.error) rows = res.data || [];
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
         .eq('user_token', userToken)
         .eq('website_token', websiteToken)
         .in('status', ['draft', 'queued', 'generating'])
-        .order('topic_clusters.cluster_name', { ascending: true, nullsFirst: false })
+        .order('topic_cluster_id', { ascending: true, nullsFirst: false })
         .order('article_role', { ascending: true });
       const sorted = (rows || []).slice().sort((a: any, b: any) => {
         const ai = typeof a.sort_index === 'number' ? a.sort_index : Number.MAX_SAFE_INTEGER;
