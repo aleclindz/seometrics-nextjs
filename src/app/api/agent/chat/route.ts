@@ -345,9 +345,15 @@ export async function POST(request: NextRequest) {
         } catch {}
         executedToolCalls.push({ name: functionName, arguments: functionArgs, id: toolCall.id });
 
+        // Inject conversationId for callback support (allows async operations to send follow-up messages)
+        const argsWithContext = {
+          ...functionArgs,
+          conversation_id: conversationId // Auto-injected, not part of schema
+        };
+
         // Execute the function
         try {
-          const result = await functionCaller.executeFunction(functionName, functionArgs);
+          const result = await functionCaller.executeFunction(functionName, argsWithContext);
           toolResults[toolCall.id] = result;
           
           console.log(`[AGENT CHAT] Executed ${functionName}:`, result.success);

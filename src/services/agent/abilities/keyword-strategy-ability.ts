@@ -958,6 +958,7 @@ export class KeywordStrategyAbility extends BaseAbility {
     max_clusters?: number;
     min_clusters?: number;
     include_local_slices?: boolean;
+    conversation_id?: string; // For callback system
   }): Promise<FunctionCallResult> {
     try {
       // Extract domain from site_url
@@ -991,6 +992,7 @@ export class KeywordStrategyAbility extends BaseAbility {
           seedUrls: args.seed_urls || [],
           rawOwnerContext: args.raw_owner_context,
           discoveryType: 'initial',
+          conversationId: args.conversation_id, // For callback to send follow-up message
           controls: {
             maxClusters: args.max_clusters,
             minClusters: args.min_clusters,
@@ -1004,7 +1006,28 @@ export class KeywordStrategyAbility extends BaseAbility {
         return this.error(response.message || 'Strategy discovery failed');
       }
 
-      // Format response for agent
+      // If conversationId provided, send quick response and let callback handle action card
+      if (args.conversation_id) {
+        console.log('[STRATEGY INIT] ConversationId provided, sending quick response. Callback will send final message.');
+
+        const summary = {
+          success: true,
+          discovery_id: response.discoveryId,
+          clusters_created: response.summary.clusters,
+          articles_planned: response.summary.articles,
+          clusters: response.output.clusters.map((cluster: any) => ({
+            name: cluster.pillar_title,
+            primary_keyword: cluster.primary_keyword,
+            keyword_count: 1 + cluster.secondary_keywords.length
+          })),
+          status: 'Brief generation in progress... You\'ll see the final results in a moment.',
+          note: 'Article briefs are being generated automatically. A follow-up message will appear with the final counts.'
+        };
+
+        return this.success(summary);
+      }
+
+      // Format response for agent (legacy path without callback)
       const summary = {
         success: true,
         discovery_id: response.discoveryId,

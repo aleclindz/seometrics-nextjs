@@ -37,6 +37,7 @@ const DiscoverRequestSchema = z.object({
   seedUrls: z.array(z.string()).optional(),
   rawOwnerContext: z.string().optional(),
   discoveryType: z.enum(['initial', 'refresh', 'manual']).default('initial'),
+  conversationId: z.string().optional(), // For callback to send follow-up message
   controls: z.object({
     maxClusters: z.number().optional(),
     minClusters: z.number().optional(),
@@ -140,6 +141,36 @@ export async function POST(request: NextRequest) {
       pillarBriefs: responsePayload.summary.pillarBriefs,
       supportingBriefs: responsePayload.summary.supportingBriefs
     });
+
+    // Trigger callback to send follow-up message to chat (fire-and-forget)
+    // This allows the agent to send a follow-up message with correct brief counts
+    // after the async brief generation completes
+    const conversationId = body.conversationId; // Passed from agent
+    if (conversationId) {
+      console.log('[DISCOVERY API] Triggering callback for conversation:', conversationId);
+
+      // Fire-and-forget callback (don't await)
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/agent/callback/discovery-complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          websiteToken,
+          conversationId,
+          discoveryId: saveResult.discoveryId,
+          summary: {
+            clusters: responsePayload.summary.clusters,
+            briefsGenerated: responsePayload.summary.briefsGenerated,
+            pillarBriefs: responsePayload.summary.pillarBriefs,
+            supportingBriefs: responsePayload.summary.supportingBriefs
+          }
+        })
+      }).catch(err => {
+        console.error('[DISCOVERY API] Callback failed (non-blocking):', err);
+      });
+    } else {
+      console.log('[DISCOVERY API] No conversationId provided, skipping callback');
+    }
 
     return NextResponse.json(responsePayload);
 
