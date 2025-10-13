@@ -164,8 +164,11 @@ export async function GET(request: NextRequest) {
 
         // Call the publish API endpoint
         // Note: This is an internal API call - in production, you might want to use a queue system
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
+                       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
         const publishResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/rest/v1', '')}/api/articles/publish`,
+          `${baseUrl}/api/articles/publish`,
           {
             method: 'POST',
             headers: {
