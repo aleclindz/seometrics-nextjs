@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes - GSC sync can take time with multiple sites
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

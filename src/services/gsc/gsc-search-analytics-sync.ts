@@ -6,6 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { google } from 'googleapis';
+import { ensureValidGSCToken } from '@/lib/utils/gsc-token-refresh';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -229,7 +230,13 @@ export async function syncGSCSearchAnalytics(options: GSCSyncOptions): Promise<{
       console.warn('[GSC SYNC] Pre-clean delete failed (non-fatal):', (e as any)?.message || e);
     }
 
-    // Get OAuth credentials from user's GSC connection (same as other GSC APIs)
+    // Ensure we have a valid, non-expired GSC access token
+    const validAccessToken = await ensureValidGSCToken(options.userToken);
+    if (!validAccessToken) {
+      throw new Error('Failed to obtain valid GSC access token - please reconnect Google Search Console');
+    }
+
+    // Get OAuth credentials from user's GSC connection (for refresh token)
     const { data: connection, error: connError } = await supabase
       .from('gsc_connections')
       .select('*')
@@ -240,14 +247,14 @@ export async function syncGSCSearchAnalytics(options: GSCSyncOptions): Promise<{
       throw new Error('GSC connection not found for user');
     }
 
-    // Initialize Google OAuth2 (same method as other GSC APIs)
+    // Initialize Google OAuth2 with refreshed token
     const clientId = process.env.GOOGLE_CLIENT_ID!;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-    
-    // Set user credentials
+
+    // Set user credentials with freshly validated token
     oauth2Client.setCredentials({
-      access_token: connection.access_token,
+      access_token: validAccessToken, // Use refreshed token instead of potentially expired one
       refresh_token: connection.refresh_token,
     });
 

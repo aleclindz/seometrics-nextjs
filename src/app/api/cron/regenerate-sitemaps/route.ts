@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 300; // 5 minutes - sitemap generation can take time with multiple sites
 import { createClient } from '@supabase/supabase-js';
 import { DomainUtils } from '@/lib/utils/DomainUtils';
 

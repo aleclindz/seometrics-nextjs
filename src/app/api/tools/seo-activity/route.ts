@@ -20,15 +20,47 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[SEO-ACTIVITY] Recording ${activityData.activity_type}: ${activityData.title}`);
-    
+
+    // Validate user_token exists in login_users table (prevent FK constraint violations)
+    let validatedUserToken = activityData.user_token;
+
+    const { data: userExists, error: userCheckError } = await supabase
+      .from('login_users')
+      .select('token')
+      .eq('token', validatedUserToken)
+      .maybeSingle();
+
+    if (!userExists && !userCheckError) {
+      console.warn('[SEO-ACTIVITY] Invalid user_token provided:', validatedUserToken);
+
+      // Try to resolve from websites table (in case domain was passed instead of token)
+      const { data: website } = await supabase
+        .from('websites')
+        .select('user_token')
+        .or(`domain.eq.${validatedUserToken},cleaned_domain.eq.${validatedUserToken}`)
+        .maybeSingle();
+
+      if (website?.user_token) {
+        console.log('[SEO-ACTIVITY] Resolved user_token from websites table');
+        validatedUserToken = website.user_token;
+      } else {
+        console.error('[SEO-ACTIVITY] Could not resolve valid user_token, skipping activity recording');
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid user_token provided',
+          message: 'Activity not recorded due to invalid user_token'
+        }, { status: 400 });
+      }
+    }
+
     // Generate a UUID for entity_id if not provided (required by database schema)
     const entityId = activityData.entity_id || randomUUID();
-    
+
     // Store the activity in agent_events table
     const { data, error } = await supabase
       .from('agent_events')
       .insert({
-        user_token: activityData.user_token,
+        user_token: validatedUserToken, // Use validated token
         event_type: 'seo_automation',
         entity_type: 'seo_activity',
         entity_id: entityId,
