@@ -152,7 +152,7 @@ function ArticleModal({ item }: { item: ContentItem }) {
   const hasContent = item.articleContent && item.status === 'generated';
 
   return (
-    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+    <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
       <DialogHeader>
         <div className="flex items-center gap-2 flex-wrap">
           <DialogTitle className="text-left text-gray-900">{item.title}</DialogTitle>
@@ -333,13 +333,16 @@ function DraggableArticle({ item, isSelected }: { item: ContentItem; isSelected?
   const [{ isDragging }, drag] = useDrag({
     type: "article",
     item: { id: item.id, title: item.title, stage: item.stage },
-    canDrag: item.stage === "draft",
+    canDrag: item.stage === "draft" || item.stage === "brief",
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
   });
 
-  if (item.stage !== "draft") return null;
+  if (item.stage !== "draft" && item.stage !== "brief") return null;
+
+  const Icon = item.stage === "brief" ? FilePenLine : FileText;
+  const iconColor = item.stage === "brief" ? "text-blue-600" : "text-amber-600";
 
   return (
     <div
@@ -351,7 +354,7 @@ function DraggableArticle({ item, isSelected }: { item: ContentItem; isSelected?
       )}
     >
       <div className="flex items-center gap-2 mb-1">
-        <FileText className="w-4 h-4 text-amber-600" />
+        <Icon className={classNames("w-4 h-4", iconColor)} />
         <div className="flex-1 flex items-center gap-1 flex-wrap min-w-0">
           <span className="text-sm font-medium truncate">{item.title}</span>
           <StatusBadge status={item.status} scheduledPublishAt={item.scheduledPublishAt} />
@@ -538,11 +541,25 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
 
   const handleDropOnCalendar = async (articleId: string, date: Date) => {
     try {
-      await scheduleForPublication(articleId, date);
+      // Determine if this is a brief or draft
+      const item = items.find(i => i.id === articleId);
+      if (!item) {
+        console.error('Item not found:', articleId);
+        return;
+      }
+
+      if (item.stage === 'brief') {
+        // Schedule brief for generation
+        await scheduleBriefForGeneration(articleId, date);
+      } else {
+        // Schedule draft for publication
+        await scheduleForPublication(articleId, date);
+      }
+
       setSelectedArticleId(null);
     } catch (err) {
-      console.error('Failed to schedule article:', err);
-      alert('Failed to schedule article. Please try again.');
+      console.error('Failed to schedule item:', err);
+      alert('Failed to schedule item. Please try again.');
     }
   };
 
@@ -555,23 +572,9 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
     }
   };
 
-  const handleScheduleBriefForGeneration = async (id: string) => {
-    try {
-      // Prompt user for date
-      const dateStr = prompt('Enter scheduled date for article generation (YYYY-MM-DD):');
-      if (!dateStr) return; // User cancelled
-
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) {
-        alert('Invalid date format. Please use YYYY-MM-DD');
-        return;
-      }
-
-      await scheduleBriefForGeneration(id, date);
-    } catch (err) {
-      console.error('Failed to schedule brief:', err);
-      alert('Failed to schedule brief. Please try again.');
-    }
+  const handleScheduleBriefForGeneration = (id: string) => {
+    setSelectedArticleId(id);
+    setMode("calendar");
   };
 
   // Calendar view helpers - show 2 weeks
@@ -583,8 +586,10 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
   const itemsByDate = useMemo(() => {
     const grouped: Record<string, ContentItem[]> = {};
     items.forEach(item => {
-      if (item.scheduledPublishAt) {
-        const dateKey = format(new Date(item.scheduledPublishAt), "yyyy-MM-dd");
+      // Check both scheduledPublishAt (drafts) and scheduledDraftAt (briefs)
+      const scheduledDate = item.scheduledPublishAt || item.scheduledDraftAt;
+      if (scheduledDate) {
+        const dateKey = format(new Date(scheduledDate), "yyyy-MM-dd");
         if (!grouped[dateKey]) grouped[dateKey] = [];
         grouped[dateKey].push(item);
       }
@@ -592,7 +597,11 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
     return grouped;
   }, [items]);
 
-  const draftItems = items.filter(item => item.stage === "draft" && !item.scheduledPublishAt);
+  const unscheduledItems = items.filter(item =>
+    (item.stage === "draft" || item.stage === "brief") &&
+    !item.scheduledPublishAt &&
+    !item.scheduledDraftAt
+  );
 
   if (loading) {
     return (
@@ -749,14 +758,14 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
         ) : (
           /* Calendar View */
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Unscheduled Drafts */}
+            {/* Unscheduled Items */}
             <div className="lg:col-span-1">
-              <h3 className="font-medium mb-3">Unscheduled Drafts</h3>
+              <h3 className="font-medium mb-3">Unscheduled Items</h3>
               <div className="bg-gray-50 border rounded-xl p-4 min-h-[400px]">
-                {draftItems.length === 0 ? (
-                  <div className="text-sm text-gray-500">No unscheduled drafts</div>
+                {unscheduledItems.length === 0 ? (
+                  <div className="text-sm text-gray-500">No unscheduled items</div>
                 ) : (
-                  draftItems.map(item => (
+                  unscheduledItems.map(item => (
                     <DraggableArticle
                       key={item.id}
                       item={item}
