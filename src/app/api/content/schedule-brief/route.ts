@@ -34,6 +34,21 @@ export async function POST(request: NextRequest) {
     // Parse scheduled date
     const scheduledFor = scheduledDate ? new Date(scheduledDate).toISOString() : null;
 
+    // Validate that scheduled date is not in the past
+    if (scheduledFor) {
+      const scheduledDateObj = new Date(scheduledFor);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      scheduledDateObj.setHours(0, 0, 0, 0); // Start of scheduled day
+
+      if (scheduledDateObj < today) {
+        return NextResponse.json(
+          { success: false, error: 'Cannot schedule briefs for past dates' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Determine new status based on scheduling
     const newStatus = scheduledFor ? 'queued' : 'draft';
 

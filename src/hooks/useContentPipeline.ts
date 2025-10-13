@@ -199,42 +199,6 @@ export function useContentPipeline({ userToken, websiteToken, domain }: UseConte
     }
   }, [userToken, fetchContent]);
 
-  // Remove article from schedule
-  const removeFromSchedule = useCallback(async (id: string) => {
-    const articleId = id.replace('article-', '');
-
-    try {
-      const response = await fetch('/api/content/schedule-article', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userToken,
-          articleId: Number(articleId),
-          scheduledDate: null // Explicitly set to null to unschedule
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to remove from schedule');
-      }
-
-      // Update local state
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === id
-            ? { ...item, scheduledPublishAt: null }
-            : item
-        )
-      );
-    } catch (err) {
-      console.error('Error removing from schedule:', err);
-      // Refresh to get correct state
-      await fetchContent();
-      throw err;
-    }
-  }, [userToken, fetchContent]);
-
   // Schedule brief for article generation (cron will pick it up)
   const scheduleBriefForGeneration = useCallback(async (id: string, date: Date | null) => {
     const briefId = id.replace('brief-', '');
@@ -273,6 +237,57 @@ export function useContentPipeline({ userToken, websiteToken, domain }: UseConte
       throw err;
     }
   }, [userToken, fetchContent]);
+
+  // Remove article or brief from schedule
+  const removeFromSchedule = useCallback(async (id: string) => {
+    // Detect if this is a brief or article
+    const isBrief = id.startsWith('brief-');
+    const isArticle = id.startsWith('article-');
+
+    if (!isBrief && !isArticle) {
+      console.error('Unknown item type:', id);
+      throw new Error('Invalid item ID');
+    }
+
+    try {
+      if (isBrief) {
+        // For briefs, call scheduleBriefForGeneration with null date
+        await scheduleBriefForGeneration(id, null);
+      } else {
+        // For articles, use existing schedule-article API
+        const articleId = id.replace('article-', '');
+
+        const response = await fetch('/api/content/schedule-article', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userToken,
+            articleId: Number(articleId),
+            scheduledDate: null // Explicitly set to null to unschedule
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to remove from schedule');
+        }
+
+        // Update local state for articles
+        setItems(prevItems =>
+          prevItems.map(item =>
+            item.id === id
+              ? { ...item, scheduledPublishAt: null }
+              : item
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Error removing from schedule:', err);
+      // Refresh to get correct state
+      await fetchContent();
+      throw err;
+    }
+  }, [userToken, scheduleBriefForGeneration, fetchContent]);
 
   // Initial fetch
   useEffect(() => {

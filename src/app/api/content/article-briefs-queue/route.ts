@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
       .eq('user_token', userToken)
       .eq('website_token', websiteToken)
       .in('status', ['draft', 'queued', 'generating'])
+      .is('generated_article_id', null) // Exclude briefs that have generated articles
       .order('topic_cluster_id', { ascending: true, nullsFirst: false })
       .order('article_role', { ascending: true }) // PILLAR before SUPPORTING alphabetically
       .limit(limit);
@@ -89,6 +90,7 @@ export async function GET(request: NextRequest) {
             .eq('user_token', userToken)
             .eq('website_token', fallbackToken)
             .in('status', ['draft', 'queued', 'generating'])
+            .is('generated_article_id', null) // Exclude briefs that have generated articles
             .order('topic_cluster_id', { ascending: true, nullsFirst: false })
             .order('article_role', { ascending: true })
             .limit(limit);
@@ -117,6 +119,7 @@ export async function GET(request: NextRequest) {
         title: r.title,
         scheduledFor: r.scheduled_for || r.created_at,
         generatedAt: r.generated_at || r.created_at,
+        generatedArticleId: r.generated_article_id || null, // Track if article was generated from this brief
         status: mapStatus(r.status),
         wordCount: r.word_count_max || r.word_count_min || 0,
         contentStyle: r.tone || 'professional',
@@ -225,6 +228,7 @@ export async function POST(request: NextRequest) {
         .eq('user_token', userToken)
         .eq('website_token', websiteToken)
         .in('status', ['draft', 'queued', 'generating'])
+        .is('generated_article_id', null) // Exclude briefs that have generated articles
         .order('topic_cluster_id', { ascending: true, nullsFirst: false })
         .order('article_role', { ascending: true });
       const sorted = (rows || []).slice().sort((a: any, b: any) => {
@@ -244,6 +248,7 @@ export async function POST(request: NextRequest) {
         title: r.title,
         scheduledFor: r.scheduled_for || r.created_at,
         generatedAt: r.generated_at || r.created_at,
+        generatedArticleId: r.generated_article_id || null, // Track if article was generated from this brief
         status: mapStatus(r.status),
         wordCount: r.word_count_max || r.word_count_min || 0,
         contentStyle: r.tone || 'professional',

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from "react";
-import { format, addDays, startOfWeek, isSameDay } from "date-fns";
+import { format, addDays, startOfWeek, isSameDay, startOfDay } from "date-fns";
 import { ChevronUp, ChevronDown, Filter, Search, ExternalLink, X, Eye, FilePenLine, FileText, Rocket, Settings } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -371,24 +371,27 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
   onDrop: (articleId: string, date: Date) => void;
   onRemove: (articleId: string) => void;
 }) {
+  const isToday = isSameDay(date, new Date());
+  const isPastDate = startOfDay(date) < startOfDay(new Date());
+
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: "article",
     drop: (item: { id: string }) => onDrop(item.id, date),
+    canDrop: () => !isPastDate, // Prevent dropping on past dates
     collect: (monitor) => ({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
   });
 
-  const isToday = isSameDay(date, new Date());
-
   return (
     <div
       ref={drop as any}
       className={classNames(
         "min-h-[200px] p-4 border border-gray-200 transition-all duration-200",
-        isToday ? "bg-blue-50 border-blue-300" : "bg-white",
+        isPastDate ? "bg-gray-50 opacity-60" : isToday ? "bg-blue-50 border-blue-300" : "bg-white",
         isOver && canDrop && "bg-blue-100 border-blue-400 ring-2 ring-blue-400 ring-inset shadow-inner",
+        isOver && !canDrop && isPastDate && "bg-red-50 border-red-300 ring-2 ring-red-300 ring-inset",
         canDrop && !isOver && "border-dashed"
       )}
     >
@@ -396,12 +399,15 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
         <div>
           <span className={classNames(
             "text-2xl font-bold",
-            isToday ? "text-blue-600" : "text-gray-700"
+            isPastDate ? "text-gray-400" : isToday ? "text-blue-600" : "text-gray-700"
           )}>
             {format(date, "d")}
           </span>
           {isOver && canDrop && (
             <div className="text-xs text-blue-600 font-medium mt-1">Drop to schedule</div>
+          )}
+          {isOver && !canDrop && isPastDate && (
+            <div className="text-xs text-red-600 font-medium mt-1">Cannot schedule in past</div>
           )}
         </div>
       </div>
@@ -541,6 +547,12 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
 
   const handleDropOnCalendar = async (articleId: string, date: Date) => {
     try {
+      // Validate date is not in the past
+      if (startOfDay(date) < startOfDay(new Date())) {
+        alert('Cannot schedule content for past dates. Please choose today or a future date.');
+        return;
+      }
+
       // Determine if this is a brief or draft
       const item = items.find(i => i.id === articleId);
       if (!item) {
