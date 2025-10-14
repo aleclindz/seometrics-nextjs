@@ -157,6 +157,9 @@ export default function WebsitePage() {
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [previewTitle, setPreviewTitle] = useState<string>('');
 
+  // Shared conversation ID for chat and content tab integration
+  const [sharedConversationId, setSharedConversationId] = useState<string | null>(null);
+
   const openDraftPreview = async (articleId: number) => {
     if (!user?.token) return;
     try {
@@ -781,10 +784,11 @@ export default function WebsitePage() {
           <aside className="bg-white border rounded-2xl flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b font-semibold text-sm">Chat with SEOAgent</div>
             <div className="flex-1 min-h-0 text-sm">
-              <ChatInterface 
+              <ChatInterface
                 userToken={user?.token || ''}
                 selectedSite={domain}
                 userSites={userWebsites.length > 0 ? userWebsites : [{ id: domain, url: domain, name: domain }]}
+                onConversationIdChange={setSharedConversationId}
               />
             </div>
           </aside>
@@ -1161,6 +1165,7 @@ export default function WebsitePage() {
                     userToken={user?.token || ''}
                     websiteToken={currentWebsite?.website_token || automation.websites[0]?.website_token || ''}
                     domain={domain}
+                    conversationId={sharedConversationId}
                   />
                 </section>
               )}

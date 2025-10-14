@@ -22,6 +22,7 @@ interface ContentTabProps {
   userToken: string;
   websiteToken: string;
   domain: string;
+  conversationId?: string | null;
 }
 
 // ---- Utility ----
@@ -439,7 +440,7 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
   );
 }
 
-export default function ContentTab({ userToken, websiteToken, domain }: ContentTabProps) {
+export default function ContentTab({ userToken, websiteToken, domain, conversationId }: ContentTabProps) {
   const [mode, setMode] = useState<"table" | "calendar">("table");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -456,7 +457,8 @@ export default function ContentTab({ userToken, websiteToken, domain }: ContentT
   const { items, loading, error, advanceToDraft, scheduleForPublication, removeFromSchedule, scheduleBriefForGeneration } = useContentPipeline({
     userToken,
     websiteToken,
-    domain
+    domain,
+    conversationId
   });
 
   // Calculate week start for calendar display

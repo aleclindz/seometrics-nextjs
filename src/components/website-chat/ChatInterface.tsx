@@ -26,6 +26,7 @@ interface ChatInterfaceProps {
   userToken: string;
   selectedSite?: string;
   userSites?: Array<{ id: string; url: string; name: string; }>;
+  onConversationIdChange?: (conversationId: string | null) => void;
 }
 
 interface ChatMessage {
@@ -44,7 +45,7 @@ interface ChatMessage {
   };
 }
 
-export default function ChatInterface({ userToken, selectedSite, userSites }: ChatInterfaceProps) {
+export default function ChatInterface({ userToken, selectedSite, userSites, onConversationIdChange }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -179,6 +180,11 @@ export default function ChatInterface({ userToken, selectedSite, userSites }: Ch
     const newConversationId = crypto.randomUUID();
     setConversationId(newConversationId);
 
+    // Notify parent component of conversation ID change
+    if (onConversationIdChange) {
+      onConversationIdChange(newConversationId);
+    }
+
     const welcomeMessage: ChatMessage = {
       id: 'welcome',
       role: 'assistant',
@@ -268,6 +274,10 @@ What would you like to work on first?`,
         // Update conversation ID if provided (for new conversations)
         if (data.conversationId && data.conversationId !== conversationId) {
           setConversationId(data.conversationId);
+          // Notify parent component of conversation ID change
+          if (onConversationIdChange) {
+            onConversationIdChange(data.conversationId);
+          }
         }
 
         const assistantMessage: ChatMessage = {
