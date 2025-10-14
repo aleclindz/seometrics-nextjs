@@ -94,11 +94,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Link brief -> draft and mark brief as generating (will be updated to 'generated' when article completes)
-    await supabase
+    const { data: updatedBrief, error: updateErr } = await supabase
       .from('article_briefs')
       .update({ generated_article_id: draft.id, status: 'generating', updated_at: new Date().toISOString() })
       .eq('id', brief.id)
-      .eq('user_token', userToken);
+      .eq('user_token', userToken)
+      .select()
+      .single();
+
+    if (updateErr) {
+      console.error('[FROM BRIEF] Failed to update brief with generated_article_id:', updateErr);
+    } else {
+      console.log('[FROM BRIEF] Successfully linked brief to article:', {
+        briefId: brief.id,
+        articleId: draft.id,
+        briefStatus: updatedBrief?.status,
+        generatedArticleId: updatedBrief?.generated_article_id
+      });
+    }
 
     // Send agent notification if conversationId provided
     if (conversationId) {

@@ -66,6 +66,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to fetch article briefs' }, { status: 500 });
     }
 
+    // Debug: Log briefs with generated_article_id to catch filtering issues
+    const briefsWithArticles = (rows || []).filter((b: any) => b.generated_article_id !== null);
+    if (briefsWithArticles.length > 0) {
+      console.warn('[ARTICLE BRIEFS QUEUE] ⚠️ Found briefs with generated_article_id that should have been filtered:',
+        briefsWithArticles.map((b: any) => ({
+          id: b.id,
+          title: b.title,
+          status: b.status,
+          generated_article_id: b.generated_article_id
+        }))
+      );
+    }
+
     // Fallback: if empty and domain supplied, re-resolve by domain and try again
     if ((rows || []).length === 0 && domain) {
       try {
