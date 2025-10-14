@@ -55,7 +55,7 @@ interface ArticleFormat {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userToken, websiteToken, domain, analysisType = 'comprehensive', generateCount = 3 } = await request.json();
+    const { userToken, websiteToken, domain, analysisType = 'comprehensive', generateCount = 3, userContext } = await request.json();
 
     if (!userToken || !domain) {
       return NextResponse.json(
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     if (!gscData.success && !strategyData.success) {
       console.log('[AUTONOMOUS TOPIC] No GSC or keyword strategy data. Falling back to business profile.');
       const business = await fetchBusinessContext(userToken, domain);
-      const bizTopics = await generateTopicsFromBusiness(business, { domain, count: generateCount });
+      const bizTopics = await generateTopicsFromBusiness(business, { domain, count: generateCount, userContext });
       console.log('[AUTONOMOUS TOPIC] Fallback topics generated:', bizTopics.map(t => t.title).slice(0, 5));
       return NextResponse.json({
         success: true,
@@ -220,7 +220,7 @@ function synthesizeOpportunitiesFromStrategy(strategyKeywords: any[], targetCoun
 }
 
 // Generate topics directly from business profile (LLM-driven; falls back if no API key)
-async function generateTopicsFromBusiness(business: any, opts: { domain: string; count: number }) {
+async function generateTopicsFromBusiness(business: any, opts: { domain: string; count: number; userContext?: string }) {
   const count = Math.max(1, Math.min(50, opts.count || 5));
   const type = business?.type || 'unknown';
   const desc = business?.description || '';
@@ -261,6 +261,7 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
   const user = {
     instruction: 'Generate distinct, high-value article topics with titles and briefs. Variety of formats; mix authority levels.',
     business: { type, description: desc, domain: opts.domain },
+    userContext: opts.userContext || null, // User-provided context like "local lemon suppliers in South Florida"
     count,
     output_shape: {
       title: 'string',
@@ -270,7 +271,8 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
       authorityLevel: 'foundation|intermediate|advanced',
       targetKeywords: ['string'],
       targetQueries: ['string']
-    }
+    },
+    note: 'If userContext is provided, generate ALL topics focused on that specific context/requirement.'
   } as any;
 
   try {
@@ -290,7 +292,7 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
         temperature: 0.4,
         max_tokens: 1200
       }),
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(30000) // Increased from 15s to 30s to prevent timeouts
     });
     if (!resp.ok) throw new Error(`LLM HTTP ${resp.status}`);
     const data = await resp.json();

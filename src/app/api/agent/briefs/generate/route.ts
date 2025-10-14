@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as BriefsGenerationRequest;
-    const { userToken, websiteToken, domain, count = 10, clusters = [], includePillar = false } = body;
+    const { userToken, websiteToken, domain, count = 10, clusters = [], includePillar = false, userContext } = body;
 
     if (!userToken || (!websiteToken && !domain)) {
       return NextResponse.json({ success: false, error: 'userToken and websiteToken or domain are required' }, { status: 400 });
@@ -108,7 +108,14 @@ export async function POST(request: NextRequest) {
     const topicsResp = await fetch(`${origin}/api/agent/autonomous-topic-selection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userToken, websiteToken: effectiveWebsiteToken, domain: cleanedDomain, analysisType: 'comprehensive', generateCount: count })
+      body: JSON.stringify({
+        userToken,
+        websiteToken: effectiveWebsiteToken,
+        domain: cleanedDomain,
+        analysisType: 'comprehensive',
+        generateCount: count,
+        userContext // Pass through user's topic focus like "local lemon suppliers"
+      })
     });
 
     if (!topicsResp.ok) {
