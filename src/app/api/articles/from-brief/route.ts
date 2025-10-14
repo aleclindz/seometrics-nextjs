@@ -206,8 +206,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[FROM BRIEF] Successfully created draft:', { draftId: draft.id, briefId: brief.id, title: draft.title });
-    return NextResponse.json({ success: true, draft });
+    const responsePayload = {
+      success: true,
+      draft,
+      articleId: draft.id, // Include for client-side polling
+      title: draft.title,
+      status: draft.status
+    };
+
+    console.log('[FROM BRIEF] ✅ Successfully created draft:', {
+      draftId: draft.id,
+      briefId: brief.id,
+      title: draft.title,
+      status: draft.status,
+      conversationId: conversationId || 'none'
+    });
+    console.log('[FROM BRIEF] 📤 Returning response with articleId:', draft.id);
+
+    return NextResponse.json(responsePayload);
   } catch (e) {
     console.error('[FROM BRIEF] Error:', e);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });

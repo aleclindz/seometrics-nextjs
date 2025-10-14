@@ -265,6 +265,17 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
       const data = await response.json();
       const actualArticleId = data.articleId;
       console.log('[ADVANCE TO DRAFT] ✅ Article generation started - articleId:', actualArticleId);
+      console.log('[ADVANCE TO DRAFT] 📋 Full response data:', {
+        hasArticleId: !!data.articleId,
+        hasTitle: !!data.title,
+        status: data.status,
+        keys: Object.keys(data)
+      });
+
+      if (!actualArticleId) {
+        console.error('[ADVANCE TO DRAFT] ❌ CRITICAL: articleId is undefined! Response:', data);
+        throw new Error('Article ID not returned from API');
+      }
 
       // STEP 4: Poll for status updates (check every 10 seconds for up to 5 minutes)
       console.log('[ADVANCE TO DRAFT] 🔄 Step 4: Starting polling for completion');
