@@ -48,6 +48,7 @@ export interface BriefsGenerationRequest {
   count?: number;
   clusters?: string[]; // optional filter to specific clusters
   includePillar?: boolean; // if true, include/emit a pillar brief for each cluster
+  userContext?: string; // optional user-provided context like "local lemon suppliers in South Florida"
 }
 
 export interface BriefsGenerationResponse {
