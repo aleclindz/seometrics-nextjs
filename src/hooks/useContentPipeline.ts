@@ -137,19 +137,35 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
 
   // Advance brief to draft (generate article) - LIVE without page refresh
   const advanceToDraft = useCallback(async (id: string) => {
+    console.log('[ADVANCE TO DRAFT] 🚀 Starting generation for brief:', id);
+    console.log('[ADVANCE TO DRAFT] 📊 Current state:', {
+      conversationId,
+      websiteToken: websiteToken ? '✅ Present' : '❌ Missing',
+      userToken: userToken ? '✅ Present' : '❌ Missing',
+      domain
+    });
+
     const briefId = id.replace('brief-', '');
 
     // Get the brief details before removing it
     const brief = items.find(item => item.id === id);
     if (!brief) {
+      console.error('[ADVANCE TO DRAFT] ❌ Brief not found:', id);
       throw new Error('Brief not found');
     }
+
+    console.log('[ADVANCE TO DRAFT] 📝 Brief details:', {
+      title: brief.title,
+      cluster: brief.cluster,
+      keywords: brief.keywords?.length || 0
+    });
 
     // Generate temporary article ID for optimistic update
     const tempArticleId = `article-temp-${briefId}`;
 
     try {
       // STEP 1: Optimistic UI update - remove brief, add generating article
+      console.log('[ADVANCE TO DRAFT] 🎨 Step 1: Optimistic UI update');
       setItems(prevItems => {
         const withoutBrief = prevItems.filter(item => item.id !== id);
         const generatingArticle: ContentItem = {
@@ -175,30 +191,59 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
 
       // STEP 2: Send immediate agent message
       const sendAgentMessage = async (message: string, actionCard?: any) => {
-        if (!conversationId || !websiteToken) return;
+        console.log('[ADVANCE TO DRAFT] 💬 Attempting to send agent message:', message.substring(0, 100) + '...');
+
+        // Check prerequisites
+        if (!websiteToken) {
+          console.warn('[ADVANCE TO DRAFT] ⚠️ Cannot send agent message - websiteToken is missing');
+          return;
+        }
+
+        // Auto-create conversation if missing
+        let activeConversationId = conversationId;
+        if (!activeConversationId) {
+          console.warn('[ADVANCE TO DRAFT] ⚠️ conversationId is missing - creating new conversation');
+          activeConversationId = crypto.randomUUID();
+          console.log('[ADVANCE TO DRAFT] 🆕 Generated new conversationId:', activeConversationId);
+        }
 
         try {
-          await fetch('/api/agent/conversations', {
+          console.log('[ADVANCE TO DRAFT] 📤 Sending POST to /api/agent/conversations');
+          const response = await fetch('/api/agent/conversations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userToken,
               websiteToken,
-              conversationId,
+              conversationId: activeConversationId,
               message,
               actionCard
             })
           });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[ADVANCE TO DRAFT] ❌ Agent message POST failed:', {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorText
+            });
+          } else {
+            const data = await response.json();
+            console.log('[ADVANCE TO DRAFT] ✅ Agent message sent successfully:', data);
+          }
         } catch (err) {
-          console.error('[ADVANCE TO DRAFT] Failed to send agent message:', err);
+          console.error('[ADVANCE TO DRAFT] ❌ Failed to send agent message:', err);
         }
       };
 
+      console.log('[ADVANCE TO DRAFT] 📨 Step 2: Sending initial agent notification');
       await sendAgentMessage(
         `🚀 **Generating Article**\n\n📝 **"${brief.title}"**\n\nTurning this brief into a full article. This usually takes 1-2 minutes...`
       );
 
       // STEP 3: Call API to start generation (with conversationId)
+      console.log('[ADVANCE TO DRAFT] 🔨 Step 3: Calling /api/articles/from-brief');
       const response = await fetch('/api/articles/from-brief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -213,30 +258,48 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('[ADVANCE TO DRAFT] ❌ Article generation API failed:', errorData);
         throw new Error(errorData.error || 'Failed to start article generation');
       }
 
       const data = await response.json();
       const actualArticleId = data.articleId;
+      console.log('[ADVANCE TO DRAFT] ✅ Article generation started - articleId:', actualArticleId);
 
       // STEP 4: Poll for status updates (check every 10 seconds for up to 5 minutes)
+      console.log('[ADVANCE TO DRAFT] 🔄 Step 4: Starting polling for completion');
       const pollForCompletion = async () => {
         const maxAttempts = 30; // 30 attempts × 10 seconds = 5 minutes
         let attempts = 0;
 
         const checkStatus = async (): Promise<boolean> => {
           try {
+            attempts++;
+            console.log(`[ADVANCE TO DRAFT] 🔍 Polling attempt ${attempts}/${maxAttempts} for articleId: ${actualArticleId}`);
+
             // Fetch article status
             const statusResponse = await fetch(
               `/api/articles/${actualArticleId}?userToken=${encodeURIComponent(userToken)}`
             );
 
-            if (!statusResponse.ok) return false;
+            if (!statusResponse.ok) {
+              console.warn('[ADVANCE TO DRAFT] ⚠️ Status fetch failed:', statusResponse.status);
+              return false;
+            }
 
             const statusData = await statusResponse.json();
             const article = statusData.article;
 
-            if (!article) return false;
+            if (!article) {
+              console.warn('[ADVANCE TO DRAFT] ⚠️ Article not found in response');
+              return false;
+            }
+
+            console.log('[ADVANCE TO DRAFT] 📊 Current article status:', {
+              status: article.status,
+              title: article.title,
+              hasContent: !!article.article_content
+            });
 
             // Update the temporary article with real data
             setItems(prevItems =>
@@ -272,17 +335,20 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
 
             // Check if generation is complete
             if (article.status === 'generated') {
+              console.log('[ADVANCE TO DRAFT] 🎉 Article generation completed!');
               await sendAgentMessage(
                 `✅ **Article Generated!**\n\n📝 **"${article.title}"**\n\nYour article is ready to preview and schedule for publication in the Content tab.`
               );
               return true; // Completed
             } else if (article.status === 'generation_failed') {
+              console.error('[ADVANCE TO DRAFT] ❌ Article generation failed');
               throw new Error('Article generation failed');
             }
 
+            console.log('[ADVANCE TO DRAFT] ⏳ Still processing, will check again in 10 seconds');
             return false; // Still processing
           } catch (err) {
-            console.error('[ADVANCE TO DRAFT] Error checking status:', err);
+            console.error('[ADVANCE TO DRAFT] ❌ Error checking status:', err);
             return false;
           }
         };
@@ -290,24 +356,28 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
         // Poll every 10 seconds
         while (attempts < maxAttempts) {
           const isComplete = await checkStatus();
-          if (isComplete) return; // Success!
+          if (isComplete) {
+            console.log('[ADVANCE TO DRAFT] ✅ Polling complete - article generated successfully');
+            return; // Success!
+          }
 
-          attempts++;
           await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
         }
 
         // Timeout after max attempts
-        console.warn('[ADVANCE TO DRAFT] Polling timeout - refreshing content');
+        console.warn('[ADVANCE TO DRAFT] ⏰ Polling timeout after', maxAttempts, 'attempts - refreshing content');
         await fetchContent(); // Full refresh as fallback
       };
 
       // Start polling (non-blocking)
+      console.log('[ADVANCE TO DRAFT] 🚀 Polling started in background');
       pollForCompletion();
 
     } catch (err) {
-      console.error('[ADVANCE TO DRAFT] Error:', err);
+      console.error('[ADVANCE TO DRAFT] ❌ Fatal error during article generation:', err);
 
       // Revert optimistic update on error
+      console.log('[ADVANCE TO DRAFT] ↩️ Reverting optimistic UI update');
       setItems(prevItems => {
         const withoutTemp = prevItems.filter(item => item.id !== tempArticleId);
         return [...withoutTemp, brief]; // Restore original brief
