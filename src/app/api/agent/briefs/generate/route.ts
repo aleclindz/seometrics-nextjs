@@ -125,7 +125,9 @@ export async function POST(request: NextRequest) {
     const topicsData = await topicsResp.json();
     let ideas: any[] = Array.isArray(topicsData?.selectedTopics) ? topicsData.selectedTopics : [];
     try { console.log('[BRIEFS] topics selected:', Array.isArray(ideas) ? ideas.length : 0); } catch {}
-    if (clustersLower.size > 0) {
+
+    // Only filter by cluster if NO userContext was provided (user didn't specify a topic)
+    if (clustersLower.size > 0 && !userContext) {
       ideas = ideas.filter((i: any) => clustersLower.has(String(i.mainTopic || '').toLowerCase()));
     }
     try { console.log('[BRIEFS] ideas after cluster filter:', ideas.length); } catch {}

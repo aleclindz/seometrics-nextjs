@@ -294,12 +294,23 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
       }),
       signal: AbortSignal.timeout(30000) // Increased from 15s to 30s to prevent timeouts
     });
-    if (!resp.ok) throw new Error(`LLM HTTP ${resp.status}`);
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      console.error('[AUTONOMOUS TOPIC][LLM] HTTP Error:', resp.status, errorText);
+      throw new Error(`LLM HTTP ${resp.status}: ${errorText.substring(0, 200)}`);
+    }
     const data = await resp.json();
     const content = data.choices?.[0]?.message?.content || '[]';
+    console.log('[AUTONOMOUS TOPIC][LLM] Raw response:', content.substring(0, 500));
     let arr: any[] = [];
-    try { arr = JSON.parse(content); } catch {}
-    if (!Array.isArray(arr) || arr.length === 0) throw new Error('LLM returned empty');
+    try { arr = JSON.parse(content); } catch (parseError) {
+      console.error('[AUTONOMOUS TOPIC][LLM] JSON parse error:', parseError, 'Content:', content);
+      throw new Error('LLM returned invalid JSON');
+    }
+    if (!Array.isArray(arr) || arr.length === 0) {
+      console.error('[AUTONOMOUS TOPIC][LLM] LLM returned empty or non-array:', typeof arr, arr);
+      throw new Error('LLM returned empty');
+    }
     return arr.slice(0, count).map((o: any, i: number) => ({
       priority: i + 1,
       title: o.title || o.mainTopic || 'Proposed Article',
@@ -318,7 +329,7 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
     }));
   } catch (e) {
     console.log('[AUTONOMOUS TOPIC] LLM business-topic generation failed, using simple fallback:', (e as Error)?.message);
-    return generateFallbackTopics(opts.domain, '', count);
+    return generateFallbackTopics(opts.domain, '', count, opts.userContext);
   }
 }
 
@@ -421,6 +432,8 @@ BUSINESS:\n${JSON.stringify(userPayload.business)}\n\nTOPICS:\n${JSON.stringify(
 async function fetchKeywordStrategy(userToken: string, domain: string) {
   try {
     const cleanDomain = domain.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    console.log('[AUTONOMOUS TOPIC] Querying keyword strategy for domain:', cleanDomain);
+
     // Use website_keyword_strategy view (primary source in this project)
     const { data: viewRows, error: viewError } = await supabase
       .from('website_keyword_strategy')
@@ -435,14 +448,21 @@ async function fetchKeywordStrategy(userToken: string, domain: string) {
       .limit(1000);
 
     if (viewError) {
-      console.error('[AUTONOMOUS TOPIC] website_keyword_strategy fallback error:', viewError);
+      console.error('[AUTONOMOUS TOPIC] website_keyword_strategy query error:', viewError);
       return { success: false, error: 'No keyword strategy found' };
     }
 
     if (!viewRows || viewRows.length === 0) {
-      console.log('[AUTONOMOUS TOPIC] No keyword strategy found');
+      console.log('[AUTONOMOUS TOPIC] No keyword strategy found for domain:', cleanDomain);
+      console.log('[AUTONOMOUS TOPIC] Tried domain variants:', [
+        `domain.eq.${cleanDomain}`,
+        `domain.eq.sc-domain:${cleanDomain}`,
+        `domain.ilike.%${cleanDomain}%`
+      ]);
       return { success: false, error: 'No keyword strategy found' };
     }
+
+    console.log('[AUTONOMOUS TOPIC] Found keyword strategy rows:', viewRows.length);
 
     // Map view rows into clusters + keywords format
     const clusters = [] as any[];
@@ -1034,7 +1054,43 @@ function generateContentBrief(mainTopic: string, opportunities: QueryOpportunity
 }
 
 // Fallback topic generation when GSC data is unavailable
-async function generateFallbackTopics(domain: string, userToken: string, count: number = 3) {
+async function generateFallbackTopics(domain: string, userToken: string, count: number = 3, userContext?: string) {
+  // If userContext is provided, try to generate relevant topics from it
+  if (userContext && userContext.trim().length > 0) {
+    const formats = ['guide','how-to','listicle','faq','comparison','beginner-guide'];
+    return Array.from({ length: count }).map((_, i) => {
+      const format = formats[i % formats.length];
+      const title = format === 'how-to'
+        ? `How to ${userContext}`
+        : format === 'listicle'
+        ? `10 Tips for ${userContext}`
+        : format === 'comparison'
+        ? `${userContext}: Comparing Your Options`
+        : format === 'beginner-guide'
+        ? `${userContext} for Beginners`
+        : format === 'faq'
+        ? `${userContext}: Frequently Asked Questions`
+        : `The Complete Guide to ${userContext}`;
+
+      return {
+        priority: i + 1,
+        title,
+        mainTopic: userContext,
+        targetQueries: [userContext, `${userContext} tips`, `${userContext} guide`],
+        targetKeywords: [userContext],
+        articleFormat: { type: format as any, template: '', wordCountRange: [1500, 2500] as [number, number] },
+        authorityLevel: 'foundation' as const,
+        estimatedTrafficPotential: 120,
+        contentBrief: `Create an article about ${userContext} tailored to the business domain: ${domain}`,
+        recommendedLength: 2000,
+        urgency: i < 3 ? 'high' : 'medium',
+        reasoning: `Generated from user context: "${userContext}"`,
+        scheduledFor: null,
+        status: 'draft' as const
+      };
+    });
+  }
+
   // Generate industry-generic topics with variety as fallback
   const baseTopics = [
     { topic: 'seo best practices', format: 'guide' as const },
