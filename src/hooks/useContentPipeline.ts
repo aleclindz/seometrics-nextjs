@@ -63,14 +63,9 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
       );
       const articlesData = await articlesResponse.json();
 
-      // Transform briefs to ContentItems (filter out briefs that have already been generated into articles)
-      const briefItems: ContentItem[] = (briefsData.queue || [])
-        .filter((brief: any) => {
-          // Only include briefs that haven't been generated yet
-          const hasBeenGenerated = brief.generated_article_id || brief.status === 'generated' || brief.status === 'generating';
-          return !hasBeenGenerated;
-        })
-        .map((brief: any) => ({
+      // Transform briefs to ContentItems
+      // Note: Server-side already filters out generated briefs via `.is('generated_article_id', null)`
+      const briefItems: ContentItem[] = (briefsData.queue || []).map((brief: any) => ({
           id: `brief-${brief.id}`,
           cluster: brief.topicCluster || 'Uncategorized',
           stage: 'brief' as ArticleStage,
