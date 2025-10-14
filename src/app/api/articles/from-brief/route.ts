@@ -93,10 +93,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to create draft: no data returned' }, { status: 500 });
     }
 
-    // Link brief -> draft and mark brief as generating (will be updated to 'generated' when article completes)
+    // Link brief -> draft (keep status as 'queued' since 'generating' constraint not yet applied)
     const { data: updatedBrief, error: updateErr } = await supabase
       .from('article_briefs')
-      .update({ generated_article_id: draft.id, status: 'generating', updated_at: new Date().toISOString() })
+      .update({ generated_article_id: draft.id, updated_at: new Date().toISOString() })
       .eq('id', brief.id)
       .eq('user_token', userToken)
       .select()

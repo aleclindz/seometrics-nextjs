@@ -190,7 +190,15 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
         return [...withoutBrief, generatingArticle];
       });
 
-      // STEP 2: Send immediate agent message
+      // STEP 2: Determine conversation ID (create if needed)
+      let activeConversationId = conversationId;
+      if (!activeConversationId) {
+        console.warn('[ADVANCE TO DRAFT] ⚠️ conversationId is missing - creating new conversation');
+        activeConversationId = crypto.randomUUID();
+        console.log('[ADVANCE TO DRAFT] 🆕 Generated new conversationId:', activeConversationId);
+      }
+
+      // Send immediate agent message
       const sendAgentMessage = async (message: string, actionCard?: any) => {
         console.log('[ADVANCE TO DRAFT] 💬 Attempting to send agent message:', message.substring(0, 100) + '...');
 
@@ -198,14 +206,6 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
         if (!websiteToken) {
           console.warn('[ADVANCE TO DRAFT] ⚠️ Cannot send agent message - websiteToken is missing');
           return;
-        }
-
-        // Auto-create conversation if missing
-        let activeConversationId = conversationId;
-        if (!activeConversationId) {
-          console.warn('[ADVANCE TO DRAFT] ⚠️ conversationId is missing - creating new conversation');
-          activeConversationId = crypto.randomUUID();
-          console.log('[ADVANCE TO DRAFT] 🆕 Generated new conversationId:', activeConversationId);
         }
 
         try {
@@ -242,6 +242,14 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
       await sendAgentMessage(
         `🚀 **Generating Article**\n\n📝 **"${brief.title}"**\n\nTurning this brief into a full article. This usually takes 1-2 minutes...`
       );
+
+      // Trigger chat refresh to show the message immediately
+      console.log('[ADVANCE TO DRAFT] 🔔 Triggering chat refresh event with conversationId:', activeConversationId);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('seoagent:refresh-chat', {
+          detail: { conversationId: activeConversationId }
+        }));
+      }
 
       // STEP 3: Call API to start generation (with conversationId)
       console.log('[ADVANCE TO DRAFT] 🔨 Step 3: Calling /api/articles/from-brief');

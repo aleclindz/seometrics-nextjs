@@ -393,11 +393,58 @@ What would you like to work on first?`,
       }
     };
 
+    // Handle chat refresh requests (e.g., from brief-to-article generation)
+    const handleRefreshMessages = async (event?: any) => {
+      console.log('[CHAT] 🔄 Refresh requested from external component');
+
+      // If event includes a new conversationId, use it
+      let refreshConversationId = conversationId;
+      if (event?.detail?.conversationId) {
+        console.log('[CHAT] 🆔 New conversationId provided in event:', event.detail.conversationId);
+        refreshConversationId = event.detail.conversationId;
+        setConversationId(refreshConversationId);
+        if (onConversationIdChange) {
+          onConversationIdChange(refreshConversationId);
+        }
+      }
+
+      try {
+        if (!userToken || !(websiteToken || selectedSite) || !refreshConversationId) {
+          console.warn('[CHAT] Cannot refresh - missing prerequisites:', {
+            hasUserToken: !!userToken,
+            hasWebsiteToken: !!(websiteToken || selectedSite),
+            hasConversationId: !!refreshConversationId
+          });
+          return;
+        }
+        const lookupToken = websiteToken || selectedSite!;
+        const response = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${lookupToken}&conversationId=${refreshConversationId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        const loaded = (data.messages || []).map((msg: any) => ({
+          id: msg.id,
+          role: msg.message_role,
+          content: msg.message_content,
+          timestamp: new Date(msg.created_at),
+          actionCard: msg.action_card
+        }));
+        setMessages(loaded);
+        console.log('[CHAT] ✅ Refreshed with', loaded.length, 'messages');
+
+        // Start polling for updates
+        startPollingUpdates(120000);
+      } catch (err) {
+        console.error('[CHAT] Failed to refresh messages:', err);
+      }
+    };
+
     window.addEventListener('seoagent:send-message', handleExternalMessage);
+    window.addEventListener('seoagent:refresh-chat', handleRefreshMessages);
     return () => {
       window.removeEventListener('seoagent:send-message', handleExternalMessage);
+      window.removeEventListener('seoagent:refresh-chat', handleRefreshMessages);
     };
-  }, [sendMessage]);
+  }, [sendMessage, userToken, websiteToken, selectedSite, conversationId, startPollingUpdates]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
