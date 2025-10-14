@@ -63,23 +63,29 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
       );
       const articlesData = await articlesResponse.json();
 
-      // Transform briefs to ContentItems
-      const briefItems: ContentItem[] = (briefsData.queue || []).map((brief: any) => ({
-        id: `brief-${brief.id}`,
-        cluster: brief.topicCluster || 'Uncategorized',
-        stage: 'brief' as ArticleStage,
-        title: brief.title,
-        brief: brief.title, // brief description
-        keywords: brief.targetKeywords?.map((kw: string) => ({ term: kw })) || [],
-        wordGoal: brief.wordCount || brief.articleFormat?.wordCountRange?.[1] || 0,
-        createdAt: brief.scheduledFor || new Date().toISOString(),
-        scheduledDraftAt: brief.scheduledFor || null,
-        scheduledPublishAt: null,
-        flags: {
-          autoGenerate: false,
-          autoPublish: false
-        }
-      }));
+      // Transform briefs to ContentItems (filter out briefs that have already been generated into articles)
+      const briefItems: ContentItem[] = (briefsData.queue || [])
+        .filter((brief: any) => {
+          // Only include briefs that haven't been generated yet
+          const hasBeenGenerated = brief.generated_article_id || brief.status === 'generated' || brief.status === 'generating';
+          return !hasBeenGenerated;
+        })
+        .map((brief: any) => ({
+          id: `brief-${brief.id}`,
+          cluster: brief.topicCluster || 'Uncategorized',
+          stage: 'brief' as ArticleStage,
+          title: brief.title,
+          brief: brief.title, // brief description
+          keywords: brief.targetKeywords?.map((kw: string) => ({ term: kw })) || [],
+          wordGoal: brief.wordCount || brief.articleFormat?.wordCountRange?.[1] || 0,
+          createdAt: brief.scheduledFor || new Date().toISOString(),
+          scheduledDraftAt: brief.scheduledFor || null,
+          scheduledPublishAt: null,
+          flags: {
+            autoGenerate: false,
+            autoPublish: false
+          }
+        }));
 
       // Filter articles for current domain
       const normalize = (d: string) => d
