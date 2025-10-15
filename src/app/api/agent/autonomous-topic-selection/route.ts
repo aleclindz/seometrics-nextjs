@@ -275,6 +275,14 @@ async function generateTopicsFromBusiness(
   // Enhanced LLM prompt with strategic context
   const system = `You are a strategic SEO content planner with deep expertise in topical authority and keyword strategy.
 
+🚨 CRITICAL INSTRUCTION - READ THIS FIRST:
+When "userContext" is provided in the request, it is the ONLY source of truth for topic generation.
+- IGNORE the business description completely when userContext is provided
+- Generate ALL topics focused 100% on the userContext
+- Extract main topic, keywords, and geo-modifiers from userContext only
+- The userContext represents what the user explicitly wants content about
+- Business description is ONLY used when userContext is null/empty
+
 Your role:
 1. Analyze the user's content request (userContext if provided)
 2. Evaluate existing topic clusters and their coverage
@@ -297,10 +305,11 @@ Quality standards:
 
 Return JSON object with strategy analysis + topic array.`;
 
-  const user = {
-    instruction: 'Analyze request and generate strategic content topics. If userContext provided, focus ALL topics on that request.',
-    business: { type, description: desc, domain: opts.domain },
-    userContext: opts.userContext || null,
+  const user = opts.userContext ? {
+    // When userContext provided, make it the PRIORITY
+    '⚠️ USER EXPLICIT REQUEST': opts.userContext,
+    instruction: `USER PROVIDED EXPLICIT TOPIC REQUEST ABOVE. Generate ALL ${count} topics for "${opts.userContext}". IGNORE business description. Focus 100% on user request.`,
+    business: { type, description: '(IGNORE THIS - USE USER REQUEST ABOVE)', domain: opts.domain },
     existing_clusters: existingClusters.map((c: any) => ({
       cluster_name: c.cluster_name || c.mainTopic,
       primary_keyword: c.primary_keyword,
@@ -327,8 +336,38 @@ Return JSON object with strategy analysis + topic array.`;
       }]
     },
     constraints: {
-      if_userContext_provided: 'Generate ALL topics focused on userContext. Ignore business description.',
-      if_no_userContext: 'Generate variety of topics based on business and existing clusters.',
+      CRITICAL: 'User provided explicit request. ALL topics MUST relate to user request. Ignore business entirely.'
+    }
+  } : {
+    // No userContext - use business description
+    instruction: 'No user request provided. Generate variety of topics based on business and existing clusters.',
+    business: { type, description: desc, domain: opts.domain },
+    existing_clusters: existingClusters.map((c: any) => ({
+      cluster_name: c.cluster_name || c.mainTopic,
+      primary_keyword: c.primary_keyword,
+      secondary_keywords_count: Array.isArray(c.secondary_keywords) ? c.secondary_keywords.length : 0,
+      article_count: (c.pillar_count || 0) + (c.supporting_count || 0)
+    })),
+    count,
+    output_format: {
+      strategy_analysis: {
+        user_intent: 'string (what user is asking for)',
+        decision: 'new_cluster|expand_cluster|build_on_existing',
+        cluster_name: 'string (new or existing cluster name)',
+        reasoning: 'string (why this strategy decision)',
+        keywords_to_add: ['string[] (new keywords for this cluster)']
+      },
+      topics: [{
+        title: 'string',
+        mainTopic: 'string (cluster name)',
+        contentBrief: 'string',
+        articleFormat: { type: 'listicle|how-to|guide|faq|comparison|update|case-study|beginner-guide', wordCountRange: [1200, 2500] },
+        authorityLevel: 'foundation|intermediate|advanced',
+        targetKeywords: ['string[] (5-10 keywords)'],
+        targetQueries: ['string[] (search queries this targets)']
+      }]
+    },
+    constraints: {
       keyword_rules: 'Each topic must have unique primary keyword. No duplicate head terms.'
     }
   } as any;
@@ -418,6 +457,36 @@ Return JSON object with strategy analysis + topic array.`;
       } : null
     }));
 
+    // Validate topics match userContext if provided
+    if (opts.userContext && strategyAnalysis) {
+      const userContextLower = opts.userContext.toLowerCase();
+      const clusterLower = (strategyAnalysis.cluster_name || '').toLowerCase();
+
+      // Check if cluster name is semantically related to userContext
+      const keywords = userContextLower.split(/\s+/).filter((w: string) => w.length > 3);
+      const matchFound = keywords.some((kw: string) => clusterLower.includes(kw));
+
+      if (!matchFound) {
+        console.error('[AUTONOMOUS TOPIC] ❌ LLM FAILED TO FOLLOW USER REQUEST!');
+        console.error('[AUTONOMOUS TOPIC] User requested:', opts.userContext);
+        console.error('[AUTONOMOUS TOPIC] LLM generated cluster:', strategyAnalysis.cluster_name);
+
+        // Force correct cluster name from userContext
+        strategyAnalysis.cluster_name = opts.userContext;
+        strategyAnalysis.reasoning = `Corrected: LLM ignored user request. Forced cluster to match "${opts.userContext}"`;
+
+        // Update all topics to use correct cluster
+        topics.forEach((t: any) => {
+          t.mainTopic = opts.userContext;
+          if (t.strategyDecision) {
+            t.strategyDecision.cluster_name = opts.userContext;
+          }
+        });
+
+        console.log('[AUTONOMOUS TOPIC] ✅ Corrected cluster to match user request');
+      }
+    }
+
     // Return topics with strategy metadata
     return { topics, strategyAnalysis };
   } catch (e) {
@@ -442,20 +511,46 @@ async function fetchBusinessContext(userToken: string, domain: string) {
   try {
     const cleanDomain = domain.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/\/$/, '');
     const variants = [cleanDomain, `https://${cleanDomain}`, `sc-domain:${cleanDomain}`];
+
+    console.log('[BUSINESS CONTEXT] Fetching business context:');
+    console.log('[BUSINESS CONTEXT] - userToken:', userToken);
+    console.log('[BUSINESS CONTEXT] - domain:', domain);
+    console.log('[BUSINESS CONTEXT] - cleanDomain:', cleanDomain);
+    console.log('[BUSINESS CONTEXT] - variants:', variants);
+
     const { data: row } = await supabase
       .from('websites')
       .select('business_type,business_info,domain,website_token')
       .eq('user_token', userToken)
       .or(variants.map(v => `domain.eq.${v}`).join(','))
       .maybeSingle();
+
+    console.log('[BUSINESS CONTEXT] Query result:');
+    console.log('[BUSINESS CONTEXT] - row found:', !!row);
+    console.log('[BUSINESS CONTEXT] - business_type:', row?.business_type);
+    console.log('[BUSINESS CONTEXT] - business_info:', row?.business_info);
+    console.log('[BUSINESS CONTEXT] - domain:', row?.domain);
+    console.log('[BUSINESS CONTEXT] - website_token:', row?.website_token);
+
     let info: any = {};
-    try { info = row?.business_info ? JSON.parse(row.business_info) : {}; } catch {}
-    return {
+    try {
+      info = row?.business_info ? JSON.parse(row.business_info) : {};
+      console.log('[BUSINESS CONTEXT] Parsed business_info:', info);
+    } catch (e) {
+      console.error('[BUSINESS CONTEXT] Failed to parse business_info:', e);
+    }
+
+    const result = {
       type: row?.business_type || info?.businessType || 'unknown',
       description: info?.description || info?.summary || '',
       websiteToken: row?.website_token || null
     };
-  } catch {
+
+    console.log('[BUSINESS CONTEXT] Final result:', result);
+
+    return result;
+  } catch (error) {
+    console.error('[BUSINESS CONTEXT] Error fetching business context:', error);
     return { type: 'unknown', description: '', websiteToken: null };
   }
 }

@@ -1205,7 +1205,11 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
             description: 'Optional cluster names to focus on'
           },
           include_pillar: { type: 'boolean', description: 'Include pillar briefs for clusters', default: false },
-          add_to_queue: { type: 'boolean', description: 'Also save briefs to content_generation_queue', default: false }
+          add_to_queue: { type: 'boolean', description: 'Also save briefs to content_generation_queue', default: false },
+          user_request: {
+            type: 'string',
+            description: 'User\'s specific content request, topic focus, or keywords (e.g., "MacIntosh apples", "lemon imports in Miami"). This OVERRIDES business description and guides ALL topic generation. ALWAYS use this when user specifies what content they want.'
+          }
         },
         required: ['site_url'],
         additionalProperties: false
@@ -1217,7 +1221,8 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       count: z.number().int().min(1).max(50).optional().default(10),
       clusters: z.array(z.string()).optional().default([]),
       include_pillar: z.boolean().optional().default(false),
-      add_to_queue: z.boolean().optional().default(false)
+      add_to_queue: z.boolean().optional().default(false),
+      user_request: z.string().optional()
     }),
     category: 'content',
     requiresSetup: false

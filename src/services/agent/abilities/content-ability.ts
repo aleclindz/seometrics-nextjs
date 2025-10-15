@@ -129,6 +129,7 @@ export class ContentAbility extends BaseAbility {
     clusters?: string[];
     include_pillar?: boolean;
     add_to_queue?: boolean;
+    user_request?: string;
   }): Promise<FunctionCallResult> {
     try {
       if (!args.site_url && !args.website_token) {
@@ -142,7 +143,8 @@ export class ContentAbility extends BaseAbility {
         count: args.count || 10,
         clusters: args.clusters || [],
         includePillar: args.include_pillar || false,
-        addToQueue: args.add_to_queue || false
+        addToQueue: args.add_to_queue || false,
+        userContext: args.user_request || null
       };
 
       const response = await this.fetchAPI('/api/agent/briefs/generate', {
