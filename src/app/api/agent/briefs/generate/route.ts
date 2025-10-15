@@ -124,7 +124,83 @@ export async function POST(request: NextRequest) {
 
     const topicsData = await topicsResp.json();
     let ideas: any[] = Array.isArray(topicsData?.selectedTopics) ? topicsData.selectedTopics : [];
+    const strategyAnalysis = topicsData?.strategyAnalysis || null;
+
     try { console.log('[BRIEFS] topics selected:', Array.isArray(ideas) ? ideas.length : 0); } catch {}
+
+    // Log strategy analysis if provided
+    if (strategyAnalysis) {
+      try {
+        console.log('[BRIEFS STRATEGY] Decision:', strategyAnalysis.decision);
+        console.log('[BRIEFS STRATEGY] Cluster:', strategyAnalysis.cluster_name);
+        console.log('[BRIEFS STRATEGY] Reasoning:', strategyAnalysis.reasoning);
+      } catch {}
+    }
+
+    // Persist strategy decisions to database (create/expand clusters)
+    let createdClusterId: number | null = null;
+    if (strategyAnalysis && effectiveWebsiteToken) {
+      try {
+        if (strategyAnalysis.decision === 'new_cluster') {
+          // Create new cluster
+          console.log('[BRIEFS STRATEGY] Creating new cluster:', strategyAnalysis.cluster_name);
+          const { data: newCluster, error: clusterError } = await supabase
+            .from('topic_clusters')
+            .insert({
+              website_token: effectiveWebsiteToken,
+              cluster_name: strategyAnalysis.cluster_name,
+              primary_keyword: strategyAnalysis.keywords_to_add?.[0] || strategyAnalysis.cluster_name.toLowerCase(),
+              secondary_keywords: strategyAnalysis.keywords_to_add || [],
+              notes: `Auto-created from user request: "${userContext || 'content generation'}"`
+            })
+            .select('id')
+            .single();
+
+          if (clusterError) {
+            console.error('[BRIEFS STRATEGY] Failed to create cluster:', clusterError);
+          } else if (newCluster) {
+            createdClusterId = newCluster.id;
+            console.log('[BRIEFS STRATEGY] Cluster created successfully (ID:', createdClusterId, ')');
+          }
+        } else if (strategyAnalysis.decision === 'expand_cluster') {
+          // Expand existing cluster with new keywords
+          console.log('[BRIEFS STRATEGY] Expanding cluster:', strategyAnalysis.cluster_name);
+
+          // Fetch existing cluster
+          const { data: existingCluster } = await supabase
+            .from('topic_clusters')
+            .select('id, secondary_keywords')
+            .eq('website_token', effectiveWebsiteToken)
+            .ilike('cluster_name', strategyAnalysis.cluster_name)
+            .maybeSingle();
+
+          if (existingCluster) {
+            const existingKeywords = existingCluster.secondary_keywords || [];
+            const newKeywords = strategyAnalysis.keywords_to_add || [];
+            const mergedKeywords = Array.from(new Set([...existingKeywords, ...newKeywords])).slice(0, 100); // Max 100
+
+            const { error: updateError } = await supabase
+              .from('topic_clusters')
+              .update({
+                secondary_keywords: mergedKeywords,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingCluster.id);
+
+            if (updateError) {
+              console.error('[BRIEFS STRATEGY] Failed to expand cluster:', updateError);
+            } else {
+              console.log('[BRIEFS STRATEGY] Cluster expanded: added', newKeywords.length, 'keywords');
+              createdClusterId = existingCluster.id;
+            }
+          } else {
+            console.warn('[BRIEFS STRATEGY] Cluster not found for expansion:', strategyAnalysis.cluster_name);
+          }
+        }
+      } catch (stratErr) {
+        console.error('[BRIEFS STRATEGY] Strategy persistence error:', stratErr);
+      }
+    }
 
     // Only filter by cluster if NO userContext was provided (user didn't specify a topic)
     if (clustersLower.size > 0 && !userContext) {
@@ -367,12 +443,41 @@ export async function POST(request: NextRequest) {
     })) : briefs;
 
     const summary = summarizeBriefs(finalBriefs);
-    const payload: BriefsGenerationResponse & { queued?: number } = { success: true, briefs: finalBriefs, summary };
+    const payload: BriefsGenerationResponse & { queued?: number; strategyAnalysis?: any } = {
+      success: true,
+      briefs: finalBriefs,
+      summary,
+      strategyAnalysis: strategyAnalysis ? {
+        decision: strategyAnalysis.decision,
+        cluster_name: strategyAnalysis.cluster_name,
+        reasoning: strategyAnalysis.reasoning,
+        keywords_added: strategyAnalysis.keywords_to_add?.length || 0,
+        cluster_id: createdClusterId,
+        user_visible_message: formatStrategyMessage(strategyAnalysis, createdClusterId)
+      } : null
+    };
     if (savedBriefs.length > 0) (payload as any).queued = savedBriefs.length;
     return NextResponse.json(payload);
   } catch (error) {
     console.error('[BRIEFS] Generation error:', error);
     return NextResponse.json({ success: false, error: 'Failed to generate briefs' }, { status: 500 });
+  }
+}
+
+// Format strategy decision for user-visible chat message
+function formatStrategyMessage(strategyAnalysis: any, clusterId: number | null): string {
+  const decision = strategyAnalysis.decision;
+  const clusterName = strategyAnalysis.cluster_name;
+  const keywordsCount = strategyAnalysis.keywords_to_add?.length || 0;
+
+  if (decision === 'new_cluster' && clusterId) {
+    return `✅ Created new topic cluster: **${clusterName}** with ${keywordsCount} keyword${keywordsCount !== 1 ? 's' : ''}. ${strategyAnalysis.reasoning}`;
+  } else if (decision === 'expand_cluster' && clusterId) {
+    return `📈 Expanded existing cluster: **${clusterName}** by adding ${keywordsCount} new keyword${keywordsCount !== 1 ? 's' : ''}. ${strategyAnalysis.reasoning}`;
+  } else if (decision === 'covered') {
+    return `ℹ️ Topic already well-covered in cluster: **${clusterName}**. ${strategyAnalysis.reasoning}`;
+  } else {
+    return `📝 Generated content strategy for: **${clusterName}**`;
   }
 }
 

@@ -88,12 +88,24 @@ export async function POST(request: NextRequest) {
     if (!gscData.success && !strategyData.success) {
       console.log('[AUTONOMOUS TOPIC] No GSC or keyword strategy data. Falling back to business profile.');
       const business = await fetchBusinessContext(userToken, domain);
-      const bizTopics = await generateTopicsFromBusiness(business, { domain, count: generateCount, userContext });
-      console.log('[AUTONOMOUS TOPIC] Fallback topics generated:', bizTopics.map(t => t.title).slice(0, 5));
+      const result: any = await generateTopicsFromBusiness(business, {
+        domain,
+        count: generateCount,
+        userContext,
+        existingClusters: []
+      });
+
+      // Handle both old array format and new {topics, strategyAnalysis} format
+      const bizTopics: any[] = Array.isArray(result) ? result : (result?.topics || []);
+      const strategyAnalysis = Array.isArray(result) ? null : (result?.strategyAnalysis || null);
+
+      console.log('[AUTONOMOUS TOPIC] Fallback topics generated:', Array.isArray(bizTopics) ? bizTopics.map((t: any) => t.title).slice(0, 5) : []);
+
       return NextResponse.json({
         success: true,
         analysis: { domain, queriesAnalyzed: 0 },
         selectedTopics: bizTopics,
+        strategyAnalysis, // Include strategy decisions for chat UI
         opportunities: [],
         clusters: [],
         recommendations: {
@@ -220,10 +232,14 @@ function synthesizeOpportunitiesFromStrategy(strategyKeywords: any[], targetCoun
 }
 
 // Generate topics directly from business profile (LLM-driven; falls back if no API key)
-async function generateTopicsFromBusiness(business: any, opts: { domain: string; count: number; userContext?: string }) {
+async function generateTopicsFromBusiness(
+  business: any,
+  opts: { domain: string; count: number; userContext?: string; existingClusters?: any[] }
+) {
   const count = Math.max(1, Math.min(50, opts.count || 5));
   const type = business?.type || 'unknown';
   const desc = business?.description || '';
+  const existingClusters = opts.existingClusters || [];
 
   if (!process.env.OPENAI_API_KEY) {
     // Fallback: create simple topics from type/description keywords
@@ -256,23 +272,65 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
     });
   }
 
-  // LLM proposal
-  const system = 'You are an expert content strategist. Propose practical, high-ROI blog topics for the business. Return strict JSON array.';
+  // Enhanced LLM prompt with strategic context
+  const system = `You are a strategic SEO content planner with deep expertise in topical authority and keyword strategy.
+
+Your role:
+1. Analyze the user's content request (userContext if provided)
+2. Evaluate existing topic clusters and their coverage
+3. Make intelligent strategy decisions:
+   - CREATE NEW CLUSTER: When topic is not represented in existing strategy
+   - EXPAND EXISTING CLUSTER: When topic fits but needs more keyword angles
+   - BUILD ON EXISTING: When leveraging covered topics for authority
+4. Generate topics that:
+   - Avoid keyword cannibalization (distinct primary keywords)
+   - Build topical authority systematically (pillar + supporting structure)
+   - Include geo-modifiers if location mentioned in request
+   - Cover different intent types (informational, transactional, comparison, local)
+   - Use semantic keyword variations (not exact duplicates)
+
+Quality standards:
+- Each topic must have unique primary keyword
+- Titles should be specific, clickworthy, and SEO-optimized
+- Content briefs must be actionable (not generic fluff)
+- Format variety (mix listicles, how-tos, guides, comparisons)
+
+Return JSON object with strategy analysis + topic array.`;
+
   const user = {
-    instruction: 'Generate distinct, high-value article topics with titles and briefs. Variety of formats; mix authority levels.',
+    instruction: 'Analyze request and generate strategic content topics. If userContext provided, focus ALL topics on that request.',
     business: { type, description: desc, domain: opts.domain },
-    userContext: opts.userContext || null, // User-provided context like "local lemon suppliers in South Florida"
+    userContext: opts.userContext || null,
+    existing_clusters: existingClusters.map((c: any) => ({
+      cluster_name: c.cluster_name || c.mainTopic,
+      primary_keyword: c.primary_keyword,
+      secondary_keywords_count: Array.isArray(c.secondary_keywords) ? c.secondary_keywords.length : 0,
+      article_count: (c.pillar_count || 0) + (c.supporting_count || 0)
+    })),
     count,
-    output_shape: {
-      title: 'string',
-      mainTopic: 'string',
-      contentBrief: 'string',
-      articleFormat: { type: 'listicle|how-to|guide|faq|comparison|update|case-study|beginner-guide', wordCountRange: [1200, 2500] },
-      authorityLevel: 'foundation|intermediate|advanced',
-      targetKeywords: ['string'],
-      targetQueries: ['string']
+    output_format: {
+      strategy_analysis: {
+        user_intent: 'string (what user is asking for)',
+        decision: 'new_cluster|expand_cluster|build_on_existing',
+        cluster_name: 'string (new or existing cluster name)',
+        reasoning: 'string (why this strategy decision)',
+        keywords_to_add: ['string[] (new keywords for this cluster)']
+      },
+      topics: [{
+        title: 'string',
+        mainTopic: 'string (cluster name)',
+        contentBrief: 'string',
+        articleFormat: { type: 'listicle|how-to|guide|faq|comparison|update|case-study|beginner-guide', wordCountRange: [1200, 2500] },
+        authorityLevel: 'foundation|intermediate|advanced',
+        targetKeywords: ['string[] (5-10 keywords)'],
+        targetQueries: ['string[] (search queries this targets)']
+      }]
     },
-    note: 'If userContext is provided, generate ALL topics focused on that specific context/requirement.'
+    constraints: {
+      if_userContext_provided: 'Generate ALL topics focused on userContext. Ignore business description.',
+      if_no_userContext: 'Generate variety of topics based on business and existing clusters.',
+      keyword_rules: 'Each topic must have unique primary keyword. No duplicate head terms.'
+    }
   } as any;
 
   try {
@@ -289,6 +347,7 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
           { role: 'system', content: system },
           { role: 'user', content: JSON.stringify(user) }
         ],
+        response_format: { type: "json_object" }, // ← Forces pure JSON output, no preamble
         temperature: 0.4,
         max_tokens: 1200
       }),
@@ -300,18 +359,43 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
       throw new Error(`LLM HTTP ${resp.status}: ${errorText.substring(0, 200)}`);
     }
     const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content || '[]';
+    const content = data.choices?.[0]?.message?.content || '{}';
     console.log('[AUTONOMOUS TOPIC][LLM] Raw response:', content.substring(0, 500));
-    let arr: any[] = [];
-    try { arr = JSON.parse(content); } catch (parseError) {
+    let parsed: any = {};
+    try { parsed = JSON.parse(content); } catch (parseError) {
       console.error('[AUTONOMOUS TOPIC][LLM] JSON parse error:', parseError, 'Content:', content);
       throw new Error('LLM returned invalid JSON');
     }
-    if (!Array.isArray(arr) || arr.length === 0) {
-      console.error('[AUTONOMOUS TOPIC][LLM] LLM returned empty or non-array:', typeof arr, arr);
+
+    // Extract topics array and strategy analysis from JSON object
+    let arr: any[] = [];
+    let strategyAnalysis: any = null;
+
+    if (Array.isArray(parsed)) {
+      // Fallback: if LLM returned raw array despite json_object format
+      arr = parsed;
+    } else if (parsed.topics && Array.isArray(parsed.topics)) {
+      arr = parsed.topics;
+      strategyAnalysis = parsed.strategy_analysis || null;
+    } else {
+      console.error('[AUTONOMOUS TOPIC][LLM] LLM response missing topics array:', typeof parsed, Object.keys(parsed));
+      throw new Error('LLM returned empty or malformed response');
+    }
+
+    if (arr.length === 0) {
+      console.error('[AUTONOMOUS TOPIC][LLM] LLM returned empty topics array');
       throw new Error('LLM returned empty');
     }
-    return arr.slice(0, count).map((o: any, i: number) => ({
+
+    // Log strategy decision
+    if (strategyAnalysis) {
+      console.log('[STRATEGY] User intent:', strategyAnalysis.user_intent || 'N/A');
+      console.log('[STRATEGY] Decision:', strategyAnalysis.decision || 'N/A');
+      console.log('[STRATEGY] Cluster:', strategyAnalysis.cluster_name || 'N/A');
+      console.log('[STRATEGY] Reasoning:', strategyAnalysis.reasoning || 'N/A');
+    }
+
+    const topics = arr.slice(0, count).map((o: any, i: number) => ({
       priority: i + 1,
       title: o.title || o.mainTopic || 'Proposed Article',
       mainTopic: o.mainTopic || o.title || 'topic',
@@ -323,13 +407,33 @@ async function generateTopicsFromBusiness(business: any, opts: { domain: string;
       contentBrief: o.contentBrief || `Write about ${o.mainTopic || o.title}`,
       recommendedLength: Array.isArray(o.articleFormat?.wordCountRange) ? (o.articleFormat.wordCountRange[1] || 2000) : 2000,
       urgency: i < 3 ? 'high' : 'medium',
-      reasoning: 'Generated from business profile (LLM)',
+      reasoning: strategyAnalysis?.reasoning || 'Generated from business profile (LLM)',
       scheduledFor: null,
-      status: 'draft' as const
+      status: 'draft' as const,
+      strategyDecision: strategyAnalysis ? {
+        decision: strategyAnalysis.decision,
+        cluster_name: strategyAnalysis.cluster_name,
+        reasoning: strategyAnalysis.reasoning,
+        keywords_to_add: strategyAnalysis.keywords_to_add || []
+      } : null
     }));
+
+    // Return topics with strategy metadata
+    return { topics, strategyAnalysis };
   } catch (e) {
     console.log('[AUTONOMOUS TOPIC] LLM business-topic generation failed, using simple fallback:', (e as Error)?.message);
-    return generateFallbackTopics(opts.domain, '', count, opts.userContext);
+    const fallbackTopics = generateFallbackTopics(opts.domain, '', count, opts.userContext);
+    // Return in new format with strategy analysis
+    return {
+      topics: fallbackTopics,
+      strategyAnalysis: {
+        user_intent: opts.userContext || 'content generation',
+        decision: 'new_cluster',
+        cluster_name: opts.userContext || 'General Topics',
+        reasoning: 'LLM failed - using fallback generation',
+        keywords_to_add: []
+      }
+    };
   }
 }
 
