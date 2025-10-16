@@ -29,13 +29,6 @@ export default function WebsiteManagement() {
     accountAge: number;
   } | null>(null);
 
-  const planLimits = {
-    free: 0, // Free plan: view only, no managed websites
-    starter: 1, // Starter plan: 1 managed website
-    pro: 5, // Pro plan: 5 managed websites
-    enterprise: -1 // Enterprise: unlimited
-  };
-
   useEffect(() => {
     fetchWebsites();
     fetchUserPlan();
@@ -48,10 +41,11 @@ export default function WebsiteManagement() {
     try {
       const response = await fetch(`/api/subscription/manage?userToken=${user.token}`);
       const data = await response.json();
-      
+
       if (data.success && data.plan) {
         const planId = data.plan.tier || 'free';
-        const maxSites = planLimits[planId as keyof typeof planLimits] || 1;
+        // Use sites_allowed from the database instead of hardcoded limits
+        const maxSites = data.plan.sites_allowed !== undefined ? data.plan.sites_allowed : 1;
         setUserPlan({ plan_id: planId, maxSites });
       }
     } catch (error) {
