@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { EnhancedArticleGenerator, EnhancedArticleRequest } from '@/services/content/enhanced-article-generator';
+import { trackUsage } from '@/lib/usage-tracking';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -177,6 +178,16 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       return NextResponse.json({ success: false, error: 'Failed to update article' }, { status: 500 });
+    }
+
+    // Track usage for article generation
+    try {
+      const siteId = (article as any)?.websites?.id;
+      await trackUsage(userToken, 'article', siteId);
+      console.log(`[ARTICLES PROCESS] Usage tracked for article ${articleId}`);
+    } catch (trackingError) {
+      console.error('[ARTICLES PROCESS] Usage tracking failed:', trackingError);
+      // Don't fail the request if tracking fails
     }
 
     // Trigger callback if conversationId exists in content_outline

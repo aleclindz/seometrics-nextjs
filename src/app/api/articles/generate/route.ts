@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { EnhancedArticleGenerator, EnhancedArticleRequest } from '@/services/content/enhanced-article-generator';
 import { ArticleType } from '@/services/content/article-templates-service';
 import { ImageProvider } from '@/services/content/image-generation-service';
+import { trackUsage } from '@/lib/usage-tracking';
 
 // Use Node.js runtime for longer timeout support (needed for OpenAI API calls)
 export const runtime = 'nodejs';
@@ -274,7 +275,7 @@ export async function POST(request: NextRequest) {
 
       // Track usage (optional)
       try {
-        await trackUsage(supabase, userToken, 'article', article.websites?.id);
+        await trackUsage(userToken, 'article', article.websites?.id);
       } catch (trackingError) {
         console.log('[GENERATE EDGE] Usage tracking failed (likely missing tables):', trackingError);
       }
@@ -539,32 +540,7 @@ async function checkQuota(supabase: any, userToken: string, siteId?: number) {
   }
 }
 
-async function trackUsage(supabase: any, userToken: string, resourceType: string, siteId?: number) {
-  try {
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const { data: existing } = await supabase
-      .from('usage_tracking')
-      .select('id, count')
-      .eq('user_token', userToken)
-      .eq('resource_type', resourceType)
-      .eq('month_year', currentMonth)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase.from('usage_tracking').update({ count: existing.count + 1 }).eq('id', existing.id);
-    } else {
-      await supabase.from('usage_tracking').insert({
-        user_token: userToken,
-        site_id: siteId || null,
-        resource_type: resourceType,
-        month_year: currentMonth,
-        count: 1
-      });
-    }
-  } catch (error) {
-    console.error('Error tracking usage:', error);
-  }
-}
+// NOTE: trackUsage() is now imported from @/lib/usage-tracking for consistency across all endpoints
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
