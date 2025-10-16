@@ -1,11 +1,11 @@
 // CMS Integration Types - Modular system for 1-click CMS connections
 
-export type CMSType = 'wordpress' | 'wordpress_com' | 'webflow' | 'shopify' | 'strapi';
+export type CMSType = 'wordpress' | 'wordpress_com' | 'webflow' | 'shopify' | 'strapi' | 'ghost';
 
 export interface CMSCredentials {
-  accessToken: string;
+  accessToken: string; // For Ghost: Admin API Key (format: id:secret)
   refreshToken?: string;
-  siteUrl?: string; // For WordPress
+  siteUrl?: string; // For WordPress, Ghost
   siteId?: string; // For Webflow
   shopDomain?: string; // For Shopify
   strapiUrl?: string; // For Strapi

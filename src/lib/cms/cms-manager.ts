@@ -17,12 +17,16 @@ export class CMSManager {
 
     // Initialize providers
     this.providers.set('wordpress', new WordPressProvider());
-    
+
     // Always initialize Strapi for internal use
     this.providers.set('strapi', new StrapiProvider(
       process.env.STRAPI_URL || 'http://localhost:1337'
     ));
-    
+
+    // Note: Ghost is NOT registered here because it uses Node.js-only packages
+    // Ghost uses direct API routes: /api/cms/ghost/publish
+    // Ghost uses API key authentication, not OAuth
+
     if (process.env.WEBFLOW_CLIENT_ID && process.env.WEBFLOW_CLIENT_SECRET) {
       this.providers.set('webflow', new WebflowProvider(
         process.env.WEBFLOW_CLIENT_ID,
