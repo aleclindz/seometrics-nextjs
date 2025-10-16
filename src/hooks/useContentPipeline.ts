@@ -192,10 +192,13 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
 
       // STEP 2: Determine conversation ID (create if needed)
       let activeConversationId = conversationId;
+      const isNewConversation = !activeConversationId;
       if (!activeConversationId) {
         console.warn('[ADVANCE TO DRAFT] ⚠️ conversationId is missing - creating new conversation');
         activeConversationId = crypto.randomUUID();
         console.log('[ADVANCE TO DRAFT] 🆕 Generated new conversationId:', activeConversationId);
+      } else {
+        console.log('[ADVANCE TO DRAFT] ℹ️ Using existing conversationId:', activeConversationId);
       }
 
       // Send immediate agent message
@@ -208,6 +211,11 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
           return;
         }
 
+        if (!userToken) {
+          console.warn('[ADVANCE TO DRAFT] ⚠️ Cannot send agent message - userToken is missing');
+          return;
+        }
+
         try {
           console.log('[ADVANCE TO DRAFT] 📤 Sending POST to /api/agent/conversations');
           const response = await fetch('/api/agent/conversations', {
@@ -217,8 +225,11 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
               userToken,
               websiteToken,
               conversationId: activeConversationId,
-              message,
-              actionCard
+              messages: [{
+                role: 'assistant',
+                content: message,
+                action_card: actionCard || null
+              }]
             })
           });
 
@@ -243,12 +254,20 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
         `🚀 **Generating Article**\n\n📝 **"${brief.title}"**\n\nTurning this brief into a full article. This usually takes 1-2 minutes...`
       );
 
-      // Trigger chat refresh to show the message immediately
-      console.log('[ADVANCE TO DRAFT] 🔔 Triggering chat refresh event with conversationId:', activeConversationId);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('seoagent:refresh-chat', {
-          detail: { conversationId: activeConversationId }
-        }));
+      // Wait a moment for the message to be stored in the database
+      console.log('[ADVANCE TO DRAFT] ⏳ Waiting for message to be persisted...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Trigger chat refresh to show the message immediately (only if using existing conversation)
+      if (!isNewConversation) {
+        console.log('[ADVANCE TO DRAFT] 🔔 Triggering chat refresh event with conversationId:', activeConversationId);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('seoagent:refresh-chat', {
+            detail: { conversationId: activeConversationId }
+          }));
+        }
+      } else {
+        console.log('[ADVANCE TO DRAFT] ⏭️ Skipping chat refresh for new conversation - ChatInterface will initialize itself');
       }
 
       // STEP 3: Call API to start generation (with conversationId)
@@ -359,6 +378,15 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
               await sendAgentMessage(
                 `✅ **Article Generated!**\n\n📝 **"${article.title}"**\n\nYour article is ready to preview and schedule for publication in the Content tab.`
               );
+
+              // Wait for message to be persisted, then trigger refresh (only if using existing conversation)
+              await new Promise(resolve => setTimeout(resolve, 500));
+              if (!isNewConversation && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('seoagent:refresh-chat', {
+                  detail: { conversationId: activeConversationId }
+                }));
+              }
+
               return true; // Completed
             } else if (article.status === 'generation_failed') {
               console.error('[ADVANCE TO DRAFT] ❌ Article generation failed');

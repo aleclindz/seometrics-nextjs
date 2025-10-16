@@ -397,14 +397,23 @@ What would you like to work on first?`,
     const handleRefreshMessages = async (event?: any) => {
       console.log('[CHAT] 🔄 Refresh requested from external component');
 
-      // If event includes a new conversationId, use it
+      // If event includes a new conversationId, use it (but only if different)
       let refreshConversationId = conversationId;
       if (event?.detail?.conversationId) {
-        console.log('[CHAT] 🆔 New conversationId provided in event:', event.detail.conversationId);
-        refreshConversationId = event.detail.conversationId;
-        setConversationId(refreshConversationId);
-        if (onConversationIdChange) {
-          onConversationIdChange(refreshConversationId);
+        const incomingConversationId = event.detail.conversationId;
+        console.log('[CHAT] 🆔 Event includes conversationId:', incomingConversationId);
+        console.log('[CHAT] 🆔 Current conversationId:', conversationId);
+
+        // Only update if it's actually different from current conversation
+        if (incomingConversationId !== conversationId) {
+          console.log('[CHAT] 🔄 Switching to new conversationId');
+          refreshConversationId = incomingConversationId;
+          setConversationId(refreshConversationId);
+          if (onConversationIdChange) {
+            onConversationIdChange(refreshConversationId);
+          }
+        } else {
+          console.log('[CHAT] ℹ️ ConversationId unchanged - just refreshing messages');
         }
       }
 
@@ -421,7 +430,7 @@ What would you like to work on first?`,
         const response = await fetch(`/api/agent/conversations?userToken=${userToken}&websiteToken=${lookupToken}&conversationId=${refreshConversationId}`);
         if (!response.ok) return;
         const data = await response.json();
-        const loaded = (data.messages || []).map((msg: any) => ({
+        const loaded = (data.conversation?.messages || data.messages || []).map((msg: any) => ({
           id: msg.id,
           role: msg.message_role,
           content: msg.message_content,
