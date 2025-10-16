@@ -25,9 +25,6 @@ export default function WebsitePage() {
   const { user } = useAuth();
   const { userPlan } = useFeatures();
 
-  console.log('WebsitePage: Raw domain from URL:', rawDomain);
-  console.log('WebsitePage: Cleaned domain:', domain);
-
   // Helper function to get plan-based frequency
   const getPlanFrequency = () => {
     switch (userPlan?.tier) {

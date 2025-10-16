@@ -361,18 +361,18 @@ export async function DELETE(request: NextRequest) {
 
       if (masterCluster) {
         // Delete from Master Discovery tables
-        console.log('[KEYWORD STRATEGY DELETE] Deleting from Master Discovery tables');
+        console.log('[KEYWORD STRATEGY DELETE] Deleting from Master Discovery tables, cluster ID:', masterCluster.id);
 
         let deleteClustersError: any = null;
         let deleteArticlesError: any = null;
 
-        // Delete articles associated with this cluster
+        // Delete articles associated with this cluster (using topic_cluster_id, not cluster column)
         try {
           const delArticles = await supabase
             .from('article_roles')
             .delete()
             .eq('website_token', websiteToken)
-            .ilike('cluster', topicCluster);
+            .eq('topic_cluster_id', masterCluster.id);
           deleteArticlesError = (delArticles as any)?.error || null;
           console.log('[KEYWORD STRATEGY DELETE] Deleted articles from cluster:', delArticles);
         } catch (e) {
@@ -394,12 +394,14 @@ export async function DELETE(request: NextRequest) {
           console.error('[KEYWORD STRATEGY DELETE] Error deleting cluster:', e);
         }
 
-        if (deleteClustersError || deleteArticlesError) {
-          console.error('[KEYWORD STRATEGY DELETE] Error deleting from Master Discovery tables:', {
-            deleteClustersError,
-            deleteArticlesError
-          });
+        // Don't fail if article deletion has errors - cluster might not have articles yet
+        if (deleteClustersError) {
+          console.error('[KEYWORD STRATEGY DELETE] Error deleting cluster:', deleteClustersError);
           return NextResponse.json({ error: 'Failed to delete topic cluster' }, { status: 500 });
+        }
+
+        if (deleteArticlesError) {
+          console.warn('[KEYWORD STRATEGY DELETE] Warning: Error deleting articles, but cluster deleted:', deleteArticlesError);
         }
 
         console.log('[KEYWORD STRATEGY DELETE] Successfully deleted cluster from Master Discovery tables');
