@@ -20,12 +20,27 @@ function normalizeDomain(raw: string): string {
 
 function stripHtml(html: string): string {
   try {
-    return html
+    // Remove scripts, styles, and common non-content elements
+    let cleaned = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
+      .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '') // Remove navigation
+      .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '') // Remove header
+      .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '') // Remove footer
+      .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '') // Remove sidebars
+      .replace(/<!--[\s\S]*?-->/g, '') // Remove HTML comments
+      .replace(/<[^>]+>/g, ' ') // Remove remaining tags
+      .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
+
+    // Remove common navigation patterns
+    cleaned = cleaned
+      .replace(/Skip to (main )?content/gi, '')
+      .replace(/Menu/gi, '')
+      .replace(/\[.*?\]\(.*?\)/g, '') // Remove markdown links from scraped content
+      .trim();
+
+    return cleaned;
   } catch {
     return html || '';
   }
@@ -58,7 +73,9 @@ async function fetchWebsiteSnippets(domain: string): Promise<string> {
       if (useFirecrawl) {
         const page = await scrapeUrl(url);
         const content = page.markdown || page.html || '';
-        return (page.markdown ? page.markdown : stripHtml(String(content))).slice(0, 60_000);
+        // For markdown, clean it first, then take first 8000 chars (enough for business info)
+        const cleaned = page.markdown ? stripMarkdown(page.markdown) : stripHtml(String(content));
+        return cleaned.slice(0, 8000);
       }
     } catch {}
     // Fallback to direct fetch
@@ -66,7 +83,8 @@ async function fetchWebsiteSnippets(domain: string): Promise<string> {
       const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
       if (!resp.ok) return '';
       const html = await resp.text();
-      return stripHtml(html).slice(0, 60_000);
+      // Focus on main content, take first 8000 chars
+      return stripHtml(html).slice(0, 8000);
     } catch {
       return '';
     }
@@ -75,7 +93,7 @@ async function fetchWebsiteSnippets(domain: string): Promise<string> {
   // If Firecrawl is available, scrape only the homepage to keep within runtime budget
   if (useFirecrawl) {
     combined += await tryScrape(homepage);
-    return combined.slice(0, 120_000);
+    return combined.slice(0, 10_000); // Reduced from 120k to 10k for focused content
   }
 
   // Otherwise, fetch homepage + one likely about page concurrently with tight timeouts
@@ -86,7 +104,7 @@ async function fetchWebsiteSnippets(domain: string): Promise<string> {
       if (combined) combined += `\n\n---\n\n${r.value}`; else combined += r.value;
     }
   }
-  return combined.slice(0, 120_000);
+  return combined.slice(0, 12_000); // Reduced from 120k to 12k for focused content
 }
 
 async function profileBusinessLLM(domain: string, htmlSnippet: string) {
@@ -104,13 +122,24 @@ async function profileBusinessLLM(domain: string, htmlSnippet: string) {
     };
   }
 
-  const system = `You are a precise business profiler. Infer a website's business from its homepage.
-Return strict JSON with keys: type (one of: product, saas, service, content, marketplace, tool, app, nonprofit, community, unknown),
-description (1-2 sentences), audience (array of concise segments), valueProps (array), productsServices (array), niche (short phrase),
-confidence (0-1 number), signals (array of short strings). Do not include any extra keys.`;
+  const system = `You are a precise business profiler. Infer a website's business from its homepage content.
+
+IMPORTANT: Focus on the MAIN CONTENT describing what the business does. Ignore navigation menus, headers, footers, and calls-to-action.
+
+Return strict JSON with keys:
+- type: one of (product, saas, service, content, marketplace, tool, app, nonprofit, community, unknown)
+- description: 1-2 clear sentences explaining what the business does and who it serves
+- audience: array of concise target segments
+- valueProps: array of key value propositions
+- productsServices: array of main offerings
+- niche: short phrase describing the market niche
+- confidence: number between 0-1
+- signals: array of short strings indicating what led to your analysis
+
+Write the description as if explaining the business to someone unfamiliar with it. Do not include any extra keys.`;
 
   const user = `Domain: ${domain}
-Homepage snippet (truncated):\n\n\`\`\`
+Homepage content:\n\n\`\`\`
 ${htmlSnippet}
 \`\`\``;
 
@@ -131,7 +160,7 @@ ${htmlSnippet}
         { role: 'user', content: user }
       ],
       temperature: 0.2,
-      max_tokens: 500
+      max_tokens: 800 // Increased from 500 to allow for more detailed descriptions
     }),
     signal: AbortSignal.timeout(12000)
   });
@@ -200,16 +229,43 @@ export async function POST(request: NextRequest) {
     if ((profile.type === 'unknown' && (!profile.description || profile.description.length < 4)) || !process.env.OPENAI_API_KEY) {
       const text = String(snippet || '').trim();
       if (text) {
-        const short = text.slice(0, 180).replace(/\s+/g, ' ').trim();
+        // Extract first substantial paragraph (skip short fragments)
+        const sentences = text.split(/[.!?]\s+/);
+        let description = '';
+        for (const sentence of sentences) {
+          const cleaned = sentence.trim();
+          // Skip very short fragments and common navigation text
+          if (cleaned.length > 50 &&
+              !cleaned.toLowerCase().includes('skip to') &&
+              !cleaned.toLowerCase().includes('menu') &&
+              !cleaned.toLowerCase().includes('navigation')) {
+            description = cleaned;
+            break;
+          }
+        }
+
+        // If no good sentence found, take a larger chunk and clean it
+        if (!description && text.length > 200) {
+          description = text.slice(200, 400).replace(/\s+/g, ' ').trim();
+        }
+
+        // Ultimate fallback
+        if (!description) {
+          description = text.slice(0, 200).replace(/\s+/g, ' ').trim();
+        }
+
         // Very basic type heuristic
         const lower = text.toLowerCase();
-        let inferred: any = 'online';
+        let inferred: any = 'unknown';
         if (/(agency|consult|services|service)/.test(lower)) inferred = 'service';
         else if (/(blog|news|guide|article)/.test(lower)) inferred = 'content';
+        else if (/(shop|store|buy|product)/.test(lower)) inferred = 'product';
+        else if (/(saas|software|platform)/.test(lower)) inferred = 'saas';
+
         profile = {
           ...profile,
           type: profile.type !== 'unknown' ? profile.type : inferred,
-          description: short || profile.description || ''
+          description: description || profile.description || ''
         };
       }
     }
