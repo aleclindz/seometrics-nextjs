@@ -359,11 +359,8 @@ export async function POST(request: NextRequest) {
     let savedBriefs: any[] = [];
     if (shouldQueue && briefs.length > 0) {
       try {
-        const now = new Date();
+        // Don't auto-schedule briefs - let users schedule them manually via calendar drag-and-drop
         const briefsRows = briefs.map((b, index) => {
-          const hoursOffset = (index * (7 * 24 / Math.max(1, briefs.length)));
-          const scheduledTime = new Date(now.getTime() + hoursOffset * 60 * 60 * 1000);
-
           // Build coverage keywords for tracking
           const coverageKeywords = {
             primary: b.primary_keyword,
@@ -395,7 +392,7 @@ export async function POST(request: NextRequest) {
             tone: b.metadata?.tone || 'professional',
             notes: b.metadata?.notes || [],
             status: 'draft',
-            scheduled_for: scheduledTime.toISOString(),
+            scheduled_for: null,  // Briefs start unscheduled - user drags to calendar when ready
             coverage_keywords: coverageKeywords
           };
         });
