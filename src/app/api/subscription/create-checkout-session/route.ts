@@ -33,10 +33,10 @@ const SUBSCRIPTION_TIERS = {
     priceId: process.env.STRIPE_PRO_PRICE_ID!, // $39/month
     name: 'Pro Plan',
     price: '$39/month',
-    sitesAllowed: 10,
+    sitesAllowed: -1, // Unlimited
     postsAllowed: 30, // 1 article/day
     description: 'Ideal for growing businesses',
-    features: ['30 AI articles/month', '10 websites', 'DALL-E 3 images', 'SEO optimization', 'Multi-CMS publishing', 'Priority support']
+    features: ['30 AI articles/month', 'Unlimited websites', 'DALL-E 3 images', 'SEO optimization', 'Multi-CMS publishing', 'Priority support']
   },
   scale: {
     priceId: process.env.STRIPE_SCALE_PRICE_ID!, // $99/month (renamed from enterprise)

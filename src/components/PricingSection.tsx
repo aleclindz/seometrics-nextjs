@@ -29,7 +29,7 @@ export default function PricingSection() {
       description: "Ideal for growing businesses and content creators",
       features: [
         "30 AI articles/month",
-        "10 websites",
+        "Unlimited websites",
         "DALL-E 3 images",
         "SEO optimization",
         "Multi-CMS publishing",
