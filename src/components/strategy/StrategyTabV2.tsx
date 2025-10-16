@@ -10,7 +10,7 @@
  * - Article brief generation from discovery
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Sparkles,
   Loader2,
@@ -76,10 +76,23 @@ export default function StrategyTabV2({ websiteToken, domain }: StrategyTabV2Pro
   const [expandedClusters, setExpandedClusters] = useState<Record<number, boolean>>({});
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollUntilRef = useRef<number>(0);
 
   useEffect(() => {
     loadStrategyStatus();
   }, [websiteToken]);
+
+  // Clear polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const loadStrategyStatus = async () => {
     try {
@@ -158,7 +171,59 @@ export default function StrategyTabV2({ websiteToken, domain }: StrategyTabV2Pro
 
   const handleOnboardingComplete = () => {
     setOnboardingOpen(false);
+    setIsInitializing(true);
+    startPollingStatus(300000); // Poll for 5 minutes
+  };
+
+  // Poll strategy status until initialization completes
+  const startPollingStatus = (durationMs: number = 300000) => {
+    const until = Date.now() + durationMs;
+    pollUntilRef.current = until;
+
+    // Clear existing interval if any
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+
+    console.log('[STRATEGY POLLING] Started polling for', durationMs / 1000, 'seconds');
+
+    // Initial load
     loadStrategyStatus();
+
+    // Set up polling interval
+    pollIntervalRef.current = setInterval(async () => {
+      if (Date.now() > pollUntilRef.current) {
+        console.log('[STRATEGY POLLING] Duration expired, stopping');
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+        setIsInitializing(false);
+        return;
+      }
+
+      try {
+        console.log('[STRATEGY POLLING] Checking status...');
+        const response = await fetch(`/api/strategy/status?websiteToken=${websiteToken}`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        setStatus(data);
+
+        // If initialized and has clusters, stop polling and load clusters
+        if (data.initialized && data.clusterCount > 0) {
+          console.log('[STRATEGY POLLING] Initialization complete! Clusters:', data.clusterCount);
+          setIsInitializing(false);
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          await loadClusters();
+        }
+      } catch (error) {
+        console.error('[STRATEGY POLLING] Error:', error);
+      }
+    }, 3000); // Poll every 3 seconds
   };
 
   if (loading) {
@@ -223,6 +288,19 @@ export default function StrategyTabV2({ websiteToken, domain }: StrategyTabV2Pro
 
   return (
     <div className="space-y-6">
+      {/* Initializing Banner */}
+      {isInitializing && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-blue-600 animate-spin flex-shrink-0" />
+          <div>
+            <h4 className="font-semibold text-blue-900">Initializing Strategy...</h4>
+            <p className="text-sm text-blue-700">
+              Discovering keywords and creating clusters. This page will update automatically when ready.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header with stats */}
       <div className="flex items-center justify-between">
         <div>

@@ -291,14 +291,11 @@ What would you like to work on first?`,
         
         setMessages(prev => [...prev, assistantMessage]);
 
-        // If a long-running action started, begin short-term polling for DB-updated messages
+        // Start polling for all agent responses to catch async callbacks
         try {
-          const isProgress = assistantMessage.actionCard?.type === 'progress';
-          const status = assistantMessage.actionCard?.data?.status as string | undefined;
-          const progress = assistantMessage.actionCard?.data?.progress as number | undefined;
-          const isRunning = isProgress && (status === 'running' || (progress ?? 0) < 100);
-          if (isRunning && (websiteToken || selectedSite) && (conversationId || data.conversationId)) {
-            startPollingUpdates(120000); // poll for up to 2 minutes
+          if ((websiteToken || selectedSite) && (conversationId || data.conversationId)) {
+            console.log('[CHAT POLLING] Starting polling for conversation updates');
+            startPollingUpdates(300000); // poll for up to 5 minutes
           }
         } catch {}
 
@@ -335,8 +332,10 @@ What would you like to work on first?`,
     const until = Date.now() + durationMs;
     pollUntilRef.current = until;
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current as any);
+    console.log('[CHAT POLLING] Polling started for', durationMs / 1000, 'seconds');
     pollIntervalRef.current = setInterval(async () => {
       if (Date.now() > pollUntilRef.current) {
+        console.log('[CHAT POLLING] Polling duration expired, stopping');
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current as any);
         pollIntervalRef.current = null;
         return;
@@ -358,17 +357,21 @@ What would you like to work on first?`,
         }));
         // Only update if we have more messages than currently shown
         if (loaded.length > messages.length) {
+          console.log('[CHAT POLLING] New messages detected:', loaded.length - messages.length);
           setMessages(loaded);
           // Stop polling if we see a completed progress card
           const last = loaded[loaded.length - 1];
           const completed = last?.actionCard?.type === 'progress' && last?.actionCard?.data?.status === 'completed';
           if (completed && pollIntervalRef.current) {
+            console.log('[CHAT POLLING] Progress completed, stopping polling');
             clearInterval(pollIntervalRef.current as any);
             pollIntervalRef.current = null;
           }
         }
-      } catch {}
-    }, 5000);
+      } catch (err) {
+        console.error('[CHAT POLLING] Error during poll:', err);
+      }
+    }, 3000); // Poll every 3 seconds
   };
 
   // Clear polling on unmount
@@ -441,7 +444,7 @@ What would you like to work on first?`,
         console.log('[CHAT] ✅ Refreshed with', loaded.length, 'messages');
 
         // Start polling for updates
-        startPollingUpdates(120000);
+        startPollingUpdates(300000); // 5 minutes
       } catch (err) {
         console.error('[CHAT] Failed to refresh messages:', err);
       }
