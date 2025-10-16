@@ -102,15 +102,16 @@ export async function PUT(request: NextRequest) {
 
     // If setting to managed, check plan limits
     if (is_managed === true) {
-      // Get user's current plan and managed website count
+      // Get user's current plan with sites_allowed from database
       const { data: userPlan, error: planError } = await supabase
         .from('user_plans')
-        .select('tier')
+        .select('tier, sites_allowed')
         .eq('user_token', userToken)
         .eq('status', 'active')
         .single();
 
       const currentPlan = userPlan?.tier || 'free';
+      const maxAllowed = userPlan?.sites_allowed ?? 1; // Use database value, default to 1 if not set
 
       // Count currently managed websites
       const { count: managedCount } = await supabase
@@ -120,28 +121,19 @@ export async function PUT(request: NextRequest) {
         .eq('is_managed', true)
         .neq('website_token', websiteId); // Exclude current website from count
 
-      const planLimits = {
-        free: 1, // Free plan: 1 managed website (with attribution)
-        starter: 1, // Starter plan: 1 managed website
-        pro: 5, // Pro plan: 5 managed websites
-        enterprise: -1 // Enterprise: unlimited
-      };
-
-      const maxAllowed = planLimits[currentPlan as keyof typeof planLimits] || 1;
-      
       if (maxAllowed !== -1 && (managedCount || 0) >= maxAllowed) {
         let upgradeMessage = 'Contact support to increase your website limit';
-        
+
         if (currentPlan === 'free') {
-          upgradeMessage = 'Upgrade to Starter plan ($29/month) to manage more websites and remove attribution';
+          upgradeMessage = 'Upgrade to Starter plan ($19/month) to manage 1 website';
         } else if (currentPlan === 'starter') {
-          upgradeMessage = 'Upgrade to Pro plan ($79/month) to manage up to 5 websites';
-        } else if (currentPlan === 'pro') {
-          upgradeMessage = 'Upgrade to Enterprise plan for unlimited managed websites';
+          upgradeMessage = 'Upgrade to Pro plan ($39/month) for unlimited websites';
         }
 
+        console.log('[WEBSITES API] Plan limit reached:', { currentPlan, maxAllowed, managedCount });
+
         return NextResponse.json(
-          { 
+          {
             error: `You have reached your managed website limit (${maxAllowed} ${maxAllowed === 1 ? 'site' : 'sites'}). ${upgradeMessage}`,
             currentPlan,
             maxAllowed,
@@ -150,6 +142,8 @@ export async function PUT(request: NextRequest) {
           { status: 403 }
         );
       }
+
+      console.log('[WEBSITES API] Plan limit check passed:', { currentPlan, maxAllowed: maxAllowed === -1 ? 'unlimited' : maxAllowed, managedCount });
     }
 
     // Build update object dynamically based on provided fields
