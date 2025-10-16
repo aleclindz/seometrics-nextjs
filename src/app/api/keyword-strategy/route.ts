@@ -347,7 +347,68 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (topicCluster) {
-      // Delete entire topic cluster (case-insensitive match)
+      console.log('[KEYWORD STRATEGY DELETE] Deleting topic cluster:', topicCluster);
+
+      // PRIORITY 1: Check if Master Discovery tables have this cluster
+      const { data: masterCluster } = await supabase
+        .from('topic_clusters')
+        .select('id')
+        .eq('website_token', websiteToken)
+        .ilike('cluster_name', topicCluster)
+        .maybeSingle();
+
+      console.log('[KEYWORD STRATEGY DELETE] Master Discovery cluster found:', !!masterCluster);
+
+      if (masterCluster) {
+        // Delete from Master Discovery tables
+        console.log('[KEYWORD STRATEGY DELETE] Deleting from Master Discovery tables');
+
+        let deleteClustersError: any = null;
+        let deleteArticlesError: any = null;
+
+        // Delete articles associated with this cluster
+        try {
+          const delArticles = await supabase
+            .from('article_roles')
+            .delete()
+            .eq('website_token', websiteToken)
+            .ilike('cluster', topicCluster);
+          deleteArticlesError = (delArticles as any)?.error || null;
+          console.log('[KEYWORD STRATEGY DELETE] Deleted articles from cluster:', delArticles);
+        } catch (e) {
+          deleteArticlesError = e;
+          console.error('[KEYWORD STRATEGY DELETE] Error deleting articles:', e);
+        }
+
+        // Delete the cluster itself
+        try {
+          const delCluster = await supabase
+            .from('topic_clusters')
+            .delete()
+            .eq('website_token', websiteToken)
+            .ilike('cluster_name', topicCluster);
+          deleteClustersError = (delCluster as any)?.error || null;
+          console.log('[KEYWORD STRATEGY DELETE] Deleted cluster:', delCluster);
+        } catch (e) {
+          deleteClustersError = e;
+          console.error('[KEYWORD STRATEGY DELETE] Error deleting cluster:', e);
+        }
+
+        if (deleteClustersError || deleteArticlesError) {
+          console.error('[KEYWORD STRATEGY DELETE] Error deleting from Master Discovery tables:', {
+            deleteClustersError,
+            deleteArticlesError
+          });
+          return NextResponse.json({ error: 'Failed to delete topic cluster' }, { status: 500 });
+        }
+
+        console.log('[KEYWORD STRATEGY DELETE] Successfully deleted cluster from Master Discovery tables');
+        return NextResponse.json({ success: true, message: 'Topic cluster deleted successfully' });
+      }
+
+      // FALLBACK: Delete from old legacy tables
+      console.log('[KEYWORD STRATEGY DELETE] No Master Discovery data - deleting from legacy tables');
+
       let deleteKeywordsError: any = null;
       let deleteContentError: any = null;
       try {
@@ -369,10 +430,11 @@ export async function DELETE(request: NextRequest) {
       } catch (e) { deleteContentError = e; }
 
       if (deleteKeywordsError || deleteContentError) {
-        console.error('[KEYWORD STRATEGY] Error deleting topic cluster:', { deleteKeywordsError, deleteContentError });
+        console.error('[KEYWORD STRATEGY] Error deleting topic cluster from legacy tables:', { deleteKeywordsError, deleteContentError });
         return NextResponse.json({ error: 'Failed to delete topic cluster' }, { status: 500 });
       }
 
+      console.log('[KEYWORD STRATEGY DELETE] Successfully deleted cluster from legacy tables');
       return NextResponse.json({ success: true, message: 'Topic cluster deleted successfully' });
     }
 
