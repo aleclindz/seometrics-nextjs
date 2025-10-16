@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userWithToken = { ...session.user, token: dbUser.token }
             setUser(userWithToken)
             
-            // Reset session timeout
+            // Reset session timeout (2 hours)
             if (sessionTimeout) {
               clearTimeout(sessionTimeout)
             }
@@ -66,7 +66,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.log('[AUTH] Session timeout - automatically signing out')
               setUser(null)
               supabase.auth.signOut()
-            }, 30 * 60 * 1000)
+              // Redirect to login page
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login'
+              }
+            }, 120 * 60 * 1000) // 2 hours
             setSessionTimeout(timeout)
             
             console.log('[AUTH] User validated with token')
@@ -121,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const userWithToken = { ...session.user, token: dbUser.token }
               setUser(userWithToken)
               
-              // Reset session timeout inline
+              // Reset session timeout inline (2 hours)
               if (sessionTimeout) {
                 clearTimeout(sessionTimeout)
               }
@@ -129,7 +133,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('[AUTH] Session timeout - automatically signing out')
                 setUser(null)
                 supabase.auth.signOut()
-              }, 30 * 60 * 1000)
+                // Redirect to login page
+                if (typeof window !== 'undefined') {
+                  window.location.href = '/login'
+                }
+              }, 120 * 60 * 1000) // 2 hours
               setSessionTimeout(timeout)
               
               console.log('[AUTH] Initial user set with token')
@@ -221,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(data.user)
           }
           
-          // Start session timeout
+          // Start session timeout (2 hours)
           if (sessionTimeout) {
             clearTimeout(sessionTimeout)
           }
@@ -229,7 +237,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('[AUTH] Session timeout - automatically signing out')
             setUser(null)
             supabase.auth.signOut()
-          }, 30 * 60 * 1000)
+            // Redirect to login page
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login'
+            }
+          }, 120 * 60 * 1000) // 2 hours
           setSessionTimeout(timeout)
           
           console.log('[AUTH] Sign in successful')
