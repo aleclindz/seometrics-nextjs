@@ -58,14 +58,37 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
   console.log(`[ALT-TAGS] Number of images to process: ${images.length}`)
   console.log(`[ALT-TAGS] Images: ${JSON.stringify(images)}`)
 
-  // Verify website token exists
-  const { data: website, error: websiteError } = await supabase
+  // Verify website token exists - try both UUID token and domain lookup
+  let website = null
+  let websiteError = null
+
+  // First try: lookup by website_token (UUID)
+  const tokenLookup = await supabase
     .from('websites')
     .select('*')
     .eq('website_token', websiteToken)
     .single()
 
-  if (websiteError || !website) {
+  if (tokenLookup.data) {
+    website = tokenLookup.data
+  } else {
+    // Second try: lookup by domain (in case they sent domain instead of token)
+    console.log(`[ALT-TAGS] Token lookup failed, trying domain lookup for: ${websiteToken}`)
+    const domainLookup = await supabase
+      .from('websites')
+      .select('*')
+      .or(`domain.eq.${websiteToken},domain.eq.sc-domain:${websiteToken}`)
+      .single()
+
+    if (domainLookup.data) {
+      website = domainLookup.data
+      console.log(`[ALT-TAGS] Found website by domain: ${website.domain}, token: ${website.website_token}`)
+    } else {
+      websiteError = domainLookup.error
+    }
+  }
+
+  if (!website) {
     console.error(`[ALT-TAGS] Website not found for token: ${websiteToken}`, websiteError)
     return new Response(
       JSON.stringify({ error: 'Invalid website token', details: websiteError }),
@@ -74,6 +97,9 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
   }
 
   console.log(`[ALT-TAGS] Found website: ${website.domain}, image_tags_enabled: ${website.enable_image_tags}`)
+
+  // Use the actual website_token from the database (important if looked up by domain)
+  const actualWebsiteToken = website.website_token
 
   // Only process if image tags are enabled
   if (!website.enable_image_tags) {
@@ -94,12 +120,12 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
   for (const imageUrl of images) {
     try {
       console.log(`[ALT-TAGS] Processing image: ${imageUrl}`)
-      
+
       // Check if alt-tag already exists
       const { data: existingTag, error: selectError } = await supabase
         .from('alt_tags')
         .select('alt_text')
-        .eq('website_token', websiteToken)
+        .eq('website_token', actualWebsiteToken)
         .eq('image_url', imageUrl)
         .single()
 
@@ -125,7 +151,7 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
       const { error: insertError } = await supabase
         .from('alt_tags')
         .upsert({
-          website_token: websiteToken,
+          website_token: actualWebsiteToken,
           image_url: imageUrl,
           alt_text: generatedAltText,
         })
@@ -156,7 +182,7 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
   const { data: totalTags, error: countError } = await supabase
     .from('alt_tags')
     .select('id')
-    .eq('website_token', websiteToken)
+    .eq('website_token', actualWebsiteToken)
 
   if (countError) {
     console.error(`[ALT-TAGS] Error counting total tags:`, countError)
@@ -166,10 +192,10 @@ async function handleSmartJsRequest(websiteToken: string, images: string[], supa
 
   const { error: updateError } = await supabase
     .from('websites')
-    .update({ 
+    .update({
       image_tags: totalTags?.length || 0
     })
-    .eq('website_token', websiteToken)
+    .eq('website_token', actualWebsiteToken)
 
   if (updateError) {
     console.error(`[ALT-TAGS] Error updating website image tags count:`, updateError)

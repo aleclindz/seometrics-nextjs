@@ -234,10 +234,11 @@ function ArticleModal({ item }: { item: ContentItem }) {
   );
 }
 
-function TableRow({ item, onAdvance, onScheduleForPublication, onScheduleBriefForGeneration, onClusterClick }: {
+function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onScheduleBriefForGeneration, onClusterClick }: {
   item: ContentItem;
   onAdvance: (id: string) => void;
   onScheduleForPublication: (id: string) => void;
+  onPublishNow: (id: string) => void;
   onScheduleBriefForGeneration: (id: string) => void;
   onClusterClick: (cluster: string) => void;
 }) {
@@ -306,12 +307,20 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onScheduleBriefFo
             </>
           )}
           {item.stage === "draft" && (
-            <button
-              onClick={() => onScheduleForPublication(item.id)}
-              className="px-2 py-1 text-xs rounded border bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
-            >
-              Schedule for publication
-            </button>
+            <>
+              <button
+                onClick={() => onPublishNow(item.id)}
+                className="px-2 py-1 text-xs rounded border bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+              >
+                Publish
+              </button>
+              <button
+                onClick={() => onScheduleForPublication(item.id)}
+                className="px-2 py-1 text-xs rounded border bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+              >
+                Schedule
+              </button>
+            </>
           )}
           {item.stage === "published" && item.url && (
             <a
@@ -454,7 +463,7 @@ export default function ContentTab({ userToken, websiteToken, domain, conversati
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
 
   // Use content pipeline hook
-  const { items, loading, error, advanceToDraft, scheduleForPublication, removeFromSchedule, scheduleBriefForGeneration } = useContentPipeline({
+  const { items, loading, error, advanceToDraft, scheduleForPublication, publishNow, removeFromSchedule, scheduleBriefForGeneration } = useContentPipeline({
     userToken,
     websiteToken,
     domain,
@@ -545,6 +554,16 @@ export default function ContentTab({ userToken, websiteToken, domain, conversati
   const handleScheduleForPublication = (id: string) => {
     setSelectedArticleId(id);
     setMode("calendar");
+  };
+
+  const handlePublishNow = async (id: string) => {
+    try {
+      await publishNow(id);
+      alert('Article published successfully! You can view it in the Published section.');
+    } catch (err) {
+      console.error('Failed to publish article:', err);
+      alert('Failed to publish article. Please check that your CMS is properly connected and try again.');
+    }
   };
 
   const handleDropOnCalendar = async (articleId: string, date: Date) => {
@@ -755,6 +774,7 @@ export default function ContentTab({ userToken, websiteToken, domain, conversati
                       item={item}
                       onAdvance={handleAdvanceToDraft}
                       onScheduleForPublication={handleScheduleForPublication}
+                      onPublishNow={handlePublishNow}
                       onScheduleBriefForGeneration={handleScheduleBriefForGeneration}
                       onClusterClick={(cluster) => setSearch(cluster)}
                     />

@@ -510,6 +510,54 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
     }
   }, [userToken, fetchContent]);
 
+  // Publish article immediately to CMS
+  const publishNow = useCallback(async (id: string) => {
+    const articleId = id.replace('article-', '');
+
+    try {
+      console.log('[PUBLISH NOW] Publishing article immediately:', articleId);
+
+      const response = await fetch('/api/content/publish-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          articleId: Number(articleId)
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to publish article');
+      }
+
+      const data = await response.json();
+      console.log('[PUBLISH NOW] Article published successfully:', data);
+
+      // Update local state optimistically
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === id
+            ? {
+                ...item,
+                stage: 'published' as ArticleStage,
+                status: 'published',
+                scheduledPublishAt: new Date().toISOString(),
+                url: data.url
+              }
+            : item
+        )
+      );
+
+      return data;
+    } catch (err) {
+      console.error('Error publishing article:', err);
+      // Refresh to get correct state
+      await fetchContent();
+      throw err;
+    }
+  }, [userToken, fetchContent]);
+
   // Remove article or brief from schedule
   const removeFromSchedule = useCallback(async (id: string) => {
     // Detect if this is a brief or article
@@ -573,6 +621,7 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
     refresh: fetchContent,
     advanceToDraft,
     scheduleForPublication,
+    publishNow,
     removeFromSchedule,
     scheduleBriefForGeneration
   };

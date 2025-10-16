@@ -65,14 +65,37 @@ async function handleSmartJsRequest(pageUrl: string, websiteToken: string, supab
   console.log(`[META-TAGS] Processing request for website token: ${websiteToken}`)
   console.log(`[META-TAGS] Page URL: ${pageUrl}`)
 
-  // Verify website token exists
-  const { data: website, error: websiteError } = await supabase
+  // Verify website token exists - try both UUID token and domain lookup
+  let website = null
+  let websiteError = null
+
+  // First try: lookup by website_token (UUID)
+  const tokenLookup = await supabase
     .from('websites')
     .select('*')
     .eq('website_token', websiteToken)
     .single()
 
-  if (websiteError || !website) {
+  if (tokenLookup.data) {
+    website = tokenLookup.data
+  } else {
+    // Second try: lookup by domain (in case they sent domain instead of token)
+    console.log(`[META-TAGS] Token lookup failed, trying domain lookup for: ${websiteToken}`)
+    const domainLookup = await supabase
+      .from('websites')
+      .select('*')
+      .or(`domain.eq.${websiteToken},domain.eq.sc-domain:${websiteToken}`)
+      .single()
+
+    if (domainLookup.data) {
+      website = domainLookup.data
+      console.log(`[META-TAGS] Found website by domain: ${website.domain}, token: ${website.website_token}`)
+    } else {
+      websiteError = domainLookup.error
+    }
+  }
+
+  if (!website) {
     console.error(`[META-TAGS] Website not found for token: ${websiteToken}`, websiteError)
     return new Response(
       JSON.stringify({ error: 'Invalid website token', details: websiteError }),
@@ -81,6 +104,9 @@ async function handleSmartJsRequest(pageUrl: string, websiteToken: string, supab
   }
 
   console.log(`[META-TAGS] Found website: ${website.domain}, meta_tags_enabled: ${website.enable_meta_tags}`)
+
+  // Use the actual website_token from the database (important if looked up by domain)
+  const actualWebsiteToken = website.website_token
 
   // Only process if meta tags are enabled
   if (!website.enable_meta_tags) {
@@ -96,7 +122,7 @@ async function handleSmartJsRequest(pageUrl: string, websiteToken: string, supab
     const { data: existingTags, error: selectError } = await supabase
       .from('meta_tags')
       .select('*')
-      .eq('website_token', websiteToken)
+      .eq('website_token', actualWebsiteToken)
       .eq('page_url', pageUrl)
       .single()
 
@@ -155,7 +181,7 @@ async function handleSmartJsRequest(pageUrl: string, websiteToken: string, supab
     const { error: insertError } = await supabase
       .from('meta_tags')
       .upsert({
-        website_token: websiteToken,
+        website_token: actualWebsiteToken,
         page_url: pageUrl,
         meta_title: title,
         meta_description: description,
@@ -171,7 +197,7 @@ async function handleSmartJsRequest(pageUrl: string, websiteToken: string, supab
     const { data: totalTags, error: countError } = await supabase
       .from('meta_tags')
       .select('id')
-      .eq('website_token', websiteToken)
+      .eq('website_token', actualWebsiteToken)
 
     if (countError) {
       console.error(`[META-TAGS] Error counting total tags:`, countError)
@@ -181,10 +207,10 @@ async function handleSmartJsRequest(pageUrl: string, websiteToken: string, supab
 
     const { error: updateError } = await supabase
       .from('websites')
-      .update({ 
+      .update({
         meta_tags: totalTags?.length || 0
       })
-      .eq('website_token', websiteToken)
+      .eq('website_token', actualWebsiteToken)
 
     if (updateError) {
       console.error(`[META-TAGS] Error updating website meta tags count:`, updateError)

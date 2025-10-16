@@ -264,11 +264,35 @@ async function generateBusinessSchema(websiteToken: string, pageData: any): Prom
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: website, error } = await supabaseClient
+    // Try both UUID token and domain lookup
+    let website = null
+    let error = null
+
+    // First try: lookup by website_token (UUID)
+    const tokenLookup = await supabaseClient
       .from('websites')
       .select('business_type, business_info, business_detection_confidence, domain')
       .eq('website_token', websiteToken)
-      .single();
+      .single()
+
+    if (tokenLookup.data) {
+      website = tokenLookup.data
+    } else {
+      // Second try: lookup by domain (in case they sent domain instead of token)
+      console.log(`[SCHEMA GENERATION] Token lookup failed, trying domain lookup for: ${websiteToken}`)
+      const domainLookup = await supabaseClient
+        .from('websites')
+        .select('business_type, business_info, business_detection_confidence, domain')
+        .or(`domain.eq.${websiteToken},domain.eq.sc-domain:${websiteToken}`)
+        .single()
+
+      if (domainLookup.data) {
+        website = domainLookup.data
+        console.log(`[SCHEMA GENERATION] Found website by domain: ${website.domain}`)
+      } else {
+        error = domainLookup.error
+      }
+    }
 
     if (error || !website) {
       console.log('[SCHEMA GENERATION] No website data found, using basic Organization schema');
