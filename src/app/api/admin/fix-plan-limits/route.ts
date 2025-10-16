@@ -24,16 +24,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update all pro plans to allow 5 websites (in case any are wrong)
+    // Update all pro plans to unlimited websites
     const { error: updateProError } = await supabase
       .from('user_plans')
-      .update({ sites_allowed: 5 })
+      .update({ sites_allowed: -1 })
       .eq('tier', 'pro');
 
     if (updateProError) {
       console.error('[ADMIN] Failed to update pro plans:', updateProError);
       return NextResponse.json(
         { error: 'Failed to update pro plans', details: updateProError },
+        { status: 500 }
+      );
+    }
+
+    // Update all scale plans to unlimited websites
+    const { error: updateScaleError } = await supabase
+      .from('user_plans')
+      .update({ sites_allowed: -1 })
+      .eq('tier', 'scale');
+
+    if (updateScaleError) {
+      console.error('[ADMIN] Failed to update scale plans:', updateScaleError);
+      return NextResponse.json(
+        { error: 'Failed to update scale plans', details: updateScaleError },
+        { status: 500 }
+      );
+    }
+
+    // Update all enterprise plans to unlimited websites
+    const { error: updateEnterpriseError } = await supabase
+      .from('user_plans')
+      .update({ sites_allowed: -1 })
+      .eq('tier', 'enterprise');
+
+    if (updateEnterpriseError) {
+      console.error('[ADMIN] Failed to update enterprise plans:', updateEnterpriseError);
+      return NextResponse.json(
+        { error: 'Failed to update enterprise plans', details: updateEnterpriseError },
         { status: 500 }
       );
     }
@@ -63,6 +91,16 @@ export async function POST(request: NextRequest) {
       .select('*', { count: 'exact' })
       .eq('tier', 'pro');
 
+    const { count: scaleCount } = await supabase
+      .from('user_plans')
+      .select('*', { count: 'exact' })
+      .eq('tier', 'scale');
+
+    const { count: enterpriseCount } = await supabase
+      .from('user_plans')
+      .select('*', { count: 'exact' })
+      .eq('tier', 'enterprise');
+
     const { count: freeCount } = await supabase
       .from('user_plans')
       .select('*', { count: 'exact' })
@@ -71,6 +109,8 @@ export async function POST(request: NextRequest) {
     console.log('[ADMIN] Plan limits updated successfully:', {
       starter: starterCount,
       pro: proCount,
+      scale: scaleCount,
+      enterprise: enterpriseCount,
       free: freeCount
     });
 
@@ -80,6 +120,8 @@ export async function POST(request: NextRequest) {
       updated: {
         starter: starterCount,
         pro: proCount,
+        scale: scaleCount,
+        enterprise: enterpriseCount,
         free: freeCount
       }
     });
