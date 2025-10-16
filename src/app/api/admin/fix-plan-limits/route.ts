@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(request: NextRequest) {
+async function updatePlanLimits() {
   try {
     console.log('[ADMIN] Fixing plan limits...');
 
@@ -133,4 +133,13 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Support both GET and POST for easier browser access
+export async function GET(request: NextRequest) {
+  return await updatePlanLimits();
+}
+
+export async function POST(request: NextRequest) {
+  return await updatePlanLimits();
 }
