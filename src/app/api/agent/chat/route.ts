@@ -858,8 +858,9 @@ async function processOpenAIResponse(
         const clusters = Array.isArray(strategy.topic_clusters) ? strategy.topic_clusters : [];
         const simplified = clusters.map((c: any) => ({
           name: c.name,
-          keywordCount: (c.keywords?.length || 0),
-          contentCount: (c.content?.length || 0)
+          // Try multiple possible field names for keyword count
+          keywordCount: c.keyword_count || (c.keywords?.length || 0) || (c.top_keywords?.length || 0),
+          contentCount: c.content_count || (c.content?.length || 0)
         })).sort((a: any, b: any) => b.keywordCount - a.keywordCount);
         actionCard = {
           type: 'generate-from-cluster',
