@@ -124,9 +124,11 @@ export default function StrategyOnboardingModal({
       setDiscoveryResult(result);
       setLoading(false);
 
-      // Wait 2 seconds to show success, then close
+      // Call onComplete immediately to start polling in parent
+      onComplete?.();
+
+      // Wait 2 seconds to show success message, then close modal
       setTimeout(() => {
-        onComplete?.();
         onClose();
       }, 2000);
 

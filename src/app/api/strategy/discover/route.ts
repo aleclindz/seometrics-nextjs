@@ -149,6 +149,43 @@ export async function POST(request: NextRequest) {
     if (conversationId) {
       console.log('[DISCOVERY API] Triggering callback for conversation:', conversationId);
 
+      // Defensive: Query database directly for actual brief counts if saveResult returned 0
+      let finalBriefsGenerated = responsePayload.summary.briefsGenerated;
+      let finalPillarBriefs = responsePayload.summary.pillarBriefs;
+      let finalSupportingBriefs = responsePayload.summary.supportingBriefs;
+
+      if (finalBriefsGenerated === 0) {
+        console.log('[DISCOVERY API] saveResult returned 0 briefs, querying database directly...');
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          );
+
+          // Count briefs created from this discovery
+          const { data: briefCounts } = await supabase
+            .from('article_briefs')
+            .select('article_role')
+            .eq('website_token', websiteToken)
+            .eq('discovery_id', saveResult.discoveryId);
+
+          if (briefCounts && briefCounts.length > 0) {
+            finalBriefsGenerated = briefCounts.length;
+            finalPillarBriefs = briefCounts.filter((b: any) => b.article_role === 'PILLAR').length;
+            finalSupportingBriefs = briefCounts.filter((b: any) => b.article_role === 'SUPPORTING').length;
+
+            console.log('[DISCOVERY API] Defensive query found actual counts:', {
+              briefsGenerated: finalBriefsGenerated,
+              pillarBriefs: finalPillarBriefs,
+              supportingBriefs: finalSupportingBriefs
+            });
+          }
+        } catch (queryError) {
+          console.error('[DISCOVERY API] Defensive query failed:', queryError);
+        }
+      }
+
       // Fire-and-forget callback (don't await)
       fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/agent/callback/discovery-complete`, {
         method: 'POST',
@@ -160,9 +197,9 @@ export async function POST(request: NextRequest) {
           discoveryId: saveResult.discoveryId,
           summary: {
             clusters: responsePayload.summary.clusters,
-            briefsGenerated: responsePayload.summary.briefsGenerated,
-            pillarBriefs: responsePayload.summary.pillarBriefs,
-            supportingBriefs: responsePayload.summary.supportingBriefs
+            briefsGenerated: finalBriefsGenerated,
+            pillarBriefs: finalPillarBriefs,
+            supportingBriefs: finalSupportingBriefs
           }
         })
       }).catch(err => {
