@@ -237,7 +237,7 @@ export class LinkInjector {
     // Simple approach: Find the anchor text and wrap it in an <a> tag
     // We'll look for it in paragraph tags specifically to avoid headers
     
-    const paragraphRegex = /<p[^>]*>(.*?)<\/p>/gis;
+    const paragraphRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
     let matches = [...htmlContent.matchAll(paragraphRegex)];
     
     // Skip first paragraph (introduction should not have immediate links)
