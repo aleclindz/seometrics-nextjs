@@ -238,7 +238,7 @@ export class LinkInjector {
     // We'll look for it in paragraph tags specifically to avoid headers
     
     const paragraphRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
-    let matches = [...htmlContent.matchAll(paragraphRegex)];
+    let matches = Array.from(htmlContent.matchAll(paragraphRegex));
     
     // Skip first paragraph (introduction should not have immediate links)
     matches = matches.slice(1);
