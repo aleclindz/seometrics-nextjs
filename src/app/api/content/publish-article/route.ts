@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { LinkInjector } from '@/services/content/link-injector';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,12 +46,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the CMS connection for the website
-    const websiteToken = article.website_token;
+    const website = article.websites;
+    if (!website || !website.id || !website.website_token) {
+      return NextResponse.json(
+        { error: 'Article website information is missing' },
+        { status: 400 }
+      );
+    }
+
+    const websiteId = website.id;
+    const websiteToken = website.website_token;
+
     const { data: connection, error: connectionError } = await supabase
       .from('cms_connections')
       .select('*')
       .eq('user_token', userToken)
-      .eq('website_token', websiteToken)
+      .eq('website_id', websiteId)
       .single();
 
     if (connectionError || !connection) {
@@ -63,12 +74,49 @@ export async function POST(request: NextRequest) {
 
     console.log('[PUBLISH ARTICLE] Publishing to CMS type:', connection.cms_type);
 
+    // Get article content
+    let articleContent = article.article_content || article.content;
+    let injectedLinksMetadata = null;
+
+    // Inject internal links if brief has a link plan
+    if (article.generated_from_brief_id) {
+      try {
+        const { data: brief } = await supabase
+          .from('article_briefs')
+          .select('internal_link_plan')
+          .eq('id', article.generated_from_brief_id)
+          .maybeSingle();
+
+        if (brief?.internal_link_plan) {
+          console.log('[PUBLISH ARTICLE] Found internal link plan, injecting links...');
+          const linkInjector = new LinkInjector();
+          const injectionResult = await linkInjector.injectInternalLinks(
+            articleId,
+            articleContent,
+            brief.internal_link_plan,
+            websiteToken
+          );
+
+          articleContent = injectionResult.updatedContent;
+          injectedLinksMetadata = injectionResult.insertedLinks;
+
+          console.log('[PUBLISH ARTICLE] Injected', injectionResult.insertedLinks.length, 'internal links');
+          if (injectionResult.skippedLinks > 0) {
+            console.log('[PUBLISH ARTICLE] Skipped', injectionResult.skippedLinks, 'links (targets not published yet)');
+          }
+        }
+      } catch (linkError) {
+        console.error('[PUBLISH ARTICLE] Error injecting internal links:', linkError);
+        // Continue with publishing even if link injection fails
+      }
+    }
+
     // Prepare article data for CMS
     const publishData = {
       userToken,
       connectionId: connection.id,
       title: article.title,
-      content: article.article_content || article.content,
+      content: articleContent,
       slug: article.slug || generateSlug(article.title),
       status: 'published', // Immediately publish
       excerpt: article.meta_description || '',
@@ -130,15 +178,22 @@ export async function POST(request: NextRequest) {
     console.log('[PUBLISH ARTICLE] Successfully published to CMS:', publishResult);
 
     // Update article status in database
+    const updateData: any = {
+      status: 'published',
+      published_at: new Date().toISOString(),
+      public_url: publishResult.url || publishResult.article?.url,
+      cms_post_id: publishResult.wordPressId || publishResult.article?.id || publishResult.ghostId,
+      error_message: null
+    };
+
+    // Add injected links metadata if available
+    if (injectedLinksMetadata && injectedLinksMetadata.length > 0) {
+      updateData.injected_internal_links = injectedLinksMetadata;
+    }
+
     const { data: updatedArticle, error: updateError } = await supabase
       .from('articles')
-      .update({
-        status: 'published',
-        published_at: new Date().toISOString(),
-        public_url: publishResult.url || publishResult.article?.url,
-        cms_post_id: publishResult.wordPressId || publishResult.article?.id || publishResult.ghostId,
-        error_message: null
-      })
+      .update(updateData)
       .eq('id', articleId)
       .select()
       .single();

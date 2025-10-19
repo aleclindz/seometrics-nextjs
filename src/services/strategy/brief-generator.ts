@@ -12,6 +12,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { generateInternalLinkPlan } from './internal-link-planner';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -146,6 +147,42 @@ export async function generateBriefsFromArticleRoles(
 
     } catch (error) {
       console.error('[BRIEF GENERATOR] Error processing article role', role.discovery_article_id, error);
+    }
+  }
+
+  console.log('[BRIEF GENERATOR] Created', briefIds.length, 'briefs, now generating internal link plans...');
+
+  // SECOND PASS: Generate internal link plans after all briefs are created
+  // This ensures all briefs exist and can reference each other
+  for (const role of articleRoles) {
+    try {
+      const briefId = briefIdMap[role.discovery_article_id];
+      if (!briefId) {
+        continue;
+      }
+
+      const isPillar = role.role === 'PILLAR';
+      const wordCountMax = isPillar ? 3000 : 1500;
+
+      const linkPlan = await generateInternalLinkPlan(
+        briefId,
+        role.role,
+        role.topic_cluster_id,
+        role.discovery_article_id,
+        wordCountMax
+      );
+
+      if (linkPlan && linkPlan.recommended_links.length > 0) {
+        await supabase
+          .from('article_briefs')
+          .update({ internal_link_plan: linkPlan })
+          .eq('id', briefId);
+
+        console.log('[BRIEF GENERATOR] Generated link plan with', linkPlan.recommended_links.length, 'links for brief', briefId);
+      }
+    } catch (linkError) {
+      console.error('[BRIEF GENERATOR] Error generating link plan for', role.discovery_article_id, linkError);
+      // Don't fail the entire process if one link plan fails
     }
   }
 
