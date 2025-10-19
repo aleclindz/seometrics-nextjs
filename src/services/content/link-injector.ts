@@ -13,7 +13,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import type { InternalLinkPlan, RecommendedLink } from './internal-link-planner';
+import type { InternalLinkPlan, RecommendedLink } from '../strategy/internal-link-planner';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
