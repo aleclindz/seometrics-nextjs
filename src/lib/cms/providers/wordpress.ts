@@ -194,6 +194,7 @@ export class WordPressProvider extends BaseCMSProvider {
           tags: options?.tags || [],
           author: options?.author || '',
           excerpt: updatedPost.excerpt.rendered ? this.stripHtml(updatedPost.excerpt.rendered) : '',
+          url: updatedPost.link || updatedPost.guid?.rendered
         };
       } catch (updateError) {
         console.error('[WORDPRESS] Failed to update status:', updateError);
@@ -210,6 +211,7 @@ export class WordPressProvider extends BaseCMSProvider {
       tags: options?.tags || [],
       author: options?.author || '',
       excerpt: createdPost.excerpt.rendered ? this.stripHtml(createdPost.excerpt.rendered) : '',
+      url: createdPost.link || createdPost.guid?.rendered // WordPress API returns actual URL in 'link' field
     };
   }
 

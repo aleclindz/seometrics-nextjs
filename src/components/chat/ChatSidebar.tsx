@@ -125,12 +125,12 @@ export function ChatSidebar({
       </div>
 
       {/* Sites List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-[0.3rem]">
         <div className="px-3 py-2 text-xs font-medium text-gray-400 uppercase">
           Your Sites ({filteredSites.length})
         </div>
-        
-        <div className="space-y-1 px-3">
+
+        <div className="space-y-1 px-0">
           {sitesLoading ? (
             <div className="space-y-2">
               {[...Array(3)].map((_, i) => (

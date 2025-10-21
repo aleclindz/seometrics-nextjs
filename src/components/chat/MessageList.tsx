@@ -31,18 +31,8 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
     const isFunctionCall = message.type === 'function_call';
 
     return (
-      <div key={message.id} className={`flex mb-6 ${isUser ? 'justify-end' : ''}`}>
-        {!isUser && (
-          <div className="w-8 h-8 rounded-full bg-[#5E6AD2] flex items-center justify-center mr-4 flex-shrink-0">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-        )}
-        
-        <div className={`max-w-3xl ${isUser ? 'order-1' : ''}`}>
+      <div key={message.id} className="mb-6">
+        <div className="max-w-3xl mx-4">
           {/* Message bubble */}
           <div className={`rounded-lg p-4 ${
             isUser 
@@ -95,12 +85,6 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
             {formatTime(message.timestamp)}
           </div>
         </div>
-
-        {isUser && (
-          <div className="w-8 h-8 rounded-full bg-[#2A2A35] flex items-center justify-center ml-4 flex-shrink-0 order-2">
-            <span className="text-sm font-medium">U</span>
-          </div>
-        )}
       </div>
     );
   };
@@ -111,14 +95,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
       
       {/* Loading indicator */}
       {isLoading && (
-        <div className="flex mb-6">
-          <div className="w-8 h-8 rounded-full bg-[#5E6AD2] flex items-center justify-center mr-4 flex-shrink-0">
-            <svg className="w-5 h-5 animate-pulse" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
+        <div className="mb-6 mx-4">
           <div className="bg-[#1E1E26] rounded-lg p-4 max-w-3xl">
             <div className="flex space-x-1">
               <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>

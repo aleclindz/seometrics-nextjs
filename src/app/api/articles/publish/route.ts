@@ -192,7 +192,23 @@ export async function POST(request: NextRequest) {
           );
 
           cmsArticleId = publishedArticle.id;
-          
+
+          // Save the public URL if available from the CMS provider
+          if (publishedArticle.url) {
+            try {
+              await supabase
+                .from('article_queue')
+                .update({
+                  public_url: publishedArticle.url,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', articleId);
+              console.log('[PUBLISH EDGE] Saved public URL from CMS:', publishedArticle.url);
+            } catch (urlError) {
+              console.error('[PUBLISH EDGE] Failed to save public URL:', urlError);
+            }
+          }
+
           // Store the published article in cms_articles table for tracking
           await supabase
             .from('cms_articles')
@@ -206,7 +222,7 @@ export async function POST(request: NextRequest) {
               published_at: publishedArticle.publishedAt?.toISOString(),
               sync_status: 'synced',
             });
-            
+
         } catch (newCMSError) {
           console.log('[PUBLISH EDGE] New CMS system failed, trying legacy system:', newCMSError);
           // Fall back to legacy system if new system fails
@@ -311,26 +327,29 @@ export async function POST(request: NextRequest) {
         throw new Error(`Failed to update article status: ${minimalUpdateError.message}`);
       }
 
-      // Best-effort: admin/public URLs (skip if columns missing)
-      try {
-        const strapiAdminUrl = generateStrapiAdminUrl(
-          effectiveCms.base_url,
-          effectiveCms.content_type,
-          cmsArticleId
-        );
-        const publicUrl = generatePublicArticleUrl(
-          effectiveCms.base_url,
-          (article.slug || generateOptimizedSlug(article.title))
-        );
-        await supabase
-          .from('article_queue')
-          .update({
-            cms_admin_url: strapiAdminUrl,
-            public_url: publicUrl,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', articleId);
-      } catch {}
+      // Best-effort: admin/public URLs (ONLY for Strapi - WordPress.com already saved correct URLs)
+      // Skip this for WordPress.com since it already has correct URLs from API response
+      if (effectiveCms?.cms_type === 'strapi') {
+        try {
+          const strapiAdminUrl = generateStrapiAdminUrl(
+            effectiveCms.base_url,
+            effectiveCms.content_type,
+            cmsArticleId
+          );
+          const publicUrl = generatePublicArticleUrl(
+            effectiveCms.base_url,
+            (article.slug || generateOptimizedSlug(article.title))
+          );
+          await supabase
+            .from('article_queue')
+            .update({
+              cms_admin_url: strapiAdminUrl,
+              public_url: publicUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', articleId);
+        } catch {}
+      }
 
       // Log successful publication
       await supabase
