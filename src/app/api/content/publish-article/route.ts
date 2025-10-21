@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
 
     console.log('[PUBLISH ARTICLE] Publishing article:', articleId);
 
-    // Get the article details
+    // Get the article details - CORRECTED: use article_queue table
     const { data: article, error: articleError } = await supabase
-      .from('articles')
+      .from('article_queue')
       .select('*, websites(*)')
       .eq('id', articleId)
       .eq('user_token', userToken)
@@ -111,57 +111,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Prepare article data for CMS
-    const publishData = {
-      userToken,
-      connectionId: connection.id,
-      title: article.title,
-      content: articleContent,
-      slug: article.slug || generateSlug(article.title),
-      status: 'published', // Immediately publish
-      excerpt: article.meta_description || '',
-      categories: article.topic_cluster ? [article.topic_cluster] : [],
-      tags: Array.isArray(article.target_keywords)
-        ? article.target_keywords.map((kw: any) =>
-            typeof kw === 'string' ? kw : kw.term || kw.keyword
-          )
-        : [],
-      seoTitle: article.meta_title || article.title,
-      seoDescription: article.meta_description || ''
-    };
-
-    // Call the appropriate CMS publish endpoint
-    let publishEndpoint = '';
-    switch (connection.cms_type) {
-      case 'wordpress':
-      case 'wordpress_com':
-        publishEndpoint = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/cms/wordpress/publish`;
-        break;
-      case 'ghost':
-        publishEndpoint = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/cms/ghost/publish`;
-        break;
-      default:
-        return NextResponse.json(
-          { error: `CMS type '${connection.cms_type}' is not yet supported for auto-publishing` },
-          { status: 400 }
-        );
+    // Update article content with injected links if available
+    if (injectedLinksMetadata && injectedLinksMetadata.length > 0) {
+      await supabase
+        .from('article_queue')
+        .update({
+          article_content: articleContent,
+          injected_internal_links: injectedLinksMetadata
+        })
+        .eq('id', articleId);
     }
 
-    console.log('[PUBLISH ARTICLE] Calling CMS publish endpoint:', publishEndpoint);
+    // Call the unified publish endpoint which has all the WordPress improvements
+    // (image upload, HTML cleanup, status verification)
+    const publishEndpoint = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/articles/publish`;
+
+    console.log('[PUBLISH ARTICLE] Calling unified publish endpoint:', publishEndpoint);
 
     const publishResponse = await fetch(publishEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(publishData)
+      body: JSON.stringify({
+        userToken,
+        articleId,
+        publishDraft: false // Immediately publish, not as draft
+      })
     });
 
     if (!publishResponse.ok) {
       const errorData = await publishResponse.json();
       console.error('[PUBLISH ARTICLE] CMS publish failed:', errorData);
 
-      // Update article status to show failure
+      // Update article status to show failure - CORRECTED: use article_queue table
       await supabase
-        .from('articles')
+        .from('article_queue')
         .update({
           status: 'publishing_failed',
           error_message: errorData.error || 'Failed to publish to CMS'
@@ -177,36 +160,20 @@ export async function POST(request: NextRequest) {
     const publishResult = await publishResponse.json();
     console.log('[PUBLISH ARTICLE] Successfully published to CMS:', publishResult);
 
-    // Update article status in database
-    const updateData: any = {
-      status: 'published',
-      published_at: new Date().toISOString(),
-      public_url: publishResult.url || publishResult.article?.url,
-      cms_post_id: publishResult.wordPressId || publishResult.article?.id || publishResult.ghostId,
-      error_message: null
-    };
-
-    // Add injected links metadata if available
-    if (injectedLinksMetadata && injectedLinksMetadata.length > 0) {
-      updateData.injected_internal_links = injectedLinksMetadata;
-    }
-
-    const { data: updatedArticle, error: updateError } = await supabase
-      .from('articles')
-      .update(updateData)
+    // The unified publish endpoint already updated the article_queue table
+    // So we just need to fetch the latest data
+    const { data: updatedArticle } = await supabase
+      .from('article_queue')
+      .select('*, websites(*)')
       .eq('id', articleId)
-      .select()
       .single();
-
-    if (updateError) {
-      console.error('[PUBLISH ARTICLE] Failed to update article status:', updateError);
-    }
 
     return NextResponse.json({
       success: true,
       message: 'Article published successfully',
       article: updatedArticle || article,
-      url: publishResult.url || publishResult.article?.url
+      cmsArticleId: publishResult.cmsArticleId,
+      publishedAt: publishResult.publishedAt
     });
 
   } catch (error) {
