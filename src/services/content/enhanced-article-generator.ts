@@ -39,7 +39,8 @@ export interface EnhancedArticleResult {
   metaDescription: string;
   contentOutline: Array<{ id: string; title: string; summary: string }>;
   citations: ResearchSource[];
-  images: GeneratedImage[];
+  images: GeneratedImage[]; // Empty at generation time - populated at publish time
+  imagePrompts?: Array<{ prompt: string; alt: string }>; // Stored for publish-time generation
   schemaJson: any;
   articleType: ArticleType;
   slug: string;
@@ -100,35 +101,35 @@ export class EnhancedArticleGenerator {
       researchSources: researchResult.sources
     });
 
-    // Step 3: Generate images (if enabled)
-    let images: GeneratedImage[] = [];
+    // Step 3: Prepare image prompts (but DON'T generate images yet - they expire in 2 hours)
+    // Images will be generated fresh at publish time to avoid expiration issues
+    let imagePrompts: Array<{ prompt: string; alt: string }> = [];
     if (includeImages && numImages > 0) {
       try {
-        images = await this.imageService.generateImagesForArticle({
+        // Build prompts but don't generate actual images yet
+        imagePrompts = this.imageService.buildImagePromptsFromOutline(
           title,
-          outline: contentResult.contentOutline,
+          contentResult.contentOutline,
           numImages,
-          provider: imageProvider,
           imageStyle
-        });
-        
-        if (images.length > 0) {
-          contentResult.content = this.imageService.injectImagesIntoHtml(contentResult.content, images);
-        }
-        
-        console.log(`[ENHANCED GENERATOR] Images generated: ${images.length}/${numImages}`);
+        );
+
+        console.log(`[ENHANCED GENERATOR] Prepared ${imagePrompts.length} image prompts for publish-time generation`);
       } catch (error) {
-        console.log('[ENHANCED GENERATOR] Image generation failed:', error);
+        console.log('[ENHANCED GENERATOR] Image prompt preparation failed:', error);
       }
     }
 
-    // Step 4: Generate schema
+    // Note: Images will be generated and injected at publish time
+    // This prevents DALL-E URL expiration (2-hour limit)
+
+    // Step 4: Generate schema (without images for now)
     const schemaJson = this.generateSchema({
       articleType,
       title,
       description: contentResult.metaDescription,
       url: websiteDomain ? `https://${websiteDomain}/${this.slugify(title)}` : '',
-      images: images.map(img => img.url),
+      images: [], // Images will be added at publish time
       authorName: websiteDomain || 'Editorial Team',
       contentResult
     });
@@ -142,7 +143,8 @@ export class EnhancedArticleGenerator {
       metaDescription: contentResult.metaDescription,
       contentOutline: contentResult.contentOutline,
       citations,
-      images,
+      images: [], // Empty - images will be generated at publish time
+      imagePrompts, // Store prompts for later generation
       schemaJson,
       articleType,
       slug: this.slugify(title)

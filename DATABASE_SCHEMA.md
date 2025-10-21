@@ -59,6 +59,12 @@ CREATE TABLE websites (
     hosting_status VARCHAR(20) DEFAULT 'none' CHECK (hosting_status IN ('none', 'connected', 'error')),
     last_status_check TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     cleaned_domain VARCHAR(255), -- Added in Migration 042
+    business_type VARCHAR(50) DEFAULT 'unknown', -- Added in Migration 063
+    business_info JSONB DEFAULT '{}', -- Added in Migration 063
+    business_detection_confidence DECIMAL(3,2) DEFAULT 0, -- Added in Migration 063, fixed in 064
+    business_detection_signals JSONB DEFAULT '[]', -- Added in Migration 063
+    business_confirmed BOOLEAN DEFAULT false, -- Added in Migration 063
+    business_updated_at TIMESTAMP WITH TIME ZONE, -- Added in Migration 063
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -77,6 +83,13 @@ CREATE TABLE websites (
   - `cleaned_domain` - Clean domain without prefixes (sc-domain:, https://, www.) for URL construction
   - **Auto-populated**: `cleaned_domain` is automatically maintained via database trigger
   - **Indexed**: Optimized for queries on both user_token and cleaned_domain
+- **Business Profile Detection (Migrations 063-064)**:
+  - `business_type` - Auto-detected business type: product, saas, service, content, marketplace, tool, app, nonprofit, community, or unknown
+  - `business_info` - JSONB object with {description, audience, valueProps, productsServices, niche}
+  - `business_detection_confidence` - LLM confidence score for business detection (0.00 to 1.00)
+  - `business_detection_signals` - JSONB array of detection signals that led to classification
+  - `business_confirmed` - Whether user has manually confirmed/edited the business profile
+  - `business_updated_at` - Timestamp of last business profile detection/update
 
 ---
 

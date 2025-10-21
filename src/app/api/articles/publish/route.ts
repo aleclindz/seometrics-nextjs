@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CMSManager } from '@/lib/cms/cms-manager';
 import { uploadImagesToWordPress } from '@/lib/cms/wordpress-image-upload';
+import { ImageGenerationService } from '@/services/content/image-generation-service';
 
 // Use Node.js runtime for longer timeout support (needed for CMS API calls)
 export const runtime = 'nodejs';
@@ -125,10 +126,79 @@ export async function POST(request: NextRequest) {
       baseUrl: effectiveCms.base_url
     });
 
+    // STEP 0: Generate fresh images at publish time (if article has image prompts stored)
+    // This prevents DALL-E URL expiration (2-hour limit)
+    let articleContent = article.article_content;
+
+    if (articleContent) {
+      try {
+        // Check if article has stored image prompts in article_images table
+        const { data: storedImagePrompts } = await supabase
+          .from('article_images')
+          .select('*')
+          .eq('article_queue_id', articleId)
+          .is('image_url', null); // Only get prompts without generated images
+
+        if (storedImagePrompts && storedImagePrompts.length > 0) {
+          console.log(`[PUBLISH EDGE] Found ${storedImagePrompts.length} image prompts, generating fresh images...`);
+
+          const imageService = new ImageGenerationService();
+          const freshImages = [];
+
+          // Generate images from stored prompts
+          for (const promptData of storedImagePrompts) {
+            try {
+              const images = await imageService.generateImagesForArticle({
+                title: article.title,
+                outline: article.content_outline || [],
+                numImages: 1,
+                provider: 'openai', // Use DALL-E
+                imageStyle: 'professional web design'
+              });
+
+              if (images.length > 0) {
+                freshImages.push(images[0]);
+
+                // Update article_images with fresh URL
+                await supabase
+                  .from('article_images')
+                  .update({
+                    image_url: images[0].url,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', promptData.id);
+              }
+            } catch (imgError) {
+              console.error('[PUBLISH EDGE] Failed to generate image:', imgError);
+            }
+          }
+
+          // Inject fresh images into content
+          if (freshImages.length > 0) {
+            articleContent = imageService.injectImagesIntoHtml(articleContent, freshImages);
+
+            // Update article content with injected images
+            await supabase
+              .from('article_queue')
+              .update({
+                article_content: articleContent,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', articleId);
+
+            console.log(`[PUBLISH EDGE] Generated and injected ${freshImages.length} fresh images`);
+          }
+        }
+      } catch (imageError) {
+        console.error('[PUBLISH EDGE] Image generation at publish time failed:', imageError);
+        // Continue with publishing even if image generation fails
+      }
+    }
+
     // Update status to publishing
     await supabase
       .from('article_queue')
-      .update({ 
+      .update({
         status: 'publishing',
         updated_at: new Date().toISOString()
       })
@@ -168,10 +238,10 @@ export async function POST(request: NextRequest) {
           console.log('[PUBLISH EDGE] Using new CMS system for:', connection.type);
           const provider = cmsManager.getProvider(connection.type);
         
-          // Prepare article data
+          // Prepare article data (use articleContent which may have fresh images injected)
           const articleData = {
             title: article.meta_title || article.title,
-            content: article.article_content,
+            content: articleContent, // Use updated content with fresh images
             slug: article.slug,
             excerpt: article.meta_description || '',
             meta: {
@@ -232,7 +302,7 @@ export async function POST(request: NextRequest) {
               apiToken: effectiveCms.api_token,
               contentType: effectiveCms.content_type,
               title: article.meta_title || article.title,
-              content: article.article_content,
+              content: articleContent, // Use updated content with fresh images
               slug: article.slug,
               metaTitle: article.meta_title,
               metaDescription: article.meta_description,
@@ -260,7 +330,7 @@ export async function POST(request: NextRequest) {
           accessToken: effectiveCms.api_token,
           site: siteIdentifier,
           title: article.meta_title || article.title,
-          content: article.article_content,
+          content: articleContent, // Use updated content with fresh images
           slug: article.slug,
           publishDraft
         });
@@ -288,7 +358,7 @@ export async function POST(request: NextRequest) {
           apiToken: effectiveCms.api_token,
           contentType: effectiveCms.content_type,
           title: article.meta_title || article.title,
-          content: article.article_content,
+          content: articleContent, // Use updated content with fresh images
           slug: article.slug,
           metaTitle: article.meta_title,
           metaDescription: article.meta_description,

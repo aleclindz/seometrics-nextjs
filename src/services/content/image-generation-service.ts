@@ -201,11 +201,12 @@ export class ImageGenerationService {
 
   /**
    * Build image prompts from article outline
+   * PUBLIC: Used by article generator to prepare prompts for later generation
    */
-  private buildImagePromptsFromOutline(
-    title: string, 
-    outline: any, 
-    numImages: number, 
+  buildImagePromptsFromOutline(
+    title: string,
+    outline: any,
+    numImages: number,
     style: string
   ): Array<{ prompt: string; alt: string }> {
     const sections = Array.isArray(outline) 

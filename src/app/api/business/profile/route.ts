@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
     const updates: any = {
       business_type: profile.type || 'unknown',
       business_info: JSON.stringify(businessInfoObj),
-      business_detection_confidence: Math.round((profile.confidence || 0) * 100), // Convert 0-1 to 0-100 for INTEGER column
+      business_detection_confidence: profile.confidence || 0, // Decimal value 0-1 (column is now DECIMAL(3,2))
       business_detection_signals: JSON.stringify(profile.signals || []),
       business_confirmed: false,
       business_updated_at: new Date().toISOString(),
