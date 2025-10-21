@@ -363,7 +363,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
     const getCMSDisplayName = () => {
       switch (formData.cms_type) {
         case 'wordpress': return 'WordPress';
-        case 'wix': return 'Wix';
+        case 'ghost': return 'Ghost';
         case 'strapi': return 'Strapi';
         default: return 'CMS';
       }
@@ -372,7 +372,7 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
     const getCMSDescription = () => {
       switch (formData.cms_type) {
         case 'wordpress': return 'Enter your WordPress site URL and Application Password';
-        case 'wix': return 'Enter your Wix Site ID and API token to get started';
+        case 'ghost': return 'Enter your Ghost Admin URL and API Key to get started';
         case 'strapi': return 'Enter your Strapi URL and API token to get started';
         default: return 'Configure your CMS connection';
       }
@@ -389,40 +389,42 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
           </p>
         </div>
 
-        {/* CMS Type Selector */}
-        <div>
-          <label htmlFor="cms_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            CMS Platform *
-          </label>
-          <select
-            id="cms_type"
-            name="cms_type"
-            value={formData.cms_type}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            required
-          >
-            <option value="wordpress">WordPress</option>
-            <option value="strapi">Strapi</option>
-            <option value="wix">Wix</option>
-          </select>
-        </div>
+        {/* CMS Type Selector - only show if not pre-selected */}
+        {!initialCmsType && (
+          <div>
+            <label htmlFor="cms_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              CMS Platform *
+            </label>
+            <select
+              id="cms_type"
+              name="cms_type"
+              value={formData.cms_type}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              required
+            >
+              <option value="wordpress">WordPress</option>
+              <option value="strapi">Strapi</option>
+              <option value="ghost">Ghost</option>
+            </select>
+          </div>
+        )}
 
         <div>
           <label htmlFor="base_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {formData.cms_type === 'wordpress' ? 'WordPress Site URL *' :
-             formData.cms_type === 'wix' ? 'Wix Site ID *' : 'Strapi Base URL *'}
+             formData.cms_type === 'ghost' ? 'Ghost Admin URL *' : 'Strapi Base URL *'}
           </label>
           <input
             id="base_url"
-            type={formData.cms_type === 'wix' ? "text" : "url"}
+            type="url"
             name="base_url"
             value={formData.base_url}
             onChange={handleInputChange}
             placeholder={formData.cms_type === 'wordpress'
               ? "https://your-wordpress-site.com"
-              : formData.cms_type === 'wix'
-              ? "Your Wix site ID (e.g., 12345678-1234-1234-1234-123456789abc)"
+              : formData.cms_type === 'ghost'
+              ? "https://your-ghost-site.com"
               : "https://your-strapi-instance.railway.app"
             }
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
@@ -433,9 +435,9 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
               <p>Enter your full WordPress site URL (e.g., https://myblog.com)</p>
             </div>
           )}
-          {formData.cms_type === 'wix' && (
+          {formData.cms_type === 'ghost' && (
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              <p>Find your Site ID in your Wix dashboard under Settings → Business Info</p>
+              <p>Enter your Ghost site URL (e.g., https://yourblog.ghost.io or your custom domain)</p>
             </div>
           )}
         </div>
@@ -773,7 +775,11 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
         <h4 className="font-medium text-gray-900 dark:text-white mb-3">Connection Summary</h4>
         <div className="space-y-2 text-sm">
-          <div><span className="font-medium">CMS Type:</span> <span className="text-gray-600 dark:text-gray-400">{formData.cms_type === 'wordpress' ? 'WordPress' : formData.cms_type === 'wix' ? 'Wix' : 'Strapi'}</span></div>
+          <div><span className="font-medium">CMS Type:</span> <span className="text-gray-600 dark:text-gray-400">
+            {formData.cms_type === 'wordpress' ? 'WordPress' :
+             formData.cms_type === 'ghost' ? 'Ghost' :
+             formData.cms_type === 'strapi' ? 'Strapi' : formData.cms_type}
+          </span></div>
           <div><span className="font-medium">Base URL:</span> <span className="text-gray-600 dark:text-gray-400">{formData.base_url}</span></div>
           {preselectedWebsiteId && (
             <div><span className="font-medium">Website:</span> <span className="text-gray-600 dark:text-gray-400">
