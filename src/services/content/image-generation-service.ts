@@ -225,18 +225,19 @@ export class ImageGenerationService {
    */
   injectImagesIntoHtml(html: string, images: GeneratedImage[]): string {
     if (!images.length) return html;
-    
+
     // Insert first image after TL;DR box
     const firstFig = `<figure><img src="${images[0].url}" alt="${this.escapeHtml(images[0].alt)}" loading="lazy" /><figcaption>${this.escapeHtml(images[0].alt)}</figcaption></figure>`;
     let output = html.replace(
-      /<\/div>\s*<!--\s*TLDR_END\s*-->|<\/div>\s*<\/div>|<\/div>/i, 
+      /<\/div>\s*<!--\s*TLDR_END\s*-->|<\/div>\s*<\/div>|<\/div>/i,
       match => `${match}\n${firstFig}`
     );
 
-    // Insert remaining images after H2 sections
+    // Insert remaining images BEFORE H2 sections (not after opening tag)
+    // This prevents images from being nested inside H2 tags
     for (let i = 1; i < images.length; i++) {
       const fig = `<figure><img src="${images[i].url}" alt="${this.escapeHtml(images[i].alt)}" loading="lazy" /><figcaption>${this.escapeHtml(images[i].alt)}</figcaption></figure>`;
-      output = output.replace(/<h2[^>]*>/, (match) => `${match}\n${fig}\n`);
+      output = output.replace(/<h2[^>]*>/i, (match) => `\n${fig}\n${match}`);
     }
 
     return output;

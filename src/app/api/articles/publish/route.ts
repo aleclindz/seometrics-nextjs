@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CMSManager } from '@/lib/cms/cms-manager';
+import { uploadImagesToWordPress } from '@/lib/cms/wordpress-image-upload';
 
 // Use Node.js runtime for longer timeout support (needed for CMS API calls)
 export const runtime = 'nodejs';
@@ -400,10 +401,21 @@ export async function POST(request: NextRequest) {
 function cleanHtmlForWordPress(content: string): string {
   let cleaned = content.trim();
 
-  // Fix images wrapped in header tags (e.g., <h2><figure>...</figure></h2>Introduction</h2>)
+  // Fix: <h2><figure>...</figure>Text</h2> → <figure>...</figure><h2>Text</h2>
+  // This handles the case where images are nested inside header tags with text following
+  cleaned = cleaned.replace(/<h([1-6])>\s*(<figure[^>]*>[\s\S]*?<\/figure>)\s*(.*?)<\/h\1>/g, '$2<h$1>$3</h$1>');
+
+  // Fix: <h2><figure>...</figure></h2><p>Text</p> → <figure>...</figure><h2>Text</h2>
+  // This handles the case where the header text is in a following paragraph
+  cleaned = cleaned.replace(/<h([1-6])>\s*(<figure[^>]*>[\s\S]*?<\/figure>)\s*<\/h\1>\s*<p>([^<]+)<\/p>/g, '$2<h$1>$3</h$1>');
+
+  // Fix images wrapped in header tags with just figure (e.g., <h2><figure>...</figure></h2>)
   // Match patterns like <h2><figure>...</figure></h2> and extract just the figure
-  // Using [\s\S] instead of . with /s flag for ES5 compatibility
-  cleaned = cleaned.replace(/<h([1-6])>(\s*<figure[^>]*>[\s\S]*?<\/figure>\s*)<\/h\1>/g, '$2');
+  cleaned = cleaned.replace(/<h([1-6])>\s*(<figure[^>]*>[\s\S]*?<\/figure>)\s*<\/h\1>/g, '$2');
+
+  // Remove duplicate header text appearing in both H2 and immediately following paragraphs
+  // Pattern: <h2>Introduction</h2><p>Introduction to the topic</p> where the header word is repeated
+  cleaned = cleaned.replace(/<h([1-6])>([^<]+)<\/h\1>\s*<p>\2([^<]*)<\/p>/g, '<h$1>$2</h$1><p>$3</p>');
 
   // Fix headers that have content after the closing tag split incorrectly
   // Pattern: </h2>Content</h2> should be </h2><p>Content</p>
@@ -418,6 +430,9 @@ function cleanHtmlForWordPress(content: string): string {
   // Fix double-wrapped elements
   cleaned = cleaned.replace(/<h([1-6])>\s*<h\1>/g, '<h$1>');
   cleaned = cleaned.replace(/<\/h([1-6])>\s*<\/h\1>/g, '</h$1>');
+
+  // Fix empty header tags
+  cleaned = cleaned.replace(/<h([1-6])>\s*<\/h\1>/g, '');
 
   // Clean up excessive whitespace between tags
   cleaned = cleaned.replace(/>\s+</g, '><');
@@ -435,96 +450,7 @@ function cleanHtmlForWordPress(content: string): string {
   return cleaned.trim();
 }
 
-/**
- * Upload images from temporary URLs to WordPress Media Library
- * Returns content with updated image URLs
- */
-async function uploadImagesToWordPress({
-  content,
-  accessToken,
-  site
-}: {
-  content: string;
-  accessToken: string;
-  site: string;
-}): Promise<string> {
-  // Find all image URLs in the content (especially OpenAI blob URLs)
-  const imgRegex = /<img[^>]+src="([^"]+)"/g;
-  const matches: string[] = [];
-  let match;
-
-  // Use exec() loop for ES5 compatibility instead of matchAll()
-  while ((match = imgRegex.exec(content)) !== null) {
-    matches.push(match[1]);
-  }
-
-  let updatedContent = content;
-
-  for (const imageUrl of matches) {
-
-    // Only process temporary URLs (OpenAI, blob storage, etc.)
-    if (imageUrl.includes('oaidalleapiprodscus.blob.core.windows.net') ||
-        imageUrl.includes('blob.core.windows.net') ||
-        imageUrl.includes('temp') ||
-        imageUrl.includes('temporary')) {
-
-      try {
-        console.log('[WORDPRESS] Uploading image to Media Library:', imageUrl.substring(0, 80) + '...');
-
-        // Download the image
-        const imageResponse = await fetch(imageUrl);
-        if (!imageResponse.ok) {
-          console.error('[WORDPRESS] Failed to download image:', imageResponse.status);
-          continue;
-        }
-
-        const imageBlob = await imageResponse.blob();
-        const imageBuffer = Buffer.from(await imageBlob.arrayBuffer());
-
-        // Extract filename from URL or generate one
-        const urlParts = imageUrl.split('/');
-        const urlFilename = urlParts[urlParts.length - 1].split('?')[0];
-        const extension = urlFilename.includes('.') ? urlFilename.split('.').pop() : 'jpg';
-        const filename = urlFilename.includes('.') ? urlFilename : `image-${Date.now()}.${extension}`;
-
-        // Upload to WordPress Media Library
-        const mediaEndpoint = `https://public-api.wordpress.com/wp/v2/sites/${site}/media`;
-
-        const formData = new FormData();
-        formData.append('file', new Blob([imageBuffer]), filename);
-
-        const uploadResponse = await fetch(mediaEndpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          },
-          body: formData
-        });
-
-        if (!uploadResponse.ok) {
-          const errorText = await uploadResponse.text();
-          console.error('[WORDPRESS] Media upload failed:', uploadResponse.status, errorText);
-          continue;
-        }
-
-        const mediaData = await uploadResponse.json();
-        const wordpressImageUrl = mediaData.source_url || mediaData.url;
-
-        if (wordpressImageUrl) {
-          console.log('[WORDPRESS] Successfully uploaded image, replacing URL');
-          // Replace the temporary URL with the permanent WordPress URL
-          updatedContent = updatedContent.replace(imageUrl, wordpressImageUrl);
-        }
-
-      } catch (uploadError) {
-        console.error('[WORDPRESS] Image upload error:', uploadError);
-        // Continue with next image on error
-      }
-    }
-  }
-
-  return updatedContent;
-}
+// Removed: uploadImagesToWordPress function - now using shared utility from @/lib/cms/wordpress-image-upload
 
 async function publishToWordPressCom({
   accessToken,
@@ -547,11 +473,14 @@ async function publishToWordPressCom({
 
   // Step 2: Upload images to WordPress Media Library
   console.log('[WORDPRESS] Uploading images to Media Library...');
-  cleanedContent = await uploadImagesToWordPress({
+  const uploadResult = await uploadImagesToWordPress({
     content: cleanedContent,
+    authType: 'bearer',
     accessToken,
-    site
+    siteUrl: site
   });
+  cleanedContent = uploadResult.content;
+  console.log(`[WORDPRESS] Uploaded ${uploadResult.uploadedImages.length} images`);
 
   // Step 3: Publish the article with cleaned content
   const endpoint = `https://public-api.wordpress.com/wp/v2/sites/${site}/posts`;

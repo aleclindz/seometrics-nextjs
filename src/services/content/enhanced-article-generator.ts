@@ -203,8 +203,24 @@ QUALITY REQUIREMENTS:
 - Include semantic keywords naturally throughout
 - Each major section should have 2-3 well-developed paragraphs
 - Use transition phrases between sections for flow
- - Include a dedicated FAQ section with 3-5 common questions and concise answers
- - Use clear structure; keep sentences readable (avoid overly long sentences)
+- Include a dedicated FAQ section with 3-5 common questions and concise answers
+- Use clear structure; keep sentences readable (avoid overly long sentences)
+
+HTML STRUCTURE RULES (CRITICAL - PREVENT MALFORMED HTML):
+- NEVER put images or figures inside header tags (<h1>, <h2>, <h3>, etc.)
+- NEVER nest a <figure> element inside a heading tag
+- Each section should start with ONLY the header tag: <h2>Section Title</h2>
+- Do NOT repeat the section title text in the first paragraph after the header
+- Images should be separate <figure> elements placed between paragraphs or sections
+- Correct structure example:
+  <h2>Introduction to the Citrus Wholesale Market</h2>
+  <p>The citrus wholesale market plays a crucial role...</p>
+
+- INCORRECT structure (DO NOT DO THIS):
+  <h2><figure>...</figure>Introduction to the Citrus Wholesale Market</h2>
+  <p>Introduction to the Citrus Wholesale Market: The citrus wholesale...</p>
+
+- Each header should appear exactly ONCE - do not duplicate header text in subsequent paragraphs
 
 WRITING STYLE RULES:
 - Use active voice (e.g., "Management canceled the meeting.")

@@ -1,5 +1,6 @@
 import { BaseCMSProvider } from '../base-provider';
 import { CMSCredentials, CMSBlog, CMSArticle, CMSPublishOptions, CMSType } from '../types';
+import { uploadImagesToWordPress, hasTemporaryImages } from '../wordpress-image-upload';
 
 export class WordPressProvider extends BaseCMSProvider {
   type: CMSType = 'wordpress';
@@ -110,12 +111,35 @@ export class WordPressProvider extends BaseCMSProvider {
   }
 
   async publishArticle(credentials: CMSCredentials, article: Partial<CMSArticle>, options?: CMSPublishOptions): Promise<CMSArticle> {
+    // Process images: upload temporary URLs to WordPress Media Library
+    let processedContent = article.content || '';
+    if (hasTemporaryImages(processedContent) && credentials.siteUrl && credentials.username) {
+      console.log('[WORDPRESS] Processing temporary images before publishing...');
+      try {
+        const uploadResult = await uploadImagesToWordPress({
+          content: processedContent,
+          authType: 'basic',
+          accessToken: credentials.accessToken,
+          siteUrl: credentials.siteUrl,
+          username: credentials.username
+        });
+        processedContent = uploadResult.content;
+        console.log(`[WORDPRESS] Uploaded ${uploadResult.uploadedImages.length} images to Media Library`);
+      } catch (error) {
+        console.error('[WORDPRESS] Image upload failed:', error);
+        // Continue with original content if upload fails
+      }
+    } else if (hasTemporaryImages(processedContent)) {
+      console.warn('[WORDPRESS] Temporary images detected but missing credentials (siteUrl or username)');
+    }
+
     const postData: any = {
       title: article.title,
-      content: article.content,
+      content: processedContent,
       slug: article.slug || this.generateSlug(article.title || ''),
-      status: options?.status || 'publish',
+      status: options?.status === 'draft' ? 'draft' : 'publish',
       date: options?.publishedAt?.toISOString() || new Date().toISOString(),
+      date_gmt: new Date().toISOString(), // Ensure proper GMT timestamp for publishing
       excerpt: article.excerpt || '',
       meta: {
         _yoast_wpseo_title: article.seo?.title || article.title,
@@ -136,6 +160,45 @@ export class WordPressProvider extends BaseCMSProvider {
       credentials,
       postData
     );
+
+    console.log('[WORDPRESS] Post created:', {
+      id: createdPost.id,
+      status: createdPost.status,
+      requestedStatus: options?.status === 'draft' ? 'draft' : 'publish',
+      date: createdPost.date
+    });
+
+    // Verify post was published correctly
+    if (options?.status !== 'draft' && createdPost.status !== 'publish') {
+      console.warn('[WORDPRESS] Post created but status is not "publish":', createdPost.status);
+      console.log('[WORDPRESS] Attempting to update status explicitly...');
+
+      try {
+        // Attempt to update status explicitly
+        const updatedPost = await this.makeAuthenticatedRequest(
+          `${credentials.siteUrl}/wp-json/wp/v2/posts/${createdPost.id}`,
+          'PUT',
+          credentials,
+          { status: 'publish' }
+        );
+
+        console.log('[WORDPRESS] Status update result:', updatedPost.status);
+
+        return {
+          id: updatedPost.id.toString(),
+          title: updatedPost.title.rendered,
+          content: updatedPost.content.rendered,
+          slug: updatedPost.slug,
+          status: updatedPost.status === 'publish' ? 'published' : 'draft',
+          publishedAt: updatedPost.status === 'publish' ? new Date(updatedPost.date) : undefined,
+          tags: options?.tags || [],
+          author: options?.author || '',
+          excerpt: updatedPost.excerpt.rendered ? this.stripHtml(updatedPost.excerpt.rendered) : '',
+        };
+      } catch (updateError) {
+        console.error('[WORDPRESS] Failed to update status:', updateError);
+      }
+    }
 
     return {
       id: createdPost.id.toString(),
