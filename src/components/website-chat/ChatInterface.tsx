@@ -689,22 +689,10 @@ What would you like to work on first?`,
 
   const renderMessage = (message: ChatMessage) => {
     const isUser = message.role === 'user';
-    
+
     return (
-      <div key={message.id} className={`mb-4 ${isUser ? 'ml-12' : 'mr-12'}`}>
-        <div className="flex gap-3 items-start">
-          {/* Avatar */}
-          {!isUser && (
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <Bot className="h-4 w-4 text-white" />
-            </div>
-          )}
-          {isUser && (
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-              <User className="h-4 w-4 text-gray-600" />
-            </div>
-          )}
-          
+      <div key={message.id} className="mb-4 mx-4">
+        <div className="flex items-start">
           {/* Message Content */}
           <div className="flex-1 min-w-0">
             {isUser ? (
@@ -804,13 +792,10 @@ What would you like to work on first?`,
     <Card className="h-full flex flex-col bg-white/95 backdrop-blur-sm border-0 shadow-sm">
       <CardContent className="flex-1 flex flex-col min-h-0 p-0">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 min-h-0">
+        <div className="flex-1 overflow-y-auto p-[0.3rem] min-h-0">
           {isLoadingHistory && (
-            <div className="mb-4 mr-12">
-              <div className="flex gap-3 items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-white" />
-                </div>
+            <div className="mb-4 mx-4">
+              <div className="flex items-start">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
@@ -824,11 +809,8 @@ What would you like to work on first?`,
           {!isLoadingHistory && messages.map(renderMessage)}
           
           {isLoading && (
-            <div className="mb-4 mr-12">
-              <div className="flex gap-3 items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-white" />
-                </div>
+            <div className="mb-4 mx-4">
+              <div className="flex items-start">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
