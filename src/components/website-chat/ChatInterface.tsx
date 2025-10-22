@@ -128,6 +128,16 @@ export default function ChatInterface({ userToken, selectedSite, userSites, onCo
               
               console.log('[CHAT INIT] Loaded messages:', loadedMessages.length);
               setMessages(loadedMessages);
+
+              // Check if any message has a content-ready action card (strategy completed)
+              const hasStrategyCompletion = loadedMessages.some(msg => msg.actionCard?.type === 'content-ready');
+              if (hasStrategyCompletion && typeof window !== 'undefined' && selectedSite) {
+                console.log('[CHAT INIT] Strategy completion detected in history, triggering refresh');
+                window.dispatchEvent(new CustomEvent('seoagent:strategy-updated', {
+                  detail: { site: selectedSite }
+                }));
+              }
+
               setIsLoadingHistory(false);
               return; // Exit early - we loaded existing conversation
             }
@@ -359,8 +369,20 @@ What would you like to work on first?`,
         if (loaded.length > messages.length) {
           console.log('[CHAT POLLING] New messages detected:', loaded.length - messages.length);
           setMessages(loaded);
-          // Stop polling if we see a completed progress card
+
+          // Check for strategy completion (content-ready action card)
           const last = loaded[loaded.length - 1];
+          if (last?.actionCard?.type === 'content-ready') {
+            console.log('[CHAT POLLING] Strategy discovery completed, triggering refresh');
+            // Dispatch event to trigger Strategy tab refresh
+            if (typeof window !== 'undefined' && selectedSite) {
+              window.dispatchEvent(new CustomEvent('seoagent:strategy-updated', {
+                detail: { site: selectedSite }
+              }));
+            }
+          }
+
+          // Stop polling if we see a completed progress card
           const completed = last?.actionCard?.type === 'progress' && last?.actionCard?.data?.status === 'completed';
           if (completed && pollIntervalRef.current) {
             console.log('[CHAT POLLING] Progress completed, stopping polling');

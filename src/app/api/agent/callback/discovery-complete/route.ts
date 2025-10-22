@@ -50,16 +50,36 @@ export async function POST(request: NextRequest) {
       briefsGenerated: summary.briefsGenerated
     });
 
-    // Get next message order
+    // Get last message (should be the progress card)
     const { data: lastMessage } = await supabase
       .from('agent_conversations')
-      .select('message_order')
+      .select('*')
       .eq('user_token', userToken)
       .eq('website_token', websiteToken)
       .eq('conversation_id', conversationId)
       .order('message_order', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // Update the progress card to show completion
+    if (lastMessage && lastMessage.action_card?.type === 'progress') {
+      console.log('[DISCOVERY CALLBACK] Updating progress card to completed');
+      await supabase
+        .from('agent_conversations')
+        .update({
+          action_card: {
+            type: 'progress',
+            data: {
+              ...lastMessage.action_card.data,
+              progress: 100,
+              status: 'completed',
+              currentStep: 'Brief generation complete',
+              currentStepIndex: 2
+            }
+          }
+        })
+        .eq('id', lastMessage.id);
+    }
 
     const nextMessageOrder = (lastMessage?.message_order || 0) + 1;
 
@@ -74,13 +94,15 @@ export async function POST(request: NextRequest) {
 
 📝 Your article briefs are ready to schedule for generation in the Content tab!`;
 
-    // Build action card
+    // Build action card (wrap in data object to match ChatInterface expectations)
     const actionCard = {
       type: 'content-ready',
-      briefsGenerated: summary.briefsGenerated,
-      pillarBriefs: summary.pillarBriefs,
-      supportingBriefs: summary.supportingBriefs,
-      websiteToken: websiteToken
+      data: {
+        briefsGenerated: summary.briefsGenerated,
+        pillarBriefs: summary.pillarBriefs,
+        supportingBriefs: summary.supportingBriefs,
+        websiteToken: websiteToken
+      }
     };
 
     // Store follow-up message
