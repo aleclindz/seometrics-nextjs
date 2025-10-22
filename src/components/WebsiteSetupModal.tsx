@@ -363,13 +363,26 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         body: JSON.stringify({ userToken: user.token, domain: website.url, force: true })
       });
       const data = await resp.json();
+      console.log('[BUSINESS DETECTION] Response:', { ok: resp.ok, status: resp.status, data });
+
       if (resp.ok && data?.success && data.profile) {
+        console.log('[BUSINESS DETECTION] Setting values:', {
+          type: data.profile.type,
+          description: data.profile.description
+        });
         setBusinessType(data.profile.type || 'unknown');
         setBusinessDescription(data.profile.description || '');
         setBusinessSavedAt(Date.now());
+      } else {
+        console.error('[BUSINESS DETECTION] Failed:', {
+          ok: resp.ok,
+          success: data?.success,
+          hasProfile: !!data?.profile,
+          error: data?.error
+        });
       }
     } catch (e) {
-      // silent
+      console.error('[BUSINESS DETECTION] Error:', e);
     } finally {
       setBizDetecting(false);
     }

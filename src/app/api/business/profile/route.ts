@@ -295,12 +295,16 @@ export async function POST(request: NextRequest) {
       .eq('id', website.id);
 
     if (updateError) {
-      return NextResponse.json({ success: false, error: 'Failed to update business info' }, { status: 500 });
+      console.error('[BUSINESS PROFILE] Database update error:', updateError);
+      return NextResponse.json({ success: false, error: 'Failed to update business info', details: updateError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, websiteId: website.id, profile: { type: updates.business_type, ...businessInfoObj } });
+    const responsePayload = { success: true, websiteId: website.id, profile: { type: updates.business_type, ...businessInfoObj } };
+    console.log('[BUSINESS PROFILE] Returning response:', { success: true, hasProfile: true, profileType: updates.business_type, descriptionLength: businessInfoObj.description?.length || 0 });
+    return NextResponse.json(responsePayload);
   } catch (e) {
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    console.error('[BUSINESS PROFILE] Unexpected error in POST:', e);
+    return NextResponse.json({ success: false, error: 'Internal server error', details: String(e) }, { status: 500 });
   }
 }
 
