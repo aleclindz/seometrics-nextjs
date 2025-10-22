@@ -775,18 +775,18 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
       <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
         <h4 className="font-medium text-gray-900 dark:text-white mb-3">Connection Summary</h4>
         <div className="space-y-2 text-sm">
-          <div><span className="font-medium">CMS Type:</span> <span className="text-gray-600 dark:text-gray-400">
+          <div><span className="font-medium text-gray-900 dark:text-white">CMS Type:</span> <span className="text-gray-900 dark:text-gray-100">
             {formData.cms_type === 'wordpress' ? 'WordPress' :
              formData.cms_type === 'ghost' ? 'Ghost' :
              formData.cms_type === 'strapi' ? 'Strapi' : formData.cms_type}
           </span></div>
-          <div><span className="font-medium">Base URL:</span> <span className="text-gray-600 dark:text-gray-400">{formData.base_url}</span></div>
+          <div><span className="font-medium text-gray-900 dark:text-white">Base URL:</span> <span className="text-gray-900 dark:text-gray-100">{formData.base_url}</span></div>
           {preselectedWebsiteId && (
-            <div><span className="font-medium">Website:</span> <span className="text-gray-600 dark:text-gray-400">
+            <div><span className="font-medium text-gray-900 dark:text-white">Website:</span> <span className="text-gray-900 dark:text-gray-100">
               {websites.find(w => w.id.toString() === preselectedWebsiteId)?.domain || 'Selected website'}
             </span></div>
           )}
-          <div><span className="font-medium">Content Type:</span> <span className="text-gray-600 dark:text-gray-400">
+          <div><span className="font-medium text-gray-900 dark:text-white">Content Type:</span> <span className="text-gray-900 dark:text-gray-100">
             {discoveredTypes.find(t => t.uid === formData.content_type)?.displayName || formData.content_type}
           </span></div>
         </div>

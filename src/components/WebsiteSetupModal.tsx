@@ -604,7 +604,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   fetchHostConnections();
                   // Note: SEOAgent.js status should only be updated via explicit test button
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -722,7 +722,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                       <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                         Connected to Google Search Console
                       </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm text-gray-800 dark:text-gray-200">
                         {gscStatus.connection?.email} • {gscStatus.connection?.properties_count} properties
                       </p>
                     </div>
@@ -755,7 +755,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                     <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                       Connect Google Search Console
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    <p className="text-sm text-gray-800 dark:text-gray-200 mb-6 max-w-md mx-auto">
                       Connect your Google Search Console to access performance data, submit sitemaps, and enable advanced SEO monitoring.
                     </p>
                     
@@ -795,7 +795,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Business Information</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-800 dark:text-gray-200">
                   This information will help SEOAgent write content relevant for your website.
                 </p>
               </div>
@@ -904,7 +904,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                     SEOAgent.js is Active
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-6">
                     Your website is successfully running SEOAgent.js and automated SEO optimizations are active.
                   </p>
                   
@@ -928,7 +928,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                     SEOAgent.js Installation
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-6">
                     Add this script to your website&apos;s HTML to enable automated SEO optimizations including meta tags, alt tags, and schema markup.
                   </p>
                   
@@ -1003,10 +1003,10 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                           <h5 className="font-medium text-gray-900 dark:text-gray-100 capitalize">
                             {connection.cms_type}
                           </h5>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <p className="text-sm text-gray-800 dark:text-gray-200">
                             {connection.connection_name}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-xs text-gray-700 dark:text-gray-300">
                             {connection.base_url}
                           </p>
                         </div>
@@ -1025,7 +1025,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                     </svg>
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">CMS Connected</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Your CMS connection is active. Click refresh to load connection details.</p>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-4">Your CMS connection is active. Click refresh to load connection details.</p>
                   <button
                     onClick={fetchCMSConnections}
                     className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -1045,7 +1045,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                     CMS Integration
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-6">
                     Connect your Content Management System to enable automated article publishing and content management.
                   </p>
                   
@@ -1106,7 +1106,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   
                   <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Benefits of CMS Integration</h4>
-                    <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                    <ul className="text-sm text-gray-800 dark:text-gray-200 space-y-1 list-disc list-inside">
                       <li>Automated article publishing</li>
                       <li>Content synchronization</li>
                       <li>SEO metadata management</li>
@@ -1177,7 +1177,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                                   </span>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                              <p className="text-sm text-gray-800 dark:text-gray-200">
                                 {connection.project_name || connection.connection_name}
                               </p>
                               {connection.domain && (
@@ -1186,7 +1186,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                                 </p>
                               )}
                               {connection.last_deployment_at && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="text-xs text-gray-700 dark:text-gray-300">
                                   Last deployed: {new Date(connection.last_deployment_at).toLocaleDateString()}
                                 </p>
                               )}
@@ -1208,7 +1208,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                     </svg>
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Hosting Connected</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Your hosting connection is active. Click refresh to load connection details.</p>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-6">Your hosting connection is active. Click refresh to load connection details.</p>
                   <button
                     onClick={fetchHostConnections}
                     className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -1221,7 +1221,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                     Hosting Integration
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-6">
                     Connect your hosting platform to enable automated deployments and seamless content publishing.
                   </p>
                   
@@ -1272,7 +1272,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   
                   <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Benefits of Hosting Integration</h4>
-                    <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                    <ul className="text-sm text-gray-800 dark:text-gray-200 space-y-1 list-disc list-inside">
                       <li>Automated deployments on content changes</li>
                       <li>Seamless CI/CD pipeline integration</li>
                       <li>Real-time deployment status monitoring</li>

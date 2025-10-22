@@ -9,7 +9,7 @@
  * 5. Prevents keyword cannibalization
  *
  * Constraints:
- * - 3-12 topic clusters per website (3 for small businesses, 5+ for larger sites)
+ * - 1-12 topic clusters per website (1-2 for niche sites, 3-5 for small businesses, 5+ for larger sites)
  * - Max 100 keywords per cluster
  * - PILLAR: 1 primary + 4-10 secondaries
  * - SUPPORTING: 1 primary + 0-5 secondaries
@@ -100,7 +100,7 @@ const MASTER_DISCOVERY_PROMPT = `You are an expert SEO strategist specializing i
    - Never assign the same keyword to multiple articles (prevents cannibalization)
 
 2. **Clustering:**
-   - Create 3-12 topic clusters total (3 for small businesses, 5+ for larger sites)
+   - Create 1-12 topic clusters total (1-2 for niche sites, 3-5 for small businesses, 5+ for larger sites)
    - Max 100 keywords per cluster
    - Each cluster represents a semantic theme
    - Cluster names should be clear, descriptive titles
@@ -170,7 +170,7 @@ Return valid JSON with this exact structure:
 ✅ No keyword appears in multiple articles
 ✅ All pillar secondaries are mapped to H2/FAQ sections
 ✅ Supporting articles reference their pillars in links_to
-✅ 3-12 clusters total (scale based on business size and seed topics)
+✅ 1-12 clusters total (scale based on business size and seed topics)
 ✅ Max 100 keywords per cluster
 ✅ Changes log documents key decisions
 
@@ -234,7 +234,7 @@ export function validateDiscoveryOutput(
   const errors: string[] = [];
 
   // Validate cluster count (use controls or defaults)
-  const minClusters = controls?.min_clusters || 3; // Allow small businesses with 3 clusters
+  const minClusters = controls?.min_clusters || 1; // Allow niche sites with 1-2 clusters
   const maxClusters = controls?.max_clusters || 12;
 
   if (output.clusters.length < minClusters || output.clusters.length > maxClusters) {
