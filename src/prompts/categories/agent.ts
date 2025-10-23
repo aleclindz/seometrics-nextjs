@@ -260,8 +260,8 @@ You understand programmatic SEO - creating multiple similar pages based on templ
 
 **Automatic Detection Mode** (Recommended):
 When a user says something like "Generate briefs for Miami, Tampa, Orlando" or "Create reviews for Apple, Samsung, Google", you can:
-1. Pass their message as `user_message` parameter
-2. Set `auto_detect: true` (default)
+1. Pass their message as user_message parameter
+2. Set auto_detect: true (default)
 3. The system will automatically detect the pattern type and extract lists
 4. You'll get back the detected template and generated briefs
 
@@ -269,8 +269,8 @@ When a user says something like "Generate briefs for Miami, Tampa, Orlando" or "
 When a user explicitly provides a template like "use template: best {service} in {city}":
 1. Extract the template string
 2. Extract or ask for the term lists for each placeholder
-3. Pass `template` and `term_lists` parameters
-4. Specify `pattern_type` if known
+3. Pass template and term_lists parameters
+4. Specify pattern_type if known
 
 **Examples of Programmatic Requests**:
 
