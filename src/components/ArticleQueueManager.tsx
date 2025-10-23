@@ -63,6 +63,7 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
   const [schedule, setSchedule] = useState<{ enabled: boolean; auto_publish: boolean; next_scheduled_at?: string | null } | null>(null);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success'|'error'|'info' }>({ visible: false, message: '', type: 'info' });
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [scheduling, setScheduling] = useState(false);
   const showToast = (message: string, type: 'success'|'error'|'info' = 'info', ms = 2500) => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), ms);
@@ -313,6 +314,59 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
     }
   };
 
+  const handleScheduleAll = async () => {
+    try {
+      setScheduling(true);
+      showToast('Scheduling all unscheduled items...', 'info');
+
+      const response = await fetch('/api/content/schedule-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken,
+          websiteToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        showToast('Scheduling complete!', 'success', 4000);
+
+        // Refresh the queue to show updated scheduled dates
+        await fetchQueue();
+
+        // Dispatch event to notify chat interface
+        window.dispatchEvent(
+          new CustomEvent('seoagent:schedule-all-complete', {
+            detail: {
+              message: data.message,
+              briefsScheduled: data.briefsScheduled,
+              articlesScheduled: data.articlesScheduled,
+              totalScheduled: data.totalScheduled,
+              schedules: data.schedules,
+              planTier: data.planTier,
+            },
+          })
+        );
+
+        // Dispatch queue-updated event to refresh other components
+        window.dispatchEvent(
+          new CustomEvent('seoagent:queue-updated', {
+            detail: { websiteToken },
+          })
+        );
+      } else {
+        showToast(data.error || 'Failed to schedule items', 'error', 4000);
+      }
+    } catch (error) {
+      console.error('Error scheduling all:', error);
+      showToast('An error occurred while scheduling', 'error', 4000);
+    } finally {
+      setScheduling(false);
+    }
+  };
+
   const handleDragStart = (item: ArticleQueueItem) => {
     setDraggedItem(item);
   };
@@ -384,6 +438,27 @@ export default function ArticleQueueManager({ userToken, websiteToken, domain, o
           </div>
 
           <div className="flex gap-2">
+            <button
+              onClick={handleScheduleAll}
+              disabled={scheduling || queue.length === 0}
+              className={`inline-flex items-center px-3 py-2 border text-sm rounded-md ${
+                scheduling || queue.length === 0
+                  ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                  : 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100'
+              }`}
+              title="Automatically schedule all unscheduled briefs and articles based on your plan"
+            >
+              {scheduling ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Scheduling...
+                </>
+              ) : (
+                <>
+                  <Clock className="w-4 h-4 mr-2" /> Schedule All
+                </>
+              )}
+            </button>
             <button
               onClick={() => setCreating(true)}
               className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm rounded-md text-gray-700 bg-white hover:bg-gray-50"

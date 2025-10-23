@@ -472,11 +472,38 @@ What would you like to work on first?`,
       }
     };
 
+    // Handle schedule-all completion notifications
+    const handleScheduleAllComplete = (event: any) => {
+      const { message, briefsScheduled, articlesScheduled, totalScheduled } = event.detail;
+
+      if (totalScheduled === 0) {
+        // No items were scheduled
+        const noItemsMessage: ChatMessage = {
+          id: `schedule-${Date.now()}`,
+          role: 'assistant',
+          content: message || 'No unscheduled items found. All briefs and articles are already scheduled!',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, noItemsMessage]);
+      } else {
+        // Items were scheduled successfully
+        const scheduleMessage: ChatMessage = {
+          id: `schedule-${Date.now()}`,
+          role: 'assistant',
+          content: message,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, scheduleMessage]);
+      }
+    };
+
     window.addEventListener('seoagent:send-message', handleExternalMessage);
     window.addEventListener('seoagent:refresh-chat', handleRefreshMessages);
+    window.addEventListener('seoagent:schedule-all-complete', handleScheduleAllComplete);
     return () => {
       window.removeEventListener('seoagent:send-message', handleExternalMessage);
       window.removeEventListener('seoagent:refresh-chat', handleRefreshMessages);
+      window.removeEventListener('seoagent:schedule-all-complete', handleScheduleAllComplete);
     };
   }, [sendMessage, userToken, websiteToken, selectedSite, conversationId, startPollingUpdates]);
 
