@@ -40,6 +40,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('[AUTH] Session error:', error)
         setUser(null)
+
+        // Redirect to login on error if on protected route
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          const publicPaths = ['/', '/login', '/signup', '/pricing', '/docs', '/privacy', '/terms', '/free-audit', '/partners']
+          const isPublicPath = publicPaths.some(path => currentPath === path || currentPath.startsWith('/docs/'))
+
+          if (!isPublicPath) {
+            console.log('[AUTH] Session validation error on protected route, redirecting to login')
+            window.location.href = '/login'
+          }
+        }
         return
       }
 
@@ -83,10 +95,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         console.log('[AUTH] No valid session found')
         setUser(null)
+
+        // Redirect to login if no session on protected route
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname
+          const publicPaths = ['/', '/login', '/signup', '/pricing', '/docs', '/privacy', '/terms', '/free-audit', '/partners']
+          const isPublicPath = publicPaths.some(path => currentPath === path || currentPath.startsWith('/docs/'))
+
+          if (!isPublicPath) {
+            console.log('[AUTH] No session during validation on protected route, redirecting to login')
+            window.location.href = '/login'
+          }
+        }
       }
     } catch (error) {
       console.error('[AUTH] Unexpected error in validateSession:', error)
       setUser(null)
+
+      // Redirect to login on error if on protected route
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname
+        const publicPaths = ['/', '/login', '/signup', '/pricing', '/docs', '/privacy', '/terms', '/free-audit', '/partners']
+        const isPublicPath = publicPaths.some(path => currentPath === path || currentPath.startsWith('/docs/'))
+
+        if (!isPublicPath) {
+          console.log('[AUTH] Unexpected validation error on protected route, redirecting to login')
+          window.location.href = '/login'
+        }
+      }
     }
   }
 
@@ -152,8 +188,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           console.log('[AUTH] No initial session found')
           setUser(null)
+
+          // Redirect to login if on a protected route
+          if (typeof window !== 'undefined' && isMounted) {
+            const currentPath = window.location.pathname
+            const publicPaths = ['/', '/login', '/signup', '/pricing', '/docs', '/privacy', '/terms', '/free-audit', '/partners']
+            const isPublicPath = publicPaths.some(path => currentPath === path || currentPath.startsWith('/docs/'))
+
+            if (!isPublicPath) {
+              console.log('[AUTH] No session on protected route, redirecting to login')
+              window.location.href = '/login'
+              return // Don't set loading to false, we're redirecting
+            }
+          }
         }
-        
+
         if (isMounted) {
           setLoading(false)
         }
@@ -161,6 +210,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('[AUTH] Unexpected error in initial session check:', error)
         if (isMounted) {
           setUser(null)
+
+          // Redirect to login on error if on protected route
+          if (typeof window !== 'undefined') {
+            const currentPath = window.location.pathname
+            const publicPaths = ['/', '/login', '/signup', '/pricing', '/docs', '/privacy', '/terms', '/free-audit', '/partners']
+            const isPublicPath = publicPaths.some(path => currentPath === path || currentPath.startsWith('/docs/'))
+
+            if (!isPublicPath) {
+              console.log('[AUTH] Session error on protected route, redirecting to login')
+              window.location.href = '/login'
+              return
+            }
+          }
+
           setLoading(false)
         }
       }
@@ -177,9 +240,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (!isMounted) return
-        
+
         if (error || !session?.user) {
           setUser(null)
+
+          // Redirect to login if session expired on protected route
+          if (typeof window !== 'undefined') {
+            const currentPath = window.location.pathname
+            const publicPaths = ['/', '/login', '/signup', '/pricing', '/docs', '/privacy', '/terms', '/free-audit', '/partners']
+            const isPublicPath = publicPaths.some(path => currentPath === path || currentPath.startsWith('/docs/'))
+
+            if (!isPublicPath) {
+              console.log('[AUTH] Session expired during periodic check, redirecting to login')
+              window.location.href = '/login'
+            }
+          }
           return
         }
 
