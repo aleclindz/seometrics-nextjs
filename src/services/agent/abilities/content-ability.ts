@@ -34,7 +34,8 @@ export class ContentAbility extends BaseAbility {
       'CONTENT_add_to_queue', // NEW: Add specific topics to queue
       'CONTENT_remove_from_queue', // NEW: Remove topics from queue
       'CONTENT_reorder_queue', // NEW: Reorder queue priorities
-      'BRIEFS_generate' // NEW: Generate structured briefs
+      'BRIEFS_generate', // NEW: Generate structured briefs
+      'BRIEFS_generate_programmatic' // NEW: Generate programmatic SEO briefs
     ];
   }
 
@@ -76,6 +77,8 @@ export class ContentAbility extends BaseAbility {
         return await this.analyzeContentPerformance(args);
       case 'BRIEFS_generate':
         return await this.generateBriefs(args);
+      case 'BRIEFS_generate_programmatic':
+        return await this.generateProgrammaticBriefs(args);
       default:
         return this.error(`Unknown content function: ${name}`);
     }
@@ -1710,6 +1713,98 @@ export class ContentAbility extends BaseAbility {
 
     } catch (error) {
       return this.error('Failed to reorder queue', error);
+    }
+  }
+
+  /**
+   * Generate programmatic SEO briefs from templates and term lists
+   */
+  private async generateProgrammaticBriefs(args: {
+    site_url: string;
+    website_token?: string;
+    user_message?: string;
+    auto_detect?: boolean;
+    template?: string;
+    term_lists?: Record<string, string[]>;
+    pattern_type?: 'location' | 'product' | 'category' | 'comparison' | 'custom';
+    max_briefs?: number;
+    deduplicate?: boolean;
+    parent_cluster?: string;
+  }): Promise<FunctionCallResult> {
+    try {
+      if (!args.site_url && !args.website_token) {
+        return this.error('site_url or website_token is required');
+      }
+
+      const payload = {
+        userToken: this.userToken,
+        websiteToken: args.website_token,
+        domain: args.site_url,
+        user_message: args.user_message,
+        auto_detect: args.auto_detect !== false, // Default to true
+        template: args.template,
+        term_lists: args.term_lists,
+        pattern_type: args.pattern_type,
+        max_briefs: args.max_briefs || 100,
+        deduplicate: args.deduplicate !== false, // Default to true
+        parent_cluster: args.parent_cluster || null
+      };
+
+      const response = await this.fetchAPI('/api/agent/briefs/generate-programmatic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.success) {
+        return this.error(response.error || 'Failed to generate programmatic briefs');
+      }
+
+      // Format response message
+      const { briefs, total_generated, skipped_duplicates, pattern_detected, permutation_group_id } = response;
+
+      let result = `✅ **Programmatic Briefs Generated**\n\n`;
+
+      if (pattern_detected) {
+        result += `🎯 **Pattern Detected:** ${pattern_detected.type}\n`;
+        result += `📝 **Template:** "${pattern_detected.template}"\n`;
+        result += `🎲 **Confidence:** ${Math.round(pattern_detected.confidence * 100)}%\n\n`;
+      }
+
+      result += `📊 **Generation Results:**\n`;
+      result += `- ✅ Generated: ${total_generated} briefs\n`;
+      if (skipped_duplicates > 0) {
+        result += `- ⏭️ Skipped: ${skipped_duplicates} duplicates\n`;
+      }
+      result += `\n`;
+
+      result += `📋 **Sample Briefs:**\n`;
+      briefs.slice(0, 5).forEach((brief: any, index: number) => {
+        result += `${index + 1}. ${brief.title}\n`;
+        result += `   - Primary Keyword: "${brief.primary_keyword}"\n`;
+        result += `   - Intent: ${brief.intent}\n`;
+      });
+
+      if (briefs.length > 5) {
+        result += `... and ${briefs.length - 5} more briefs\n`;
+      }
+
+      result += `\n💡 **Next Steps:**\n`;
+      result += `- Review briefs in the Content tab\n`;
+      result += `- Schedule briefs for publication using the calendar\n`;
+      result += `- Generate articles from briefs when ready\n`;
+
+      return this.success({
+        message: result,
+        briefs: briefs.slice(0, 10), // Return first 10 for display
+        total_generated,
+        skipped_duplicates,
+        permutation_group_id,
+        pattern_type: pattern_detected?.type || args.pattern_type
+      });
+
+    } catch (error) {
+      return this.error('Failed to generate programmatic briefs', error);
     }
   }
 }

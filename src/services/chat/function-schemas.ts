@@ -1228,6 +1228,75 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     requiresSetup: false
   },
 
+  'BRIEFS_generate_programmatic': {
+    schema: {
+      name: 'BRIEFS_generate_programmatic',
+      description: 'Generate programmatic SEO content briefs from templates and term lists. Use when user wants to create multiple similar pages with variations (e.g., "[service] in [city]", "[brand] [product] review"). Supports automatic pattern detection from natural language OR manual template specification. Examples: "best plumbers in Miami, Tampa, Orlando" (location pattern), "create reviews for Apple, Samsung, Google" (product pattern), "compare Shopify, WooCommerce, BigCommerce" (comparison pattern).',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL or domain' },
+          website_token: { type: 'string', description: 'Website token (optional if site_url provided)' },
+          user_message: {
+            type: 'string',
+            description: 'User\'s natural language request to auto-detect patterns. Examples: "Generate briefs for Miami, Tampa, Orlando", "Create reviews for iPhone, Galaxy, Pixel", "Compare Shopify vs WooCommerce vs BigCommerce"'
+          },
+          auto_detect: {
+            type: 'boolean',
+            description: 'Enable automatic pattern detection from user_message',
+            default: true
+          },
+          template: {
+            type: 'string',
+            description: 'Manual template with placeholders in {curly braces}. Example: "best {service} in {city}" or "{brand} {product} review". Use with term_lists for manual mode.'
+          },
+          term_lists: {
+            type: 'object',
+            description: 'Object with arrays for each template placeholder. Example: {service: ["plumbers", "electricians"], city: ["Miami", "Tampa"]}. Keys must match template placeholders.',
+            additionalProperties: { type: 'array', items: { type: 'string' } }
+          },
+          pattern_type: {
+            type: 'string',
+            enum: ['location', 'product', 'category', 'comparison', 'custom'],
+            description: 'Type of programmatic pattern. Auto-detected if using user_message, otherwise specify explicitly.'
+          },
+          max_briefs: {
+            type: 'integer',
+            description: 'Maximum number of briefs to generate (permutations will be limited to this)',
+            default: 100,
+            minimum: 1,
+            maximum: 200
+          },
+          deduplicate: {
+            type: 'boolean',
+            description: 'Check against existing keywords and skip duplicates',
+            default: true
+          },
+          parent_cluster: {
+            type: 'string',
+            description: 'Optional parent topic cluster to group these briefs under'
+          }
+        },
+        required: ['site_url'],
+        additionalProperties: false
+      }
+    },
+    validator: z.object({
+      site_url: flexibleUrlSchema,
+      website_token: z.string().optional(),
+      user_message: z.string().optional(),
+      auto_detect: z.boolean().optional().default(true),
+      template: z.string().optional(),
+      term_lists: z.record(z.array(z.string())).optional(),
+      pattern_type: z.enum(['location', 'product', 'category', 'comparison', 'custom']).optional(),
+      max_briefs: z.number().int().min(1).max(200).optional().default(100),
+      deduplicate: z.boolean().optional().default(true),
+      parent_cluster: z.string().optional()
+    }),
+    category: 'content',
+    requiresSetup: false
+  },
+
   'CONTENT_gap_analysis': {
     schema: {
       name: 'CONTENT_gap_analysis',
