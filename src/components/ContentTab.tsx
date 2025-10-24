@@ -248,9 +248,8 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onS
     published: "bg-green-50/30 hover:bg-green-50/50 border-green-100",
   }[item.stage];
 
-  const publishDate = item.stage === "published"
-    ? item.scheduledPublishAt
-    : item.scheduledPublishAt || item.scheduledDraftAt;
+  // Only show publish date for published articles
+  const publishDate = item.stage === "published" ? item.scheduledPublishAt : null;
 
   return (
     <tr className={classNames("border-b transition-colors", rowStyle)}>
@@ -286,6 +285,9 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onS
         {item.wordGoal ? `${item.wordGoal.toLocaleString()} words` : "-"}
       </td>
       <td className="px-4 py-3 text-sm">
+        {item.createdAt ? format(new Date(item.createdAt), "MMM d, yyyy") : "-"}
+      </td>
+      <td className="px-4 py-3 text-sm">
         {publishDate ? format(new Date(publishDate), "MMM d, yyyy") : "-"}
       </td>
       <td className="px-4 py-3">
@@ -294,13 +296,13 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onS
             <>
               <button
                 onClick={() => onScheduleBriefForGeneration(item.id)}
-                className="px-2 py-1 text-xs rounded border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                className="px-3 py-1 text-xs rounded border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
               >
                 Schedule
               </button>
               <button
                 onClick={() => onAdvance(item.id)}
-                className="px-2 py-1 text-xs rounded border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                className="px-3 py-1 text-xs rounded border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
               >
                 Generate Now
               </button>
@@ -310,13 +312,13 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onS
             <>
               <button
                 onClick={() => onPublishNow(item.id)}
-                className="px-2 py-1 text-xs rounded border bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                className="px-3 py-1 text-xs rounded border bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
               >
                 Publish
               </button>
               <button
                 onClick={() => onScheduleForPublication(item.id)}
-                className="px-2 py-1 text-xs rounded border bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                className="px-3 py-1 text-xs rounded border bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
               >
                 Schedule
               </button>
@@ -664,6 +666,16 @@ export default function ContentTab({ userToken, websiteToken, domain, conversati
           </div>
           <div className="flex items-center gap-3">
             <Segmented value={mode} onChange={(v) => setMode(v as any)} />
+            <button
+              onClick={() => {
+                // Switch to calendar mode and show all unscheduled items
+                setMode("calendar");
+                alert("Drag items from the left panel to schedule them on the calendar");
+              }}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+            >
+              <Rocket className="w-4 h-4"/> Schedule All
+            </button>
             <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-gray-50">
               <Settings className="w-4 h-4"/> Settings
             </button>
@@ -754,6 +766,9 @@ export default function ContentTab({ userToken, websiteToken, domain, conversati
                         sortDirection={sortDirection}
                         onSort={handleSort}
                       />
+                    </th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-900">
+                      <span className="px-2 py-1">Generated</span>
                     </th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-gray-900">
                       <SortHeader
