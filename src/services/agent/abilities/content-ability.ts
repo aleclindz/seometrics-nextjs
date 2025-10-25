@@ -1347,6 +1347,7 @@ export class ContentAbility extends BaseAbility {
   private async manageQueue(args: {
     site_url?: string;
     website_token?: string;
+    conversation_id?: string;
     action?: 'view' | 'analyze' | 'status';
     limit?: number;
     status_filter?: 'draft' | 'pending' | 'generating' | 'completed';
@@ -1355,9 +1356,22 @@ export class ContentAbility extends BaseAbility {
       const limit = args.limit || 20;
       const action = args.action || 'view';
 
-      // Call queue API
-      let queryParams = `userToken=${this.userToken}&limit=${limit}`;
-      if (args.website_token) queryParams += `&websiteToken=${args.website_token}`;
+      // Resolve websiteToken using shared helper
+      const websiteToken = await this.resolveWebsiteToken({
+        website_token: args.website_token,
+        site_url: args.site_url,
+        conversation_id: args.conversation_id
+      });
+
+      if (!websiteToken) {
+        return this.error(
+          'Could not determine which website to query. Please specify site_url or connect a website first.',
+          null
+        );
+      }
+
+      // Call queue API with resolved websiteToken
+      let queryParams = `userToken=${this.userToken}&websiteToken=${websiteToken}&limit=${limit}`;
       if (args.status_filter) queryParams += `&status=${args.status_filter}`;
 
       const response = await this.fetchAPI(`/api/content/article-queue?${queryParams}`);
@@ -1541,15 +1555,29 @@ export class ContentAbility extends BaseAbility {
     identifier: string | number; // Can be queue ID, topic title, or position
     site_url?: string;
     website_token?: string;
+    conversation_id?: string;
   }): Promise<FunctionCallResult> {
     try {
       if (!args.identifier) {
         return this.error('Article identifier (ID, title, or position) is required');
       }
 
+      // Resolve websiteToken using shared helper
+      const websiteToken = await this.resolveWebsiteToken({
+        website_token: args.website_token,
+        site_url: args.site_url,
+        conversation_id: args.conversation_id
+      });
+
+      if (!websiteToken) {
+        return this.error(
+          'Could not determine which website to query. Please specify site_url or connect a website first.',
+          null
+        );
+      }
+
       // First, get the current queue to find the item
-      let queryParams = `userToken=${this.userToken}&limit=50`;
-      if (args.website_token) queryParams += `&websiteToken=${args.website_token}`;
+      let queryParams = `userToken=${this.userToken}&websiteToken=${websiteToken}&limit=50`;
 
       const queueResponse = await this.fetchAPI(`/api/content/article-queue?${queryParams}`);
 
@@ -1606,11 +1634,25 @@ export class ContentAbility extends BaseAbility {
     custom_order?: Array<{ id: number; position: number }>;
     site_url?: string;
     website_token?: string;
+    conversation_id?: string;
   }): Promise<FunctionCallResult> {
     try {
+      // Resolve websiteToken using shared helper
+      const websiteToken = await this.resolveWebsiteToken({
+        website_token: args.website_token,
+        site_url: args.site_url,
+        conversation_id: args.conversation_id
+      });
+
+      if (!websiteToken) {
+        return this.error(
+          'Could not determine which website to query. Please specify site_url or connect a website first.',
+          null
+        );
+      }
+
       // Get current queue
-      let queryParams = `userToken=${this.userToken}&limit=50`;
-      if (args.website_token) queryParams += `&websiteToken=${args.website_token}`;
+      let queryParams = `userToken=${this.userToken}&websiteToken=${websiteToken}&limit=50`;
 
       const queueResponse = await this.fetchAPI(`/api/content/article-queue?${queryParams}`);
 

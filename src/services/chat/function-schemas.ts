@@ -86,6 +86,7 @@ export const BulkArticleIdeasSchema = z.object({
 export const QueueManagementSchema = z.object({
   site_url: flexibleUrlSchema.optional(),
   website_token: z.string().optional(),
+  conversation_id: z.string().optional(),
   action: z.enum(['view', 'analyze', 'status']).optional().default('view'),
   limit: z.number().int().min(1).max(100).optional().default(20),
   status_filter: z.enum(['draft', 'pending', 'generating', 'completed']).optional()
@@ -95,6 +96,7 @@ export const AddToQueueSchema = z.object({
   topic: z.string().min(1),
   site_url: flexibleUrlSchema.optional(),
   website_token: z.string().optional(),
+  conversation_id: z.string().optional(),
   priority: z.number().int().min(1).max(10).optional().default(1),
   scheduled_date: z.string().optional(),
   keywords: z.array(z.string()).optional(),
@@ -106,7 +108,8 @@ export const AddToQueueSchema = z.object({
 export const RemoveFromQueueSchema = z.object({
   identifier: z.union([z.string(), z.number()]),
   site_url: flexibleUrlSchema.optional(),
-  website_token: z.string().optional()
+  website_token: z.string().optional(),
+  conversation_id: z.string().optional()
 });
 
 export const ReorderQueueSchema = z.object({
@@ -116,7 +119,8 @@ export const ReorderQueueSchema = z.object({
     position: z.number().int()
   })).optional(),
   site_url: flexibleUrlSchema.optional(),
-  website_token: z.string().optional()
+  website_token: z.string().optional(),
+  conversation_id: z.string().optional()
 });
 
 export const StrategyInitializeSchema = z.object({
@@ -866,12 +870,13 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   'CONTENT_manage_queue': {
     schema: {
       name: 'CONTENT_manage_queue',
-      description: 'View and analyze the content generation queue. Shows upcoming articles with their metadata, priorities, and schedules. Can filter by status or analyze queue statistics.',
+      description: 'View and analyze the content generation queue. Shows upcoming articles with their metadata, priorities, and schedules. Can filter by status or analyze queue statistics. Automatically detects website from conversation context.',
       parameters: {
         type: 'object',
         properties: {
-          site_url: { type: 'string', description: 'Website URL (optional; uses primary site if omitted)' },
-          website_token: { type: 'string', description: 'Website token for specific site' },
+          site_url: { type: 'string', description: 'Website URL (optional if conversation context is available)' },
+          website_token: { type: 'string', description: 'Website token (optional if site_url or context available)' },
+          conversation_id: { type: 'string', description: 'Conversation ID for automatic website detection (provided automatically)' },
           action: {
             type: 'string',
             enum: ['view', 'analyze', 'status'],

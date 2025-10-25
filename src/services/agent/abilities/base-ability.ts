@@ -68,6 +68,70 @@ export abstract class BaseAbility {
   }
 
   /**
+   * Resolve websiteToken from various sources with smart fallbacks
+   * Priority: provided token > conversation context > site_url > first website
+   */
+  protected async resolveWebsiteToken(args: {
+    website_token?: string;
+    site_url?: string;
+    conversation_id?: string;
+  }): Promise<string | null> {
+    // Priority 1: Use provided website_token
+    if (args.website_token) {
+      return args.website_token;
+    }
+
+    // Priority 2: Lookup from conversation context
+    if (args.conversation_id) {
+      try {
+        const conversationLookup = await this.fetchAPI(
+          `/api/agent/conversations/website?conversationId=${args.conversation_id}&userToken=${this.userToken}`
+        );
+        if (conversationLookup?.success && conversationLookup.websiteToken) {
+          console.log('[BaseAbility] Resolved websiteToken from conversation context');
+          return conversationLookup.websiteToken;
+        }
+      } catch (error) {
+        console.log('[BaseAbility] Failed to resolve from conversation:', error);
+      }
+    }
+
+    // Priority 3: Resolve from site_url
+    if (args.site_url) {
+      try {
+        const sites = await this.fetchAPI(`/api/websites?userToken=${this.userToken}`);
+        if (sites?.success && sites.websites?.length) {
+          const cleanUrl = (url: string) =>
+            url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+          const target = cleanUrl(args.site_url);
+          const site = sites.websites.find((w: any) =>
+            cleanUrl(w.domain) === target || w.cleaned_domain === target
+          );
+          if (site?.website_token) {
+            console.log('[BaseAbility] Resolved websiteToken from site_url');
+            return site.website_token;
+          }
+        }
+      } catch (error) {
+        console.log('[BaseAbility] Failed to resolve from site_url:', error);
+      }
+    }
+
+    // Priority 4: Fallback to user's first website
+    try {
+      const sites = await this.fetchAPI(`/api/websites?userToken=${this.userToken}`);
+      if (sites?.success && sites.websites?.length > 0) {
+        console.log('[BaseAbility] Using fallback to first website');
+        return sites.websites[0].website_token;
+      }
+    } catch (error) {
+      console.log('[BaseAbility] Fallback failed:', error);
+    }
+
+    return null;
+  }
+
+  /**
    * Abstract method that each ability must implement
    * Returns the functions this ability can handle
    */
