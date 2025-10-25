@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
     try {
       if (query_type === 'flexible') {
         // Use Supabase query builder for flexible queries
-        let query = supabase.from(table_name).select(columns && columns.length > 0 ? columns.join(',') : '*');
+        // Type as 'any' to avoid deep type instantiation issues
+        let query: any = supabase.from(table_name).select(columns && columns.length > 0 ? columns.join(',') : '*');
 
         // Add user token filter
         query = query.eq('user_token', user_token);
