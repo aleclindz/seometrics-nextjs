@@ -1,12 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  /* Font Family */
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Primary Brand Colors */
+  --color-primary-purple: #6B35F5;
+  --color-purple-hover: #582ED6;
+  --color-purple-dark: #4A25B8;
+  --color-haze-blue-bg: #F3F6FF;
+
+  /* Text Colors */
+  --color-text-primary: #4E555C; /* Rain Charcoal */
+  --color-text-secondary: #6B7278; /* Gray Text */
+
+  /* Social Proof Colors */
+  --color-blue-smb: #3B82F6;
+  --color-green-freelancer: #10B981;
+
+  /* Utility Colors */
+  --color-white: #FFFFFF;
+  --color-border-gray: #E5E7EB;
+  --color-border-gray-alpha: rgba(78, 85, 92, 0.15);
+  --color-dry-sage: #A0B49D;
+  --color-fog-lilac: #D6D0E0;
+  --color-green-accent: #86efac;
+
+  /* Legacy/Fallback */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #4E555C;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -17,13 +43,27 @@
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  font-family: var(--font-family);
+  font-weight: 300; /* Light weight for normal text */
+}
+
+/* Font weight adjustments */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 400; /* Regular weight for headings */
+}
+
+strong, b {
+  font-weight: 500; /* Medium weight for bold text */
+}
+
+button, .btn {
+  font-weight: 400; /* Regular weight for buttons */
 }
 
 .font-inter {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-family);
 }
 
 /* Scrollbar styling */

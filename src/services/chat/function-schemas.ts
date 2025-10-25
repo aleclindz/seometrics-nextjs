@@ -135,6 +135,55 @@ export const StrategyInitializeSchema = z.object({
   include_local_slices: z.boolean().optional().default(false)
 });
 
+// ===== Database Query Schemas =====
+export const DatabaseGetGSCPerformanceSchema = z.object({
+  site_url: flexibleUrlSchema.optional(),
+  website_token: z.string().optional(),
+  conversation_id: z.string().optional(),
+  date_range: z.enum(['7d', '30d', '90d']).optional().default('30d'),
+  metric: z.string().optional(),
+  limit: z.number().int().min(1).max(100).optional().default(10)
+});
+
+export const DatabaseGetPublishedArticlePerformanceSchema = z.object({
+  site_url: flexibleUrlSchema.optional(),
+  website_token: z.string().optional(),
+  conversation_id: z.string().optional(),
+  limit: z.number().int().min(1).max(100).optional().default(20),
+  sort_by: z.enum(['clicks', 'impressions', 'ctr']).optional().default('clicks')
+});
+
+export const DatabaseGetTechnicalIssuesSchema = z.object({
+  site_url: flexibleUrlSchema.optional(),
+  website_token: z.string().optional(),
+  conversation_id: z.string().optional(),
+  severity: z.enum(['high', 'medium', 'low']).optional(),
+  limit: z.number().int().min(1).max(100).optional().default(50)
+});
+
+export const DatabaseGetContentQueueStatusSchema = z.object({
+  site_url: flexibleUrlSchema.optional(),
+  website_token: z.string().optional(),
+  conversation_id: z.string().optional(),
+  status_filter: z.enum(['pending', 'generating', 'published']).optional(),
+  limit: z.number().int().min(1).max(100).optional().default(50)
+});
+
+export const DatabaseGetConversationHistorySchema = z.object({
+  conversation_id: z.string().min(1, 'conversation_id is required'),
+  limit: z.number().int().min(1).max(50).optional().default(10),
+  include_function_calls: z.boolean().optional().default(false)
+});
+
+export const DatabaseQuerySchema = z.object({
+  table_name: z.string().min(1, 'table_name is required'),
+  columns: z.array(z.string()).optional(),
+  where_clause: z.string().optional(),
+  order_by: z.string().optional(),
+  limit: z.number().int().min(1).max(1000).optional().default(100),
+  conversation_id: z.string().optional()
+});
+
 // Type inference from Zod schemas
 export type ConnectGSCArgs = z.infer<typeof ConnectGSCSchema>;
 export type SyncGSCDataArgs = z.infer<typeof SyncGSCDataSchema>;
@@ -149,12 +198,18 @@ export type AddToQueueArgs = z.infer<typeof AddToQueueSchema>;
 export type RemoveFromQueueArgs = z.infer<typeof RemoveFromQueueSchema>;
 export type ReorderQueueArgs = z.infer<typeof ReorderQueueSchema>;
 export type StrategyInitializeArgs = z.infer<typeof StrategyInitializeSchema>;
+export type DatabaseGetGSCPerformanceArgs = z.infer<typeof DatabaseGetGSCPerformanceSchema>;
+export type DatabaseGetPublishedArticlePerformanceArgs = z.infer<typeof DatabaseGetPublishedArticlePerformanceSchema>;
+export type DatabaseGetTechnicalIssuesArgs = z.infer<typeof DatabaseGetTechnicalIssuesSchema>;
+export type DatabaseGetContentQueueStatusArgs = z.infer<typeof DatabaseGetContentQueueStatusSchema>;
+export type DatabaseGetConversationHistoryArgs = z.infer<typeof DatabaseGetConversationHistorySchema>;
+export type DatabaseQueryArgs = z.infer<typeof DatabaseQuerySchema>;
 
 // Function schema registry with validation
 export interface FunctionDefinition {
   schema: any; // OpenAI function schema
   validator: z.ZodSchema; // Zod validation schema
-  category: 'setup' | 'optimization' | 'content' | 'monitoring' | 'analytics' | 'seo' | 'cms' | 'verification';
+  category: 'setup' | 'optimization' | 'content' | 'monitoring' | 'analytics' | 'seo' | 'cms' | 'verification' | 'database';
   requiresSetup: boolean;
 }
 

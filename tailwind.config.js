@@ -9,6 +9,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Legacy colors for backward compatibility
         background: 'var(--background)',
         foreground: 'var(--foreground)',
         primary: '#100a43',
@@ -18,10 +19,38 @@ module.exports = {
           500: '#8b5cf6',
           600: '#7c3aed',
           700: '#6d28d9',
-        }
+        },
+
+        // New Global Brand Colors
+        'primary-purple': 'var(--color-primary-purple)',
+        'purple-hover': 'var(--color-purple-hover)',
+        'purple-dark': 'var(--color-purple-dark)',
+        'haze-blue-bg': 'var(--color-haze-blue-bg)',
+
+        // Text Colors
+        'rain-charcoal': 'var(--color-text-primary)',
+        'gray-text': 'var(--color-text-secondary)',
+
+        // Social Proof Colors
+        'blue-smb': 'var(--color-blue-smb)',
+        'green-freelancer': 'var(--color-green-freelancer)',
+
+        // Utility Colors
+        'border-gray': 'var(--color-border-gray)',
+        'border-gray-alpha': 'var(--color-border-gray-alpha)',
+        'dry-sage': 'var(--color-dry-sage)',
+        'fog-lilac': 'var(--color-fog-lilac)',
+        'green-accent': 'var(--color-green-accent)',
       },
       fontFamily: {
         inter: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+      },
+      fontWeight: {
+        light: '300',
+        normal: '400',
+        medium: '500',
+        semibold: '600',
       },
       maxWidth: {
         '9xl': '96rem',
