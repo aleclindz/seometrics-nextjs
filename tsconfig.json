@@ -30,6 +30,7 @@
     "supabase/functions/**/*",
     "strapi-cms/**/*",
     "guidelines/**/*",
-    "Revamp Content Tab Layout/**/*"
+    "Revamp Content Tab Layout/**/*",
+    "Figma Versions/**/*"
   ]
 }

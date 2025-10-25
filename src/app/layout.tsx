@@ -5,9 +5,9 @@ import { AuthProvider } from '@/contexts/auth';
 import OnboardingGate from '@/components/OnboardingGate';
 
 export const metadata: Metadata = {
-  title: "SEOAgent — AI SEO Agent that Fixes the Boring Stuff",
-  description: "Auto-audits, instant on-page fixes, and indexation guardrails. Set it and forget it in 3 minutes.",
-  keywords: ["AI SEO agent", "automated SEO fixes", "technical SEO", "indexing guardrails", "on-page optimization", "SEO automation", "indie hackers", "bootstrappers"],
+  title: "SEOAgent — Strategic SEO Articles Auto-Published Every Day",
+  description: "Drive organic traffic on autopilot. Automated SEO content generation with strategic topic clusters, interlinking, and citations. No Slop. Just Strategic.",
+  keywords: ["automated SEO", "AI content generation", "strategic SEO", "topic clusters", "content automation", "organic traffic", "SEO agent", "auto-publishing", "SEO strategy"],
   authors: [{ name: "SEOAgent" }],
   creator: "SEOAgent",
   publisher: "SEOAgent",
@@ -17,8 +17,8 @@ export const metadata: Metadata = {
     canonical: "https://seoagent.com",
   },
   openGraph: {
-    title: "SEOAgent — AI SEO Agent that Fixes the Boring Stuff",
-    description: "Set it and forget it: auto-audits, instant on-page fixes, and indexation guardrails—so your content actually ranks.",
+    title: "SEOAgent — Strategic SEO Articles Auto-Published Every Day",
+    description: "Drive organic traffic on autopilot. Automated SEO content with strategic topic clusters, interlinking, and authoritative citations.",
     url: "https://seoagent.com",
     siteName: "SEOAgent",
     type: "website",
@@ -27,18 +27,18 @@ export const metadata: Metadata = {
       url: "/og-image.jpg",
       width: 1200,
       height: 630,
-      alt: "SEOAgent - AI SEO Agent that Fixes the Boring Stuff"
+      alt: "SEOAgent - Strategic SEO Articles Auto-Published Every Day"
     }]
   },
   twitter: {
     card: "summary_large_image",
-    title: "SEOAgent — AI SEO Agent that Fixes the Boring Stuff",
-    description: "Set it and forget it: auto-audits, instant on-page fixes, and indexation guardrails—so your content actually ranks.",
+    title: "SEOAgent — Strategic SEO Articles Auto-Published Every Day",
+    description: "Drive organic traffic on autopilot. Automated SEO content with strategic topic clusters, interlinking, and authoritative citations.",
     images: ["/og-image.jpg"],
     creator: "@seoagent"
   },
   viewport: "width=device-width, initial-scale=1",
-  themeColor: "#7c3aed"
+  themeColor: "#6B35F5"
 };
 
 export default function RootLayout({
@@ -75,7 +75,13 @@ export default function RootLayout({
             gtag('config', 'G-V6T409KL12');
           `}
         </Script>
-        
+
+        {/* SEOAgent.js - Our own SEO automation tool */}
+        <Script
+          src="/seoagent.js"
+          strategy="afterInteractive"
+        />
+
       </body>
     </html>
   );
