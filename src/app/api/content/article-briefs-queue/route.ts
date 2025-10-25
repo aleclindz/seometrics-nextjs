@@ -130,8 +130,9 @@ export async function GET(request: NextRequest) {
       return {
         id: r.id,
         title: r.title,
-        scheduledFor: r.scheduled_for || r.created_at,
-        generatedAt: r.generated_at || r.created_at,
+        scheduledFor: r.scheduled_for || null, // Don't fallback to created_at - null means unscheduled
+        createdAt: r.created_at, // Separate field for creation date
+        generatedAt: r.generated_at || null,
         generatedArticleId: r.generated_article_id || null, // Track if article was generated from this brief
         status: mapStatus(r.status),
         wordCount: r.word_count_max || r.word_count_min || 0,
@@ -259,8 +260,9 @@ export async function POST(request: NextRequest) {
         return {
           id: r.id,
         title: r.title,
-        scheduledFor: r.scheduled_for || r.created_at,
-        generatedAt: r.generated_at || r.created_at,
+        scheduledFor: r.scheduled_for || null, // Don't fallback to created_at - null means unscheduled
+        createdAt: r.created_at, // Separate field for creation date
+        generatedAt: r.generated_at || null,
         generatedArticleId: r.generated_article_id || null, // Track if article was generated from this brief
         status: mapStatus(r.status),
         wordCount: r.word_count_max || r.word_count_min || 0,
