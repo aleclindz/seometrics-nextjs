@@ -110,20 +110,20 @@ function UnscheduledItemPill({ item }: { item: ContentItem }) {
     <div
       ref={drag as any}
       className={classNames(
-        "inline-flex items-center gap-2 px-3 py-2 rounded-full border cursor-move transition-all",
+        "inline-flex items-center gap-1.5 px-2 py-1 rounded-full border cursor-move transition-all",
         bgColor,
         isDragging ? "opacity-50 shadow-lg" : "hover:shadow-md"
       )}
     >
-      <Icon className={classNames("w-4 h-4 flex-shrink-0", iconColor)} />
-      <span className="text-sm font-medium truncate max-w-[200px]">{item.title}</span>
+      <Icon className={classNames("w-3.5 h-3.5 flex-shrink-0", iconColor)} />
+      <span className="text-xs font-medium truncate max-w-[200px]">{item.title}</span>
       <Dialog>
         <DialogTrigger asChild>
           <button
-            className="ml-1 p-1 rounded-full hover:bg-white/50 transition-colors flex-shrink-0"
+            className="ml-0.5 p-0.5 rounded-full hover:bg-white/50 transition-colors flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Eye className="w-3 h-3" />
           </button>
         </DialogTrigger>
         <BriefDetailsModal item={item} />
@@ -281,9 +281,9 @@ export default function CalendarTab({ userToken, websiteToken, domain, conversat
   // Calculate week start for calendar display
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
-  // Calendar view - show 1 week (7 days)
+  // Calendar view - show 2 weeks (14 days)
   const calendarDays = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 14; i++) {
     calendarDays.push(addDays(weekStart, i));
   }
 
@@ -413,14 +413,14 @@ export default function CalendarTab({ userToken, websiteToken, domain, conversat
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-medium text-base">
-              {format(weekStart, "MMM d")} - {format(addDays(weekStart, 6), "MMM d, yyyy")}
+              {format(weekStart, "MMM d")} - {format(addDays(weekStart, 13), "MMM d, yyyy")}
             </h3>
             <div className="flex gap-2">
               <button
-                onClick={() => setCurrentDate(addDays(currentDate, -7))}
+                onClick={() => setCurrentDate(addDays(currentDate, -14))}
                 className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Previous Week
+                Previous 2 Weeks
               </button>
               <button
                 onClick={() => setCurrentDate(new Date())}
@@ -429,10 +429,10 @@ export default function CalendarTab({ userToken, websiteToken, domain, conversat
                 Today
               </button>
               <button
-                onClick={() => setCurrentDate(addDays(currentDate, 7))}
+                onClick={() => setCurrentDate(addDays(currentDate, 14))}
                 className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Next Week
+                Next 2 Weeks
               </button>
             </div>
           </div>
