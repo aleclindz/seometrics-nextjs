@@ -1396,6 +1396,216 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
     }),
     category: 'content',
     requiresSetup: false
+  },
+
+  // ===== DATABASE QUERY FUNCTIONS =====
+  'DATABASE_get_gsc_performance': {
+    schema: {
+      name: 'DATABASE_get_gsc_performance',
+      description: 'Query Google Search Console performance data directly from the database. Returns clicks, impressions, CTR, position, top queries, and top pages for a specified date range.',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional if conversation context available)' },
+          website_token: { type: 'string', description: 'Website token (optional)' },
+          conversation_id: { type: 'string', description: 'Conversation ID for context (automatic)' },
+          date_range: {
+            type: 'string',
+            enum: ['7d', '30d', '90d'],
+            description: 'Date range for performance data',
+            default: '30d'
+          },
+          metric: { type: 'string', description: 'Specific metric to focus on (optional)' },
+          limit: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
+            description: 'Number of data points to return',
+            default: 10
+          }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: DatabaseGetGSCPerformanceSchema,
+    category: 'database',
+    requiresSetup: false
+  },
+
+  'DATABASE_get_published_article_performance': {
+    schema: {
+      name: 'DATABASE_get_published_article_performance',
+      description: 'Get traffic performance data for published articles by matching article URLs with GSC page data. Returns clicks, impressions, CTR, and position for each published article.',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional if conversation context available)' },
+          website_token: { type: 'string', description: 'Website token (optional)' },
+          conversation_id: { type: 'string', description: 'Conversation ID for context (automatic)' },
+          limit: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
+            description: 'Number of articles to return',
+            default: 20
+          },
+          sort_by: {
+            type: 'string',
+            enum: ['clicks', 'impressions', 'ctr'],
+            description: 'Metric to sort articles by',
+            default: 'clicks'
+          }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: DatabaseGetPublishedArticlePerformanceSchema,
+    category: 'database',
+    requiresSetup: false
+  },
+
+  'DATABASE_get_technical_issues': {
+    schema: {
+      name: 'DATABASE_get_technical_issues',
+      description: 'Query technical SEO issues from URL inspections. Returns indexing problems, mobile usability issues, fetch errors, robots.txt blocks, and rich results failures.',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional if conversation context available)' },
+          website_token: { type: 'string', description: 'Website token (optional)' },
+          conversation_id: { type: 'string', description: 'Conversation ID for context (automatic)' },
+          severity: {
+            type: 'string',
+            enum: ['high', 'medium', 'low'],
+            description: 'Filter by issue severity (optional)'
+          },
+          limit: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
+            description: 'Number of issues to return',
+            default: 50
+          }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: DatabaseGetTechnicalIssuesSchema,
+    category: 'database',
+    requiresSetup: false
+  },
+
+  'DATABASE_get_content_queue_status': {
+    schema: {
+      name: 'DATABASE_get_content_queue_status',
+      description: 'Query content generation queue status. Returns article counts by status, upcoming scheduled articles, and recently published content.',
+      parameters: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'Website URL (optional if conversation context available)' },
+          website_token: { type: 'string', description: 'Website token (optional)' },
+          conversation_id: { type: 'string', description: 'Conversation ID for context (automatic)' },
+          status_filter: {
+            type: 'string',
+            enum: ['pending', 'generating', 'published'],
+            description: 'Filter by article status (optional)'
+          },
+          limit: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
+            description: 'Number of articles to return',
+            default: 50
+          }
+        },
+        required: [],
+        additionalProperties: false
+      }
+    },
+    validator: DatabaseGetContentQueueStatusSchema,
+    category: 'database',
+    requiresSetup: false
+  },
+
+  'DATABASE_get_conversation_history': {
+    schema: {
+      name: 'DATABASE_get_conversation_history',
+      description: 'Retrieve conversation message history for context. Returns previous messages from the current conversation thread.',
+      parameters: {
+        type: 'object',
+        properties: {
+          conversation_id: {
+            type: 'string',
+            description: 'Conversation ID to retrieve history for (required)'
+          },
+          limit: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 50,
+            description: 'Number of messages to retrieve',
+            default: 10
+          },
+          include_function_calls: {
+            type: 'boolean',
+            description: 'Include function call data in results',
+            default: false
+          }
+        },
+        required: ['conversation_id'],
+        additionalProperties: false
+      }
+    },
+    validator: DatabaseGetConversationHistorySchema,
+    category: 'database',
+    requiresSetup: false
+  },
+
+  'DATABASE_query': {
+    schema: {
+      name: 'DATABASE_query',
+      description: 'Execute flexible read-only database queries on whitelisted tables. Use for ad-hoc data retrieval when pre-built functions don&apos;t cover your needs. Only SELECT queries allowed with strict security validation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          table_name: {
+            type: 'string',
+            description: 'Table to query (allowed: gsc_performance_data, url_inspections, article_queue, websites, agent_actions, agent_ideas, agent_conversations, agent_runs, topic_clusters, article_roles)'
+          },
+          columns: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Columns to select (defaults to all columns)'
+          },
+          where_clause: {
+            type: 'string',
+            description: 'WHERE clause conditions (e.g., "status=&apos;published&apos;")'
+          },
+          order_by: {
+            type: 'string',
+            description: 'ORDER BY clause (e.g., "created_at DESC")'
+          },
+          limit: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 1000,
+            description: 'Maximum rows to return',
+            default: 100
+          },
+          conversation_id: {
+            type: 'string',
+            description: 'Conversation ID for scoping agent_conversations queries (optional)'
+          }
+        },
+        required: ['table_name'],
+        additionalProperties: false
+      }
+    },
+    validator: DatabaseQuerySchema,
+    category: 'database',
+    requiresSetup: false
   }
 };
 
