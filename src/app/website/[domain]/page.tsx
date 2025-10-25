@@ -10,9 +10,11 @@ import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/website-chat/ChatInterface';
 import WebsiteSetupModal from '@/components/WebsiteSetupModal';
 import ContentTab from '@/components/ContentTab';
+import PipelineTab from '@/components/PipelineTab';
+import CalendarTab from '@/components/CalendarTab';
 import { useContentAutomation } from '@/hooks/useContentAutomation';
 import { useFeatures } from '@/hooks/useFeatures';
-import { ChevronDown, ChevronRight, Send, Loader2, RefreshCw, TrendingUp, TrendingDown, Target, Tag, DollarSign, Wrench, Users, FileText, BookOpen, Search, Globe, Zap, Sparkles, Calendar, Clock, Eye, Edit } from 'lucide-react';
+import { ChevronDown, ChevronRight, Send, Loader2, RefreshCw, TrendingUp, TrendingDown, Target, Tag, DollarSign, Wrench, Users, FileText, BookOpen, Search, Globe, Zap, Sparkles, Calendar, Clock, Eye, Edit, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 
 export default function WebsitePage() {
@@ -36,7 +38,7 @@ export default function WebsitePage() {
   };
 
   // New layout state management
-  const [activeTab, setActiveTab] = useState<'performance' | 'technical' | 'content' | 'strategy'>('performance');
+  const [activeTab, setActiveTab] = useState<'technical' | 'pipeline' | 'calendar' | 'strategy'>('technical');
   const [logCollapsed, setLogCollapsed] = useState(false);
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
@@ -688,11 +690,29 @@ export default function WebsitePage() {
     };
   }, []);
 
+  // Helper function to determine if a tab should show an indicator
+  const getTabIndicator = (tab: 'technical' | 'pipeline' | 'calendar' | 'strategy') => {
+    switch (tab) {
+      case 'technical':
+        return !setupStatus.seoagentjsActive; // Show indicator if SEOAgent.js not installed
+      case 'pipeline':
+        return contentData.articles.published.length === 0 &&
+               contentData.articles.scheduled.length === 0 &&
+               contentData.articles.drafts.length === 0;
+      case 'calendar':
+        return contentData.articles.scheduled.length === 0;
+      case 'strategy':
+        return strategyData.topicClusters.length === 0;
+      default:
+        return false;
+    }
+  };
+
   // Listen for tab switch events from chat (e.g., "View Content Tab" button)
   useEffect(() => {
     const handleSwitchTab = (event: any) => {
       if (event.detail?.tab) {
-        setActiveTab(event.detail.tab as 'performance' | 'technical' | 'content' | 'strategy');
+        setActiveTab(event.detail.tab as 'technical' | 'pipeline' | 'calendar' | 'strategy');
       }
     };
 
@@ -795,17 +815,25 @@ export default function WebsitePage() {
             <div className="px-4 pt-3">
               <div className="border-b">
                 <nav className="-mb-px flex space-x-8">
-                  {['performance', 'technical', 'content', 'strategy'].map((tab) => (
+                  {[
+                    { key: 'technical', label: 'Technical' },
+                    { key: 'pipeline', label: 'Content Pipeline' },
+                    { key: 'calendar', label: 'Calendar' },
+                    { key: 'strategy', label: 'Strategy' }
+                  ].map(({ key, label }) => (
                     <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab as any)}
-                      className={`py-2 px-1 border-b-2 font-medium text-sm capitalize ${
-                        activeTab === tab
+                      key={key}
+                      onClick={() => setActiveTab(key as any)}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1.5 ${
+                        activeTab === key
                           ? 'border-blue-500 text-blue-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
                     >
-                      {tab}
+                      {label}
+                      {getTabIndicator(key as any) && (
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                      )}
                     </button>
                   ))}
                 </nav>
@@ -814,138 +842,6 @@ export default function WebsitePage() {
 
             {/* Content Area */}
             <div className="flex-1 overflow-auto p-4 space-y-4">
-              {activeTab === 'performance' && (
-                <section>
-                  {/* Header with refresh button */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">Performance Overview</h2>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={backfillLast30Days}
-                        disabled={backfilling || performanceData.isLoading}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {backfilling ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          // clock-like icon path copied from existing GSC button style
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-7a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        )}
-                        Backfill 30 Days
-                      </button>
-                      <button
-                        onClick={fetchPerformanceData}
-                        disabled={performanceData.isLoading}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {performanceData.isLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-4 h-4" />
-                        )}
-                        Refresh
-                      </button>
-                    </div>
-                  </div>
-
-                  {performanceData.isLoading ? (
-                    <div className="grid grid-cols-4 gap-4">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-white border rounded-lg p-4">
-                          <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
-                          <div className="h-20 rounded-lg bg-gray-100 mb-2 animate-pulse"></div>
-                          <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : performanceData.error ? (
-                    <div className="bg-white border rounded-lg p-6 text-center">
-                      <div className="text-red-600 mb-2">Failed to load performance data</div>
-                      <div className="text-sm text-gray-500 mb-4">{performanceData.error}</div>
-                      <button
-                        onClick={fetchPerformanceData}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Try Again
-                      </button>
-                    </div>
-                  ) : !performanceData.hasData ? (
-                    <div className="bg-white border rounded-lg p-6 text-center">
-                      <div className="text-gray-600 mb-2">No performance data available</div>
-                      <div className="text-sm text-gray-500">{performanceData.message || 'Connect Google Search Console to see performance data'}</div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-4">
-                      {/* Impressions */}
-                      <div className="bg-white border rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-2">Impressions</div>
-                        <div className="h-20 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 mb-2 flex items-end justify-center p-2">
-                          <div className="text-2xl font-bold text-blue-700">
-                            {performanceData.totals?.impressions ? performanceData.totals.impressions.toLocaleString() : performanceData.total?.impressions.toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          28d total • Avg position: {performanceData.totals?.position || performanceData.total?.position}
-                        </div>
-                      </div>
-
-                      {/* Clicks */}
-                      <div className="bg-white border rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-2">Clicks</div>
-                        <div className="h-20 rounded-lg bg-gradient-to-br from-green-50 to-green-100 mb-2 flex items-end justify-center p-2">
-                          <div className="text-2xl font-bold text-green-700">
-                            {performanceData.totals?.clicks ? performanceData.totals.clicks.toLocaleString() : performanceData.total?.clicks.toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          28d total • CTR: {performanceData.totals?.ctr || performanceData.total?.ctr}%
-                        </div>
-                      </div>
-
-                      {/* Top Queries */}
-                      <div className="bg-white border rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-2">Top Queries</div>
-                        <div className="h-20 rounded-lg bg-gray-50 p-2 overflow-y-auto">
-                          {(performanceData.topQueries || []).slice(0, 3).map((query: any, i: number) => (
-                            <div key={i} className="text-xs mb-1 truncate">
-                              <span className="font-medium">&ldquo;{query.query}&rdquo;</span>
-                              <span className="text-gray-500 ml-1">({query.clicks})</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {(performanceData.topQueries?.length || 0)} total queries tracked
-                        </div>
-                      </div>
-
-                      {/* Referrers */}
-                      <div className="bg-white border rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-2">Traffic Sources</div>
-                        <div className="h-20 rounded-lg bg-gray-50 p-2 overflow-y-auto">
-                          {(performanceData.referrers && performanceData.referrers.length > 0) ? performanceData.referrers.slice(0, 3).map((ref: any, i: number) => (
-                            <div key={i} className="text-xs mb-1 flex justify-between">
-                              <span className="font-medium truncate">{ref.source}</span>
-                              <span className="text-gray-500">{ref.percentage}%</span>
-                            </div>
-                          )) : (
-                            <div className="text-xs text-gray-500">
-                              <div>Organic Search</div>
-                              <div>Google Search</div>
-                              <div>Direct Traffic</div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {performanceData.lastUpdated && `Updated: ${new Date(performanceData.lastUpdated).toLocaleTimeString()}`}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              )}
-
               {activeTab === 'technical' && (
                 <section>
                   {/* Header with refresh button */}
@@ -964,6 +860,30 @@ export default function WebsitePage() {
                       Refresh
                     </button>
                   </div>
+
+                  {/* SEOAgent.js Not Installed CTA */}
+                  {!setupStatus.seoagentjsActive && (
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6 mb-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                          <Zap className="w-6 h-6 text-indigo-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Install SEOAgent.js for Automatic Technical SEO</h3>
+                          <p className="text-sm text-gray-600 mb-4">
+                            SEOAgent.js automatically optimizes your website&apos;s technical SEO in real-time: generates meta tags, alt text for images, schema markup, canonical tags, and more. Install once and forget about it.
+                          </p>
+                          <button
+                            onClick={() => setSetupModalOpen(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            Install SEOAgent.js
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {technicalData.isLoading ? (
                     <div className="bg-white border rounded-lg p-4">
@@ -1156,9 +1076,21 @@ export default function WebsitePage() {
                 </section>
               )}
 
-              {activeTab === 'content' && (
+              {activeTab === 'pipeline' && (
                 <section>
-                  <ContentTab
+                  <PipelineTab
+                    userToken={user?.token || ''}
+                    websiteToken={currentWebsite?.website_token || automation.websites[0]?.website_token || ''}
+                    domain={domain}
+                    conversationId={sharedConversationId}
+                    onSwitchToCalendar={() => setActiveTab('calendar')}
+                  />
+                </section>
+              )}
+
+              {activeTab === 'calendar' && (
+                <section>
+                  <CalendarTab
                     userToken={user?.token || ''}
                     websiteToken={currentWebsite?.website_token || automation.websites[0]?.website_token || ''}
                     domain={domain}

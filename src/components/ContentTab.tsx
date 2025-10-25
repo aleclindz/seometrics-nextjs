@@ -296,7 +296,7 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onS
             <>
               <button
                 onClick={() => onScheduleBriefForGeneration(item.id)}
-                className="px-3 py-1 text-xs rounded border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                className="px-3 py-1 text-xs rounded border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 flex items-center justify-center"
               >
                 Schedule
               </button>
@@ -318,7 +318,7 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onS
               </button>
               <button
                 onClick={() => onScheduleForPublication(item.id)}
-                className="px-3 py-1 text-xs rounded border bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                className="px-3 py-1 text-xs rounded border bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 flex items-center justify-center"
               >
                 Schedule
               </button>
