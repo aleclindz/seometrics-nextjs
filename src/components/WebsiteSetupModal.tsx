@@ -112,6 +112,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
 
     // Prime section states from parent-provided status so UI matches header checks
     setGscStatus({ connected: website.gscStatus === 'connected' });
+    console.log('🔍 [SETUP MODAL] Initializing smartjsDetected from website.smartjsStatus:', website.smartjsStatus);
     setSmartjsDetected(website.smartjsStatus === 'active');
     // Fetch connection details where applicable
     void fetchCMSConnections();
@@ -487,17 +488,29 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       
       const result = await response.json();
       console.log('✅ [SETUP MODAL] SEOAgent.js test result:', result);
-      
+
       if (result.success && result.data?.status === 'active') {
+        console.log('✅ [SETUP MODAL] SEOAgent.js is ACTIVE - updating state and parent');
         setSmartjsDetected(true);
-        // Database is updated by the API - no need to call onStatusUpdate
-      } else {
+        // Notify parent to update status so UI stays in sync
+        onStatusUpdate?.({ smartjsStatus: 'active' });
+      } else if (result.success && result.data?.status === 'inactive') {
+        console.log('⚠️ [SETUP MODAL] SEOAgent.js is INACTIVE - updating state and parent');
         setSmartjsDetected(false);
-        // Database is updated by the API - no need to call onStatusUpdate
+        onStatusUpdate?.({ smartjsStatus: 'inactive' });
+      } else if (result.success && result.data?.status === 'error') {
+        console.log('❌ [SETUP MODAL] SEOAgent.js has ERROR - updating state and parent');
+        setSmartjsDetected(false);
+        onStatusUpdate?.({ smartjsStatus: 'error' });
+      } else {
+        console.log('❌ [SETUP MODAL] SEOAgent.js test failed - setting to error');
+        setSmartjsDetected(false);
+        onStatusUpdate?.({ smartjsStatus: 'error' });
       }
     } catch (error) {
       console.error('❌ [SETUP MODAL] Error testing SEOAgent.js:', error);
       setSmartjsDetected(false);
+      onStatusUpdate?.({ smartjsStatus: 'error' });
     } finally {
       setSmartjsLoading(false);
     }
