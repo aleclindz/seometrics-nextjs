@@ -65,7 +65,12 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
 
       // Transform briefs to ContentItems
       // Note: Server-side already filters out generated briefs via `.is('generated_article_id', null)`
-      const briefItems: ContentItem[] = (briefsData.queue || []).map((brief: any) => ({
+      const briefItems: ContentItem[] = (briefsData.queue || []).map((brief: any) => {
+        // For briefs, scheduledFor represents both generation AND publication date
+        // (user wants: generate article on date, then immediately publish)
+        const scheduledDate = brief.scheduledFor || null;
+
+        return {
           id: `brief-${brief.id}`,
           cluster: brief.topicCluster || 'Uncategorized',
           stage: 'brief' as ArticleStage,
@@ -73,14 +78,15 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
           brief: brief.title, // brief description
           keywords: brief.targetKeywords?.map((kw: string) => ({ term: kw })) || [],
           wordGoal: brief.wordCount || brief.articleFormat?.wordCountRange?.[1] || 0,
-          createdAt: brief.scheduledFor || new Date().toISOString(),
-          scheduledDraftAt: brief.scheduledFor || null,
-          scheduledPublishAt: null,
+          createdAt: brief.createdAt || new Date().toISOString(),
+          scheduledDraftAt: scheduledDate, // When to generate
+          scheduledPublishAt: scheduledDate, // When to publish (same date)
           flags: {
             autoGenerate: false,
             autoPublish: false
           }
-        }));
+        };
+      });
 
       // Filter articles for current domain
       const normalize = (d: string) => d
@@ -560,6 +566,8 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
 
   // Remove article or brief from schedule
   const removeFromSchedule = useCallback(async (id: string) => {
+    console.log('[REMOVE FROM SCHEDULE] Unscheduling item:', id);
+
     // Detect if this is a brief or article
     const isBrief = id.startsWith('brief-');
     const isArticle = id.startsWith('article-');
@@ -569,10 +577,43 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
       throw new Error('Invalid item ID');
     }
 
+    // Store original item for rollback
+    const originalItem = items.find(item => item.id === id);
+    if (!originalItem) {
+      console.error('[REMOVE FROM SCHEDULE] Item not found:', id);
+      throw new Error('Item not found');
+    }
+
     try {
+      // Optimistic UI update - immediately clear schedule dates
+      console.log('[REMOVE FROM SCHEDULE] Applying optimistic update');
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === id
+            ? { ...item, scheduledDraftAt: null, scheduledPublishAt: null }
+            : item
+        )
+      );
+
       if (isBrief) {
         // For briefs, call scheduleBriefForGeneration with null date
-        await scheduleBriefForGeneration(id, null);
+        const briefId = id.replace('brief-', '');
+        const response = await fetch('/api/content/schedule-brief', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userToken,
+            briefId: Number(briefId),
+            scheduledDate: null
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to unschedule brief');
+        }
+
+        console.log('[REMOVE FROM SCHEDULE] Brief unscheduled successfully');
       } else {
         // For articles, use existing schedule-article API
         const articleId = id.replace('article-', '');
@@ -589,25 +630,30 @@ export function useContentPipeline({ userToken, websiteToken, domain, conversati
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to remove from schedule');
+          throw new Error(errorData.error || 'Failed to unschedule article');
         }
 
-        // Update local state for articles
-        setItems(prevItems =>
-          prevItems.map(item =>
-            item.id === id
-              ? { ...item, scheduledPublishAt: null }
-              : item
-          )
-        );
+        console.log('[REMOVE FROM SCHEDULE] Article unscheduled successfully');
       }
+
+      // Refresh to ensure consistency with database
+      await fetchContent();
     } catch (err) {
-      console.error('Error removing from schedule:', err);
-      // Refresh to get correct state
+      console.error('[REMOVE FROM SCHEDULE] Error:', err);
+
+      // Rollback optimistic update
+      console.log('[REMOVE FROM SCHEDULE] Rolling back optimistic update');
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === id ? originalItem : item
+        )
+      );
+
+      // Refresh to get correct state from server
       await fetchContent();
       throw err;
     }
-  }, [userToken, scheduleBriefForGeneration, fetchContent]);
+  }, [userToken, items, fetchContent]);
 
   // Initial fetch
   useEffect(() => {

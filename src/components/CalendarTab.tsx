@@ -2,16 +2,17 @@
 
 import React, { useMemo, useState } from "react";
 import { format, addDays, startOfWeek, isSameDay, startOfDay } from "date-fns";
-import { X, Calendar as CalendarIcon, FilePenLine, FileText } from "lucide-react";
+import { X, Calendar as CalendarIcon, FilePenLine, FileText, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { useContentPipeline, ContentItem } from "@/hooks/useContentPipeline";
 
 // =============================
 // CalendarTab - Calendar View Only
 // - Drag-and-drop scheduling for briefs and drafts
-// - 2-week view with unscheduled items panel
-// - Clear visual differentiation between content types
+// - 1-week view with unscheduled items pills at top
+// - Clear visual differentiation with gradient backgrounds
 // =============================
 
 interface CalendarTabProps {
@@ -24,7 +25,114 @@ interface CalendarTabProps {
 // ---- Utility ----
 const classNames = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(" ");
 
-// ---- Components ----
+// ---- Brief Details Modal ----
+function BriefDetailsModal({ item }: { item: ContentItem }) {
+  return (
+    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Brief Details</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm font-medium text-gray-700">Title</label>
+          <p className="text-base text-gray-900 mt-1">{item.title}</p>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-gray-700">Topic Cluster</label>
+          <p className="text-sm text-gray-600 mt-1">{item.cluster || "Uncategorized"}</p>
+        </div>
+
+        {item.keywords && item.keywords.length > 0 && (
+          <div>
+            <label className="text-sm font-medium text-gray-700">Target Keywords</label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {item.keywords.map((kw, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                >
+                  {kw.term}
+                  {kw.vol && <span className="ml-1 text-blue-600">({kw.vol})</span>}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {item.wordGoal && (
+          <div>
+            <label className="text-sm font-medium text-gray-700">Word Goal</label>
+            <p className="text-sm text-gray-600 mt-1">{item.wordGoal.toLocaleString()} words</p>
+          </div>
+        )}
+
+        {(item.scheduledDraftAt || item.scheduledPublishAt) && (
+          <div>
+            <label className="text-sm font-medium text-gray-700">Scheduled For</label>
+            <p className="text-sm text-gray-600 mt-1">
+              {format(new Date(item.scheduledDraftAt || item.scheduledPublishAt!), "MMM d, yyyy 'at' h:mm a")}
+            </p>
+          </div>
+        )}
+
+        {item.status && (
+          <div>
+            <label className="text-sm font-medium text-gray-700">Status</label>
+            <p className="text-sm text-gray-600 mt-1 capitalize">{item.status.replace('_', ' ')}</p>
+          </div>
+        )}
+      </div>
+    </DialogContent>
+  );
+}
+
+// ---- Unscheduled Item Pill Component ----
+function UnscheduledItemPill({ item }: { item: ContentItem }) {
+  const [{ isDragging }, drag] = useDrag({
+    type: "article",
+    item: { id: item.id, title: item.title, stage: item.stage },
+    canDrag: item.stage === "draft" || item.stage === "brief",
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  if (item.stage !== "draft" && item.stage !== "brief") return null;
+
+  const Icon = item.stage === "brief" ? FilePenLine : FileText;
+  const bgColor = item.stage === "brief"
+    ? "bg-blue-100 hover:bg-blue-200 border-blue-300"
+    : "bg-amber-100 hover:bg-amber-200 border-amber-300";
+  const iconColor = item.stage === "brief" ? "text-blue-700" : "text-amber-700";
+
+  return (
+    <div
+      ref={drag as any}
+      className={classNames(
+        "inline-flex items-center gap-2 px-3 py-2 rounded-full border cursor-move transition-all",
+        bgColor,
+        isDragging ? "opacity-50 shadow-lg" : "hover:shadow-md"
+      )}
+    >
+      <Icon className={classNames("w-4 h-4 flex-shrink-0", iconColor)} />
+      <span className="text-sm font-medium truncate max-w-[200px]">{item.title}</span>
+      <Dialog>
+        <DialogTrigger asChild>
+          <button
+            className="ml-1 p-1 rounded-full hover:bg-white/50 transition-colors flex-shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+        </DialogTrigger>
+        <BriefDetailsModal item={item} />
+      </Dialog>
+    </div>
+  );
+}
+
+// ---- Status Badge ----
 function StatusBadge({ status, scheduledPublishAt }: { status?: string; scheduledPublishAt?: string | null }) {
   if (!status || status === 'published') return null;
 
@@ -63,42 +171,7 @@ function StatusBadge({ status, scheduledPublishAt }: { status?: string; schedule
   );
 }
 
-function DraggableArticle({ item, isSelected }: { item: ContentItem; isSelected?: boolean }) {
-  const [{ isDragging }, drag] = useDrag({
-    type: "article",
-    item: { id: item.id, title: item.title, stage: item.stage },
-    canDrag: item.stage === "draft" || item.stage === "brief",
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  if (item.stage !== "draft" && item.stage !== "brief") return null;
-
-  const Icon = item.stage === "brief" ? FilePenLine : FileText;
-  const iconColor = item.stage === "brief" ? "text-blue-600" : "text-amber-600";
-
-  return (
-    <div
-      ref={drag as any}
-      className={classNames(
-        "p-2 mb-2 border rounded-lg cursor-move bg-white shadow-sm",
-        isDragging ? "opacity-50" : "hover:shadow-md",
-        isSelected ? "ring-2 ring-blue-500 bg-blue-50" : ""
-      )}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <Icon className={classNames("w-4 h-4", iconColor)} />
-        <div className="flex-1 flex items-center gap-1 flex-wrap min-w-0">
-          <span className="text-sm font-medium truncate">{item.title}</span>
-          <StatusBadge status={item.status} scheduledPublishAt={item.scheduledPublishAt} />
-        </div>
-      </div>
-      <div className="text-xs text-gray-500">{item.cluster}</div>
-    </div>
-  );
-}
-
+// ---- Calendar Day Component ----
 function CalendarDay({ date, items, onDrop, onRemove }: {
   date: Date;
   items: ContentItem[];
@@ -118,51 +191,71 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
     }),
   });
 
+  // Get gradient background based on items
+  const getItemGradient = (item: ContentItem) => {
+    if (item.stage === "published") {
+      return "bg-gradient-to-br from-green-100 to-green-200 border-green-300 text-green-900";
+    }
+    if (item.status === 'generation_failed' || item.status === 'publishing_failed') {
+      return "bg-gradient-to-br from-red-100 to-red-200 border-red-300 text-red-900";
+    }
+    if (item.stage === "brief") {
+      return "bg-gradient-to-br from-blue-100 to-blue-200 border-blue-300 text-blue-900";
+    }
+    if (item.stage === "draft") {
+      return "bg-gradient-to-br from-amber-100 to-amber-200 border-amber-300 text-amber-900";
+    }
+    return "bg-gradient-to-br from-gray-100 to-gray-200 border-gray-300 text-gray-900";
+  };
+
   return (
     <div
       ref={drop as any}
       className={classNames(
-        "min-h-[200px] p-4 border border-gray-200 transition-all duration-200",
-        isPastDate ? "bg-gray-50 opacity-60" : isToday ? "bg-blue-50 border-blue-300" : "bg-white",
+        "min-h-[180px] p-3 border border-gray-200 transition-all duration-200",
+        isPastDate ? "bg-gray-50 opacity-60" : isToday ? "bg-blue-50 border-blue-300 ring-1 ring-blue-300" : "bg-white",
         isOver && canDrop && "bg-blue-100 border-blue-400 ring-2 ring-blue-400 ring-inset shadow-inner",
         isOver && !canDrop && isPastDate && "bg-red-50 border-red-300 ring-2 ring-red-300 ring-inset",
         canDrop && !isOver && "border-dashed"
       )}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div>
           <span className={classNames(
-            "text-2xl font-bold",
+            "text-lg font-bold",
             isPastDate ? "text-gray-400" : isToday ? "text-blue-600" : "text-gray-700"
           )}>
             {format(date, "d")}
           </span>
           {isOver && canDrop && (
-            <div className="text-xs text-blue-600 font-medium mt-1">Drop to schedule</div>
+            <div className="text-xs text-blue-600 font-medium mt-0.5">Drop here</div>
           )}
           {isOver && !canDrop && isPastDate && (
-            <div className="text-xs text-red-600 font-medium mt-1">Cannot schedule in past</div>
+            <div className="text-xs text-red-600 font-medium mt-0.5">Past date</div>
           )}
         </div>
       </div>
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.id} className="group relative">
-            <div className="text-sm bg-amber-100 text-amber-800 px-3 py-2.5 rounded-lg border border-amber-200 hover:shadow-md transition-shadow">
-              <div className="flex items-start gap-2">
-                <div className="flex-1 min-w-0 pr-8">
+            <div className={classNames(
+              "text-sm px-2.5 py-2 rounded-lg border transition-shadow",
+              getItemGradient(item)
+            )}>
+              <div className="flex items-start gap-1.5">
+                <div className="flex-1 min-w-0 pr-6">
                   <div className="flex items-center gap-1 flex-wrap">
-                    <div className="font-semibold text-sm leading-snug break-words">{item.title}</div>
+                    <div className="font-semibold text-xs leading-snug truncate">{item.title}</div>
                     <StatusBadge status={item.status} scheduledPublishAt={item.scheduledPublishAt} />
                   </div>
-                  <div className="text-xs text-amber-700 mt-1.5 truncate">{item.cluster}</div>
+                  <div className="text-xs opacity-75 mt-1 truncate">{item.cluster}</div>
                 </div>
                 <button
                   onClick={() => onRemove(item.id)}
-                  className="absolute top-2 right-2 opacity-60 group-hover:opacity-100 transition-opacity shrink-0 hover:bg-amber-200 rounded"
+                  className="absolute top-2 right-2 opacity-60 hover:opacity-100 transition-opacity shrink-0 hover:bg-black/10 rounded p-0.5"
                   title="Remove from schedule"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -175,7 +268,7 @@ function CalendarDay({ date, items, onDrop, onRemove }: {
 
 export default function CalendarTab({ userToken, websiteToken, domain, conversationId }: CalendarTabProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [unscheduledCollapsed, setUnscheduledCollapsed] = useState(false);
 
   // Use content pipeline hook
   const { items, loading, error, scheduleForPublication, removeFromSchedule, scheduleBriefForGeneration } = useContentPipeline({
@@ -188,9 +281,9 @@ export default function CalendarTab({ userToken, websiteToken, domain, conversat
   // Calculate week start for calendar display
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
-  // Calendar view helpers - show 2 weeks
+  // Calendar view - show 1 week (7 days)
   const calendarDays = [];
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 7; i++) {
     calendarDays.push(addDays(weekStart, i));
   }
 
@@ -235,8 +328,6 @@ export default function CalendarTab({ userToken, websiteToken, domain, conversat
       } else {
         await scheduleForPublication(articleId, date);
       }
-
-      setSelectedArticleId(null);
     } catch (err) {
       console.error('Failed to schedule item:', err);
       alert('Failed to schedule item. Please try again.');
@@ -269,7 +360,7 @@ export default function CalendarTab({ userToken, websiteToken, domain, conversat
     );
   }
 
-  // Empty state - no scheduled items
+  // Empty state - no content at all
   if (scheduledItems.length === 0 && unscheduledItems.length === 0) {
     return (
       <div className="bg-white border rounded-2xl p-12 text-center">
@@ -279,115 +370,8 @@ export default function CalendarTab({ userToken, websiteToken, domain, conversat
           <p className="text-gray-600 mb-6">
             Create briefs and articles in the Content Pipeline, then come back here to schedule them for generation and publication.
           </p>
-          <button
-            onClick={() => {
-              // This would typically trigger navigation to pipeline tab
-              const chatInput = document.querySelector('textarea[placeholder*="Ask"]') as HTMLTextAreaElement;
-              if (chatInput) {
-                chatInput.focus();
-              }
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <FilePenLine className="w-4 h-4" />
-            Go to Content Pipeline
-          </button>
         </div>
       </div>
-    );
-  }
-
-  // Empty state - items exist but none scheduled
-  if (scheduledItems.length === 0 && unscheduledItems.length > 0) {
-    return (
-      <DndProvider backend={HTML5Backend}>
-        <div className="bg-white border rounded-2xl p-8">
-          <div className="max-w-2xl mx-auto text-center mb-8">
-            <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-indigo-600" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Schedule Your Content</h3>
-            <p className="text-gray-600">
-              Drag briefs from the left panel onto calendar dates to schedule them for article generation.
-              Drag drafts to schedule for publication.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Unscheduled Items */}
-            <div className="lg:col-span-1">
-              <h3 className="font-medium mb-3">Unscheduled Items ({unscheduledItems.length})</h3>
-              <div className="bg-gray-50 border rounded-xl p-4 min-h-[400px]">
-                {unscheduledItems.map(item => (
-                  <DraggableArticle
-                    key={item.id}
-                    item={item}
-                    isSelected={selectedArticleId === item.id}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="lg:col-span-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium text-base">
-                  {format(weekStart, "MMM d")} - {format(addDays(weekStart, 13), "MMM d, yyyy")}
-                </h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setCurrentDate(addDays(currentDate, -14))}
-                    className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
-                  >
-                    Previous 2 Weeks
-                  </button>
-                  <button
-                    onClick={() => setCurrentDate(new Date())}
-                    className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
-                  >
-                    Today
-                  </button>
-                  <button
-                    onClick={() => setCurrentDate(addDays(currentDate, 14))}
-                    className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
-                  >
-                    Next 2 Weeks
-                  </button>
-                </div>
-              </div>
-
-              <div className="border rounded-xl overflow-x-auto">
-                <div className="min-w-[1400px]">
-                  <div className="grid grid-cols-7 bg-gray-50">
-                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => (
-                      <div key={day} className="p-4 text-center text-base font-semibold border-r border-gray-200 last:border-r-0">
-                        {day}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-7">
-                    {calendarDays.map(day => {
-                      const dateKey = format(day, "yyyy-MM-dd");
-                      const dayItems = itemsByDate[dateKey] || [];
-                      return (
-                        <CalendarDay
-                          key={dateKey}
-                          date={day}
-                          items={dayItems}
-                          onDrop={handleDropOnCalendar}
-                          onRemove={handleRemoveFromCalendar}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-2 text-sm text-gray-500 text-center">
-                ← Scroll horizontally to see all days →
-              </div>
-            </div>
-          </div>
-        </div>
-      </DndProvider>
     );
   }
 
@@ -397,85 +381,87 @@ export default function CalendarTab({ userToken, websiteToken, domain, conversat
         {/* Header */}
         <div>
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Content Calendar</h2>
-          <p className="text-sm text-gray-500">Schedule briefs for generation and articles for publication</p>
+          <p className="text-sm text-gray-500">Drag items onto dates to schedule for generation and publication</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Unscheduled Items */}
-          <div className="lg:col-span-1">
-            <h3 className="font-medium mb-3">Unscheduled Items</h3>
-            <div className="bg-gray-50 border rounded-xl p-4 min-h-[400px]">
-              {unscheduledItems.length === 0 ? (
-                <div className="text-sm text-gray-500">No unscheduled items</div>
+        {/* Unscheduled Items - Top Container (Hidden when empty) */}
+        {unscheduledItems.length > 0 && (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <button
+              onClick={() => setUnscheduledCollapsed(!unscheduledCollapsed)}
+              className="flex items-center justify-between w-full mb-3"
+            >
+              <h3 className="font-medium text-sm">Unscheduled Items ({unscheduledItems.length})</h3>
+              {unscheduledCollapsed ? (
+                <ChevronDown className="w-4 h-4 text-gray-500" />
               ) : (
-                unscheduledItems.map(item => (
-                  <DraggableArticle
-                    key={item.id}
-                    item={item}
-                    isSelected={selectedArticleId === item.id}
-                  />
-                ))
+                <ChevronUp className="w-4 h-4 text-gray-500" />
               )}
+            </button>
+
+            {!unscheduledCollapsed && (
+              <div className="flex flex-wrap gap-2">
+                {unscheduledItems.map(item => (
+                  <UnscheduledItemPill key={item.id} item={item} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Calendar Grid */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium text-base">
+              {format(weekStart, "MMM d")} - {format(addDays(weekStart, 6), "MMM d, yyyy")}
+            </h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentDate(addDays(currentDate, -7))}
+                className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Previous Week
+              </button>
+              <button
+                onClick={() => setCurrentDate(new Date())}
+                className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setCurrentDate(addDays(currentDate, 7))}
+                className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Next Week
+              </button>
             </div>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="lg:col-span-3">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-base">
-                {format(weekStart, "MMM d")} - {format(addDays(weekStart, 13), "MMM d, yyyy")}
-              </h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentDate(addDays(currentDate, -14))}
-                  className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
-                >
-                  Previous 2 Weeks
-                </button>
-                <button
-                  onClick={() => setCurrentDate(new Date())}
-                  className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setCurrentDate(addDays(currentDate, 14))}
-                  className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
-                >
-                  Next 2 Weeks
-                </button>
-              </div>
+          <div className="border rounded-xl overflow-hidden">
+            {/* Day Headers */}
+            <div className="grid grid-cols-7 bg-gray-50">
+              {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => (
+                <div key={day} className="p-3 text-center text-sm font-semibold border-r border-gray-200 last:border-r-0">
+                  {day}
+                </div>
+              ))}
             </div>
 
-            <div className="border rounded-xl overflow-x-auto">
-              <div className="min-w-[1400px]">
-                <div className="grid grid-cols-7 bg-gray-50">
-                  {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => (
-                    <div key={day} className="p-4 text-center text-base font-semibold border-r border-gray-200 last:border-r-0">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-7">
-                  {calendarDays.map(day => {
-                    const dateKey = format(day, "yyyy-MM-dd");
-                    const dayItems = itemsByDate[dateKey] || [];
-                    return (
-                      <CalendarDay
-                        key={dateKey}
-                        date={day}
-                        items={dayItems}
-                        onDrop={handleDropOnCalendar}
-                        onRemove={handleRemoveFromCalendar}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            <div className="mt-2 text-sm text-gray-500 text-center">
-              ← Scroll horizontally to see all days →
+            {/* Calendar Days */}
+            <div className="grid grid-cols-7">
+              {calendarDays.map(day => {
+                const dateKey = format(day, "yyyy-MM-dd");
+                const dayItems = itemsByDate[dateKey] || [];
+                return (
+                  <CalendarDay
+                    key={dateKey}
+                    date={day}
+                    items={dayItems}
+                    onDrop={handleDropOnCalendar}
+                    onRemove={handleRemoveFromCalendar}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>

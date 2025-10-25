@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { ChevronUp, ChevronDown, Filter, Search, ExternalLink, Eye, FilePenLine, FileText, Rocket, MessageSquare } from "lucide-react";
+import { ChevronUp, ChevronDown, Filter, Search, ExternalLink, Eye, FilePenLine, FileText, Rocket, MessageSquare, Clock, CheckCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { useContentPipeline, ContentItem, ArticleStage, Keyword } from "@/hooks/useContentPipeline";
 
@@ -222,7 +222,30 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onS
     published: "bg-green-50/30 hover:bg-green-50/50 border-green-100",
   }[item.stage];
 
-  const publishDate = item.stage === "published" ? item.scheduledPublishAt : null;
+  // For "Scheduled For" column:
+  // - Briefs: show scheduledDraftAt or scheduledPublishAt (when to generate+publish)
+  // - Drafts: show scheduledPublishAt (when to publish)
+  // - Published: show scheduledPublishAt (when it was published)
+  const scheduledDate =
+    item.stage === "brief"
+      ? (item.scheduledDraftAt || item.scheduledPublishAt)
+      : item.scheduledPublishAt;
+
+  // Determine icon and color based on stage and status
+  const getScheduleIcon = () => {
+    if (!scheduledDate) return null;
+    if (item.stage === "published") {
+      return <CheckCircle className="w-3.5 h-3.5 text-green-600" />;
+    }
+    return <Clock className="w-3.5 h-3.5 text-blue-600" />;
+  };
+
+  const getScheduleTextColor = () => {
+    if (!scheduledDate) return "text-gray-500";
+    if (item.stage === "published") return "text-green-700";
+    if (item.stage === "brief") return "text-blue-700";
+    return "text-amber-700";
+  };
 
   return (
     <tr className={classNames("border-b transition-colors", rowStyle)}>
@@ -261,7 +284,14 @@ function TableRow({ item, onAdvance, onScheduleForPublication, onPublishNow, onS
         {item.createdAt ? format(new Date(item.createdAt), "MMM d, yyyy") : "-"}
       </td>
       <td className="px-4 py-3 text-sm">
-        {publishDate ? format(new Date(publishDate), "MMM d, yyyy") : "-"}
+        {scheduledDate ? (
+          <div className={classNames("flex items-center gap-1.5", getScheduleTextColor())}>
+            {getScheduleIcon()}
+            <span>{format(new Date(scheduledDate), "MMM d, yyyy")}</span>
+          </div>
+        ) : (
+          <span className="text-gray-400">-</span>
+        )}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
@@ -581,7 +611,7 @@ export default function PipelineTab({ userToken, websiteToken, domain, conversat
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-900">
                 <SortHeader
                   field="publishDate"
-                  label="Publish Date"
+                  label="Scheduled For"
                   sortField={sortField}
                   sortDirection={sortDirection}
                   onSort={handleSort}
