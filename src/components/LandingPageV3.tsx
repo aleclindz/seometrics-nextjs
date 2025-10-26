@@ -211,17 +211,15 @@ function HeaderV3() {
 
 function HeroV3() {
   const router = useRouter();
-  const { user } = useAuth();
   const [website, setWebsite] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Website submitted:', website);
-    if (user?.token) {
-      router.push('/dashboard');
-    } else {
-      router.push('/login?mode=signup');
+    // Store the website in sessionStorage for the audit page
+    if (website) {
+      sessionStorage.setItem('auditWebsite', website);
     }
+    router.push('/free-audit');
   };
 
   return (
@@ -390,6 +388,26 @@ function TestimonialsSection() {
     }
   ];
 
+  const TestimonialCard = ({ testimonial }: { testimonial: typeof testimonials1[0] }) => (
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 w-[400px] shrink-0 shadow-sm hover:shadow-md transition-shadow">
+      <p className="text-[#4E555C] mb-4 italic">
+        &ldquo;{testimonial.quote}&rdquo;
+      </p>
+      <div className="flex items-center gap-3">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
+          style={{ backgroundColor: testimonial.color }}
+        >
+          {testimonial.initials}
+        </div>
+        <div>
+          <p className="text-[#4E555C] font-medium">{testimonial.name}</p>
+          <p className="text-sm text-[#6B7278]">{testimonial.role}</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="w-full py-20 overflow-hidden bg-gradient-to-b from-white to-[#F3F6FF]/30">
       <div className="text-center mb-12 px-4">
@@ -401,89 +419,69 @@ function TestimonialsSection() {
         </p>
       </div>
 
-      {/* First Row - Scrolling Right */}
-      <div className="relative mb-6">
-        <motion.div
-          className="flex gap-6"
-          animate={{
-            x: [0, -1624]
-          }}
-          transition={{
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: 40,
-              ease: "linear"
-            }
-          }}
-        >
-          {[...Array(3)].map((_, setIndex) => (
+      {/* First Row - Scrolling Right - Seamless Infinite Loop */}
+      <div className="relative mb-6 overflow-hidden">
+        <div className="flex animate-scroll-right">
+          {/* Duplicate the array enough times for seamless loop */}
+          {[...Array(6)].map((_, setIndex) => (
             <div key={setIndex} className="flex gap-6 shrink-0">
               {testimonials1.map((testimonial, index) => (
-                <div key={`${setIndex}-${index}`} className="bg-white border border-gray-200 rounded-2xl p-6 w-[400px] shrink-0 shadow-sm hover:shadow-md transition-shadow">
-                  <p className="text-[#4E555C] mb-4 italic">
-                    &ldquo;{testimonial.quote}&rdquo;
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white"
-                      style={{ backgroundColor: testimonial.color }}
-                    >
-                      {testimonial.initials}
-                    </div>
-                    <div>
-                      <p className="text-[#4E555C]">{testimonial.name}</p>
-                      <p className="text-sm text-[#6B7278]">{testimonial.role}</p>
-                    </div>
-                  </div>
-                </div>
+                <TestimonialCard key={`${setIndex}-${index}`} testimonial={testimonial} />
               ))}
             </div>
           ))}
-        </motion.div>
+        </div>
       </div>
 
-      {/* Second Row - Scrolling Left */}
-      <div className="relative">
-        <motion.div
-          className="flex gap-6"
-          animate={{
-            x: [-1624, 0]
-          }}
-          transition={{
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: 35,
-              ease: "linear"
-            }
-          }}
-        >
-          {[...Array(3)].map((_, setIndex) => (
+      {/* Second Row - Scrolling Left - Seamless Infinite Loop */}
+      <div className="relative overflow-hidden">
+        <div className="flex animate-scroll-left">
+          {/* Duplicate the array enough times for seamless loop */}
+          {[...Array(6)].map((_, setIndex) => (
             <div key={setIndex} className="flex gap-6 shrink-0">
               {testimonials2.map((testimonial, index) => (
-                <div key={`${setIndex}-${index}`} className="bg-white border border-gray-200 rounded-2xl p-6 w-[400px] shrink-0 shadow-sm hover:shadow-md transition-shadow">
-                  <p className="text-[#4E555C] mb-4 italic">
-                    &ldquo;{testimonial.quote}&rdquo;
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white"
-                      style={{ backgroundColor: testimonial.color }}
-                    >
-                      {testimonial.initials}
-                    </div>
-                    <div>
-                      <p className="text-[#4E555C]">{testimonial.name}</p>
-                      <p className="text-sm text-[#6B7278]">{testimonial.role}</p>
-                    </div>
-                  </div>
-                </div>
+                <TestimonialCard key={`${setIndex}-${index}`} testimonial={testimonial} />
               ))}
             </div>
           ))}
-        </motion.div>
+        </div>
       </div>
+
+      {/* Add CSS for infinite scroll animation */}
+      <style jsx>{`
+        @keyframes scroll-right {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+
+        @keyframes scroll-left {
+          0% {
+            transform: translateX(-50%);
+          }
+          100% {
+            transform: translateX(0);
+          }
+        }
+
+        .animate-scroll-right {
+          animation: scroll-right 60s linear infinite;
+          will-change: transform;
+        }
+
+        .animate-scroll-left {
+          animation: scroll-left 55s linear infinite;
+          will-change: transform;
+        }
+
+        .animate-scroll-right:hover,
+        .animate-scroll-left:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
     </div>
   );
 }
@@ -508,25 +506,22 @@ function HowItWorksV3() {
       </div>
 
       <div className="max-w-4xl mx-auto">
-        {/* YouTube Video Placeholder */}
+        {/* YouTube Video Embed */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5 }}
-          className="relative w-full bg-gray-100 rounded-2xl overflow-hidden shadow-2xl"
+          className="relative w-full rounded-2xl overflow-hidden shadow-2xl"
           style={{ paddingBottom: '56.25%' }}
         >
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-            <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-[#6B35F5] flex items-center justify-center shadow-lg">
-                <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-              <p className="text-gray-600">YouTube Video Intro</p>
-            </div>
-          </div>
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src="https://www.youtube.com/embed/MNf-abaTToo"
+            title="SEOAgent - How it Works"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          ></iframe>
         </motion.div>
       </div>
     </motion.div>
@@ -535,16 +530,15 @@ function HowItWorksV3() {
 
 function SEOInAgeOfAISection() {
   const router = useRouter();
-  const { user } = useAuth();
   const [website, setWebsite] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (user?.token) {
-      router.push('/dashboard');
-    } else {
-      router.push('/login?mode=signup');
+    // Store the website in sessionStorage for the audit page
+    if (website) {
+      sessionStorage.setItem('auditWebsite', website);
     }
+    router.push('/free-audit');
   };
 
   return (
@@ -1499,16 +1493,15 @@ function FAQSection() {
 
 function FinalCTA() {
   const router = useRouter();
-  const { user } = useAuth();
   const [website, setWebsite] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (user?.token) {
-      router.push('/dashboard');
-    } else {
-      router.push('/login?mode=signup');
+    // Store the website in sessionStorage for the audit page
+    if (website) {
+      sessionStorage.setItem('auditWebsite', website);
     }
+    router.push('/free-audit');
   };
 
   return (
@@ -1586,7 +1579,7 @@ function FinalCTA() {
 
 function FooterV3() {
   return (
-    <div className="w-full border-t border-gray-200 bg-white">
+    <footer className="relative z-10 w-full border-t border-gray-200 bg-white">
       <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 mb-8">
           <div className="md:col-span-6 lg:col-span-5">
@@ -1639,6 +1632,6 @@ function FooterV3() {
           </div>
         </div>
       </div>
-    </div>
+    </footer>
   );
 }
