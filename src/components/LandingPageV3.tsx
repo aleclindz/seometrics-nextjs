@@ -305,17 +305,41 @@ function PlatformLogos() {
     >
       <p className="text-center text-sm text-gray-600 mb-6">Works with your existing website and content management system</p>
       <div className="flex items-center justify-center gap-8 md:gap-12 flex-wrap">
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700">WordPress</span>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-12">
+          <Image
+            src="/integrationlogo/wordpress.jpg"
+            alt="WordPress"
+            width={120}
+            height={48}
+            className="h-full w-auto object-contain"
+          />
         </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700">Strapi</span>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-12">
+          <Image
+            src="/integrationlogo/strapi.avif"
+            alt="Strapi"
+            width={120}
+            height={48}
+            className="h-full w-auto object-contain"
+          />
         </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700">Ghost</span>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-12">
+          <Image
+            src="/integrationlogo/ghost.png"
+            alt="Ghost"
+            width={120}
+            height={48}
+            className="h-full w-auto object-contain"
+          />
         </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700">Shopify</span>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-12">
+          <Image
+            src="/integrationlogo/shopify.png"
+            alt="Shopify"
+            width={120}
+            height={48}
+            className="h-full w-auto object-contain"
+          />
         </div>
         <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
           <span className="text-gray-700">Webflow</span>
@@ -328,22 +352,22 @@ function PlatformLogos() {
 function TestimonialsSection() {
   const testimonials1 = [
     {
-      quote: "SEOAgent transformed our content strategy. We&apos;ve seen a 300% increase in organic traffic in just 2 months.",
+      quote: "SEOAgent transformed our content strategy. We've seen a 300% increase in organic traffic in just 2 months.",
       name: "TechFlow SaaS",
       role: "B2B SaaS Platform",
       color: "#6B35F5",
       initials: "TF"
     },
     {
-      quote: "Finally, SEO content that doesn&apos;t sound like it was written by a robot. The quality is outstanding.",
+      quote: "Finally, SEO content that doesn't sound like it was written by a robot. The quality is outstanding.",
       name: "Michael Rodriguez",
       role: "SEO Freelancer",
       color: "#10B981",
       initials: "MR"
     },
     {
-      quote: "We&apos;ve tried every SEO tool out there. SEOAgent is the only one that actually delivers on its promises.",
-      name: "Bella&apos;s Cafe",
+      quote: "We've tried every SEO tool out there. SEOAgent is the only one that actually delivers on its promises.",
+      name: "Bella's Cafe",
       role: "Local Coffee Shop Chain",
       color: "#3B82F6",
       initials: "BC"
@@ -366,14 +390,14 @@ function TestimonialsSection() {
       initials: "PR"
     },
     {
-      quote: "The ROI is incredible. We&apos;re getting more qualified leads than ever before from organic search.",
+      quote: "The ROI is incredible. We're getting more qualified leads than ever before from organic search.",
       name: "Sarah Kim",
       role: "Independent SEO Consultant",
       color: "#10B981",
       initials: "SK"
     },
     {
-      quote: "Best investment we&apos;ve made. Our blog traffic has 5x&apos;d and we&apos;re ranking for dozens of new keywords.",
+      quote: "Best investment we've made. Our blog traffic has 5x'd and we're ranking for dozens of new keywords.",
       name: "CloudScale",
       role: "Analytics SaaS Platform",
       color: "#6B35F5",
@@ -698,10 +722,10 @@ function StrategicSEOScrollSnap() {
   const PURPLE = "#6B35F5";
   const GREEN = "#86efac";
 
-  const showClusterBadge = active >= 2;
-  const showInterlinkHighlights = active >= 3;
-  const showCitationHighlights = active >= 4;
-  const showImageHighlights = active >= 5;
+  const showClusterBadge = maxActive >= 2;
+  const showInterlinkHighlights = maxActive >= 3;
+  const showCitationHighlights = maxActive >= 4;
+  const showImageHighlights = maxActive >= 5;
 
   return (
     <div className="w-full bg-white pt-20 pb-12">
