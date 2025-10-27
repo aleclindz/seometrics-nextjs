@@ -53,12 +53,27 @@ async function firecrawlFetch(path: string, init?: RequestInitWithTimeout) {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+
+    // Enhanced error logging for rate limits and concurrency issues
+    if (res.status === 429) {
+      console.error(`[FIRECRAWL] Rate limit exceeded: ${text}`);
+      throw new Error(`Firecrawl rate limit exceeded. Please try again in a few minutes.`);
+    }
+
+    if (res.status === 503) {
+      console.error(`[FIRECRAWL] Service unavailable (concurrent limit?): ${text}`);
+      throw new Error(`Firecrawl service temporarily unavailable. Too many concurrent requests.`);
+    }
+
+    console.error(`[FIRECRAWL] Error ${res.status} for ${path}: ${text}`);
     throw new Error(`Firecrawl error ${res.status}: ${text}`);
   }
   return res.json();
 }
 
 export async function startCrawl(opts: StartCrawlOptions & { timeoutMs?: number }): Promise<FirecrawlJob> {
+  console.log(`[FIRECRAWL] Starting crawl for ${opts.url} (maxPages: ${opts.maxPages || 50})`);
+
   const body: any = {
     url: opts.url,
     limit: Math.max(1, Math.min(opts.maxPages || 50, 1000)),
@@ -68,12 +83,20 @@ export async function startCrawl(opts: StartCrawlOptions & { timeoutMs?: number 
       formats: ['html', 'markdown']
     }
   };
-  const data = await firecrawlFetch('/v2/crawl', {
-    method: 'POST',
-    body: JSON.stringify(body),
-    timeoutMs: opts.timeoutMs
-  });
-  return { jobId: data.jobId || data.id || data.job?.id, status: data.status };
+
+  try {
+    const data = await firecrawlFetch('/v2/crawl', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      timeoutMs: opts.timeoutMs
+    });
+
+    console.log(`[FIRECRAWL] Crawl started successfully: ${data.jobId || data.id || data.job?.id}`);
+    return { jobId: data.jobId || data.id || data.job?.id, status: data.status };
+  } catch (error) {
+    console.error(`[FIRECRAWL] Failed to start crawl for ${opts.url}:`, error);
+    throw error;
+  }
 }
 
 export async function getCrawlStatus(jobId: string, timeoutMs?: number): Promise<{ status: string; done: boolean; progress?: any; }>{
@@ -93,21 +116,30 @@ export async function getCrawlResult(jobId: string, timeoutMs?: number): Promise
 }
 
 export async function scrapeUrl(url: string, opts?: { timeoutMs?: number }): Promise<CrawlResultPage> {
-  const data = await firecrawlFetch('/v2/scrape', {
-    method: 'POST',
-    body: JSON.stringify({
-      url,
-      formats: ['html', 'markdown']
-    }),
-    timeoutMs: opts?.timeoutMs ?? 5000
-  });
-  const content = data.data || data;
-  return {
-    url: content.url || url,
-    html: content.html || content.content?.html,
-    markdown: content.markdown || content.content?.markdown,
-    metadata: content.metadata || content.meta || {}
-  };
+  console.log(`[FIRECRAWL] Scraping URL: ${url}`);
+
+  try {
+    const data = await firecrawlFetch('/v2/scrape', {
+      method: 'POST',
+      body: JSON.stringify({
+        url,
+        formats: ['html', 'markdown']
+      }),
+      timeoutMs: opts?.timeoutMs ?? 5000
+    });
+    const content = data.data || data;
+
+    console.log(`[FIRECRAWL] Successfully scraped: ${url}`);
+    return {
+      url: content.url || url,
+      html: content.html || content.content?.html,
+      markdown: content.markdown || content.content?.markdown,
+      metadata: content.metadata || content.meta || {}
+    };
+  } catch (error) {
+    console.error(`[FIRECRAWL] Failed to scrape ${url}:`, error);
+    throw error;
+  }
 }
 
 /**

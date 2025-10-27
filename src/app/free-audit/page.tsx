@@ -23,7 +23,7 @@ export default function FreeAuditPage() {
       const res = await fetch("/api/crawl/firecrawl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start", url: normalizeUrl(url), maxPages: 30 }),
+        body: JSON.stringify({ action: "start", url: normalizeUrl(url), maxPages: 10 }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Failed to start crawl");
@@ -115,7 +115,7 @@ export default function FreeAuditPage() {
             Free SEO Audit
           </h1>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-            Get a comprehensive technical SEO analysis of your website in minutes. We&apos;ll scan up to 30 pages and identify critical issues.
+            Get a comprehensive technical SEO analysis of your website in minutes. We&apos;ll scan up to 10 pages and identify critical issues.
           </p>
         </div>
 
@@ -140,7 +140,7 @@ export default function FreeAuditPage() {
               <Search size={24} />
             </div>
             <div className="font-semibold text-slate-900 mb-1">Deep Analysis</div>
-            <div className="text-sm text-slate-600">Scans up to 30 pages automatically</div>
+            <div className="text-sm text-slate-600">Scans up to 10 critical pages</div>
           </div>
         </div>
 

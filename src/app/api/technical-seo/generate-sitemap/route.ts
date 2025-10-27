@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       // Start Firecrawl job with focused limits for faster discovery
       const crawlJob = await startCrawl({
         url: cleanSiteUrl,
-        maxPages: 100, // Focused limit for faster crawling
+        maxPages: 50, // Reduced to prevent concurrent request limit issues
         includePaths: ['/blog'], // Focus specifically on blog section
         excludePaths: ['/admin', '/wp-admin', '/login', '/private', '/auth'], // Skip admin areas
         parseJS: true // Handle JavaScript-rendered content

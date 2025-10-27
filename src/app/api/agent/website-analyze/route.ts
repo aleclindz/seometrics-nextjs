@@ -30,30 +30,31 @@ export async function POST(request: NextRequest) {
     const pages: Array<{ url: string; content: string; title: string }> = [];
     const candidates = [
       normUrl,
-      `${normUrl.replace(/\/$/, '')}/about`,
-      `${normUrl.replace(/\/$/, '')}/services`
-    ].slice(0, Math.max(1, Math.min(max_pages, 3)));
+      `${normUrl.replace(/\/$/, '')}/about`
+    ].slice(0, Math.max(1, Math.min(max_pages, 2)));
 
-    // Scrape in parallel with aggressive per-request timeout
-    const results = await Promise.allSettled(candidates.map(async (url) => {
+    // Scrape sequentially with delays to avoid concurrent request limits
+    for (const url of candidates) {
       try {
         console.log('[WEBSITE ANALYZE] Scraping:', url);
         const page = await scrapeUrl(url, { timeoutMs: 2500 });
         const md = page.markdown || '';
         if (md && md.length > 120) {
-          return {
+          pages.push({
             url: page.url,
             content: md.substring(0, 1800),
             title: page.metadata?.title || 'Unknown'
-          };
+          });
+        }
+
+        // Add 2-second delay between requests to prevent concurrent limit issues
+        if (candidates.indexOf(url) < candidates.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       } catch (e) {
         console.log('[WEBSITE ANALYZE] Failed to scrape:', url);
       }
-      return null;
-    }));
-
-    results.forEach(r => { if (r.status === 'fulfilled' && r.value) pages.push(r.value); });
+    }
 
     if (pages.length === 0) {
       // Return a minimal analysis payload indicating blank site
