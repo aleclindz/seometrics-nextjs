@@ -305,17 +305,41 @@ function PlatformLogos() {
     >
       <p className="text-center text-sm text-gray-600 mb-6">Works with your existing website and content management system</p>
       <div className="flex items-center justify-center gap-8 md:gap-12 flex-wrap">
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700 font-medium">WordPress</span>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-10">
+          <Image
+            src="/integrationlogo/wordpress.jpg"
+            alt="WordPress"
+            width={100}
+            height={40}
+            className="h-full w-auto object-contain"
+          />
         </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700 font-medium">Strapi</span>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-10">
+          <Image
+            src="/integrationlogo/strapi.avif"
+            alt="Strapi"
+            width={100}
+            height={40}
+            className="h-full w-auto object-contain"
+          />
         </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700 font-medium">Ghost</span>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-10">
+          <Image
+            src="/integrationlogo/ghost.png"
+            alt="Ghost"
+            width={100}
+            height={40}
+            className="h-full w-auto object-contain"
+          />
         </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700 font-medium">Shopify</span>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-10">
+          <Image
+            src="/integrationlogo/shopify.png"
+            alt="Shopify"
+            width={100}
+            height={40}
+            className="h-full w-auto object-contain"
+          />
         </div>
         <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
           <span className="text-gray-700 font-medium">Webflow</span>
@@ -422,8 +446,8 @@ function TestimonialsSection() {
       {/* First Row - Scrolling Right - Seamless Infinite Loop */}
       <div className="relative mb-6 overflow-hidden">
         <div className="flex animate-scroll-right">
-          {/* Duplicate the array enough times for seamless loop */}
-          {[...Array(6)].map((_, setIndex) => (
+          {/* Duplicate twice for seamless loop */}
+          {[...Array(2)].map((_, setIndex) => (
             <div key={setIndex} className="flex gap-6 shrink-0">
               {testimonials1.map((testimonial, index) => (
                 <TestimonialCard key={`${setIndex}-${index}`} testimonial={testimonial} />
@@ -436,8 +460,8 @@ function TestimonialsSection() {
       {/* Second Row - Scrolling Left - Seamless Infinite Loop */}
       <div className="relative overflow-hidden">
         <div className="flex animate-scroll-left">
-          {/* Duplicate the array enough times for seamless loop */}
-          {[...Array(6)].map((_, setIndex) => (
+          {/* Duplicate twice for seamless loop */}
+          {[...Array(2)].map((_, setIndex) => (
             <div key={setIndex} className="flex gap-6 shrink-0">
               {testimonials2.map((testimonial, index) => (
                 <TestimonialCard key={`${setIndex}-${index}`} testimonial={testimonial} />
@@ -1357,7 +1381,7 @@ function PricingSectionV3() {
           All plans include a 14-day trial for just $1 (fully refundable).
         </p>
         <p className="text-sm text-[#6B7278]">
-          Need custom volume? <button className="text-[#6B35F5] hover:underline">Contact us</button> for enterprise pricing.
+          Need custom volume? <a href="https://calendly.com/alec-aleclindz/30min" target="_blank" rel="noopener noreferrer" className="text-[#6B35F5] hover:underline">Contact us</a> for enterprise pricing.
         </p>
       </div>
     </motion.div>
@@ -1423,16 +1447,12 @@ function FAQSection() {
       answer: "Most businesses start seeing measurable traffic improvements within 3-6 months. SEO is a long-term strategy, but our automated approach ensures consistent publishing, which helps you build authority faster than manual content creation."
     },
     {
-      question: "Can I review articles before they&apos;re published?",
+      question: "Can I review articles before they're published?",
       answer: "Absolutely. You can choose to review and approve each article before publication, or let the system run on full autopilot. The choice is yours based on your comfort level and time availability."
     },
     {
-      question: "What happens to my main website domain?",
-      answer: "Your main website stays completely safe. We offer two options: hosting on our subdomain (blog.seoagent.com/yourcompany) or on your own subdomain (blog.yourcompany.com). Both options keep your primary domain isolated from any SEO experiments."
-    },
-    {
       question: "Can I cancel anytime?",
-      answer: "Yes, you can cancel your subscription at any time with no questions asked. All published content remains live, and you keep everything we&apos;ve created for you."
+      answer: "Yes, you can cancel your subscription at any time with no questions asked. All published content remains live, and you keep everything we've created for you."
     }
   ];
 
@@ -1611,9 +1631,6 @@ function FooterV3() {
               <div>
                 <h4 className="text-base text-gray-900 mb-4">Company</h4>
                 <div className="space-y-3">
-                  <button className="block text-gray-600 hover:text-blue-600 transition-colors text-sm text-left">
-                    About
-                  </button>
                   <Link href="/privacy" className="block text-gray-600 hover:text-blue-600 transition-colors text-sm text-left">
                     Privacy
                   </Link>
