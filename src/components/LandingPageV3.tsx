@@ -305,44 +305,20 @@ function PlatformLogos() {
     >
       <p className="text-center text-sm text-gray-600 mb-6">Works with your existing website and content management system</p>
       <div className="flex items-center justify-center gap-8 md:gap-12 flex-wrap">
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-12">
-          <Image
-            src="/integrationlogo/wordpress.jpg"
-            alt="WordPress"
-            width={120}
-            height={48}
-            className="h-full w-auto object-contain"
-          />
-        </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-12">
-          <Image
-            src="/integrationlogo/strapi.avif"
-            alt="Strapi"
-            width={120}
-            height={48}
-            className="h-full w-auto object-contain"
-          />
-        </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-12">
-          <Image
-            src="/integrationlogo/ghost.png"
-            alt="Ghost"
-            width={120}
-            height={48}
-            className="h-full w-auto object-contain"
-          />
-        </div>
-        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity h-12">
-          <Image
-            src="/integrationlogo/shopify.png"
-            alt="Shopify"
-            width={120}
-            height={48}
-            className="h-full w-auto object-contain"
-          />
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
+          <span className="text-gray-700 font-medium">WordPress</span>
         </div>
         <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
-          <span className="text-gray-700">Webflow</span>
+          <span className="text-gray-700 font-medium">Strapi</span>
+        </div>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
+          <span className="text-gray-700 font-medium">Ghost</span>
+        </div>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
+          <span className="text-gray-700 font-medium">Shopify</span>
+        </div>
+        <div className="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity">
+          <span className="text-gray-700 font-medium">Webflow</span>
         </div>
       </div>
     </motion.div>
@@ -492,12 +468,12 @@ function TestimonialsSection() {
         }
 
         .animate-scroll-right {
-          animation: scroll-right 60s linear infinite;
+          animation: scroll-right 30s linear infinite;
           will-change: transform;
         }
 
         .animate-scroll-left {
-          animation: scroll-left 55s linear infinite;
+          animation: scroll-left 27s linear infinite;
           will-change: transform;
         }
 
@@ -864,13 +840,13 @@ function StrategicSEOScrollSnap() {
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <motion.h4
-                      key={active}
+                      key={maxActive}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.3 }}
                       className="text-xl md:text-2xl text-[#4E555C] mb-1"
                     >
-                      {active === 1 ? 'Lorem Ipsum Dolor Sit Amet' : 'Marketing Automation Strategies for 2025'}
+                      {maxActive === 1 ? 'Lorem Ipsum Dolor Sit Amet' : 'Marketing Automation Strategies for 2025'}
                     </motion.h4>
                   </div>
 

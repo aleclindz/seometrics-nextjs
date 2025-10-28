@@ -14,6 +14,15 @@ export default function FreeAuditPage() {
   const retryCountRef = useRef<number>(0);
   const pollIntervalRef = useRef<number>(2000);
 
+  // Load URL from sessionStorage on mount
+  useEffect(() => {
+    const savedUrl = sessionStorage.getItem('auditWebsite');
+    if (savedUrl) {
+      setUrl(savedUrl);
+      sessionStorage.removeItem('auditWebsite'); // Clear after loading
+    }
+  }, []);
+
   const startAudit = async () => {
     setResult(null);
     setStatus("starting");

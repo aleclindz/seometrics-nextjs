@@ -18,7 +18,7 @@ function initializeSEOMetrics() {
 
     // Check if idv (website token) is defined
     if (typeof idv === 'undefined') {
-        console.error('SEO Metrics: Website token (idv) is not defined');
+        // Silently exit - this is expected on pages without SEO tracking
         return;
     }
 
