@@ -149,8 +149,11 @@ function LoginForm() {
             </div>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            🎉 Account Created!
+            🎉 Welcome to SEOAgent!
           </h2>
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+            Your account has been created successfully.
+          </p>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             We&apos;ve sent a verification email to:
           </p>
@@ -179,7 +182,37 @@ function LoginForm() {
                 </div>
               )}
 
+              {/* Onboarding Call Promotion */}
+              <div className="rounded-md bg-gradient-to-br from-violet-50 via-fuchsia-50 to-indigo-50 dark:from-violet-900/20 dark:via-fuchsia-900/20 dark:to-indigo-900/20 border border-violet-200 dark:border-violet-800 p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="text-2xl">🚀</div>
+                  <div className="text-sm">
+                    <p className="font-semibold text-slate-900 dark:text-white mb-1">Get Started Faster with a Free Onboarding Call</p>
+                    <p className="text-slate-700 dark:text-slate-300 text-xs">
+                      Book a 15-minute call to:
+                    </p>
+                    <ul className="text-slate-700 dark:text-slate-300 text-xs mt-2 space-y-1 ml-4 list-disc">
+                      <li>Connect your website and GSC in minutes</li>
+                      <li>Learn SEOAgent&apos;s best features</li>
+                      <li>Get a personalized SEO strategy</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-3">
+                <a
+                  href="https://calendly.com/alec-aleclindz/30min"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M3 11h18M5 19h14a2 2 0 002-2v-6H3v6a2 2 0 002 2z" />
+                  </svg>
+                  Schedule Free Onboarding Call
+                </a>
+
                 <button
                   onClick={handleResendVerification}
                   disabled={resendingVerification}

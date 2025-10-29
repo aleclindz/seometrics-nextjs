@@ -341,8 +341,18 @@ function Metric({ label, value }: { label: string; value: number }) {
 }
 
 function normalizeUrl(u: string): string {
-  const v = u.trim();
+  let v = u.trim();
   if (!v) return v;
-  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+
+  // Remove protocol if present
+  v = v.replace(/^https?:\/\//, '');
+
+  // Remove 'www.' if present
+  v = v.replace(/^www\./, '');
+
+  // Remove trailing slash
+  v = v.replace(/\/$/, '');
+
+  // Add https:// back
   return `https://${v}`;
 }

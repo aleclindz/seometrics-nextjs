@@ -65,10 +65,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Website URL is required' }, { status: 400 });
     }
 
-    // Validate URL format
+    // Validate and normalize URL format
     let cleanUrl: string;
     try {
-      const url = new URL(websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`);
+      // Remove protocol if present
+      let normalized = websiteUrl.trim().replace(/^https?:\/\//, '');
+
+      // Remove 'www.' if present
+      normalized = normalized.replace(/^www\./, '');
+
+      // Remove trailing slash and any path
+      normalized = normalized.split('/')[0];
+
+      // Create URL object with https://
+      const url = new URL(`https://${normalized}`);
       cleanUrl = url.origin;
     } catch {
       return NextResponse.json({ error: 'Invalid website URL format' }, { status: 400 });
