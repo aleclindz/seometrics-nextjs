@@ -15,7 +15,7 @@ export class WebflowProvider extends BaseCMSProvider {
       response_type: 'code',
       redirect_uri: redirectUri,
       state: state,
-      scope: 'cms:read cms:write sites:read',
+      scope: 'cms:read cms:write sites:read assets:read assets:write',
     });
 
     return `https://webflow.com/oauth/authorize?${params.toString()}`;

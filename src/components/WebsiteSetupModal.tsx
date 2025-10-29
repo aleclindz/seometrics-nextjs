@@ -1068,7 +1068,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                       { type: 'wordpress', name: 'WordPress', icon: '📝', available: true },
                       { type: 'ghost', name: 'Ghost', icon: '👻', available: true },
                       { type: 'wix', name: 'Wix', icon: '🌟', available: false },
-                      { type: 'webflow', name: 'Webflow', icon: '🌊', available: false },
+                      { type: 'webflow', name: 'Webflow', icon: '🌊', available: true },
                       { type: 'shopify', name: 'Shopify', icon: '🛒', available: false },
                     ].map((cms) => (
                       <div key={cms.type} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
@@ -1095,6 +1095,22 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                               Connect WordPress.com (OAuth)
                             </button>
                           </div>
+                        ) : cms.type === 'webflow' ? (
+                          <button
+                            onClick={() => {
+                              // Start Webflow OAuth
+                              const params = new URLSearchParams({
+                                userToken: (user as any)?.token || '',
+                                domain: website.url,
+                                websiteId: String(website.id)
+                              });
+                              window.location.href = `/api/cms/oauth/start?type=webflow&${params.toString()}`;
+                            }}
+                            disabled={!cms.available}
+                            className="w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
+                          >
+                            Connect Webflow (OAuth)
+                          </button>
                         ) : (
                           <button
                             onClick={() => {

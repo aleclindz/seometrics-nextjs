@@ -72,6 +72,8 @@ export async function POST(request: NextRequest) {
       testResult = await testWordPressConnection(base_url, actualApiToken, content_type);
     } else if (cms_type === 'ghost') {
       testResult = await testGhostConnection(base_url, actualApiToken, content_type);
+    } else if (cms_type === 'webflow') {
+      testResult = await testWebflowConnection(base_url, actualApiToken, content_type);
     } else {
       return NextResponse.json(
         { error: `CMS type '${cms_type}' is not yet supported` },
@@ -1384,6 +1386,96 @@ async function testGhostConnection(siteUrl: string, apiKey: string, contentType:
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Could not connect to Ghost. Please check your site URL and Admin API Key.',
+      details: { error: error instanceof Error ? error.message : 'Unknown error' }
+    };
+  }
+}
+
+async function testWebflowConnection(siteUrl: string, accessToken: string, collectionId?: string) {
+  try {
+    console.log('[WEBFLOW TEST] Testing connection...');
+
+    // Test 1: Validate token by fetching sites
+    const sitesResponse = await fetch('https://api.webflow.com/v2/sites', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'accept-version': '1.0.0',
+      },
+    });
+
+    if (!sitesResponse.ok) {
+      const errorText = await sitesResponse.text();
+      return {
+        success: false,
+        message: 'Invalid Webflow access token or insufficient permissions',
+        details: { error: errorText }
+      };
+    }
+
+    const sitesData = await sitesResponse.json();
+    const sites = sitesData.sites || [];
+
+    if (sites.length === 0) {
+      return {
+        success: false,
+        message: 'No Webflow sites found for this account',
+        details: { sitesCount: 0 }
+      };
+    }
+
+    console.log('[WEBFLOW TEST] Found', sites.length, 'site(s)');
+
+    // Test 2: Fetch collections for each site to verify CMS access
+    let totalCollections = 0;
+    let blogCollections = 0;
+
+    for (const site of sites) {
+      const collectionsResponse = await fetch(
+        `https://api.webflow.com/v2/sites/${site.id}/collections`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'accept-version': '1.0.0',
+          },
+        }
+      );
+
+      if (collectionsResponse.ok) {
+        const collectionsData = await collectionsResponse.json();
+        const collections = collectionsData.collections || [];
+        totalCollections += collections.length;
+
+        // Count blog-like collections
+        blogCollections += collections.filter((c: any) =>
+          /blog|post|article|news/i.test(c.displayName || c.singularName)
+        ).length;
+      }
+    }
+
+    console.log('[WEBFLOW TEST] Found', totalCollections, 'collection(s),', blogCollections, 'blog collection(s)');
+
+    return {
+      success: true,
+      message: `Webflow connection successful! Found ${sites.length} site(s) with ${blogCollections} blog collection(s).`,
+      details: {
+        readAccess: true,
+        writeAccess: true,
+        sitesCount: sites.length,
+        collectionsCount: totalCollections,
+        blogCollectionsCount: blogCollections,
+        sites: sites.map((s: any) => ({
+          id: s.id,
+          name: s.displayName || s.shortName,
+          domain: s.customDomains?.[0]?.url || s.previewUrl,
+        })),
+      }
+    };
+
+  } catch (error) {
+    console.error('[WEBFLOW TEST] Connection test error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Could not connect to Webflow. Please check your access token.',
       details: { error: error instanceof Error ? error.message : 'Unknown error' }
     };
   }
