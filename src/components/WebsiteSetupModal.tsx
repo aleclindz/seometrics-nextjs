@@ -128,6 +128,11 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     }
   }, []);
 
+  // Debug: Log when confirmation modal state changes
+  useEffect(() => {
+    console.log('🌊 [WEBFLOW] showWebflowConfirm changed to:', showWebflowConfirm);
+  }, [showWebflowConfirm]);
+
   useEffect(() => {
     if (!isOpen) return;
     // Initialize when modal opens
@@ -1121,7 +1126,10 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                           </div>
                         ) : cms.type === 'webflow' ? (
                           <button
-                            onClick={() => setShowWebflowConfirm(true)}
+                            onClick={() => {
+                              console.log('🌊 [WEBFLOW] Connect button clicked, showing confirmation modal');
+                              setShowWebflowConfirm(true);
+                            }}
                             disabled={!cms.available}
                             className="w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
                           >
@@ -1354,14 +1362,16 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     </div>
   );
 
-  // Use createPortal to render the modal at the document root level
-  return (
-    <>
-      {typeof document !== 'undefined' && createPortal(modalContent, document.body)}
-
-      {/* Webflow OAuth Confirmation Modal */}
-      {showWebflowConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+  // Webflow Confirmation Modal Content
+  console.log('🌊 [WEBFLOW] Rendering component, showWebflowConfirm =', showWebflowConfirm);
+  const webflowConfirmModal = showWebflowConfirm ? (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onClick={(e) => {
+      // Close modal if clicking backdrop
+      if (e.target === e.currentTarget) {
+        console.log('🌊 [WEBFLOW] Backdrop clicked, closing modal');
+        setShowWebflowConfirm(false);
+      }
+    }}>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
@@ -1407,6 +1417,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
               </button>
               <button
                 onClick={() => {
+                  console.log('🌊 [WEBFLOW] Continue to Webflow clicked');
                   setShowWebflowConfirm(false);
                   // Start Webflow OAuth
                   const params = new URLSearchParams({
@@ -1414,7 +1425,9 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                     domain: website.url,
                     websiteId: String(website.id)
                   });
-                  window.location.href = `/api/cms/webflow/oauth/start?${params.toString()}`;
+                  const oauthUrl = `/api/cms/webflow/oauth/start?${params.toString()}`;
+                  console.log('🌊 [WEBFLOW] Redirecting to:', oauthUrl);
+                  window.location.href = oauthUrl;
                 }}
                 className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
               >
@@ -1423,7 +1436,13 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
             </div>
           </div>
         </div>
-      )}
+  ) : null;
+
+  // Use createPortal to render modals at the document root level
+  return (
+    <>
+      {typeof document !== 'undefined' && createPortal(modalContent, document.body)}
+      {typeof document !== 'undefined' && webflowConfirmModal && createPortal(webflowConfirmModal, document.body)}
 
       {/* Webflow Setup Modal - Opens after OAuth completes */}
       {showWebflowSetup && webflowConnectionId && user?.token && (

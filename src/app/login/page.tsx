@@ -44,6 +44,11 @@ function LoginForm() {
     }
   }, [searchParams])
 
+  // Debug: Monitor error state changes
+  useEffect(() => {
+    console.log('[LOGIN] Error state changed to:', error)
+  }, [error])
+
   // Redirect if already logged in
   if (user) {
     router.push('/dashboard')
@@ -158,7 +163,10 @@ function LoginForm() {
 
         if (error) {
           console.log('[LOGIN] Error detected, setting error message')
-          setError(getUserFriendlyError(error))
+          const friendlyError = getUserFriendlyError(error)
+          console.log('[LOGIN] Translated error message:', friendlyError)
+          setError(friendlyError)
+          console.log('[LOGIN] Error state should now be set to:', friendlyError)
         } else {
           console.log('[LOGIN] Success, redirecting to dashboard')
           router.push('/dashboard')
@@ -170,6 +178,7 @@ function LoginForm() {
     }
 
     setLoading(false)
+    console.log('[LOGIN] Loading set to false')
   }
 
   const handleMagicLinkSubmit = async (e: React.FormEvent) => {
