@@ -140,14 +140,14 @@ function HeaderV3() {
       </Link>
       <div className="flex items-center gap-8">
         <nav className="hidden md:flex items-center gap-6">
-          <a href="#how" className="text-[#6B7278] hover:text-[#6B35F5] transition-colors">
+          <a href="#how" className="text-sm font-medium text-[#6B7278] hover:text-[#6B35F5] transition-colors">
             How it Works
           </a>
-          <a href="#pricing" className="text-[#6B7278] hover:text-[#6B35F5] transition-colors">
+          <a href="#pricing" className="text-sm font-medium text-[#6B7278] hover:text-[#6B35F5] transition-colors">
             Pricing
           </a>
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-1 text-[#6B7278] hover:text-[#6B35F5] transition-colors bg-transparent border-0">
+            <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-[#6B7278] hover:text-[#6B35F5] transition-colors bg-transparent border-0">
               Integrations
               <ChevronDown className="w-4 h-4" />
             </DropdownMenuTrigger>
@@ -169,38 +169,34 @@ function HeaderV3() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <button className="text-[#6B7278] hover:text-[#6B35F5] transition-colors">
+          <button className="text-sm font-medium text-[#6B7278] hover:text-[#6B35F5] transition-colors bg-transparent border-0">
             For SEO Professionals
           </button>
-          <a href="#faq" className="text-[#6B7278] hover:text-[#6B35F5] transition-colors">
+          <a href="#faq" className="text-sm font-medium text-[#6B7278] hover:text-[#6B35F5] transition-colors">
             FAQ
           </a>
         </nav>
         <div className="flex items-center gap-3">
           {user?.token ? (
             <>
-              <Link href="/dashboard" className="hidden sm:inline-flex text-[#6B7278] hover:text-[#6B35F5]">
+              <Link href="/dashboard" className="hidden sm:inline-flex text-sm font-medium text-[#6B7278] hover:text-[#6B35F5] transition-colors">
                 Dashboard
               </Link>
-              <Link href="/account">
-                <Button variant="ghost" className="text-[#6B7278] hover:text-[#6B35F5]">
-                  Account
-                </Button>
+              <Link href="/account" className="text-sm font-medium text-[#6B7278] hover:text-[#6B35F5] transition-colors px-3 py-2">
+                Account
               </Link>
             </>
           ) : (
             <>
-              <Link href="/login">
-                <Button variant="ghost" className="text-[#6B7278] hover:text-[#6B35F5]">
-                  Log In
-                </Button>
+              <Link href="/login" className="text-sm font-medium text-[#6B7278] hover:text-[#6B35F5] transition-colors px-3 py-2">
+                Log In
               </Link>
-              <Button
+              <button
                 onClick={handleCreateAccount}
-                className="bg-[#6B35F5] hover:bg-[#582ED6] text-white"
+                className="text-sm font-medium bg-[#6B35F5] hover:bg-[#582ED6] text-white px-4 py-2 rounded-md transition-colors"
               >
                 Create Account
-              </Button>
+              </button>
             </>
           )}
         </div>

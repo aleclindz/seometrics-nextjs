@@ -8,6 +8,7 @@ type AuthContextType = {
   user: (User & { token?: string }) | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
+  signInWithMagicLink: (email: string) => Promise<{ error: any }>
   signUp: (email: string, password: string) => Promise<{ error: any, needsVerification?: boolean }>
   signOut: () => Promise<void>
   validateSession: () => Promise<void>
@@ -287,7 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       })
-      
+
       if (!error && data.user) {
         // Inline token fetching to avoid dependencies
         try {
@@ -303,7 +304,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             setUser(data.user)
           }
-          
+
           // Start session timeout (2 hours)
           if (sessionTimeout) {
             clearTimeout(sessionTimeout)
@@ -318,17 +319,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }, 120 * 60 * 1000) // 2 hours
           setSessionTimeout(timeout)
-          
+
           console.log('[AUTH] Sign in successful')
         } catch (tokenError) {
           setUser(data.user)
         }
       }
-      
+
       setLoading(false)
       return { error }
     } catch (err) {
       setLoading(false)
+      return { error: err }
+    }
+  }
+
+  const signInWithMagicLink = async (email: string) => {
+    try {
+      setLoading(true)
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/confirm-email`
+        }
+      })
+
+      setLoading(false)
+      console.log('[AUTH] Magic link sent:', { email, error })
+      return { error }
+    } catch (err) {
+      setLoading(false)
+      console.error('[AUTH] Magic link error:', err)
       return { error: err }
     }
   }
@@ -405,7 +426,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, validateSession, resendVerificationEmail }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signInWithMagicLink, signUp, signOut, validateSession, resendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   )
