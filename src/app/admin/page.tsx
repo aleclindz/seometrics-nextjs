@@ -85,7 +85,7 @@ function UsersView() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [pagination, setPagination] = useState({ total: 0, offset: 0, limit: 50 });
+  const [pagination, setPagination] = useState({ total: 0, offset: 0, limit: 50, has_more: false });
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -394,7 +394,7 @@ function ConnectionsView() {
 function ConversationsView() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ total: 0, offset: 0, limit: 50 });
+  const [pagination, setPagination] = useState({ total: 0, offset: 0, limit: 50, has_more: false });
 
   const fetchConversations = async () => {
     setLoading(true);
