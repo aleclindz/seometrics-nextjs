@@ -7,6 +7,7 @@ import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 import { getSmartJSStatus } from '@/lib/seoagent-js-status';
 import CMSConnectionForm from './CMSConnectionForm';
 import LovableSetupInstructions from './LovableSetupInstructions';
+import WebflowSetupModal from './WebflowSetupModal';
 
 interface WebsiteSetupModalProps {
   isOpen: boolean;
@@ -103,6 +104,28 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [preEditType, setPreEditType] = useState<string>('unknown');
   const [preEditDesc, setPreEditDesc] = useState<string>('');
   const [businessSavedAt, setBusinessSavedAt] = useState<number | null>(null);
+
+  // Webflow Setup Modal State
+  const [showWebflowSetup, setShowWebflowSetup] = useState(false);
+  const [webflowConnectionId, setWebflowConnectionId] = useState<number | null>(null);
+
+  // Detect Webflow OAuth callback and open setup modal
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const webflowSetup = params.get('webflow_setup');
+    const connectionId = params.get('connectionId');
+
+    if (webflowSetup === 'true' && connectionId) {
+      setWebflowConnectionId(parseInt(connectionId, 10));
+      setShowWebflowSetup(true);
+
+      // Clean up URL without reloading
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1104,7 +1127,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                                 domain: website.url,
                                 websiteId: String(website.id)
                               });
-                              window.location.href = `/api/cms/oauth/start?type=webflow&${params.toString()}`;
+                              window.location.href = `/api/cms/webflow/oauth/start?${params.toString()}`;
                             }}
                             disabled={!cms.available}
                             className="w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
@@ -1339,7 +1362,39 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   );
 
   // Use createPortal to render the modal at the document root level
-  return typeof document !== 'undefined' 
-    ? createPortal(modalContent, document.body)
-    : null;
+  return (
+    <>
+      {typeof document !== 'undefined' && createPortal(modalContent, document.body)}
+
+      {/* Webflow Setup Modal - Opens after OAuth completes */}
+      {showWebflowSetup && webflowConnectionId && user?.token && (
+        <WebflowSetupModal
+          isOpen={showWebflowSetup}
+          onClose={() => {
+            setShowWebflowSetup(false);
+            setWebflowConnectionId(null);
+            // Refresh CMS connections
+            fetchCMSConnections();
+            // Update parent website status
+            if (onStatusUpdate) {
+              onStatusUpdate({ cmsStatus: 'connected' });
+            }
+          }}
+          userToken={user.token}
+          websiteId={parseInt(website.id, 10)}
+          connectionId={webflowConnectionId}
+          onComplete={() => {
+            setShowWebflowSetup(false);
+            setWebflowConnectionId(null);
+            // Refresh CMS connections
+            fetchCMSConnections();
+            // Update parent website status
+            if (onStatusUpdate) {
+              onStatusUpdate({ cmsStatus: 'connected' });
+            }
+          }}
+        />
+      )}
+    </>
+  );
 }
