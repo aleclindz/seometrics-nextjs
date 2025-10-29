@@ -22,11 +22,23 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Check if we should start in signup mode
+  // Check if we should start in signup mode or handle error states
   useEffect(() => {
     const mode = searchParams.get('mode')
+    const errorParam = searchParams.get('error')
+
     if (mode === 'signup') {
       setIsSignUp(true)
+    }
+
+    // Handle expired/invalid confirmation link
+    if (errorParam === 'invalid_confirmation_link') {
+      setNeedsVerification(true)
+      // Don't set error here - let the UI messaging handle it
+      // Clean up URL by removing the error parameter
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('error')
+      window.history.replaceState({}, '', newUrl.toString())
     }
   }, [searchParams])
 
@@ -99,23 +111,34 @@ function LoginForm() {
   }
 
   const handleResendVerification = async () => {
-    if (!verificationEmail) return
-    
+    // Use verificationEmail if available, otherwise use the email input
+    const emailToResend = verificationEmail || email
+
+    if (!emailToResend || !emailToResend.trim()) {
+      setError('Please enter your email address')
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(emailToResend)) {
+      setError('Please enter a valid email address')
+      return
+    }
+
     setResendingVerification(true)
     setError('')
-    
-    const { error } = await resendVerificationEmail(verificationEmail)
-    
-    if (error) {
-      setError(error.message)
+
+    const { error: resendError } = await resendVerificationEmail(emailToResend)
+
+    if (resendError) {
+      setError(resendError.message)
     } else {
+      // Update verificationEmail so the UI switches to success state
+      setVerificationEmail(emailToResend)
       setError('')
-      // Show success message temporarily
-      setTimeout(() => {
-        setError('')
-      }, 3000)
     }
-    
+
     setResendingVerification(false)
   }
 
@@ -139,9 +162,9 @@ function LoginForm() {
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
             <div className="w-16 h-16 rounded-lg flex items-center justify-center">
-              <Image 
-                src="/assets/agent_icon.png" 
-                alt="SEOAgent" 
+              <Image
+                src="/assets/agent_icon.png"
+                alt="SEOAgent"
                 width={64}
                 height={64}
                 style={{ height: '64px', width: '64px' }}
@@ -149,36 +172,73 @@ function LoginForm() {
             </div>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            🎉 Welcome to SEOAgent!
+            {verificationEmail ? '🎉 Welcome to SEOAgent!' : '⏰ Verification Link Expired'}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Your account has been created successfully.
-          </p>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            We&apos;ve sent a verification email to:
-          </p>
-          <p className="mt-1 text-center text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-md">
-            {verificationEmail}
-          </p>
+          {verificationEmail ? (
+            <>
+              <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                Your account has been created successfully.
+              </p>
+              <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                We&apos;ve sent a verification email to:
+              </p>
+              <p className="mt-1 text-center text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-md">
+                {verificationEmail}
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+              Don&apos;t worry! Enter your email below and we&apos;ll send you a fresh verification link.
+            </p>
+          )}
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
             <div className="text-center space-y-4">
-              <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-4 border border-green-200 dark:border-green-800">
-                <div className="flex items-start space-x-3">
-                  <div className="text-green-500 dark:text-green-400 text-lg">✉️</div>
-                  <div className="text-sm text-green-700 dark:text-green-400 space-y-2">
-                    <p className="font-medium">Please check your email inbox</p>
-                    <p>Click the verification link in your email, then you&apos;ll be automatically redirected to your SEOAgent dashboard.</p>
-                    <p className="text-xs text-green-600 dark:text-green-500">💡 Check your spam folder if you don&apos;t see it within a few minutes</p>
+              {verificationEmail ? (
+                <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-4 border border-green-200 dark:border-green-800">
+                  <div className="flex items-start space-x-3">
+                    <div className="text-green-500 dark:text-green-400 text-lg">✉️</div>
+                    <div className="text-sm text-green-700 dark:text-green-400 space-y-2">
+                      <p className="font-medium">Please check your email inbox</p>
+                      <p>Click the verification link in your email, then you&apos;ll be automatically redirected to your SEOAgent dashboard.</p>
+                      <p className="text-xs text-green-600 dark:text-green-500">💡 Check your spam folder if you don&apos;t see it within a few minutes</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-4 border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start space-x-3">
+                    <div className="text-amber-500 dark:text-amber-400 text-lg">⏰</div>
+                    <div className="text-sm text-amber-700 dark:text-amber-400 space-y-2 text-left">
+                      <p className="font-medium">Your verification link has expired</p>
+                      <p>Verification links expire after 24 hours for security. Enter your email below to receive a new verification link.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
                   <div className="text-sm text-red-700 dark:text-red-400">{error}</div>
+                </div>
+              )}
+
+              {/* Email input for expired link case */}
+              {!verificationEmail && (
+                <div className="text-left">
+                  <label htmlFor="resend-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    id="resend-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your.email@example.com"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
                 </div>
               )}
 
@@ -215,10 +275,14 @@ function LoginForm() {
 
                 <button
                   onClick={handleResendVerification}
-                  disabled={resendingVerification}
+                  disabled={resendingVerification || (!verificationEmail && !email.trim())}
                   className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {resendingVerification ? 'Resending...' : 'Resend verification email'}
+                  {resendingVerification
+                    ? 'Sending...'
+                    : verificationEmail
+                    ? 'Resend verification email'
+                    : 'Send verification email'}
                 </button>
 
                 <button
