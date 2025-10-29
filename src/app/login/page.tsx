@@ -48,6 +48,42 @@ function LoginForm() {
     return null
   }
 
+  // Helper function to get user-friendly error messages
+  const getUserFriendlyError = (error: any): string => {
+    const errorMessage = error?.message?.toLowerCase() || '';
+
+    // Check for specific Supabase error messages
+    if (errorMessage.includes('invalid login credentials') ||
+        errorMessage.includes('invalid password') ||
+        errorMessage.includes('invalid email or password')) {
+      return 'Incorrect email or password. Please try again.';
+    }
+
+    if (errorMessage.includes('email not confirmed')) {
+      return 'Please verify your email address before signing in. Check your inbox for the verification link.';
+    }
+
+    if (errorMessage.includes('user already registered') ||
+        errorMessage.includes('user already exists')) {
+      return 'An account with this email already exists. Try signing in instead.';
+    }
+
+    if (errorMessage.includes('invalid email')) {
+      return 'Please enter a valid email address.';
+    }
+
+    if (errorMessage.includes('password should be at least')) {
+      return 'Password must be at least 8 characters long.';
+    }
+
+    if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+      return 'Network error. Please check your internet connection and try again.';
+    }
+
+    // Default to the original error message if we don't have a specific translation
+    return error?.message || 'An unexpected error occurred. Please try again.';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -61,31 +97,31 @@ function LoginForm() {
         setLoading(false)
         return
       }
-      
+
       if (!lastName.trim()) {
         setError('Last name is required')
         setLoading(false)
         return
       }
-      
+
       // Check password length
       if (password.length < 8) {
         setError('Password must be at least 8 characters long')
         setLoading(false)
         return
       }
-      
+
       // Check password confirmation
       if (password !== confirmPassword) {
         setError('Passwords do not match')
         setLoading(false)
         return
       }
-      
+
       const { error, needsVerification: needsEmailVerification } = await signUp(email, password)
-      
+
       if (error) {
-        setError(error.message)
+        setError(getUserFriendlyError(error))
       } else if (needsEmailVerification) {
         setNeedsVerification(true)
         setVerificationEmail(email)
@@ -99,14 +135,14 @@ function LoginForm() {
       }
     } else {
       const { error } = await signIn(email, password)
-      
+
       if (error) {
-        setError(error.message)
+        setError(getUserFriendlyError(error))
       } else {
         router.push('/dashboard')
       }
     }
-    
+
     setLoading(false)
   }
 
@@ -345,9 +381,16 @@ function LoginForm() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Password
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Password
+                  </label>
+                  <div className="text-sm">
+                    <a href="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+                      Forgot password?
+                    </a>
+                  </div>
+                </div>
                 <div className="mt-1">
                   <input
                     id="password"
