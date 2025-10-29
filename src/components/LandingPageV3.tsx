@@ -896,7 +896,7 @@ function StrategicSEOScrollSnap() {
                 </div>
 
                 {/* Article body - AI Slop version */}
-                {active === 1 && (
+                {maxActive === 1 && (
                   <motion.div
                     key="slop"
                     initial={{ opacity: 0 }}
@@ -913,7 +913,7 @@ function StrategicSEOScrollSnap() {
                 )}
 
                 {/* Article body - Strategic version */}
-                {active >= 2 && (
+                {maxActive >= 2 && (
                   <motion.div
                     key="strategic"
                     initial={{ opacity: 0 }}
