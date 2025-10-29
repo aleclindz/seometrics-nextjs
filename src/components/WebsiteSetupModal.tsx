@@ -108,7 +108,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   // Webflow Setup Modal State
   const [showWebflowSetup, setShowWebflowSetup] = useState(false);
   const [webflowConnectionId, setWebflowConnectionId] = useState<number | null>(null);
-  const [showWebflowConfirm, setShowWebflowConfirm] = useState(false);
+  const [showWebflowOAuth, setShowWebflowOAuth] = useState(false);
 
   // Detect Webflow OAuth callback and open setup modal
   useEffect(() => {
@@ -127,11 +127,6 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       window.history.replaceState({}, '', cleanUrl);
     }
   }, []);
-
-  // Debug: Log when confirmation modal state changes
-  useEffect(() => {
-    console.log('🌊 [WEBFLOW] showWebflowConfirm changed to:', showWebflowConfirm);
-  }, [showWebflowConfirm]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1125,16 +1120,45 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                             </button>
                           </div>
                         ) : cms.type === 'webflow' ? (
-                          <button
-                            onClick={() => {
-                              console.log('🌊 [WEBFLOW] Connect button clicked, showing confirmation modal');
-                              setShowWebflowConfirm(true);
-                            }}
-                            disabled={!cms.available}
-                            className="w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
-                          >
-                            Connect Webflow (OAuth)
-                          </button>
+                          !showWebflowOAuth ? (
+                            <button
+                              onClick={() => setShowWebflowOAuth(true)}
+                              disabled={!cms.available}
+                              className="w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/10 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-900/20"
+                            >
+                              {cms.available ? `Connect ${cms.name}` : 'Coming Soon'}
+                            </button>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                                  Connect your Webflow account to automatically publish articles to your blog collection.
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                                  You&apos;ll be redirected to Webflow to authorize SEOAgent, then you&apos;ll configure which site and collection to use.
+                                </p>
+                                <button
+                                  onClick={() => {
+                                    const params = new URLSearchParams({
+                                      userToken: (user as any)?.token || '',
+                                      domain: website.url,
+                                      websiteId: String(website.id)
+                                    });
+                                    window.location.href = `/api/cms/webflow/oauth/start?${params.toString()}`;
+                                  }}
+                                  className="w-full inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-md border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/10 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
+                                >
+                                  Continue to Webflow OAuth
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => setShowWebflowOAuth(false)}
+                                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                              >
+                                ← Back
+                              </button>
+                            </div>
+                          )
                         ) : (
                           <button
                             onClick={() => {
@@ -1362,87 +1386,10 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     </div>
   );
 
-  // Webflow Confirmation Modal Content
-  console.log('🌊 [WEBFLOW] Rendering component, showWebflowConfirm =', showWebflowConfirm);
-  const webflowConfirmModal = showWebflowConfirm ? (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onClick={(e) => {
-      // Close modal if clicking backdrop
-      if (e.target === e.currentTarget) {
-        console.log('🌊 [WEBFLOW] Backdrop clicked, closing modal');
-        setShowWebflowConfirm(false);
-      }
-    }}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">🌊</span>
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Connect to Webflow
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  We&apos;ll redirect you to Webflow to authorize SEOAgent. After you log in and authorize, you&apos;ll be able to:
-                </p>
-                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-4">
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Select which Webflow site to connect</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Choose your blog collection automatically</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Configure how articles are published</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={() => setShowWebflowConfirm(false)}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  console.log('🌊 [WEBFLOW] Continue to Webflow clicked');
-                  setShowWebflowConfirm(false);
-                  // Start Webflow OAuth
-                  const params = new URLSearchParams({
-                    userToken: (user as any)?.token || '',
-                    domain: website.url,
-                    websiteId: String(website.id)
-                  });
-                  const oauthUrl = `/api/cms/webflow/oauth/start?${params.toString()}`;
-                  console.log('🌊 [WEBFLOW] Redirecting to:', oauthUrl);
-                  window.location.href = oauthUrl;
-                }}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-              >
-                Continue to Webflow
-              </button>
-            </div>
-          </div>
-        </div>
-  ) : null;
-
   // Use createPortal to render modals at the document root level
   return (
     <>
       {typeof document !== 'undefined' && createPortal(modalContent, document.body)}
-      {typeof document !== 'undefined' && webflowConfirmModal && createPortal(webflowConfirmModal, document.body)}
 
       {/* Webflow Setup Modal - Opens after OAuth completes */}
       {showWebflowSetup && webflowConnectionId && user?.token && (
