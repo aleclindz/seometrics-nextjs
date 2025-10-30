@@ -24,8 +24,13 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Gift,
+  X
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Admin Dashboard Component
 export default function AdminDashboard() {
@@ -86,6 +91,11 @@ function UsersView() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState({ total: 0, offset: 0, limit: 50, has_more: false });
+  const [grantDialogOpen, setGrantDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [grantMonths, setGrantMonths] = useState('3');
+  const [grantReason, setGrantReason] = useState('');
+  const [granting, setGranting] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -115,6 +125,65 @@ function UsersView() {
   const handleSearch = () => {
     setPagination(prev => ({ ...prev, offset: 0 }));
     fetchUsers();
+  };
+
+  const handleGrantFreeAccess = async () => {
+    if (!selectedUser) return;
+
+    setGranting(true);
+    try {
+      const response = await fetch('/api/admin/users/grant-free-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userToken: selectedUser.token,
+          months: parseInt(grantMonths),
+          grantedBy: 'admin@seoagent.com', // TODO: Replace with actual admin email
+          reason: grantReason || 'Admin granted free access'
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`✅ Granted ${grantMonths} months of free Pro access to ${selectedUser.email}`);
+        setGrantDialogOpen(false);
+        setSelectedUser(null);
+        setGrantMonths('3');
+        setGrantReason('');
+        fetchUsers(); // Refresh the list
+      } else {
+        alert(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error granting free access:', error);
+      alert('❌ Failed to grant free access');
+    } finally {
+      setGranting(false);
+    }
+  };
+
+  const handleRevokeFreeAccess = async (user: any) => {
+    if (!confirm(`Are you sure you want to revoke free access from ${user.email}?`)) return;
+
+    try {
+      const response = await fetch(
+        `/api/admin/users/grant-free-access?userToken=${user.token}&revokedBy=admin@seoagent.com&reason=Admin revoked`,
+        { method: 'DELETE' }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`✅ Revoked free access from ${user.email}`);
+        fetchUsers();
+      } else {
+        alert(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error revoking free access:', error);
+      alert('❌ Failed to revoke free access');
+    }
   };
 
   if (loading) {
@@ -154,11 +223,13 @@ function UsersView() {
               <TableRow>
                 <TableHead>Email</TableHead>
                 <TableHead>Plan</TableHead>
+                <TableHead>Free Access</TableHead>
                 <TableHead>Websites</TableHead>
                 <TableHead>Articles</TableHead>
                 <TableHead>Connections</TableHead>
                 <TableHead>Conversations</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -169,6 +240,21 @@ function UsersView() {
                     <Badge variant={user.plan === 1 ? 'default' : 'secondary'}>
                       {user.subscription?.tier || (user.plan === 1 ? 'Paid' : 'Free')}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {user.free_access?.active ? (
+                      <div className="space-y-1">
+                        <Badge variant="default" className="bg-green-600">
+                          <Gift className="h-3 w-3 mr-1" />
+                          Pro {user.free_access.days_remaining}d
+                        </Badge>
+                        <div className="text-xs text-muted-foreground">
+                          Until {new Date(user.free_access.expires_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">None</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
@@ -200,6 +286,32 @@ function UsersView() {
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(user.created_at).toLocaleDateString()}
                   </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      {user.free_access?.active ? (
+                        <Button
+                          onClick={() => handleRevokeFreeAccess(user)}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Revoke
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setGrantDialogOpen(true);
+                          }}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Gift className="h-4 w-4 mr-1" />
+                          Grant
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -217,6 +329,69 @@ function UsersView() {
           </Button>
         </div>
       )}
+
+      {/* Grant Free Access Dialog */}
+      <Dialog open={grantDialogOpen} onOpenChange={setGrantDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Grant Free Pro Access</DialogTitle>
+            <DialogDescription>
+              Give {selectedUser?.email} free Pro access for a specified duration.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="months">Duration (months)</Label>
+              <Select value={grantMonths} onValueChange={setGrantMonths}>
+                <SelectTrigger id="months">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 month</SelectItem>
+                  <SelectItem value="3">3 months</SelectItem>
+                  <SelectItem value="6">6 months</SelectItem>
+                  <SelectItem value="12">12 months (1 year)</SelectItem>
+                  <SelectItem value="24">24 months (2 years)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason (optional)</Label>
+              <Input
+                id="reason"
+                placeholder="e.g., Beta tester, Partnership, Compensation"
+                value={grantReason}
+                onChange={(e) => setGrantReason(e.target.value)}
+              />
+            </div>
+
+            <div className="rounded-md bg-blue-50 p-3 text-sm">
+              <strong>What this does:</strong>
+              <ul className="mt-2 space-y-1 ml-4 list-disc">
+                <li>Upgrades user to Pro tier immediately</li>
+                <li>Grants 10 sites and 100 posts/month quota</li>
+                <li>No Stripe payment required</li>
+                <li>Automatically reverts when free period expires</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setGrantDialogOpen(false)}
+              disabled={granting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleGrantFreeAccess} disabled={granting}>
+              {granting ? 'Granting...' : `Grant ${grantMonths} Month${parseInt(grantMonths) !== 1 ? 's' : ''}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

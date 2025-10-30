@@ -104,10 +104,21 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Check for free access first (takes precedence over everything)
+    const hasFreeAccess = userPlan.free_until && new Date(userPlan.free_until) > new Date();
+
+    if (hasFreeAccess) {
+      console.log('[SUBSCRIPTION API] User has active free access until:', userPlan.free_until);
+      // Override to Pro tier for free access users
+      userPlan.tier = 'pro';
+      userPlan.sites_allowed = 10; // Pro plan limits
+      userPlan.posts_allowed = 100;
+      userPlan.status = 'active';
+    }
     // Override user_plans.tier if login_users.plan = 0 (Free tier priority)
-    if (loginUser && loginUser.plan === 0 && userPlan) {
+    else if (loginUser && loginUser.plan === 0 && userPlan) {
       console.log('[SUBSCRIPTION API] login_users.plan is 0, overriding to free tier');
-      
+
       // Update the existing user_plans record to free tier if it's not already
       if (userPlan.tier !== 'free') {
         const { error: updateError } = await supabase
@@ -183,6 +194,13 @@ export async function GET(request: NextRequest) {
         current_period_end: stripeSubscription.current_period_end,
         cancel_at_period_end: stripeSubscription.cancel_at_period_end,
       } : null,
+      free_access: hasFreeAccess ? {
+        active: true,
+        expires_at: userPlan.free_until,
+        days_remaining: Math.ceil((new Date(userPlan.free_until).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+        granted_by: userPlan.free_granted_by,
+        reason: userPlan.free_reason
+      } : { active: false },
     });
 
   } catch (error) {
@@ -271,10 +289,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check for free access first (takes precedence over everything) - POST method
+    const hasFreeAccess = userPlan.free_until && new Date(userPlan.free_until) > new Date();
+
+    if (hasFreeAccess) {
+      console.log('[SUBSCRIPTION API POST] User has active free access until:', userPlan.free_until);
+      // Override to Pro tier for free access users
+      userPlan.tier = 'pro';
+      userPlan.sites_allowed = 10;
+      userPlan.posts_allowed = 100;
+      userPlan.status = 'active';
+    }
     // Override user_plans.tier if login_users.plan = 0 (Free tier priority) - POST method
-    if (loginUser && loginUser.plan === 0 && userPlan) {
+    else if (loginUser && loginUser.plan === 0 && userPlan) {
       console.log('[SUBSCRIPTION API POST] login_users.plan is 0, overriding to free tier');
-      
+
       // Update the existing user_plans record to free tier if it's not already
       if (userPlan.tier !== 'free') {
         const { error: updateError } = await supabase

@@ -51,12 +51,18 @@ export async function GET(request: NextRequest) {
           .eq('user_token', user.token)
           .eq('is_managed', true);
 
-        // Get subscription info
+        // Get subscription info including free access
         const { data: subscription } = await supabase
           .from('user_plans')
-          .select('tier, status, sites_allowed, posts_allowed, stripe_customer_id')
+          .select('tier, status, sites_allowed, posts_allowed, stripe_customer_id, free_until, free_granted_by, free_granted_at, free_reason')
           .eq('user_token', user.token)
           .single();
+
+        // Calculate free access status
+        const hasFreeAccess = subscription?.free_until && new Date(subscription.free_until) > new Date();
+        const daysRemaining = hasFreeAccess
+          ? Math.ceil((new Date(subscription.free_until).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          : 0;
 
         // Get articles generated count
         const { count: articlesCount } = await supabase
@@ -102,7 +108,15 @@ export async function GET(request: NextRequest) {
             cms_connections: cmsConnectionsCount || 0,
             conversations: conversationsCount || 0
           },
-          subscription: subscription || null
+          subscription: subscription || null,
+          free_access: hasFreeAccess ? {
+            active: true,
+            expires_at: subscription.free_until,
+            days_remaining: daysRemaining,
+            granted_by: subscription.free_granted_by,
+            granted_at: subscription.free_granted_at,
+            reason: subscription.free_reason
+          } : { active: false }
         };
       })
     );
