@@ -731,7 +731,7 @@ export default function WebsitePage() {
 
     const checkPendingWebflowSetup = async () => {
       try {
-        console.log('[WEBFLOW CHECK] Fetching CMS connections for user:', user.token.slice(0, 8) + '...');
+        console.log('[WEBFLOW CHECK] Fetching CMS connections for user:', user.token?.slice(0, 8) + '...');
         const response = await fetch(`/api/cms/connections?userToken=${user.token}`);
         const data = await response.json();
 
