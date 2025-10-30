@@ -61,14 +61,15 @@ export async function GET(request: NextRequest) {
       }
       
       // Table exists, now get the actual connections
+      // Use LEFT JOIN (not !inner) to include connections with website_id=null (like pending Webflow OAuth)
       let query = supabase
         .from('cms_connections')
         .select(`
           *,
-          websites!inner(domain)
+          websites(domain)
         `)
         .eq('user_token', userToken);
-      
+
       // If domain is specified, filter by it - first find the website to get correct domain format
       if (domain) {
         const websiteResult = await DomainQueryService.findWebsiteByDomain(userToken, domain, 'id');
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
             message: `No website found for domain: ${domain}`
           });
         }
-        
+
         // Filter by the specific website ID instead of domain
         query = query.eq('website_id', websiteResult.data!.id);
       }
