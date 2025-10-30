@@ -290,7 +290,12 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         );
 
         if (pendingWebflow) {
-          console.log('[WEBFLOW SETUP MODAL] ✅ Found pending connection, auto-opening wizard:', pendingWebflow.id);
+          console.log('[WEBFLOW SETUP MODAL] ✅ Found pending connection, auto-opening wizard:', {
+            connectionId: pendingWebflow.id,
+            websiteId: website.id,
+            parsedWebsiteId: parseInt(String(website.id), 10),
+            userToken: user.token?.slice(0, 8) + '...',
+          });
           setWebflowConnectionId(pendingWebflow.id);
           setShowWebflowSetup(true);
           setActiveTab('cms'); // Switch to CMS tab

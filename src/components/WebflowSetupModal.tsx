@@ -54,6 +54,13 @@ export default function WebflowSetupModal({
   connectionId,
   onComplete,
 }: WebflowSetupModalProps) {
+  console.log('[WEBFLOW WIZARD] Component rendering, props:', {
+    isOpen,
+    websiteId,
+    connectionId,
+    hasUserToken: !!userToken,
+  });
+
   const [step, setStep] = useState<Step>('sites');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
