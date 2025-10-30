@@ -77,7 +77,13 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResp.ok) {
       const errText = await tokenResp.text().catch(() => '');
-      console.error('[WEBFLOW CALLBACK] Token exchange failed:', errText);
+      console.error('[WEBFLOW CALLBACK] Token exchange failed:', {
+        status: tokenResp.status,
+        statusText: tokenResp.statusText,
+        error: errText,
+        clientIdPrefix: clientId?.slice(0, 8) + '...',
+        redirectUri,
+      });
       return NextResponse.redirect(`${getBaseUrl()}/dashboard?webflow_oauth=error&reason=token_exchange_failed`);
     }
 
