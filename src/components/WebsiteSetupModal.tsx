@@ -110,24 +110,6 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [webflowConnectionId, setWebflowConnectionId] = useState<number | null>(null);
   const [showWebflowOAuth, setShowWebflowOAuth] = useState(false);
 
-  // Detect Webflow OAuth callback and open setup modal
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const webflowSetup = params.get('webflow_setup');
-    const connectionId = params.get('connectionId');
-
-    if (webflowSetup === 'true' && connectionId) {
-      setWebflowConnectionId(parseInt(connectionId, 10));
-      setShowWebflowSetup(true);
-
-      // Clean up URL without reloading
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-  }, []);
-
   useEffect(() => {
     if (!isOpen) return;
     // Initialize when modal opens
@@ -141,6 +123,9 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     // Fetch connection details where applicable
     void fetchCMSConnections();
     void fetchHostConnections();
+
+    // Check for pending Webflow connections
+    checkPendingWebflowSetup();
 
     // Prefer showing Business Info first
     setActiveTab('business');
@@ -251,6 +236,36 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   };
 
   const [showCMSForm, setShowCMSForm] = useState(false);
+
+  const checkPendingWebflowSetup = async () => {
+    if (!user?.token) return;
+
+    try {
+      const response = await fetch(`/api/cms/connections?userToken=${user.token}`);
+      const data = await response.json();
+
+      if (data.success && data.connections) {
+        // Find pending Webflow connections for this website
+        const pendingWebflow = data.connections.find(
+          (conn: any) =>
+            conn.cms_type === 'webflow' &&
+            conn.status === 'pending_config' &&
+            (conn.base_url === website.url ||
+             conn.base_url === `https://${website.url}` ||
+             conn.base_url === `http://${website.url}`)
+        );
+
+        if (pendingWebflow) {
+          console.log('[WEBFLOW] Found pending connection, auto-opening wizard:', pendingWebflow.id);
+          setWebflowConnectionId(pendingWebflow.id);
+          setShowWebflowSetup(true);
+          setActiveTab('cms'); // Switch to CMS tab
+        }
+      }
+    } catch (error) {
+      console.error('[WEBFLOW] Error checking pending connections:', error);
+    }
+  };
 
   const handleCMSSuccess = async () => {
     // Refresh CMS connections and update parent

@@ -125,13 +125,13 @@ export async function GET(request: NextRequest) {
 
     console.log('[WEBFLOW CALLBACK] Connection created with ID:', connection.id);
 
-    // Redirect back to website page with setup flag
+    // Redirect back to website page (no query params - we'll detect pending connection from database)
     const cleanDomain = encodeURIComponent(domain || '');
     const redirectUrl = domain
-      ? `${getBaseUrl()}/website/${cleanDomain}?webflow_setup=true&connectionId=${connection.id}`
-      : `${getBaseUrl()}/dashboard?webflow_setup=true&connectionId=${connection.id}`;
+      ? `${getBaseUrl()}/website/${cleanDomain}`
+      : `${getBaseUrl()}/dashboard`;
 
-    console.log('[WEBFLOW CALLBACK] Redirecting to setup modal');
+    console.log('[WEBFLOW CALLBACK] Redirecting to website page');
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error('[WEBFLOW CALLBACK] Exception:', error);

@@ -720,25 +720,39 @@ export default function WebsitePage() {
     return () => window.removeEventListener('seoagent:switch-tab', handleSwitchTab as EventListener);
   }, []);
 
-  // Auto-open setup modal when returning from Webflow OAuth
+  // Auto-open setup modal if there are pending Webflow connections
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!user?.token) return;
 
-    const params = new URLSearchParams(window.location.search);
-    const webflowSetup = params.get('webflow_setup');
-    const connectionId = params.get('connectionId');
+    const checkPendingWebflowSetup = async () => {
+      try {
+        const response = await fetch(`/api/cms/connections?userToken=${user.token}`);
+        const data = await response.json();
 
-    console.log('[WEBFLOW CALLBACK] Detected query params:', { webflowSetup, connectionId });
+        if (data.success && data.connections) {
+          // Find pending Webflow connections for this domain
+          const pendingWebflow = data.connections.find(
+            (conn: any) =>
+              conn.cms_type === 'webflow' &&
+              conn.status === 'pending_config' &&
+              (conn.base_url === domain || conn.base_url === `https://${domain}` || conn.base_url === `http://${domain}`)
+          );
 
-    if (webflowSetup === 'true' && connectionId) {
-      console.log('[WEBFLOW CALLBACK] Auto-opening setup modal');
-      setSetupModalOpen(true);
+          if (pendingWebflow) {
+            console.log('[WEBFLOW] Found pending setup, auto-opening modal:', pendingWebflow.id);
+            setSetupModalOpen(true);
+            // The WebsiteSetupModal will detect this pending connection and open WebflowSetupModal
+          }
+        }
+      } catch (error) {
+        console.error('[WEBFLOW] Error checking pending setup:', error);
+      }
+    };
 
-      // Clean up URL parameters without page reload
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-  }, []);
+    // Small delay to ensure page is loaded
+    const timer = setTimeout(checkPendingWebflowSetup, 500);
+    return () => clearTimeout(timer);
+  }, [user, domain]);
 
   if (!user) {
     return null; // ProtectedRoute will handle the redirect
