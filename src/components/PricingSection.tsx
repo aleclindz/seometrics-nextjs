@@ -4,7 +4,7 @@ export default function PricingSection() {
   const plans = [
     {
       name: "Starter",
-      price: 19,
+      price: 49,
       originalPrice: null,
       description: "Perfect for small blogs and personal sites",
       features: [
@@ -24,7 +24,7 @@ export default function PricingSection() {
     },
     {
       name: "Pro",
-      price: 39,
+      price: 149,
       originalPrice: null,
       description: "Ideal for growing businesses and content creators",
       features: [
@@ -44,7 +44,7 @@ export default function PricingSection() {
     },
     {
       name: "Scale",
-      price: 99,
+      price: 399,
       originalPrice: null,
       description: "For high-volume content needs and agencies",
       features: [
@@ -160,7 +160,7 @@ export default function PricingSection() {
         {/* Additional Info */}
         <div className="text-center mt-12">
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Professional content generation starting at just $19/month. All plans include complete SEO automation.
+            Professional content generation starting at just $49/month. All plans include complete SEO automation.
           </p>
           <div className="flex flex-wrap justify-center items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
             <div className="flex items-center">

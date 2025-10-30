@@ -8,61 +8,67 @@ const SUBSCRIPTION_TIERS = [
   {
     id: 'starter',
     name: 'Starter Plan',
-    description: 'Perfect for small websites and personal projects',
+    description: 'Perfect for small blogs and personal sites',
     amount: 4900, // $49.00 in cents
     currency: 'usd',
     interval: 'month',
     features: [
-      '2 connected sites',
-      '4 articles per site per month',
-      'Basic SEO optimization',
-      'Email support'
+      '12 AI articles/month',
+      '1 website',
+      'DALL-E 3 images',
+      'SEO optimization',
+      'Multi-CMS publishing',
+      'Technical SEO automation'
     ],
     metadata: {
       tier: 'starter',
-      sites_allowed: '2',
-      posts_allowed: '4'
+      sites_allowed: '1',
+      posts_allowed: '12'
     }
   },
   {
     id: 'pro',
     name: 'Pro Plan',
-    description: 'Ideal for growing businesses and agencies',
-    amount: 13900, // $139.00 in cents
+    description: 'Ideal for growing businesses and content creators',
+    amount: 14900, // $149.00 in cents
     currency: 'usd',
     interval: 'month',
     features: [
-      '5 connected sites',
-      '10 articles per site per month',
-      'Advanced SEO optimization',
-      'Priority support',
-      'Analytics dashboard'
+      '30 AI articles/month',
+      'Unlimited websites',
+      'DALL-E 3 images',
+      'SEO optimization',
+      'Multi-CMS publishing',
+      'Technical SEO automation',
+      'Priority support'
     ],
     metadata: {
       tier: 'pro',
-      sites_allowed: '5',
-      posts_allowed: '10'
+      sites_allowed: 'unlimited',
+      posts_allowed: '30'
     }
   },
   {
-    id: 'enterprise',
-    name: 'Enterprise Plan',
-    description: 'Custom solution for large organizations',
-    amount: null, // Custom pricing
+    id: 'scale',
+    name: 'Scale Plan',
+    description: 'For high-volume content needs and agencies',
+    amount: 39900, // $399.00 in cents
     currency: 'usd',
     interval: 'month',
     features: [
-      'Unlimited connected sites',
-      'Unlimited articles',
-      'Premium SEO features',
-      'Dedicated account manager',
-      'Custom integrations',
-      'SLA guarantee'
+      '90 AI articles/month',
+      'Unlimited websites',
+      'DALL-E 3 images',
+      'SEO optimization',
+      'Multi-CMS publishing',
+      'Technical SEO automation',
+      'Priority support',
+      'Custom integrations'
     ],
     metadata: {
-      tier: 'enterprise',
+      tier: 'scale',
       sites_allowed: 'unlimited',
-      posts_allowed: 'unlimited'
+      posts_allowed: '90'
     }
   }
 ];

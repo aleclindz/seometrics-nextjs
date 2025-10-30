@@ -110,9 +110,9 @@ export async function POST(request: NextRequest) {
           quota: quotaCheck,
           upgrade_required: quotaCheck.error === 'NO_PLAN' || quotaCheck.error === 'INACTIVE_PLAN',
           pricing_tiers: {
-            starter: { price: '$19/month', articles: '12/month (3/week)', description: 'Perfect for small blogs' },
-            pro: { price: '$39/month', articles: '30/month (1/day)', description: 'Ideal for growing businesses' },
-            scale: { price: '$99/month', articles: '90/month (3/day)', description: 'For high-volume content needs' }
+            starter: { price: '$49/month', articles: '12/month (3/week)', description: 'Perfect for small blogs' },
+            pro: { price: '$149/month', articles: '30/month (1/day)', description: 'Ideal for growing businesses' },
+            scale: { price: '$399/month', articles: '90/month (3/day)', description: 'For high-volume content needs' }
           }
         }), { status: statusCode, headers: { 'Content-Type': 'application/json' } });
       }
@@ -466,7 +466,7 @@ async function checkQuota(supabase: any, userToken: string, siteId?: number) {
         remaining: 0,
         tier: null,
         error: 'NO_PLAN',
-        message: 'Article generation requires a paid plan. Please upgrade to Starter ($19/month), Pro ($39/month), or Scale ($99/month).'
+        message: 'Article generation requires a paid plan. Please upgrade to Starter ($49/month), Pro ($149/month), or Scale ($399/month).'
       };
     }
 

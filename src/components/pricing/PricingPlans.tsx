@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth';
 const PLANS = [
   {
     name: 'Starter',
-    price: 19,
+    price: 49,
     tier: 'starter',
     frequency: '3 articles/week',
     description: 'Perfect for small blogs and personal sites',
@@ -22,7 +22,7 @@ const PLANS = [
   },
   {
     name: 'Pro',
-    price: 39,
+    price: 149,
     tier: 'pro',
     frequency: '1 article/day',
     description: 'Ideal for growing businesses and content creators',
@@ -39,7 +39,7 @@ const PLANS = [
   },
   {
     name: 'Scale',
-    price: 99,
+    price: 399,
     tier: 'scale',
     frequency: '3 articles/day',
     description: 'For high-volume content needs and agencies',

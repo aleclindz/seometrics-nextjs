@@ -32,7 +32,7 @@ export const PLANS: Record<string, PlanConfig> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    price: 29,
+    price: 49,
     features: {
       maxSites: 1,
       maxArticlesPerMonth: -1, // Unlimited articles
@@ -46,7 +46,7 @@ export const PLANS: Record<string, PlanConfig> = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 79,
+    price: 149,
     features: {
       maxSites: -1, // Unlimited
       maxArticlesPerMonth: -1, // Unlimited articles
@@ -57,13 +57,13 @@ export const PLANS: Record<string, PlanConfig> = {
       prioritySupport: true,
     },
   },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: -1, // Custom pricing
+  scale: {
+    id: 'scale',
+    name: 'Scale',
+    price: 399,
     features: {
       maxSites: -1, // Unlimited
-      maxArticlesPerMonth: -1, // Unlimited
+      maxArticlesPerMonth: -1, // Unlimited articles
       articleGeneration: true,
       keywordsTool: true,
       seoDebug: true,

@@ -37,7 +37,7 @@ interface SubscriptionData {
 const SUBSCRIPTION_TIERS = {
   starter: {
     name: 'Starter Plan',
-    price: 19,
+    price: 49,
     stripeTier: 'starter',
     description: '3 articles/week',
     features: [
@@ -51,7 +51,7 @@ const SUBSCRIPTION_TIERS = {
   },
   pro: {
     name: 'Pro Plan',
-    price: 39,
+    price: 149,
     stripeTier: 'pro',
     description: '1 article/day',
     features: [
@@ -66,7 +66,7 @@ const SUBSCRIPTION_TIERS = {
   },
   scale: {
     name: 'Scale Plan',
-    price: 99,
+    price: 399,
     stripeTier: 'scale',
     description: '3 articles/day',
     features: [
@@ -356,14 +356,14 @@ export default function SubscriptionManager() {
                   disabled={actionLoading}
                   className="btn bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                 >
-                  {actionLoading ? 'Loading...' : 'Upgrade to Pro ($39/mo)'}
+                  {actionLoading ? 'Loading...' : 'Upgrade to Pro ($149/mo)'}
                 </button>
                 <button
                   onClick={() => handleUpgrade('scale')}
                   disabled={actionLoading}
                   className="btn bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
                 >
-                  {actionLoading ? 'Loading...' : 'Upgrade to Scale ($99/mo)'}
+                  {actionLoading ? 'Loading...' : 'Upgrade to Scale ($399/mo)'}
                 </button>
               </>
             )}
@@ -374,7 +374,7 @@ export default function SubscriptionManager() {
                 disabled={actionLoading}
                 className="btn bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
               >
-                {actionLoading ? 'Loading...' : 'Upgrade to Scale ($99/mo)'}
+                {actionLoading ? 'Loading...' : 'Upgrade to Scale ($399/mo)'}
               </button>
             )}
 

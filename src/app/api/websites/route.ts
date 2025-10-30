@@ -125,9 +125,9 @@ export async function PUT(request: NextRequest) {
         let upgradeMessage = 'Contact support to increase your website limit';
 
         if (currentPlan === 'free') {
-          upgradeMessage = 'Upgrade to Starter plan ($19/month) to manage 1 website';
+          upgradeMessage = 'Upgrade to Starter plan ($49/month) to manage 1 website';
         } else if (currentPlan === 'starter') {
-          upgradeMessage = 'Upgrade to Pro plan ($39/month) for unlimited websites';
+          upgradeMessage = 'Upgrade to Pro plan ($149/month) for unlimited websites';
         }
 
         console.log('[WEBSITES API] Plan limit reached:', { currentPlan, maxAllowed, managedCount });

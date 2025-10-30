@@ -222,9 +222,9 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 function getTierLimits(tier: string) {
   // NEW: Updated tier limits for article-focused pricing
   const limits = {
-    starter: { sites: 1, posts: 12 },        // $19/month: 1 site, 12 articles (3/week)
-    pro: { sites: -1, posts: 30 },           // $39/month: unlimited sites, 30 articles (1/day)
-    scale: { sites: -1, posts: 90 },         // $99/month: unlimited sites, 90 articles (3/day)
+    starter: { sites: 1, posts: 12 },        // $49/month: 1 site, 12 articles (3/week)
+    pro: { sites: -1, posts: 30 },           // $149/month: unlimited sites, 30 articles (1/day)
+    scale: { sites: -1, posts: 90 },         // $399/month: unlimited sites, 90 articles (3/day)
     // Legacy support for old 'enterprise' tier - migrate to 'scale'
     enterprise: { sites: -1, posts: 90 },
   };

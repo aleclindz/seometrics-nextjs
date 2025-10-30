@@ -21,27 +21,27 @@ function getBaseUrl(): string {
 // No free tier - all users must have paid subscription for article generation
 const SUBSCRIPTION_TIERS = {
   starter: {
-    priceId: process.env.STRIPE_STARTER_PRICE_ID!, // $19/month
+    priceId: process.env.STRIPE_STARTER_PRICE_ID!, // $49/month
     name: 'Starter Plan',
-    price: '$19/month',
+    price: '$49/month',
     sitesAllowed: 1,
     postsAllowed: 12, // 3 articles/week
     description: 'Perfect for small blogs',
     features: ['12 AI articles/month', '1 website', 'DALL-E 3 images', 'SEO optimization', 'Multi-CMS publishing']
   },
   pro: {
-    priceId: process.env.STRIPE_PRO_PRICE_ID!, // $39/month
+    priceId: process.env.STRIPE_PRO_PRICE_ID!, // $149/month
     name: 'Pro Plan',
-    price: '$39/month',
+    price: '$149/month',
     sitesAllowed: -1, // Unlimited
     postsAllowed: 30, // 1 article/day
     description: 'Ideal for growing businesses',
     features: ['30 AI articles/month', 'Unlimited websites', 'DALL-E 3 images', 'SEO optimization', 'Multi-CMS publishing', 'Priority support']
   },
   scale: {
-    priceId: process.env.STRIPE_SCALE_PRICE_ID!, // $99/month (renamed from enterprise)
+    priceId: process.env.STRIPE_SCALE_PRICE_ID!, // $399/month (renamed from enterprise)
     name: 'Scale Plan',
-    price: '$99/month',
+    price: '$399/month',
     sitesAllowed: -1, // Unlimited
     postsAllowed: 90, // 3 articles/day
     description: 'For high-volume content needs',

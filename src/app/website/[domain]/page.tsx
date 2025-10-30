@@ -720,6 +720,26 @@ export default function WebsitePage() {
     return () => window.removeEventListener('seoagent:switch-tab', handleSwitchTab as EventListener);
   }, []);
 
+  // Auto-open setup modal when returning from Webflow OAuth
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const webflowSetup = params.get('webflow_setup');
+    const connectionId = params.get('connectionId');
+
+    console.log('[WEBFLOW CALLBACK] Detected query params:', { webflowSetup, connectionId });
+
+    if (webflowSetup === 'true' && connectionId) {
+      console.log('[WEBFLOW CALLBACK] Auto-opening setup modal');
+      setSetupModalOpen(true);
+
+      // Clean up URL parameters without page reload
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, []);
+
   if (!user) {
     return null; // ProtectedRoute will handle the redirect
   }
