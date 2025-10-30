@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/auth';
 import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
@@ -109,9 +109,15 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [showWebflowSetup, setShowWebflowSetup] = useState(false);
   const [webflowConnectionId, setWebflowConnectionId] = useState<number | null>(null);
   const [showWebflowOAuth, setShowWebflowOAuth] = useState(false);
+  const hasCheckedWebflowRef = useRef(false);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      // Reset the flag when modal closes
+      hasCheckedWebflowRef.current = false;
+      return;
+    }
+
     // Initialize when modal opens
     generateSmartJSCode();
     loadBusinessInfo();
@@ -124,8 +130,12 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     void fetchCMSConnections();
     void fetchHostConnections();
 
-    // Check for pending Webflow connections
-    checkPendingWebflowSetup();
+    // Check for pending Webflow connections (only once per modal open)
+    if (!hasCheckedWebflowRef.current) {
+      hasCheckedWebflowRef.current = true;
+      console.log('[WEBFLOW SETUP MODAL] Running pending check for first time');
+      checkPendingWebflowSetup();
+    }
 
     // Prefer showing Business Info first
     setActiveTab('business');
