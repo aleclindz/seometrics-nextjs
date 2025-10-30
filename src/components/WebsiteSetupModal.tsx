@@ -238,32 +238,60 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [showCMSForm, setShowCMSForm] = useState(false);
 
   const checkPendingWebflowSetup = async () => {
-    if (!user?.token) return;
+    console.log('[WEBFLOW SETUP MODAL] Checking for pending Webflow connections');
+
+    if (!user?.token) {
+      console.log('[WEBFLOW SETUP MODAL] No user token');
+      return;
+    }
 
     try {
+      console.log('[WEBFLOW SETUP MODAL] Fetching connections for website:', website.url);
       const response = await fetch(`/api/cms/connections?userToken=${user.token}`);
       const data = await response.json();
 
+      console.log('[WEBFLOW SETUP MODAL] API response:', data);
+
       if (data.success && data.connections) {
+        console.log('[WEBFLOW SETUP MODAL] Total connections:', data.connections.length);
+
         // Find pending Webflow connections for this website
         const pendingWebflow = data.connections.find(
-          (conn: any) =>
-            conn.cms_type === 'webflow' &&
-            conn.status === 'pending_config' &&
-            (conn.base_url === website.url ||
-             conn.base_url === `https://${website.url}` ||
-             conn.base_url === `http://${website.url}`)
+          (conn: any) => {
+            const isWebflow = conn.cms_type === 'webflow';
+            const isPending = conn.status === 'pending_config';
+            const matchesDomain = conn.base_url === website.url ||
+                                  conn.base_url === `https://${website.url}` ||
+                                  conn.base_url === `http://${website.url}`;
+
+            console.log('[WEBFLOW SETUP MODAL] Checking connection:', {
+              id: conn.id,
+              cms_type: conn.cms_type,
+              status: conn.status,
+              base_url: conn.base_url,
+              isWebflow,
+              isPending,
+              matchesDomain,
+              targetUrl: website.url
+            });
+
+            return isWebflow && isPending && matchesDomain;
+          }
         );
 
         if (pendingWebflow) {
-          console.log('[WEBFLOW] Found pending connection, auto-opening wizard:', pendingWebflow.id);
+          console.log('[WEBFLOW SETUP MODAL] ✅ Found pending connection, auto-opening wizard:', pendingWebflow.id);
           setWebflowConnectionId(pendingWebflow.id);
           setShowWebflowSetup(true);
           setActiveTab('cms'); // Switch to CMS tab
+        } else {
+          console.log('[WEBFLOW SETUP MODAL] ❌ No pending Webflow connections for:', website.url);
         }
+      } else {
+        console.log('[WEBFLOW SETUP MODAL] ❌ No connections in response');
       }
     } catch (error) {
-      console.error('[WEBFLOW] Error checking pending connections:', error);
+      console.error('[WEBFLOW SETUP MODAL] ❌ Error checking pending connections:', error);
     }
   };
 

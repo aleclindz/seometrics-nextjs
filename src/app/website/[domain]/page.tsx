@@ -722,34 +722,65 @@ export default function WebsitePage() {
 
   // Auto-open setup modal if there are pending Webflow connections
   useEffect(() => {
-    if (!user?.token) return;
+    console.log('[WEBFLOW CHECK] useEffect triggered, user:', !!user, 'domain:', domain);
+
+    if (!user?.token) {
+      console.log('[WEBFLOW CHECK] No user token, skipping check');
+      return;
+    }
 
     const checkPendingWebflowSetup = async () => {
       try {
+        console.log('[WEBFLOW CHECK] Fetching CMS connections for user:', user.token.slice(0, 8) + '...');
         const response = await fetch(`/api/cms/connections?userToken=${user.token}`);
         const data = await response.json();
 
+        console.log('[WEBFLOW CHECK] API response:', data);
+
         if (data.success && data.connections) {
+          console.log('[WEBFLOW CHECK] Total connections:', data.connections.length);
+          console.log('[WEBFLOW CHECK] All connections:', data.connections);
+
           // Find pending Webflow connections for this domain
           const pendingWebflow = data.connections.find(
-            (conn: any) =>
-              conn.cms_type === 'webflow' &&
-              conn.status === 'pending_config' &&
-              (conn.base_url === domain || conn.base_url === `https://${domain}` || conn.base_url === `http://${domain}`)
+            (conn: any) => {
+              const isWebflow = conn.cms_type === 'webflow';
+              const isPending = conn.status === 'pending_config';
+              const matchesDomain = conn.base_url === domain ||
+                                    conn.base_url === `https://${domain}` ||
+                                    conn.base_url === `http://${domain}`;
+
+              console.log('[WEBFLOW CHECK] Connection:', {
+                id: conn.id,
+                cms_type: conn.cms_type,
+                status: conn.status,
+                base_url: conn.base_url,
+                isWebflow,
+                isPending,
+                matchesDomain,
+                currentDomain: domain
+              });
+
+              return isWebflow && isPending && matchesDomain;
+            }
           );
 
           if (pendingWebflow) {
-            console.log('[WEBFLOW] Found pending setup, auto-opening modal:', pendingWebflow.id);
+            console.log('[WEBFLOW CHECK] ✅ Found pending setup, auto-opening modal:', pendingWebflow.id);
             setSetupModalOpen(true);
-            // The WebsiteSetupModal will detect this pending connection and open WebflowSetupModal
+          } else {
+            console.log('[WEBFLOW CHECK] ❌ No pending Webflow connections found for domain:', domain);
           }
+        } else {
+          console.log('[WEBFLOW CHECK] ❌ No connections data in response');
         }
       } catch (error) {
-        console.error('[WEBFLOW] Error checking pending setup:', error);
+        console.error('[WEBFLOW CHECK] ❌ Error checking pending setup:', error);
       }
     };
 
     // Small delay to ensure page is loaded
+    console.log('[WEBFLOW CHECK] Setting timer for 500ms delay');
     const timer = setTimeout(checkPendingWebflowSetup, 500);
     return () => clearTimeout(timer);
   }, [user, domain]);
