@@ -1450,7 +1450,8 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       {typeof document !== 'undefined' && createPortal(modalContent, document.body)}
 
       {/* Webflow Setup Modal - Opens after OAuth completes */}
-      {showWebflowSetup && webflowConnectionId && user?.token && (
+      {/* Also use createPortal to avoid z-index/stacking issues with parent modal */}
+      {typeof document !== 'undefined' && showWebflowSetup && webflowConnectionId && user?.token && createPortal(
         <WebflowSetupModal
           isOpen={showWebflowSetup}
           onClose={() => {
@@ -1476,7 +1477,8 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
               onStatusUpdate({ cmsStatus: 'connected' });
             }
           }}
-        />
+        />,
+        document.body
       )}
     </>
   );
