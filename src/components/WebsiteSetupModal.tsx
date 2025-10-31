@@ -13,7 +13,7 @@ interface WebsiteSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   website: {
-    id: string;
+    id: string | number;
     url: string;
     name: string;
     gscStatus: 'connected' | 'pending' | 'error' | 'none';
