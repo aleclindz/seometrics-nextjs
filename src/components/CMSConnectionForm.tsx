@@ -34,7 +34,7 @@ interface CMSConnectionFormProps {
   onSuccess: () => void;
   onCancel: () => void;
   connection?: any; // For editing existing connections
-  preselectedWebsiteId?: string; // For modal usage
+  preselectedWebsiteId?: string | number; // For modal usage
   initialCmsType?: 'wordpress' | 'strapi' | 'wix' | 'ghost';
 }
 
@@ -86,32 +86,37 @@ export default function CMSConnectionForm({ onSuccess, onCancel, connection, pre
         setWebsites(websitesList);
         
         // Convert preselectedWebsiteId to the actual database ID
-        if (preselectedWebsiteId && typeof preselectedWebsiteId === 'string') {
+        if (preselectedWebsiteId) {
           let matchingWebsite = null;
-          
-          // Try different matching strategies:
-          // 1. UUID token match
-          if (preselectedWebsiteId.includes('-')) {
-            matchingWebsite = websitesList.find((w: Website) => w.website_token === preselectedWebsiteId);
+
+          if (typeof preselectedWebsiteId === 'number') {
+            // Already a database ID
+            matchingWebsite = websitesList.find((w: Website) => w.id === preselectedWebsiteId);
+          } else if (typeof preselectedWebsiteId === 'string') {
+            // Try different matching strategies:
+            // 1. UUID token match
+            if (preselectedWebsiteId.includes('-')) {
+              matchingWebsite = websitesList.find((w: Website) => w.website_token === preselectedWebsiteId);
+            }
+
+            // 2. Domain string match (cleaned_domain or domain)
+            if (!matchingWebsite) {
+              matchingWebsite = websitesList.find((w: Website) => {
+                // Check if website has cleaned_domain field and matches
+                if ((w as any).cleaned_domain === preselectedWebsiteId) {
+                  return true;
+                }
+                // Also check raw domain (handles sc-domain: prefixed domains)
+                return w.domain === preselectedWebsiteId || w.domain === `sc-domain:${preselectedWebsiteId}`;
+              });
+            }
+
+            // 3. Numeric ID match (already a database ID)
+            if (!matchingWebsite && !isNaN(Number(preselectedWebsiteId))) {
+              matchingWebsite = websitesList.find((w: Website) => w.id === Number(preselectedWebsiteId));
+            }
           }
-          
-          // 2. Domain string match (cleaned_domain or domain)
-          if (!matchingWebsite) {
-            matchingWebsite = websitesList.find((w: Website) => {
-              // Check if website has cleaned_domain field and matches
-              if ((w as any).cleaned_domain === preselectedWebsiteId) {
-                return true;
-              }
-              // Also check raw domain (handles sc-domain: prefixed domains)
-              return w.domain === preselectedWebsiteId || w.domain === `sc-domain:${preselectedWebsiteId}`;
-            });
-          }
-          
-          // 3. Numeric ID match (already a database ID)
-          if (!matchingWebsite && !isNaN(Number(preselectedWebsiteId))) {
-            matchingWebsite = websitesList.find((w: Website) => w.id === Number(preselectedWebsiteId));
-          }
-          
+
           if (matchingWebsite) {
             console.log('CMSConnectionForm: Mapped preselectedWebsiteId', preselectedWebsiteId, 'to website ID', matchingWebsite.id);
             setFormData(prev => ({
