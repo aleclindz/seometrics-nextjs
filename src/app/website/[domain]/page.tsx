@@ -66,6 +66,7 @@ export default function WebsitePage() {
       if (data.success && data.website) {
         setCurrentWebsite(data.website);
         console.log('[CURRENT WEBSITE] Loaded:', data.website);
+        console.log('[CURRENT WEBSITE] Database ID:', data.website.id, 'Type:', typeof data.website.id);
       } else {
         console.error('[CURRENT WEBSITE] Not found for domain:', domain);
       }
@@ -1466,11 +1467,11 @@ export default function WebsitePage() {
         </div>
 
         {/* Setup Modal */}
-        <WebsiteSetupModal 
+        <WebsiteSetupModal
           isOpen={setupModalOpen}
           onClose={() => setSetupModalOpen(false)}
           website={{
-            id: domain,
+            id: currentWebsite?.id || domain,
             url: domain,
             name: domain,
             gscStatus: setupStatus.gscConnected ? 'connected' : 'none',

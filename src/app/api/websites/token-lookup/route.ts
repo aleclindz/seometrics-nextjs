@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     // Try exact matches on domain/cleaned_domain
     const { data: website } = await supabase
       .from('websites')
-      .select('website_token, domain, cleaned_domain')
+      .select('id, website_token, domain, cleaned_domain')
       .eq('user_token', userToken)
       .or(`domain.in.(${variants.map(v => `"${v}"`).join(',')}),cleaned_domain.in.(${variants.map(v => `"${v}"`).join(',')})`)
       .limit(1)
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     // Fallback: partial ilike match
     const { data: fallback } = await supabase
       .from('websites')
-      .select('website_token, domain, cleaned_domain')
+      .select('id, website_token, domain, cleaned_domain')
       .eq('user_token', userToken)
       .or(`domain.ilike.%${domain}%,cleaned_domain.ilike.%${domain}%`)
       .limit(1)
