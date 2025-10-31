@@ -196,30 +196,42 @@ export default function WebflowInlineSetup({
     setLoading(true);
     setError(null);
 
+    const payload = {
+      userToken,
+      websiteId,
+      connectionId,
+      siteId: selectedSiteId,
+      siteName: selectedSiteName,
+      collectionId: selectedCollectionId,
+      collectionName: selectedCollectionName,
+      fieldMapping,
+      publishMode,
+    };
+
+    console.log('[WEBFLOW FINALIZE] Sending payload to API:', payload);
+
     try {
       const response = await fetch('/api/cms/webflow/finalize-setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userToken,
-          websiteId,
-          connectionId,
-          siteId: selectedSiteId,
-          siteName: selectedSiteName,
-          collectionId: selectedCollectionId,
-          collectionName: selectedCollectionName,
-          fieldMapping,
-          publishMode,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log('[WEBFLOW FINALIZE] API response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to finalize setup');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[WEBFLOW FINALIZE] API error response:', errorData);
+        throw new Error(errorData.error || 'Failed to finalize setup');
       }
+
+      const data = await response.json();
+      console.log('[WEBFLOW FINALIZE] ✅ Success:', data);
 
       // Success! Trigger callback
       onSuccess();
     } catch (err) {
+      console.error('[WEBFLOW FINALIZE] ❌ Exception:', err);
       setError(err instanceof Error ? err.message : 'Setup failed');
     } finally {
       setLoading(false);

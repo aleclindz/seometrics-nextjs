@@ -8,6 +8,8 @@ import { createClient } from '@supabase/supabase-js';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('[WEBFLOW FINALIZE] Received request body:', JSON.stringify(body, null, 2));
+
     const {
       userToken,
       websiteId,
@@ -20,20 +22,49 @@ export async function POST(request: NextRequest) {
       publishMode,
     } = body;
 
+    // Detailed validation logging
+    const validationChecks = {
+      userToken: !!userToken,
+      websiteId: !!websiteId,
+      connectionId: !!connectionId,
+      siteId: !!siteId,
+      collectionId: !!collectionId,
+      fieldMapping: !!fieldMapping,
+    };
+    console.log('[WEBFLOW FINALIZE] Field validation:', validationChecks);
+
     if (!userToken || !websiteId || !connectionId || !siteId || !collectionId || !fieldMapping) {
+      console.error('[WEBFLOW FINALIZE] ❌ Missing required fields:', validationChecks);
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        {
+          error: 'Missing required fields',
+          details: validationChecks,
+        },
         { status: 400 }
       );
     }
 
     // Validate field mapping structure
+    const fieldMappingChecks = {
+      titleFieldId: !!fieldMapping.titleFieldId,
+      slugFieldId: !!fieldMapping.slugFieldId,
+      bodyFieldId: !!fieldMapping.bodyFieldId,
+    };
+    console.log('[WEBFLOW FINALIZE] Field mapping validation:', fieldMappingChecks);
+
     if (!fieldMapping.titleFieldId || !fieldMapping.slugFieldId || !fieldMapping.bodyFieldId) {
+      console.error('[WEBFLOW FINALIZE] ❌ Invalid field mapping:', fieldMappingChecks);
       return NextResponse.json(
-        { error: 'Field mapping must include title, slug, and body fields' },
+        {
+          error: 'Field mapping must include title, slug, and body fields',
+          details: fieldMappingChecks,
+          receivedMapping: fieldMapping,
+        },
         { status: 400 }
       );
     }
+
+    console.log('[WEBFLOW FINALIZE] ✅ All validations passed, proceeding with database update');
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
