@@ -10,6 +10,11 @@ import {
   generateProgrammaticBriefs,
   type ProgrammaticBriefConfig
 } from '@/services/strategy/programmatic-brief-generator';
+import {
+  extractProgrammaticIntentFromConversation,
+  isConfirmationMessage,
+  type ConversationMessage
+} from '@/services/strategy/conversation-intent-extractor';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,6 +31,7 @@ interface ProgrammaticBriefsRequest {
   // Automatic detection mode
   user_message?: string; // User's natural language request
   auto_detect?: boolean; // Enable automatic pattern detection
+  conversation_id?: string; // For conversation context extraction
 
   // Manual specification mode
   pattern_type?: ProgrammaticPattern;
@@ -56,6 +62,7 @@ export async function POST(request: NextRequest) {
       domain,
       user_message,
       auto_detect = true,
+      conversation_id,
       pattern_type,
       template,
       term_lists,
@@ -107,6 +114,86 @@ export async function POST(request: NextRequest) {
 
       const detection = detectProgrammaticPatterns(user_message, domain);
 
+      // FALLBACK: If simple pattern detection fails, try extracting from conversation context
+      if ((!detection.detected || detection.patterns.length === 0) && conversation_id) {
+        console.log('[PROGRAMMATIC API] Pattern detection failed, trying conversation context extraction');
+
+        // Check if message is a simple confirmation
+        const isConfirmation = isConfirmationMessage(user_message);
+        console.log('[PROGRAMMATIC API] Is confirmation message:', isConfirmation);
+
+        // Fetch recent conversation messages
+        const { data: conversationMessages, error: convError } = await supabase
+          .from('agent_conversations')
+          .select('message_role, message_content, created_at')
+          .eq('conversation_id', conversation_id)
+          .order('message_order', { ascending: true })
+          .limit(15);
+
+        if (convError) {
+          console.error('[PROGRAMMATIC API] Error fetching conversation:', convError);
+        } else if (conversationMessages && conversationMessages.length > 0) {
+          console.log('[PROGRAMMATIC API] Analyzing conversation with', conversationMessages.length, 'messages');
+
+          // Format messages for intent extraction
+          const formattedMessages: ConversationMessage[] = conversationMessages.map(msg => ({
+            role: msg.message_role as 'user' | 'assistant',
+            content: msg.message_content || '',
+            created_at: msg.created_at
+          }));
+
+          // Use LLM to extract intent from conversation
+          const intent = await extractProgrammaticIntentFromConversation(formattedMessages, domain);
+
+          console.log('[PROGRAMMATIC API] Conversation intent extraction result:', {
+            detected: intent.detected,
+            confidence: intent.confidence,
+            reasoning: intent.reasoning
+          });
+
+          // If LLM detected programmatic intent with reasonable confidence
+          if (intent.detected && intent.confidence >= 0.7 && intent.template && intent.term_lists) {
+            console.log('[PROGRAMMATIC API] Using extracted intent from conversation');
+
+            const config: ProgrammaticBriefConfig = {
+              template: intent.template,
+              term_lists: intent.term_lists,
+              pattern_type: 'custom',
+              website_token: effectiveWebsiteToken,
+              user_token: userToken,
+              max_briefs,
+              deduplicate,
+              parent_cluster
+            };
+
+            const result = await generateProgrammaticBriefs(config);
+
+            return NextResponse.json({
+              success: result.success,
+              briefs: result.briefs,
+              total_generated: result.total_generated,
+              skipped_duplicates: result.skipped_duplicates,
+              permutation_group_id: result.permutation_group_id,
+              pattern_detected: {
+                type: 'conversation-extracted',
+                template: intent.template,
+                confidence: intent.confidence,
+                explanation: intent.reasoning || 'Extracted from conversation context'
+              },
+              error: result.error
+            });
+          }
+        }
+
+        // If we still can't detect patterns, return helpful error
+        return NextResponse.json({
+          success: false,
+          error: 'No programmatic SEO patterns detected in message or conversation',
+          suggestion: 'Try providing a comma-separated list (e.g., "Miami, Tampa, Orlando") or explicitly specify: "Create briefs with template \'Best {product} for {location}\'"'
+        }, { status: 400 });
+      }
+
+      // If simple detection succeeded, use the detected pattern
       if (!detection.detected || detection.patterns.length === 0) {
         return NextResponse.json({
           success: false,

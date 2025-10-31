@@ -1766,6 +1766,7 @@ export class ContentAbility extends BaseAbility {
     website_token?: string;
     user_message?: string;
     auto_detect?: boolean;
+    conversation_id?: string;
     template?: string;
     term_lists?: Record<string, string[]>;
     pattern_type?: 'location' | 'product' | 'category' | 'comparison' | 'custom';
@@ -1784,6 +1785,7 @@ export class ContentAbility extends BaseAbility {
         domain: args.site_url,
         user_message: args.user_message,
         auto_detect: args.auto_detect !== false, // Default to true
+        conversation_id: args.conversation_id, // Pass conversation context for fallback extraction
         template: args.template,
         term_lists: args.term_lists,
         pattern_type: args.pattern_type,

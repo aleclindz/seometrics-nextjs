@@ -1291,7 +1291,24 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
   'BRIEFS_generate_programmatic': {
     schema: {
       name: 'BRIEFS_generate_programmatic',
-      description: 'Generate programmatic SEO content briefs from templates and term lists. Use when user wants to create multiple similar pages with variations (e.g., "[service] in [city]", "[brand] [product] review"). Supports automatic pattern detection from natural language OR manual template specification. Examples: "best plumbers in Miami, Tampa, Orlando" (location pattern), "create reviews for Apple, Samsung, Google" (product pattern), "compare Shopify, WooCommerce, BigCommerce" (comparison pattern).',
+      description: `Generate programmatic SEO content briefs from templates and term lists.
+
+WHEN TO USE THIS FUNCTION:
+- User wants multiple similar pages with variations (e.g., "service in different cities", "product reviews for different brands")
+- User mentions content ideas that follow a pattern
+- You've suggested content types/categories and user confirms with "sure", "yes", "go ahead"
+
+TWO MODES:
+1. AUTO-DETECT MODE (use when user provides comma-separated lists):
+   - Set auto_detect=true and pass user_message
+   - Examples: "best plumbers in Miami, Tampa, Orlando", "reviews for Apple, Samsung, Google"
+
+2. MANUAL MODE (PREFERRED - use when you've suggested lists and user confirms):
+   - Set template="Your {variable} template" and term_lists={variable: ["item1", "item2"]}
+   - Use this when user confirms your suggestions (e.g., "sure", "yes", "looks good")
+   - Example: If you suggested content types and user said "sure", call with explicit template + term_lists
+
+IMPORTANT: If you suggest specific lists and user confirms, use MANUAL MODE with explicit template + term_lists. Don't rely on auto-detect for confirmations.`,
       parameters: {
         type: 'object',
         properties: {
@@ -1299,20 +1316,24 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
           website_token: { type: 'string', description: 'Website token (optional if site_url provided)' },
           user_message: {
             type: 'string',
-            description: 'User\'s natural language request to auto-detect patterns. Examples: "Generate briefs for Miami, Tampa, Orlando", "Create reviews for iPhone, Galaxy, Pixel", "Compare Shopify vs WooCommerce vs BigCommerce"'
+            description: 'User\'s natural language request for AUTO-DETECT mode. Include comma-separated lists. Examples: "Generate briefs for Miami, Tampa, Orlando", "Create reviews for iPhone, Galaxy, Pixel"'
           },
           auto_detect: {
             type: 'boolean',
-            description: 'Enable automatic pattern detection from user_message',
+            description: 'Enable automatic pattern detection from user_message. Set to false when using manual template + term_lists',
             default: true
+          },
+          conversation_id: {
+            type: 'string',
+            description: 'Conversation ID for context extraction when auto-detect fails (automatically passed, no need to set explicitly)'
           },
           template: {
             type: 'string',
-            description: 'Manual template with placeholders in {curly braces}. Example: "best {service} in {city}" or "{brand} {product} review". Use with term_lists for manual mode.'
+            description: 'MANUAL MODE: Template with {placeholders} in curly braces. Example: "How to grow your {content} channel using {strategy}" or "Best {product} for {location}". Use with term_lists.'
           },
           term_lists: {
             type: 'object',
-            description: 'Object with arrays for each template placeholder. Example: {service: ["plumbers", "electricians"], city: ["Miami", "Tampa"]}. Keys must match template placeholders.',
+            description: 'MANUAL MODE: Object mapping placeholder names to arrays of values. Example: {content: ["Gaming", "Vlog", "Music"], strategy: ["localization", "SEO"]}. Keys must match template {placeholders}.',
             additionalProperties: { type: 'array', items: { type: 'string' } }
           },
           pattern_type: {
@@ -1346,6 +1367,7 @@ export const FUNCTION_REGISTRY: Record<string, FunctionDefinition> = {
       website_token: z.string().optional(),
       user_message: z.string().optional(),
       auto_detect: z.boolean().optional().default(true),
+      conversation_id: z.string().optional(),
       template: z.string().optional(),
       term_lists: z.record(z.array(z.string())).optional(),
       pattern_type: z.enum(['location', 'product', 'category', 'comparison', 'custom']).optional(),
