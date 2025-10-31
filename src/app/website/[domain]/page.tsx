@@ -720,9 +720,18 @@ export default function WebsitePage() {
     return () => window.removeEventListener('seoagent:switch-tab', handleSwitchTab as EventListener);
   }, []);
 
-  // Auto-open setup modal if there are pending Webflow connections
+  // Auto-open setup modal ONLY after OAuth redirect (not every page load)
   useEffect(() => {
-    console.log('[WEBFLOW CHECK] useEffect triggered, user:', !!user, 'domain:', domain);
+    // Check if we just came back from OAuth
+    const params = new URLSearchParams(window.location.search);
+    const hasPendingSetup = params.get('webflow_setup_pending') === 'true';
+
+    console.log('[WEBFLOW CHECK] useEffect triggered, hasPendingSetup:', hasPendingSetup, 'user:', !!user, 'domain:', domain);
+
+    if (!hasPendingSetup) {
+      console.log('[WEBFLOW CHECK] No webflow_setup_pending parameter, skipping check');
+      return;
+    }
 
     if (!user?.token) {
       console.log('[WEBFLOW CHECK] No user token, skipping check');
@@ -769,6 +778,10 @@ export default function WebsitePage() {
           if (pendingWebflow) {
             console.log('[WEBFLOW CHECK] ✅ Found pending setup, auto-opening modal:', pendingWebflow.id);
             setSetupModalOpen(true);
+
+            // Remove the query parameter after opening modal
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
           } else {
             console.log('[WEBFLOW CHECK] ❌ No pending Webflow connections found for domain:', domain);
           }

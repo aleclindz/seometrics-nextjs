@@ -1138,17 +1138,28 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                   </button>
                 </div>
               ) : showCMSForm && selectedCmsType === 'webflow' && webflowConnectionId && user?.token ? (
-                <WebflowInlineSetup
-                  connectionId={webflowConnectionId}
-                  userToken={user.token}
-                  websiteId={parseInt(String(website.id), 10)}
-                  onSuccess={handleCMSSuccess}
-                  onCancel={() => {
-                    setShowCMSForm(false);
-                    setSelectedCmsType(null);
-                    setWebflowConnectionId(null);
-                  }}
-                />
+                (() => {
+                  const parsedWebsiteId = parseInt(String(website.id), 10);
+                  console.log('[WEBFLOW INLINE SETUP] Props:', {
+                    websiteId: website.id,
+                    parsedWebsiteId,
+                    isNaN: isNaN(parsedWebsiteId),
+                    connectionId: webflowConnectionId,
+                  });
+                  return (
+                    <WebflowInlineSetup
+                      connectionId={webflowConnectionId}
+                      userToken={user.token}
+                      websiteId={parsedWebsiteId}
+                      onSuccess={handleCMSSuccess}
+                      onCancel={() => {
+                        setShowCMSForm(false);
+                        setSelectedCmsType(null);
+                        setWebflowConnectionId(null);
+                      }}
+                    />
+                  );
+                })()
               ) : showCMSForm ? (
                 <CMSConnectionForm
                   onSuccess={handleCMSSuccess}
