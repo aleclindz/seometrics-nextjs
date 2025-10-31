@@ -7,7 +7,7 @@ import { UrlNormalizationService } from '@/lib/UrlNormalizationService';
 import { getSmartJSStatus } from '@/lib/seoagent-js-status';
 import CMSConnectionForm from './CMSConnectionForm';
 import LovableSetupInstructions from './LovableSetupInstructions';
-import WebflowSetupModal from './WebflowSetupModal';
+import WebflowInlineSetup from './WebflowInlineSetup';
 
 interface WebsiteSetupModalProps {
   isOpen: boolean;
@@ -82,7 +82,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [cmsConnections, setCmsConnections] = useState<CMSConnection[]>([]);
   const [cmsLoading, setCmsLoading] = useState(false);
   const [cmsError, setCmsError] = useState<string | null>(null);
-  const [selectedCmsType, setSelectedCmsType] = useState<'wordpress'|'strapi'|'wix'|'ghost'|null>(null);
+  const [selectedCmsType, setSelectedCmsType] = useState<'wordpress'|'strapi'|'wix'|'ghost'|'webflow'|null>(null);
 
   // Host Connection State
   const [hostConnections, setHostConnections] = useState<HostConnection[]>([]);
@@ -105,8 +105,7 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
   const [preEditDesc, setPreEditDesc] = useState<string>('');
   const [businessSavedAt, setBusinessSavedAt] = useState<number | null>(null);
 
-  // Webflow Setup Modal State
-  const [showWebflowSetup, setShowWebflowSetup] = useState(false);
+  // Webflow Setup State
   const [webflowConnectionId, setWebflowConnectionId] = useState<number | null>(null);
   const [showWebflowOAuth, setShowWebflowOAuth] = useState(false);
   const hasCheckedWebflowRef = useRef(false);
@@ -290,14 +289,15 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
         );
 
         if (pendingWebflow) {
-          console.log('[WEBFLOW SETUP MODAL] ✅ Found pending connection, auto-opening wizard:', {
+          console.log('[WEBFLOW SETUP MODAL] ✅ Found pending connection, auto-opening inline wizard:', {
             connectionId: pendingWebflow.id,
             websiteId: website.id,
             parsedWebsiteId: parseInt(String(website.id), 10),
             userToken: user.token?.slice(0, 8) + '...',
           });
           setWebflowConnectionId(pendingWebflow.id);
-          setShowWebflowSetup(true);
+          setSelectedCmsType('webflow');
+          setShowCMSForm(true);
           setActiveTab('cms'); // Switch to CMS tab
         } else {
           console.log('[WEBFLOW SETUP MODAL] ❌ No pending Webflow connections for:', website.url);
@@ -1128,6 +1128,18 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
                     Refresh Connections
                   </button>
                 </div>
+              ) : showCMSForm && selectedCmsType === 'webflow' && webflowConnectionId && user?.token ? (
+                <WebflowInlineSetup
+                  connectionId={webflowConnectionId}
+                  userToken={user.token}
+                  websiteId={parseInt(String(website.id), 10)}
+                  onSuccess={handleCMSSuccess}
+                  onCancel={() => {
+                    setShowCMSForm(false);
+                    setSelectedCmsType(null);
+                    setWebflowConnectionId(null);
+                  }}
+                />
               ) : showCMSForm ? (
                 <CMSConnectionForm
                   onSuccess={handleCMSSuccess}
@@ -1444,42 +1456,10 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
     </div>
   );
 
-  // Use createPortal to render modals at the document root level
+  // Use createPortal to render modal at the document root level
   return (
     <>
       {typeof document !== 'undefined' && createPortal(modalContent, document.body)}
-
-      {/* Webflow Setup Modal - Opens after OAuth completes */}
-      {/* Also use createPortal to avoid z-index/stacking issues with parent modal */}
-      {typeof document !== 'undefined' && showWebflowSetup && webflowConnectionId && user?.token && createPortal(
-        <WebflowSetupModal
-          isOpen={showWebflowSetup}
-          onClose={() => {
-            setShowWebflowSetup(false);
-            setWebflowConnectionId(null);
-            // Refresh CMS connections
-            fetchCMSConnections();
-            // Update parent website status
-            if (onStatusUpdate) {
-              onStatusUpdate({ cmsStatus: 'connected' });
-            }
-          }}
-          userToken={user.token}
-          websiteId={parseInt(website.id, 10)}
-          connectionId={webflowConnectionId}
-          onComplete={() => {
-            setShowWebflowSetup(false);
-            setWebflowConnectionId(null);
-            // Refresh CMS connections
-            fetchCMSConnections();
-            // Update parent website status
-            if (onStatusUpdate) {
-              onStatusUpdate({ cmsStatus: 'connected' });
-            }
-          }}
-        />,
-        document.body
-      )}
     </>
   );
 }
