@@ -43,7 +43,7 @@ export default function WebsitePage() {
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [websiteDropdownOpen, setWebsiteDropdownOpen] = useState(false);
   const [userWebsites, setUserWebsites] = useState<Array<{ id: string; url: string; name: string; website_token?: string }>>([]);
-  const [currentWebsite, setCurrentWebsite] = useState<{ domain: string; cleaned_domain?: string; website_token: string } | null>(null);
+  const [currentWebsite, setCurrentWebsite] = useState<{ id: number; domain: string; cleaned_domain?: string; website_token: string } | null>(null);
   const [business, setBusiness] = useState<{ type: string; description: string } | null>(null);
   const [bizLoading, setBizLoading] = useState(false);
   const [bizEditOpen, setBizEditOpen] = useState(false);
