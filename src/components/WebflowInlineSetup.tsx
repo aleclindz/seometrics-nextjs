@@ -169,6 +169,15 @@ export default function WebflowInlineSetup({
       }
 
       const data = await response.json();
+      console.log('[WEBFLOW FIELD MAPPING] Received fields from API:', data.fields);
+      console.log('[WEBFLOW FIELD MAPPING] Field types summary:',
+        data.fields?.reduce((acc: any, f: any) => {
+          acc[f.type] = (acc[f.type] || 0) + 1;
+          return acc;
+        }, {})
+      );
+      console.log('[WEBFLOW FIELD MAPPING] Inferred mapping:', data.inferredMapping);
+
       setFields(data.fields || []);
       setInferredMapping(data.inferredMapping);
 
@@ -236,9 +245,17 @@ export default function WebflowInlineSetup({
       loadCollectionSchema();
     } else if (currentStep === 3) {
       if (!fieldMapping.titleFieldId || !fieldMapping.slugFieldId || !fieldMapping.bodyFieldId) {
+        console.error('[WEBFLOW FIELD MAPPING] Validation failed:', {
+          titleFieldId: fieldMapping.titleFieldId,
+          slugFieldId: fieldMapping.slugFieldId,
+          bodyFieldId: fieldMapping.bodyFieldId,
+          availableSlugFields: getFieldsByType('Slug').length,
+          availablePlainTextFields: getFieldsByType('PlainText').length,
+        });
         setError('Title, Slug, and Body fields are required');
         return;
       }
+      console.log('[WEBFLOW FIELD MAPPING] Validation passed, proceeding to step 4');
       setCurrentStep(4);
     }
   }
@@ -257,7 +274,9 @@ export default function WebflowInlineSetup({
 
   function getFieldsByType(type: string | string[]) {
     const types = Array.isArray(type) ? type : [type];
-    return fields.filter(f => types.includes(f.type));
+    const filtered = fields.filter(f => types.includes(f.type));
+    console.log(`[WEBFLOW FIELD MAPPING] getFieldsByType(${JSON.stringify(type)}):`, filtered.map(f => `${f.name} (${f.type})`));
+    return filtered;
   }
 
   const renderStepIndicator = () => (
@@ -415,12 +434,24 @@ export default function WebflowInlineSetup({
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             >
               <option value="">Select field...</option>
+              {/* Prefer actual Slug type fields */}
               {getFieldsByType('Slug').map((field) => (
                 <option key={field.id} value={field.id}>
-                  {field.name} ({field.type})
+                  {field.name} (Slug field - recommended)
+                </option>
+              ))}
+              {/* Fallback to PlainText if no Slug fields exist */}
+              {getFieldsByType('Slug').length === 0 && getFieldsByType('PlainText').map((field) => (
+                <option key={field.id} value={field.id}>
+                  {field.name} (PlainText - will be used as slug)
                 </option>
               ))}
             </select>
+            {getFieldsByType('Slug').length === 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                ⚠️ No Slug field type found in your collection. Using PlainText field as fallback. Consider adding a Slug field in Webflow for better URL handling.
+              </p>
+            )}
           </div>
 
           {/* Body Field */}

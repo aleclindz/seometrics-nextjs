@@ -117,28 +117,33 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
       return;
     }
 
-    // Initialize when modal opens
-    generateSmartJSCode();
-    loadBusinessInfo();
-
-    // Prime section states from parent-provided status so UI matches header checks
-    setGscStatus({ connected: website.gscStatus === 'connected' });
-    console.log('🔍 [SETUP MODAL] Initializing smartjsDetected from website.smartjsStatus:', website.smartjsStatus);
-    setSmartjsDetected(website.smartjsStatus === 'active');
-    // Fetch connection details where applicable
-    void fetchCMSConnections();
-    void fetchHostConnections();
-
-    // Check for pending Webflow connections (only once per modal open)
+    // Only run initialization once per modal open
     if (!hasCheckedWebflowRef.current) {
       hasCheckedWebflowRef.current = true;
-      console.log('[WEBFLOW SETUP MODAL] Running pending check for first time');
-      checkPendingWebflowSetup();
-    }
 
-    // Prefer showing Business Info first
-    setActiveTab('business');
-  }, [isOpen, website]);
+      // Initialize when modal opens
+      generateSmartJSCode();
+      loadBusinessInfo();
+
+      // Prime section states from parent-provided status so UI matches header checks
+      setGscStatus({ connected: website.gscStatus === 'connected' });
+      console.log('🔍 [SETUP MODAL] Initializing smartjsDetected from website.smartjsStatus:', website.smartjsStatus);
+      setSmartjsDetected(website.smartjsStatus === 'active');
+
+      // Fetch connection details where applicable
+      void fetchCMSConnections();
+      void fetchHostConnections();
+
+      // Check for pending Webflow connections - this will set activeTab to 'cms' if found
+      console.log('[WEBFLOW SETUP MODAL] Running pending check for first time');
+      checkPendingWebflowSetup().then((foundPending) => {
+        // Only set to business tab if we didn't find a pending Webflow setup
+        if (!foundPending) {
+          setActiveTab('business');
+        }
+      });
+    }
+  }, [isOpen]);
 
 
   // GSC Functions
@@ -246,12 +251,12 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
 
   const [showCMSForm, setShowCMSForm] = useState(false);
 
-  const checkPendingWebflowSetup = async () => {
+  const checkPendingWebflowSetup = async (): Promise<boolean> => {
     console.log('[WEBFLOW SETUP MODAL] Checking for pending Webflow connections');
 
     if (!user?.token) {
       console.log('[WEBFLOW SETUP MODAL] No user token');
-      return;
+      return false;
     }
 
     try {
@@ -299,14 +304,18 @@ export default function WebsiteSetupModal({ isOpen, onClose, website, onStatusUp
           setSelectedCmsType('webflow');
           setShowCMSForm(true);
           setActiveTab('cms'); // Switch to CMS tab
+          return true; // Found pending connection
         } else {
           console.log('[WEBFLOW SETUP MODAL] ❌ No pending Webflow connections for:', website.url);
+          return false;
         }
       } else {
         console.log('[WEBFLOW SETUP MODAL] ❌ No connections in response');
+        return false;
       }
     } catch (error) {
       console.error('[WEBFLOW SETUP MODAL] ❌ Error checking pending connections:', error);
+      return false;
     }
   };
 
