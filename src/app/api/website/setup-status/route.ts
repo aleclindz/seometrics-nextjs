@@ -120,17 +120,24 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[SETUP STATUS] Updating connection status for:', domain);
-    
+
+    // Build update object dynamically - only include provided fields to prevent data loss
+    const updates: any = {
+      last_status_check: new Date().toISOString()
+    };
+
+    if (gscStatus !== undefined) updates.gsc_status = gscStatus;
+    if (seoagentjsStatus !== undefined) updates.seoagentjs_status = seoagentjsStatus;
+    if (cmsStatus !== undefined) updates.cms_status = cmsStatus;
+    if (hostingStatus !== undefined) updates.hosting_status = hostingStatus;
+
+    console.log('[SETUP STATUS] Fields being updated:', Object.keys(updates).filter(k => k !== 'last_status_check'));
+    console.log('[SETUP STATUS] Update values:', updates);
+
     // Update the websites table directly with new status values
     const { data, error } = await supabase
       .from('websites')
-      .update({
-        gsc_status: gscStatus || 'none',
-        seoagentjs_status: seoagentjsStatus || 'inactive',
-        cms_status: cmsStatus || 'none',
-        hosting_status: hostingStatus || 'none',
-        last_status_check: new Date().toISOString()
-      })
+      .update(updates)
       .eq('user_token', userToken)
       .or(`domain.eq.${domain},domain.eq.sc-domain:${domain.replace(/^https?:\/\//, '').replace(/^www\./, '')}`)
       .select()
@@ -143,22 +150,27 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    
-    // Calculate progress for response
-    const statuses = [gscStatus, seoagentjsStatus, cmsStatus, hostingStatus];
-    const completedCount = statuses.filter(status => 
+
+    // Calculate progress from actual database values (not request payload)
+    const statuses = [
+      data.gsc_status,
+      data.seoagentjs_status,
+      data.cms_status,
+      data.hosting_status
+    ];
+    const completedCount = statuses.filter(status =>
       status === 'connected' || status === 'active'
     ).length;
     const setupProgress = Math.round((completedCount / 4) * 100);
     const isFullySetup = completedCount === 4;
-    
+
     return NextResponse.json({
       success: true,
       data: {
-        gscStatus: gscStatus || 'none',
-        seoagentjsStatus: seoagentjsStatus || 'inactive',
-        cmsStatus: cmsStatus || 'none',
-        hostingStatus: hostingStatus || 'none',
+        gscStatus: data.gsc_status,
+        seoagentjsStatus: data.seoagentjs_status,
+        cmsStatus: data.cms_status,
+        hostingStatus: data.hosting_status,
         setupProgress,
         isFullySetup,
         lastUpdated: data.last_status_check
